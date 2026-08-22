@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 01-02-PLAN.md - tầng common (response wrapper, exception handler, JWT security)
-last_updated: "2026-08-22T16:53:11.688Z"
+stopped_at: Hoàn thành 01-03-PLAN.md - hạ tầng idempotency + rate limit 3 tầng
+last_updated: "2026-08-22T17:11:41.763Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 33
+  completed_plans: 3
+  percent: 50
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 01 (nen-tang-xac-thuc) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-08-22
 
-Progress: [███░░░░░░░] 33%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [███░░░░░░░] 33%
 *Updated after each plan completion*
 | Phase 01 P01 | 32min | 2 tasks | 16 files |
 | Phase 01-nen-tang-xac-thuc P02 | 52min | 2 tasks | 13 files |
+| Phase 01-nen-tang-xac-thuc P03 | 35min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ Recent decisions affecting current work:
 - Ép `project.build.sourceEncoding=UTF-8` và `-Dfile.encoding=UTF-8` cho surefire/spring-boot-maven-plugin — JVM Windows đọc Windows-1252 mặc định làm hỏng mọi chuỗi tiếng Việt
 - `GlobalExceptionHandlerTest` dùng `@WebMvcTest` với `excludeFilters` loại `SecurityConfig`/`JwtAuthFilter` — `@Configuration` bean không bị controllers-scoping lọc như `@Controller`
 - `JwtServiceTest` bắt `JwtException` (lớp cha) thay vì chỉ `SignatureException` cho test algorithm-confusion — jjwt 0.13.x có thể ném `WeakKeyException` hoặc `SignatureException` tuỳ đường verify
+- Tách IdempotencyTransactionHelper thành bean riêng vì self-invocation trong @Aspect bean không đi qua Spring AOP proxy, khiến @Transactional bị bỏ qua âm thầm nếu gọi method nội bộ cùng class
+- GlobalExceptionHandlerTest phải excludeFilters thêm RateLimitFilter khỏi @WebMvcTest — mọi @Component mới trong common/ có nguy cơ bị @WebMvcTest tự nạp nhầm vào context slice test
+- Test Testcontainers cho idempotency_keys phải insert user thật qua JdbcTemplate trước — FK fk_idem_user ràng buộc user_id, UserRepository thật chưa tồn tại tới Plan 04
 
 ### Pending Todos
 
@@ -101,8 +105,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-22T16:53:11.680Z
-Stopped at: Hoàn thành 01-02-PLAN.md - tầng common (response wrapper, exception handler, JWT security)
+Last session: 2026-08-22T17:11:41.755Z
+Stopped at: Hoàn thành 01-03-PLAN.md - hạ tầng idempotency + rate limit 3 tầng
 Resume file: None
 
 **Planned Phase:** 1 (Nền tảng & Xác thực) — 6 plans — 2026-08-22T15:58:34.737Z
