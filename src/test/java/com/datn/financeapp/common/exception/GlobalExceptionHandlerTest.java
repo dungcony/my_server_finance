@@ -22,7 +22,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Kiểm tra GlobalExceptionHandler qua @WebMvcTest với controller test-only,
  * không đụng tới controller nghiệp vụ thật nào.
  */
-@WebMvcTest
+@WebMvcTest(
+        excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+                type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+                classes = {
+                        com.datn.financeapp.common.security.SecurityConfig.class,
+                        com.datn.financeapp.common.security.JwtAuthFilter.class
+                }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
 public class GlobalExceptionHandlerTest {
