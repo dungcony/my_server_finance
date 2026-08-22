@@ -151,29 +151,94 @@ Chưa nằm trong roadmap hiện tại — ghi nhận để không quên.
 
 ## Traceability
 
-Điền trong bước tạo roadmap (Phase mapping) — để trống, roadmapper sẽ cập nhật.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01…08 | — | Pending |
-| AUTH-01…08 | — | Pending |
-| WALLET-01…07 | — | Pending |
-| CAT-01…06 | — | Pending |
-| TXN-01…08 | — | Pending |
-| BUDGET-01…07 | — | Pending |
-| REPORT-01…05 | — | Pending |
-| AI-01…06 | — | Pending |
-| DEBT-01…07 | — | Pending |
-| RECUR-01…03 | — | Pending |
-| GOAL-01…04 | — | Pending |
-| GROUP-01…06 | — | Pending |
-| JOB-01…05 | — | Pending |
+| CORE-01 | Phase 1 | Pending |
+| CORE-02 | Phase 1 | Pending |
+| CORE-03 | Phase 1 | Pending |
+| CORE-04 | Phase 1 | Pending |
+| CORE-05 | Phase 1 | Pending |
+| CORE-06 | Phase 1 | Pending |
+| CORE-07 | Phase 1 | Pending |
+| CORE-08 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Pending |
+| AUTH-08 | Phase 1 | Pending |
+| WALLET-01 | Phase 2 | Pending |
+| WALLET-02 | Phase 2 | Pending |
+| WALLET-03 | Phase 2 | Pending |
+| WALLET-04 | Phase 2 | Pending |
+| WALLET-05 | Phase 2 | Pending |
+| WALLET-06 | Phase 2 | Pending |
+| WALLET-07 | Phase 2 | Pending |
+| CAT-01 | Phase 2 | Pending |
+| CAT-02 | Phase 2 | Pending |
+| CAT-03 | Phase 2 | Pending |
+| CAT-04 | Phase 2 | Pending |
+| CAT-05 | Phase 2 | Pending |
+| CAT-06 | Phase 2 | Pending |
+| TXN-01 | Phase 3 | Pending |
+| TXN-02 | Phase 3 | Pending |
+| TXN-03 | Phase 3 | Pending |
+| TXN-04 | Phase 3 | Pending |
+| TXN-05 | Phase 3 | Pending |
+| TXN-06 | Phase 3 | Pending |
+| TXN-07 | Phase 3 | Pending |
+| TXN-08 | Phase 3 | Pending |
+| BUDGET-01 | Phase 4 | Pending |
+| BUDGET-02 | Phase 4 | Pending |
+| BUDGET-03 | Phase 4 | Pending |
+| BUDGET-04 | Phase 4 | Pending |
+| BUDGET-05 | Phase 4 | Pending |
+| BUDGET-06 | Phase 4 | Pending |
+| BUDGET-07 | Phase 4 | Pending |
+| REPORT-01 | Phase 4 | Pending |
+| REPORT-02 | Phase 4 | Pending |
+| REPORT-03 | Phase 4 | Pending |
+| REPORT-04 | Phase 4 | Pending |
+| REPORT-05 | Phase 4 | Pending |
+| DEBT-01 | Phase 4 | Pending |
+| DEBT-02 | Phase 4 | Pending |
+| DEBT-03 | Phase 4 | Pending |
+| DEBT-04 | Phase 4 | Pending |
+| DEBT-05 | Phase 4 | Pending |
+| DEBT-06 | Phase 4 | Pending |
+| DEBT-07 | Phase 4 | Pending |
+| RECUR-01 | Phase 4 | Pending |
+| RECUR-02 | Phase 4 | Pending |
+| RECUR-03 | Phase 4 | Pending |
+| GOAL-01 | Phase 4 | Pending |
+| GOAL-02 | Phase 4 | Pending |
+| GOAL-03 | Phase 4 | Pending |
+| GOAL-04 | Phase 4 | Pending |
+| JOB-01 | Phase 4 | Pending |
+| JOB-02 | Phase 4 | Pending |
+| JOB-03 | Phase 4 | Pending |
+| JOB-04 | Phase 4 | Pending |
+| GROUP-01 | Phase 5 | Pending |
+| GROUP-02 | Phase 5 | Pending |
+| GROUP-03 | Phase 5 | Pending |
+| GROUP-04 | Phase 5 | Pending |
+| GROUP-05 | Phase 5 | Pending |
+| GROUP-06 | Phase 5 | Pending |
+| AI-01 | Phase 5 | Pending |
+| AI-02 | Phase 5 | Pending |
+| AI-03 | Phase 5 | Pending |
+| AI-04 | Phase 5 | Pending |
+| AI-05 | Phase 5 | Pending |
+| AI-06 | Phase 5 | Pending |
+| JOB-05 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 74 total
-- Mapped to phases: 0 (chờ roadmapper)
-- Unmapped: 74 ⚠️ (sẽ giải quyết ở bước tạo roadmap)
+- v1 requirements: 80 total
+- Mapped to phases: 80/80 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-08-22*
-*Last updated: 2026-08-22 after initial definition*
+*Last updated: 2026-08-22 after roadmap creation (5 phase, coverage 100%)*
