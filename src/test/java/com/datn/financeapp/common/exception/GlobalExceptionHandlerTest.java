@@ -28,7 +28,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 classes = {
                         com.datn.financeapp.common.security.SecurityConfig.class,
                         com.datn.financeapp.common.security.JwtAuthFilter.class,
-                        com.datn.financeapp.common.ratelimit.RateLimitFilter.class
+                        com.datn.financeapp.common.ratelimit.RateLimitFilter.class,
+                        // Plan 04: AuthController mới thêm bị @WebMvcTest (không dùng controllers=)
+                        // tự component-scan vào slice context, kéo theo AuthService không tồn tại
+                        // ở đây — loại tường minh, cùng lý do với 3 bean phía trên.
+                        com.datn.financeapp.auth.controller.AuthController.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser

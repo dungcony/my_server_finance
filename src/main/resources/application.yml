@@ -1,6 +1,11 @@
 spring:
   application:
     name: financeapp
+  jackson:
+    # api/00-QUY-UOC-CHUNG.md: mọi trường JSON dùng snake_case. DTO Java giữ camelCase chuẩn
+    # convention ngôn ngữ (CLAUDE.md gốc), Jackson tự chuyển đổi 2 chiều qua naming-strategy —
+    # không cần @JsonProperty thủ công trên từng field của mọi DTO hiện tại lẫn tương lai.
+    property-naming-strategy: SNAKE_CASE
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}

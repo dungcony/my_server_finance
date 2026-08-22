@@ -56,6 +56,12 @@ public class JwtService {
      * hết hạn / sai chữ ký / sai định dạng. verifyWith(key) mặc định từ chối alg=none
      * và ép đúng thuật toán đã ký (T-02-01 — JWT algorithm confusion).
      */
+    /** AUTH-08: dùng để trả đúng {@code expires_in} trong response register/login/refresh — tránh
+     * hằng số trùng lặp lệch khỏi cấu hình thật {@code jwt.access-token-expiry-seconds}. */
+    public long getAccessTokenExpirySeconds() {
+        return accessTokenExpirySeconds;
+    }
+
     public Claims parseAndValidate(String token) {
         return Jwts.parser()
                 .verifyWith(key)
