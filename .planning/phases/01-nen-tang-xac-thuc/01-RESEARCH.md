@@ -891,22 +891,25 @@ Trong quá trình đối chiếu `api/01-XAC-THUC.md` với `db/migration/V1__ne
 | A5 | Ánh xạ kiểu cột `INET` (Postgres) sang JPA/Hibernate — dùng `String` + native query hay cần `@JdbcTypeCode` riêng | Entity ↔ schema mapping | `ddl-auto=validate` có thể fail lúc khởi động nếu Hibernate không tự nhận diện kiểu này đúng cách |
 | A6 | Response wrapper/`@RestControllerAdvice` pattern (Pattern 1) và `RateLimitFilter`/`IdempotencyAspect` code mẫu (Pattern 4, 5) là pattern tự thiết kế theo kinh nghiệm phổ biến, chưa verify qua Context7/official docs cụ thể của Spring | Pattern 1, 4, 5 | Code mẫu có thể cần điều chỉnh chi tiết implementation khi thực thi thật (tên method, cách lấy `HttpServletRequest` request-scoped trong AOP) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Race condition khi 2 request refresh đồng thời gửi cùng 1 token (A2)**
    - What we know: CONTEXT.md D-23 xác nhận đây là ưu tiên test #1, nhưng không chỉ định cơ chế khoá.
    - What's unclear: `SELECT FOR UPDATE` hay optimistic lock `@Version` — cả hai đều khả thi, khác nhau về hành vi khi conflict (block vs exception).
    - Recommendation: Planner chọn `SELECT FOR UPDATE` (đơn giản hơn để reasoning đúng, phù hợp quy mô đồ án 1 instance) và viết test tích hợp gửi 2 coroutine/thread refresh song song cùng token, xác nhận đúng 1 thành công.
+   - **RESOLVED:** 01-04-PLAN.md Task 1 chốt dùng `SELECT ... FOR UPDATE` qua `@Lock(LockModeType.PESSIMISTIC_WRITE)` trên `RefreshTokenRepository.findActiveByTokenHashForUpdate` — transaction thứ 2 block tới khi transaction 1 commit, đọc lại thấy token đã revoke nên rơi vào nhánh reuse-detection. Xem 01-04-PLAN.md Task 1 action, mục "Quyết định Open Question #1".
 
 2. **Thuật toán chính xác "5 lần sai liên tiếp" (A4)**
    - What we know: `api/01-XAC-THUC.md` ghi "Sau 5 lần sai liên tiếp, khoá đăng nhập 15 phút".
    - What's unclear: Có tính cả window thời gian không giới hạn, hay chỉ trong 1 khung thời gian nhất định? Một lần đăng nhập đúng có "reset" bộ đếm không?
    - Recommendation: Diễn giải chuẩn: đếm 5 bản ghi gần nhất (không giới hạn thời gian, `ORDER BY attempted_at DESC LIMIT 5`), nếu toàn bộ đều `succeeded=false` thì khoá 15 phút kể từ lần sai gần nhất. Bất kỳ lần đăng nhập đúng nào cũng phá chuỗi (vì nó nằm trong 5 bản ghi gần nhất và không phải `succeeded=false`).
+   - **RESOLVED:** 01-04-PLAN.md Task 1 chốt đúng thuật toán khuyến nghị — đếm 5 bản ghi `login_attempts` gần nhất (`findTop5ByEmailOrderByAttemptedAtDesc`, không lọc `succeeded`), nếu toàn bộ 5 bản ghi đều `succeeded=false` thì khoá 15 phút kể từ lần sai gần nhất; 1 lần đăng nhập đúng chen giữa phá chuỗi vì nó nằm trong 5 bản ghi gần nhất. Xem 01-04-PLAN.md Task 1 action, method `isLockedOut`.
 
 3. **Đường dẫn Flyway tương đối có ổn định qua mọi kịch bản chạy không (A3)**
    - What we know: D-09 yêu cầu trỏ `../../db/migration`, không copy.
    - What's unclear: Hành vi khi `mvn test` chạy từ Maven reactor có working directory khác `mvn spring-boot:run` hay không trên máy Windows của dev.
    - Recommendation: Task đầu tiên của Phase 1 (verify migration, D-07) nên tự động bao gồm cả việc chạy `mvn test` (không chỉ `spring-boot:run`) để phát hiện sớm nếu đường dẫn tương đối gãy.
+   - **RESOLVED:** 01-01-PLAN.md Task 1 chốt verify đường dẫn `filesystem:../../db/migration` bằng cách chạy cả `mvn spring-boot:run` VÀ `mvn test` (Testcontainers) — nếu 1 trong 2 lỗi "location does not exist", chuyển sang `EnvironmentPostProcessor` đọc `user.dir` hoặc biến môi trường `DB_MIGRATION_PATH`. Xem 01-01-PLAN.md Task 1 action, đoạn "Đường dẫn Flyway".
 
 ## Environment Availability
 
