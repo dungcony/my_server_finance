@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: financeapp
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    locations: filesystem:../../db/migration
+    encoding: UTF-8
+    baseline-on-migrate: false
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiry-seconds: 3600
+  refresh-token-expiry-days: 30

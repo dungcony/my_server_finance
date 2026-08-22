@@ -1,0 +1,3 @@
+# Profile test: dùng cho Testcontainers.
+# spring.datasource.* được @ServiceConnection tự override lúc chạy test.
+# spring.flyway.locations kế thừa từ application.yml (không cần lặp lại).
