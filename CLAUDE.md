@@ -63,8 +63,11 @@ Mỗi package nghiệp vụ tự chứa Controller/Service/Repository/dto/entity
 
 Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gốc, cộng thêm:
 
+0. **Đối chiếu với schema thật trước khi tin vào tài liệu.** `api/*.md` và `db/migration/V*.sql` là hai tài liệu được viết song song và **không bao giờ gặp nhau ở runtime** — nên chúng lệch nhau âm thầm, không có gì báo lỗi. App Flutter không dính vấn đề này vì compiler ép buộc; backend thì không có cơ chế tương đương. Trước khi lập kế hoạch hay code một phase, **mở `db/migration/V*.sql` đọc bảng/cột/trigger thật**, đừng tin mô tả trong `api/` hay `.planning/`.
+   Đã có bốn lỗi được tìm ra đúng theo cách này: `v_budget_progress` thiếu điều kiện quyền, `groups` thiếu cột hạn mã mời mà `api/10` yêu cầu, `transactions.date` là `DATE` chứ không phải `TIMESTAMPTZ`, và 4 bảng hạ tầng xác thực chưa tồn tại.
 1. **Không tự bịa API hoặc trường dữ liệu chưa có trong `api/*.md`.** Nếu thiếu/mâu thuẫn, dừng lại hỏi thay vì đoán.
-2. **Không viết trigger CSDL** để tự cập nhật số dư ví — toàn bộ logic nằm ở tầng Service, gói trong `@Transactional`.
+2. **Không viết trigger CSDL cho số dư ví** (`wallets.current_balance`) — logic này nằm ở tầng Service, gói trong `@Transactional`.
+   **Nhưng schema đã có sẵn 6 trigger**, trong đó `trg_debt_payments_sync`/`trg_goal_contributions_sync` (V4) **sở hữu** `debts.paid_amount`, `debts.status`, `savings_goals.saved_amount`, `savings_goals.status` — backend chỉ chèn/xoá bản ghi `debt_payments`/`goal_contributions`, **tuyệt đối không ghi bốn cột đó**. Bảng đầy đủ ở [db/README.md](../../db/README.md) mục "Trigger có sẵn".
 3. **Cập nhật `current_balance` phải atomic** (`UPDATE ... SET balance = balance + :delta`), không load-modify-save qua entity — tránh lost-update, đặc biệt với ví chung nhóm gia đình.
 4. **Sửa/xoá giao dịch phải đúng 3 bước** trong cùng 1 `@Transactional`: hoàn tác ảnh hưởng cũ → ghi giá trị mới → áp dụng ảnh hưởng mới. Tránh transaction self-invocation (gọi method `@Transactional` từ trong cùng class) làm mất annotation.
 5. **Mọi truy vấn ví/giao dịch/ngân sách/nợ/mục tiêu phải kiểm tra quyền ngay trong JPQL/native query**, không load hết rồi lọc ở code Java. Không có quyền → 404.
