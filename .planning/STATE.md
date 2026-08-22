@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoan thanh 01-01-PLAN.md - khung Spring Boot + entity xac thuc khop schema V1/V7
-last_updated: "2026-08-22T16:35:33.774Z"
+stopped_at: Hoàn thành 01-02-PLAN.md - tầng common (response wrapper, exception handler, JWT security)
+last_updated: "2026-08-22T16:53:11.688Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
-  percent: 17
+  completed_plans: 2
+  percent: 33
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 01 (nen-tang-xac-thuc) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-08-22
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [██░░░░░░░░] 17%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 32min | 2 tasks | 16 files |
+| Phase 01-nen-tang-xac-thuc P02 | 52min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - Khong tu import testcontainers-bom rieng - giu version 1.20.6 do Spring Boot 3.4.13 quan ly, vi Testcontainers 2.x doi ten artifact khong tuong thich nguoc
 - Ep -Duser.timezone=UTC cho JVM chay app va test - may dev Windows bao zone ID Asia/Saigon khong duoc PostgreSQL JDBC chap nhan
 - Cot Postgres CHAR(n) phai khai columnDefinition=bpchar(n) - Postgres bao physical type la bpchar khong phai char/varchar
+- Ép `project.build.sourceEncoding=UTF-8` và `-Dfile.encoding=UTF-8` cho surefire/spring-boot-maven-plugin — JVM Windows đọc Windows-1252 mặc định làm hỏng mọi chuỗi tiếng Việt
+- `GlobalExceptionHandlerTest` dùng `@WebMvcTest` với `excludeFilters` loại `SecurityConfig`/`JwtAuthFilter` — `@Configuration` bean không bị controllers-scoping lọc như `@Controller`
+- `JwtServiceTest` bắt `JwtException` (lớp cha) thay vì chỉ `SignatureException` cho test algorithm-confusion — jjwt 0.13.x có thể ném `WeakKeyException` hoặc `SignatureException` tuỳ đường verify
 
 ### Pending Todos
 
@@ -97,8 +101,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-22T16:35:33.767Z
-Stopped at: Hoan thanh 01-01-PLAN.md - khung Spring Boot + entity xac thuc khop schema V1/V7
+Last session: 2026-08-22T16:53:11.680Z
+Stopped at: Hoàn thành 01-02-PLAN.md - tầng common (response wrapper, exception handler, JWT security)
 Resume file: None
 
 **Planned Phase:** 1 (Nền tảng & Xác thực) — 6 plans — 2026-08-22T15:58:34.737Z

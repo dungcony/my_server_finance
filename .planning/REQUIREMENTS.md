@@ -9,8 +9,10 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Nền tảng chung (CORE)
 
-- [ ] **CORE-01**: Mọi response API theo khung thống nhất `{success, data}` / `{success, error}`, lỗi validate nhiều trường trả hết một lượt qua `error.fields`
-- [ ] **CORE-02**: Phân trang chuẩn (`page`, `page_size` mặc định 20 tối đa 100), lọc theo `from_date/to_date` hoặc `period`, sắp xếp `sort_by`/`sort_order`
+- [x] **CORE-01
+**: Mọi response API theo khung thống nhất `{success, data}` / `{success, error}`, lỗi validate nhiều trường trả hết một lượt qua `error.fields`
+- [x] **CORE-02
+**: Phân trang chuẩn (`page`, `page_size` mặc định 20 tối đa 100), lọc theo `from_date/to_date` hoặc `period`, sắp xếp `sort_by`/`sort_order`
 - [ ] **CORE-03**: Mọi endpoint POST tạo mới hỗ trợ header `Idempotency-Key`, nhớ kết quả trong 24 giờ
 - [ ] **CORE-04**: Rate limiting theo endpoint (auth 5/phút/IP, AI 30/phút/user, còn lại 120/phút/user), trả header `X-RateLimit-*`
 - [ ] **CORE-05**: Mọi truy vấn có kiểm tra quyền ngay trong câu SQL; không có quyền trả 404 (không phải 403), trừ trường hợp biết chắc tài nguyên tồn tại nhưng thiếu vai trò
@@ -33,7 +35,8 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 - [ ] **AUTH-05**: User xem/sửa hồ sơ (`full_name`, `avatar_url`) — không sửa được `email`, `plan` qua endpoint này
 - [ ] **AUTH-06**: User đổi mật khẩu (yêu cầu mật khẩu cũ đúng) và quên/đặt lại mật khẩu qua email (luôn trả 200 dù email không tồn tại, mã hạn 15 phút dùng 1 lần)
 - [ ] **AUTH-07**: Khoá đăng nhập tài khoản 15 phút sau 5 lần sai liên tiếp; ghi log mọi lần đăng nhập thành công/thất bại kèm IP
-- [ ] **AUTH-08**: JWT access token (hạn 1 giờ) chỉ chứa id/plan/exp, không chứa dữ liệu nhạy cảm; refresh token (hạn 30 ngày) lưu bản băm trong DB
+- [x] **AUTH-08
+**: JWT access token (hạn 1 giờ) chỉ chứa id/plan/exp, không chứa dữ liệu nhạy cảm; refresh token (hạn 30 ngày) lưu bản băm trong DB
 
 ### Ví tiền (WALLET)
 
@@ -161,17 +164,17 @@ Chưa nằm trong roadmap hiện tại — ghi nhận để không quên.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
-| CORE-02 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Done |
+| CORE-02 | Phase 1 | Done |
 | CORE-03 | Phase 1 | Pending |
 | CORE-04 | Phase 1 | Pending |
 | CORE-05 | Phase 1 | Pending |
 | CORE-06 | Phase 1 | Pending |
 | CORE-07 | Phase 1 | Pending |
 | CORE-08 | Phase 1 | Pending |
-| CORE-09 | Phase 1 | Pending |
-| CORE-10 | Phase 1 | Pending |
-| CORE-11 | Phase 1 | Pending |
+| CORE-09 | Phase 1 | Done |
+| CORE-10 | Phase 1 | Done |
+| CORE-11 | Phase 1 | Done |
 | AUTH-01 | Phase 1 | Pending |
 | AUTH-02 | Phase 1 | Pending |
 | AUTH-03 | Phase 1 | Pending |
@@ -179,7 +182,7 @@ Chưa nằm trong roadmap hiện tại — ghi nhận để không quên.
 | AUTH-05 | Phase 1 | Pending |
 | AUTH-06 | Phase 1 | Pending |
 | AUTH-07 | Phase 1 | Pending |
-| AUTH-08 | Phase 1 | Pending |
+| AUTH-08 | Phase 1 | Done |
 | WALLET-01 | Phase 2 | Pending |
 | WALLET-02 | Phase 2 | Pending |
 | WALLET-03 | Phase 2 | Pending |
