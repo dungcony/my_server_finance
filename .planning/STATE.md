@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 1 of 5 (Nền tảng & Xác thực)
-Plan: chưa lập (chờ `/gsd-plan-phase 1`)
-Status: Ready to plan
-Last activity: 2026-08-22 — Review đối chiếu planning với `db/migration/V1–V5`, thêm CORE-09/10/11 + BUDGET-08 (84 requirements), sửa mô tả sai về múi giờ và ranh giới trigger
+Plan: chưa lập (chờ `/gsd-plan-phase 1`) — CONTEXT.md đã xong
+Status: Context gathered — ready to plan
+Last activity: 2026-08-22 — Discuss Phase 1 xong (24 quyết định D-01…D-24). Trước đó: review đối chiếu planning với `db/migration/V1–V5`, thêm CORE-09/10/11 + BUDGET-08 (84 requirements), sửa mô tả sai về múi giờ và ranh giới trigger
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,9 @@ None yet.
 - Hai điểm rủi ro nghiệp vụ cao nhất cần research sâu hơn khi lập plan chi tiết: transaction 3-bước sửa/xoá (Phase 3) và quyền riêng tư nhóm gia đình (Phase 5)
 - **Phase 1 phải viết migration V6/V7 trước khi viết code Java** (CORE-09/CORE-10) — V1–V5 chỉ có 15 bảng, thiếu `refresh_tokens`/`idempotency_keys`/`password_reset_tokens`/`login_attempts`. Không có V7 thì AUTH-03 chết ngay task đầu
 - **`v_budget_progress` có lỗ hổng quyền chưa vá** (thiếu điều kiện phạm vi người dùng, cộng chi tiêu của mọi user khi ngân sách không chỉ định ví) — CORE-09 vá, BUDGET-08 test chốt ở Phase 4
+- **ROADMAP Phase 1 đã lỗi thời:** vẫn ghi "phải viết V6/V7 trước khi viết code Java", nhưng V6/V7 ĐÃ tồn tại trong `db/migration/` (commit 533e95b). Task đầu của phase là verify bằng cách chạy thật, và planner phải sửa lại mô tả trong ROADMAP (xem D-06/D-07/D-08)
+- **Cần thêm mã lỗi mới `REQUEST_IN_PROGRESS` (409) vào `api/00-QUY-UOC-CHUNG.md` mục 6** — đặc tả hiện thiếu mã cho tình huống Idempotency-Key trùng khi lần đầu đang xử lý (xem D-14). Sửa trong Phase 1
+- **Hai chỗ tài liệu còn sai về múi giờ báo cáo** (`api/00` mục 13 và `source/server/CLAUDE.md` quy tắc 7 vẫn ghi `AT TIME ZONE`) — mâu thuẫn CORE-07/REPORT-01. Thuộc Phase 4, đã ghi vào `<deferred>` của 01-CONTEXT.md
 - **Ranh giới trigger dễ hiểu sai:** "không viết trigger" chỉ áp dụng cho số dư ví. `paid_amount`/`saved_amount`/`status` của debt/goal do trigger V4 sở hữu, backend không ghi — xem chi tiết ở Phase 4 trong ROADMAP.md
 
 ## Deferred Items
@@ -72,5 +75,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-22
-Stopped at: Roadmap 5 phase đã tạo xong, coverage 80/80 requirements đã xác nhận, chờ user duyệt trước khi chạy `/gsd-plan-phase 1`
+Stopped at: Phase 1 CONTEXT.md đã tạo — chốt cấu hình môi trường (.env bắt buộc + Docker Compose + profile dev/test) và hạ tầng idempotency/rate limit. Sẵn sàng chạy `/gsd-plan-phase 1`
 Resume file: None
