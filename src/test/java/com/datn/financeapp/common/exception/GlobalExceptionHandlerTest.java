@@ -27,7 +27,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
                 classes = {
                         com.datn.financeapp.common.security.SecurityConfig.class,
-                        com.datn.financeapp.common.security.JwtAuthFilter.class
+                        com.datn.financeapp.common.security.JwtAuthFilter.class,
+                        com.datn.financeapp.common.ratelimit.RateLimitFilter.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
