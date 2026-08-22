@@ -155,6 +155,8 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                    <!-- Xem ghi chú user.timezone ở maven-surefire-plugin bên dưới. -->
+                    <jvmArguments>-Duser.timezone=UTC</jvmArguments>
                 </configuration>
             </plugin>
             <plugin>
@@ -172,6 +174,20 @@
                             <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!--
+                    JVM mặc định lấy múi giờ hệ điều hành host (vd. Windows "Asia/Saigon"),
+                    một ID không nằm trong danh sách IANA mà PostgreSQL server chấp nhận
+                    cho tham số khởi động "TimeZone" -> JDBC bắt tay thất bại ngay lúc mở
+                    kết nối (FATAL: invalid value for parameter "TimeZone"). Ép user.timezone=UTC
+                    cho JVM chạy test — nhất quán với quy ước dự án lưu mọi TIMESTAMPTZ theo UTC.
+                -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Duser.timezone=UTC</argLine>
                 </configuration>
             </plugin>
         </plugins>
