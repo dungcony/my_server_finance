@@ -50,8 +50,8 @@ Mọi API phải tuân thủ đúng 3 nguyên tắc bất biến của dự án:
 ## Constraints
 
 - **Tech stack**: Java 17, Spring Boot (bản mới nhất dòng 3.3.x/3.4.x), Maven, PostgreSQL 14+, Flyway — đã chốt, không đổi sang framework khác trừ khi người dùng yêu cầu.
-- **Migration**: dùng lại `db/migration/` ở thư mục gốc DATN (không copy) — một nguồn sự thật duy nhất cho schema.
-- **Không viết trigger CSDL** để tự cập nhật số dư ví — toàn bộ logic nằm ở tầng service, gói trong transaction. Lý do ghi ở `db/README.md`.
+- **Migration**: dùng lại `db/migration/` ở thư mục gốc DATN (không copy) — một nguồn sự thật duy nhất cho schema. **Migration mới của backend viết thẳng vào thư mục đó** (V6, V7, …), không tạo thư mục migration riêng.
+- **Không viết trigger CSDL cho số dư ví** (`wallets.current_balance`) — logic này nằm ở tầng service, gói trong transaction. Lý do ghi ở `db/README.md`. **Ngoại lệ đã tồn tại trong schema:** `trg_debt_payments_sync`/`trg_goal_contributions_sync` (V4) sở hữu `paid_amount`/`saved_amount`/`status` của debt/goal — backend không ghi các cột đó.
 - **Không tự bịa API hoặc trường dữ liệu** chưa có trong `api/*.md` — nếu thiếu/mâu thuẫn, dừng lại hỏi thay vì đoán.
 - **Ngôn ngữ**: giao tiếp/commit message tiếng Việt; code (biến, hàm, class, comment) tiếng Anh chuẩn Java; JSON field `snake_case`, map sang `camelCase` ở tầng model Java nhưng giữ nguyên khoá khi (de)serialize.
 - **Số tiền**: luôn là số nguyên VND, không dùng kiểu dấu phẩy động ở bất kỳ tầng nào.
@@ -61,7 +61,7 @@ Mọi API phải tuân thủ đúng 3 nguyên tắc bất biến của dự án:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Đặt project tại `source/server` (không phải `source/backend` như CLAUDE.md ghi) | Người dùng chủ động chọn tên khác | — Pending, cần cập nhật CLAUDE.md và tài liệu tham chiếu sau khi roadmap xong |
+| Đặt project tại `source/server` (không phải `source/backend` như CLAUDE.md ghi) | Người dùng chủ động chọn tên khác | ✓ Good — đã cập nhật CLAUDE.md gốc và MOI-TRUONG-PHAT-TRIEN.md (commit f896af6) |
 | Maven làm build tool | Phổ biến cho đồ án tốt nghiệp, cấu hình rõ ràng | — Pending |
 | Spring Boot 3.3.x/3.4.x mới nhất | Khớp JDK 17 đã cài sẵn, bản ổn định hiện tại | — Pending |
 | Dùng lại `db/migration/` gốc, không copy vào `source/server` | Một nguồn sự thật duy nhất, khớp CLAUDE.md ("api/ và db/ là nguồn sự thật") | — Pending |

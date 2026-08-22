@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 Phase: 1 of 5 (Nền tảng & Xác thực)
 Plan: chưa lập (chờ `/gsd-plan-phase 1`)
 Status: Ready to plan
-Last activity: 2026-08-22 — Tạo ROADMAP.md, STATE.md, cập nhật traceability trong REQUIREMENTS.md
+Last activity: 2026-08-22 — Review đối chiếu planning với `db/migration/V1–V5`, thêm CORE-09/10/11 + BUDGET-08 (84 requirements), sửa mô tả sai về múi giờ và ranh giới trigger
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,8 +56,10 @@ None yet.
 
 [Issues that affect future work]
 
-- Tên thư mục project là `source/server`, không khớp `source/backend` ghi trong CLAUDE.md gốc — cần cập nhật CLAUDE.md sau khi roadmap được duyệt (xem Key Decisions trong PROJECT.md)
 - Hai điểm rủi ro nghiệp vụ cao nhất cần research sâu hơn khi lập plan chi tiết: transaction 3-bước sửa/xoá (Phase 3) và quyền riêng tư nhóm gia đình (Phase 5)
+- **Phase 1 phải viết migration V6/V7 trước khi viết code Java** (CORE-09/CORE-10) — V1–V5 chỉ có 15 bảng, thiếu `refresh_tokens`/`idempotency_keys`/`password_reset_tokens`/`login_attempts`. Không có V7 thì AUTH-03 chết ngay task đầu
+- **`v_budget_progress` có lỗ hổng quyền chưa vá** (thiếu điều kiện phạm vi người dùng, cộng chi tiêu của mọi user khi ngân sách không chỉ định ví) — CORE-09 vá, BUDGET-08 test chốt ở Phase 4
+- **Ranh giới trigger dễ hiểu sai:** "không viết trigger" chỉ áp dụng cho số dư ví. `paid_amount`/`saved_amount`/`status` của debt/goal do trigger V4 sở hữu, backend không ghi — xem chi tiết ở Phase 4 trong ROADMAP.md
 
 ## Deferred Items
 

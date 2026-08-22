@@ -21,7 +21,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 ### Phase 1: Nền tảng & Xác thực
 **Goal**: Có một backend Spring Boot chạy được, mọi response tuân thủ format chung, có thể đăng ký/đăng nhập/làm mới phiên an toàn, và có sẵn hạ tầng idempotency + rate limit cho mọi phase sau dùng lại.
 **Depends on**: Nothing (first phase)
-**Requirements**: CORE-01, CORE-02, CORE-03, CORE-04, CORE-05, CORE-06, CORE-07, CORE-08, AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, AUTH-07, AUTH-08
+**Requirements**: CORE-01, CORE-02, CORE-03, CORE-04, CORE-05, CORE-06, CORE-07, CORE-08, CORE-09, CORE-10, CORE-11, AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06, AUTH-07, AUTH-08
 **Kỹ thuật (từ SUMMARY.md)**:
   - Cấu trúc package-by-feature (`auth/`, `common/`, `scheduler/` khởi tạo rỗng cho sau)
   - `common/`: response wrapper `{success, data}`/`{success, error}`, `@RestControllerAdvice` convert `MethodArgumentNotValidException` → `error.fields`, message tiếng Việt qua `messages_vi.properties`
@@ -30,12 +30,15 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   - Idempotency: bảng DB `idempotency_keys`, `INSERT ... ON CONFLICT DO NOTHING`, áp dụng qua `HandlerInterceptor`/AOP `@Idempotent`
   - Rate limit: Bucket4j in-memory + Caffeine cache, filter đặt sau filter JWT, theo IP (auth) hoặc `user_id` (còn lại)
   - `ddl-auto=validate`, Flyway sở hữu schema, trỏ tới `db/migration/` gốc (không copy)
+  - **Việc đầu tiên của phase — viết migration trước khi viết code Java:** V1–V5 hiện có **15 bảng**, thiếu toàn bộ bảng hạ tầng cho Auth/Idempotency. Phải viết `V6__va_loi_bao_mat.sql` (CORE-09) và `V7__ha_tang_xac_thuc.sql` (CORE-10) trước, nếu không AUTH-03 chết ngay task đầu vì không có chỗ lưu refresh token
+  - **Ranh giới trigger:** quy tắc thật là *không trigger cho số dư ví*. Schema đã có sẵn 6 trigger, trong đó `trg_debt_payments_sync`/`trg_goal_contributions_sync` (V4) **sở hữu** `paid_amount`/`saved_amount`/`status` — liên quan tới Phase 4, không phải phase này, nhưng ghi ở đây để không diễn đạt sai lan sang các phase sau
 **Success Criteria** (what must be TRUE):
-  1. Gọi bất kỳ endpoint nào cũng nhận response đúng khung `{success, data}` hoặc `{success, error}`, lỗi validate nhiều trường trả hết một lượt trong `error.fields`
-  2. User đăng ký bằng email/password nhận được access + refresh token, và một ví "Tiền mặt" số dư 0 được tạo sẵn
-  3. User đăng nhập sai mật khẩu 5 lần liên tiếp bị khoá 15 phút; refresh token dùng lại sau khi đã dùng một lần sẽ thu hồi toàn bộ phiên
-  4. Gọi lại cùng một request POST kèm `Idempotency-Key` trong 24h trả lại đúng kết quả lần đầu, không tạo bản ghi trùng
-  5. Gọi endpoint auth quá 5 lần/phút/IP (hoặc endpoint thường quá 120 lần/phút/user) bị chặn kèm header `X-RateLimit-*`
+  1. `V6` và `V7` chạy sạch trên PostgreSQL: `v_budget_progress` đã có điều kiện phạm vi người dùng, `fn_category_tree` lọc `is_deleted`, `groups` có cột hạn mã mời, và 4 bảng hạ tầng xác thực tồn tại
+  2. Gọi bất kỳ endpoint nào cũng nhận response đúng khung `{success, data}` hoặc `{success, error}`, lỗi validate nhiều trường trả hết một lượt trong `error.fields`
+  3. User đăng ký bằng email/password nhận được access + refresh token, và một ví "Tiền mặt" số dư 0 được tạo sẵn
+  4. User đăng nhập sai mật khẩu 5 lần liên tiếp bị khoá 15 phút; refresh token dùng lại sau khi đã dùng một lần sẽ thu hồi toàn bộ phiên
+  5. Gọi lại cùng một request POST kèm `Idempotency-Key` trong 24h trả lại đúng kết quả lần đầu, không tạo bản ghi trùng
+  6. Gọi endpoint auth quá 5 lần/phút/IP (hoặc endpoint thường quá 120 lần/phút/user) bị chặn kèm header `X-RateLimit-*`
 **Plans**: TBD
 
 ### Phase 2: Ví & Danh mục
@@ -79,21 +82,24 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 ### Phase 4: Nghiệp vụ phái sinh & Báo cáo
 **Goal**: User quản lý ngân sách, sổ nợ, giao dịch định kỳ, mục tiêu tiết kiệm và xem báo cáo thống kê — tất cả xây trên nền giao dịch đã ổn định ở Phase 3; các background job hằng ngày giữ dữ liệu nhất quán mà không cần người dùng can thiệp.
 **Depends on**: Phase 3
-**Requirements**: BUDGET-01, BUDGET-02, BUDGET-03, BUDGET-04, BUDGET-05, BUDGET-06, BUDGET-07, DEBT-01, DEBT-02, DEBT-03, DEBT-04, DEBT-05, DEBT-06, DEBT-07, RECUR-01, RECUR-02, RECUR-03, GOAL-01, GOAL-02, GOAL-03, GOAL-04, REPORT-01, REPORT-02, REPORT-03, REPORT-04, REPORT-05, JOB-01, JOB-02, JOB-03, JOB-04
+**Requirements**: BUDGET-01, BUDGET-02, BUDGET-03, BUDGET-04, BUDGET-05, BUDGET-06, BUDGET-07, BUDGET-08, DEBT-01, DEBT-02, DEBT-03, DEBT-04, DEBT-05, DEBT-06, DEBT-07, RECUR-01, RECUR-02, RECUR-03, GOAL-01, GOAL-02, GOAL-03, GOAL-04, REPORT-01, REPORT-02, REPORT-03, REPORT-04, REPORT-05, JOB-01, JOB-02, JOB-03, JOB-04
 **Kỹ thuật (từ SUMMARY.md)**:
   - Ngân sách: tính động lúc gọi API (không lưu `spent_amount`), map view `v_budget_progress` qua native query/DTO, dùng lại `fn_category_tree`
   - Sổ nợ/định kỳ/mục tiêu: tạo/huỷ giao dịch thật tái sử dụng đúng logic 3-bước và atomic update số dư đã xây ở Phase 3 (gọi lại Service giao dịch, không viết lại logic cập nhật ví)
+  - **Ranh giới trigger — đọc kỹ trước khi code debt/goal:** `debts.paid_amount`, `debts.status`, `savings_goals.saved_amount`, `savings_goals.status` do trigger `trg_debt_payments_sync`/`trg_goal_contributions_sync` (V4) sở hữu. Backend **chỉ** chèn/xoá bản ghi `debt_payments`/`goal_contributions`, **tuyệt đối không ghi 4 cột trên**. Trigger tính lại bằng `SUM()` nên nếu backend cũng ghi thì giá trị backend bị ghi đè — chạy "đúng một cách tình cờ", rất khó hiểu khi debug sau này
+  - **Tránh nhầm:** quy tắc "không viết trigger CSDL" chỉ áp dụng cho **số dư ví** (`wallets.current_balance`) — số dư ví do backend chủ động cập nhật trong transaction. Debt/goal thì ngược lại
   - RECUR-03: chống trùng bằng UNIQUE `(recurring_id, date)` ở DB (đã có trong schema), xử lý ngày 29/30/31 không tồn tại, bắt kịp kỳ bị bỏ lỡ
   - `@Scheduled` với `zone = "Asia/Ho_Chi_Minh"` trực tiếp trong cron annotation cho toàn bộ job của phase này (đối chiếu số dư, lặp ngân sách, sinh định kỳ, nhắc nợ); mỗi job bọc try/catch để không crash scheduler pool
-  - Báo cáo: query fragment dùng chung `excludeTransfer()`, `AT TIME ZONE 'Asia/Ho_Chi_Minh'` trong SQL khi group theo ngày/tháng (không xử lý múi giờ ở tầng Java), chú ý N+1
+  - Báo cáo: query fragment dùng chung `excludeTransfer()`, gom nhóm theo ngày/tháng dùng thẳng `transactions.date` (kiểu `DATE`, **không có múi giờ — không chuyển đổi gì cả**; đây là thiết kế cố ý tránh hẳn lớp bug múi giờ), chú ý N+1
   - REPORT-05 (xuất file async): trả 202 + `job_id`, poll trạng thái — cân nhắc dùng lại cơ chế job tương tự `@Scheduled`/`CompletableFuture` cho tác vụ nền, không cần Quartz
 **Success Criteria** (what must be TRUE):
   1. User xem tiến độ ngân sách tính động (đúng 3 trạng thái normal/near_limit/over_limit, cộng gộp danh mục con) và nhận gợi ý hạn mức AI dựa trên trung bình 3 kỳ gần nhất
   2. User tạo khoản nợ sinh đúng một giao dịch thật cập nhật số dư ví; ghi một lần trả nợ cộng dồn `paid_amount` và tự chuyển `status=settled` khi trả đủ; huỷ lần trả nợ hoàn tác đúng
   3. Khoản định kỳ tự sinh giao dịch đúng ngày đến hạn kể cả ngày 29/30/31, không sinh trùng khi job chạy lại, và bắt kịp các kỳ bị bỏ lỡ nếu user vắng mặt lâu
   4. User nạp/rút tiền mục tiêu tiết kiệm đúng theo 2 chế độ (chuyển tiền thật hoặc chỉ ghi nhận), tự chuyển trạng thái khi đạt/vượt target
-  5. Báo cáo tổng quan/theo kỳ/xu hướng loại trừ hoàn toàn giao dịch transfer, cộng gộp danh mục con, tính đúng theo giờ Việt Nam; xuất báo cáo trả 202 kèm `job_id` và có thể poll tới khi có link tải
+  5. Báo cáo tổng quan/theo kỳ/xu hướng loại trừ hoàn toàn giao dịch transfer và cộng gộp danh mục con; xuất báo cáo trả 202 kèm `job_id` và có thể poll tới khi có link tải
   6. Các job nền (đối chiếu số dư, lặp ngân sách, sinh định kỳ, nhắc nợ) tự chạy hằng ngày theo lịch mà không cần gọi API thủ công
+  7. Test riêng tư ngân sách (BUDGET-08) chạy xanh: B chi tiền vào danh mục X, ngân sách cá nhân của A cùng danh mục vẫn hiện `spent_amount = 0` — chốt lỗ hổng `v_budget_progress` đã vá ở CORE-09
 **Plans**: TBD
 
 ### Phase 5: Nhóm gia đình & Trợ lý AI

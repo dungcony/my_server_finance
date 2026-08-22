@@ -3,6 +3,8 @@
 **Ngày nghiên cứu:** 2026-08-22
 **Ngữ cảnh:** Java 17, Spring Boot 3.3.x/3.4.x, Maven, PostgreSQL 14+, Flyway (V1-V5 đã có), đồ án tốt nghiệp (1 instance)
 
+> ⚠️ **Cảnh báo về độ tin cậy:** tài liệu này được viết từ research web + `api/*.md`, **chưa đối chiếu với `db/migration/V*.sql` thật** tại thời điểm viết. Một khuyến nghị đã được phát hiện sai và sửa (múi giờ — xem mục pitfall). Trước khi áp dụng bất kỳ khuyến nghị nào ở đây, **đọc migration thật để xác nhận** (yêu cầu CORE-11). Đặc biệt lưu ý: schema đã có sẵn 6 trigger và 15 bảng, thiếu 4 bảng hạ tầng xác thực (bổ sung ở V7).
+
 ## Cấu trúc project
 
 **Package-by-feature**, không phải package-by-layer. Mỗi nhóm nghiệp vụ (`auth/`, `wallet/`, `category/`, `transaction/`, `budget/`, `report/`, `ai/`, `debt/`, `recurring/`, `goal/`, `group/`) tự chứa Controller/Service/Repository/dto/entity của mình. `common/` chứa response wrapper, exception handler, security, idempotency, rate limit dùng chung. `scheduler/` chứa các job nền.
@@ -50,7 +52,7 @@ Thư viện `io.jsonwebtoken:jjwt` 0.13.x (API builder mới). Access token stat
 | Transaction self-invocation làm mất `@Transactional` | Tách logic ra Service khác được inject |
 | N+1 query khi list giao dịch kèm category/wallet/icon | `@EntityGraph`/`JOIN FETCH` hoặc DTO projection |
 | Thiếu index | Verify `(user_id,date)`, `(wallet_id,date)`, `(category_id,date)` có trong migration thật |
-| UTC vs giờ VN khi group theo ngày | `AT TIME ZONE 'Asia/Ho_Chi_Minh'` trong SQL, không xử lý sau ở Java |
+| ~~UTC vs giờ VN khi group theo ngày~~ **Không áp dụng cho dự án này** | `transactions.date` là kiểu `DATE` (ngày lịch thuần, không múi giờ) — gom nhóm dùng thẳng cột này, **không** `AT TIME ZONE`. Chỉ `created_at`/`updated_at` (`TIMESTAMPTZ`) mới liên quan múi giờ. Khuyến nghị `AT TIME ZONE` ban đầu của research là sai vì chưa đối chiếu schema thật |
 | Rounding lỗi số tiền | `amount` luôn kiểu `Long`, không bao giờ `Double`/`float` |
 | Lost update trên `current_balance` | Atomic UPDATE hoặc pessimistic lock, không đọc-sửa-ghi qua entity |
 | Lấy hết rồi lọc quyền ở code | Điều kiện quyền luôn trong JPQL/native query |
