@@ -20,6 +20,8 @@
 
     <properties>
         <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <jjwt.version>0.13.0</jjwt.version>
         <bucket4j.version>8.19.0</bucket4j.version>
         <dotenv.version>5.1.0</dotenv.version>
@@ -156,7 +158,7 @@
                         </exclude>
                     </excludes>
                     <!-- Xem ghi chú user.timezone ở maven-surefire-plugin bên dưới. -->
-                    <jvmArguments>-Duser.timezone=UTC</jvmArguments>
+                    <jvmArguments>-Duser.timezone=UTC -Dfile.encoding=UTF-8</jvmArguments>
                 </configuration>
             </plugin>
             <plugin>
@@ -187,7 +189,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Duser.timezone=UTC</argLine>
+                    <!-- -Dfile.encoding=UTF-8: Windows JVM mặc định đọc/ghi Windows-1252,
+                         làm hỏng chuỗi tiếng Việt trong message lỗi/test assertion. -->
+                    <argLine>-Duser.timezone=UTC -Dfile.encoding=UTF-8</argLine>
                 </configuration>
             </plugin>
         </plugins>
