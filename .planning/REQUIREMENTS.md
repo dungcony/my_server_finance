@@ -17,9 +17,12 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 - [ ] **CORE-06**: Xoá mềm (`is_deleted`) cho các bảng quan trọng; API DELETE idempotent (gọi lại vẫn 200)
 - [ ] **CORE-07**: Lưu/trả timestamp (`created_at`, `updated_at`) theo UTC. **Lưu ý:** `transactions.date` là kiểu `DATE` (ngày lịch thuần, không có múi giờ) — gom nhóm báo cáo theo ngày/tháng dùng thẳng cột này, **không** chuyển đổi múi giờ. Chỉ các cột `TIMESTAMPTZ` mới cần quan tâm UTC↔giờ Việt Nam
 - [ ] **CORE-08**: Số tiền là số nguyên VND, không dùng kiểu dấu phẩy động ở bất kỳ tầng nào
-- [ ] **CORE-09**: Viết `db/migration/V6__va_loi_bao_mat.sql` vá ba lỗi của schema hiện có: (a) `v_budget_progress` thiếu điều kiện phạm vi người dùng — hiện cộng chi tiêu của **mọi** user trong hệ thống khi ngân sách không chỉ định `wallet_id`, ảnh hưởng cả ngân sách cá nhân lẫn nhóm; (b) `fn_category_tree` không lọc `is_deleted` ở nhánh danh mục cha; (c) `groups` thiếu cột hạn mã mời mà `api/10` yêu cầu
-- [ ] **CORE-10**: Viết `db/migration/V7__ha_tang_xac_thuc.sql` tạo 4 bảng hạ tầng Phase 1 chưa có trong V1–V5: `refresh_tokens` (AUTH-03/08), `idempotency_keys` (CORE-03), `password_reset_tokens` (AUTH-06), `login_attempts` (AUTH-07). Bảng `export_jobs` cho REPORT-05 hoãn tới Phase 4 để thiết kế sát nhu cầu thật
-- [ ] **CORE-11**: Trước khi lập kế hoạch mỗi phase, **bắt buộc đối chiếu requirements với schema thật** trong `db/migration/V*.sql` — không tin vào mô tả trong `api/*.md` hay tài liệu planning. `api/` và `db/` là hai tài liệu không gặp nhau ở runtime nên có thể lệch nhau âm thầm; app không dính lỗi này vì có compiler ép buộc, backend thì không
+- [x] **CORE-09
+**: Viết `db/migration/V6__va_loi_bao_mat.sql` vá ba lỗi của schema hiện có: (a) `v_budget_progress` thiếu điều kiện phạm vi người dùng — hiện cộng chi tiêu của **mọi** user trong hệ thống khi ngân sách không chỉ định `wallet_id`, ảnh hưởng cả ngân sách cá nhân lẫn nhóm; (b) `fn_category_tree` không lọc `is_deleted` ở nhánh danh mục cha; (c) `groups` thiếu cột hạn mã mời mà `api/10` yêu cầu
+- [x] **CORE-10
+**: Viết `db/migration/V7__ha_tang_xac_thuc.sql` tạo 4 bảng hạ tầng Phase 1 chưa có trong V1–V5: `refresh_tokens` (AUTH-03/08), `idempotency_keys` (CORE-03), `password_reset_tokens` (AUTH-06), `login_attempts` (AUTH-07). Bảng `export_jobs` cho REPORT-05 hoãn tới Phase 4 để thiết kế sát nhu cầu thật
+- [x] **CORE-11
+**: Trước khi lập kế hoạch mỗi phase, **bắt buộc đối chiếu requirements với schema thật** trong `db/migration/V*.sql` — không tin vào mô tả trong `api/*.md` hay tài liệu planning. `api/` và `db/` là hai tài liệu không gặp nhau ở runtime nên có thể lệch nhau âm thầm; app không dính lỗi này vì có compiler ép buộc, backend thì không
 
 ### Xác thực & tài khoản (AUTH)
 
@@ -71,7 +74,8 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 - [ ] **BUDGET-05**: User xem gợi ý hạn mức từ AI (`suggested_limit` = TB chi 3 kỳ gần nhất × 1.05, làm tròn hàng trăm nghìn; trả `null` nếu <1 tháng dữ liệu)
 - [ ] **BUDGET-06**: User xem danh sách cảnh báo ngân sách (severity critical/alert) kèm hành động gợi ý cụ thể
 - [ ] **BUDGET-07**: Hệ thống tự động lặp kỳ ngân sách mới hằng ngày cho ngân sách `auto_renew=true` đã hết kỳ, chống tạo trùng
-- [ ] **BUDGET-08**: **Test riêng tư ngân sách chạy ngay tại Phase 4** (không đợi Phase 5): user A và user B cùng nhóm, B chi 1 triệu vào danh mục X, ngân sách **cá nhân** của A cho danh mục X phải hiện `spent_amount = 0`. Test này chốt vĩnh viễn lỗ hổng mà CORE-09(a) vừa vá — nếu ai đó `CREATE OR REPLACE VIEW` làm hỏng lại, test phải đỏ ngay
+- [x] **BUDGET-08**: **Test riêng tư ngân sách chạy ngay tại Phase 4** (không đợi Phase 5): user A và user B cùng nhóm, B chi 1 triệu vào danh mục X, ngân sách **cá nhân** của A cho danh mục X phải hiện `spent_amount = 0`. Test này chốt vĩnh viễn lỗ hổng mà CORE-09
+(a) vừa vá — nếu ai đó `CREATE OR REPLACE VIEW` làm hỏng lại, test phải đỏ ngay
 
 ### Báo cáo & thống kê (REPORT)
 

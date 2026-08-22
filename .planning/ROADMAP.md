@@ -30,7 +30,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   - Idempotency: bảng DB `idempotency_keys`, `INSERT ... ON CONFLICT DO NOTHING`, áp dụng qua `HandlerInterceptor`/AOP `@Idempotent`
   - Rate limit: Bucket4j in-memory + Caffeine cache, filter đặt sau filter JWT, theo IP (auth) hoặc `user_id` (còn lại)
   - `ddl-auto=validate`, Flyway sở hữu schema, trỏ tới `db/migration/` gốc (không copy)
-  - **Việc đầu tiên của phase — viết migration trước khi viết code Java:** V1–V5 hiện có **15 bảng**, thiếu toàn bộ bảng hạ tầng cho Auth/Idempotency. Phải viết `V6__va_loi_bao_mat.sql` (CORE-09) và `V7__ha_tang_xac_thuc.sql` (CORE-10) trước, nếu không AUTH-03 chết ngay task đầu vì không có chỗ lưu refresh token
+  - **Việc đầu tiên của phase — verify migration V6/V7 đã có, không viết lại:** `V6__va_loi_bao_mat.sql` (CORE-09) và `V7__ha_tang_xac_thuc.sql` (CORE-10) **đã tồn tại** trong `db/migration/` (commit 533e95b, trước khi phase này bắt đầu thực thi) — 4 bảng hạ tầng Auth/Idempotency đã có sẵn đúng cột yêu cầu. Việc đầu tiên của Plan 01 là dựng project + trỏ Flyway vào `db/migration/` gốc, chạy thật `V1`→`V7` trên DB sạch để xác nhận không lỗi checksum/thứ tự (đã xác nhận xanh qua `01-01-SUMMARY.md`, cả `mvn spring-boot:run` lẫn Testcontainers)
   - **Ranh giới trigger:** quy tắc thật là *không trigger cho số dư ví*. Schema đã có sẵn 6 trigger, trong đó `trg_debt_payments_sync`/`trg_goal_contributions_sync` (V4) **sở hữu** `paid_amount`/`saved_amount`/`status` — liên quan tới Phase 4, không phải phase này, nhưng ghi ở đây để không diễn đạt sai lan sang các phase sau
 **Success Criteria** (what must be TRUE):
   1. `V6` và `V7` chạy sạch trên PostgreSQL: `v_budget_progress` đã có điều kiện phạm vi người dùng, `fn_category_tree` lọc `is_deleted`, `groups` có cột hạn mã mời, và 4 bảng hạ tầng xác thực tồn tại
@@ -39,7 +39,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   4. User đăng nhập sai mật khẩu 5 lần liên tiếp bị khoá 15 phút; refresh token dùng lại sau khi đã dùng một lần sẽ thu hồi toàn bộ phiên
   5. Gọi lại cùng một request POST kèm `Idempotency-Key` trong 24h trả lại đúng kết quả lần đầu, không tạo bản ghi trùng
   6. Gọi endpoint auth quá 5 lần/phút/IP (hoặc endpoint thường quá 120 lần/phút/user) bị chặn kèm header `X-RateLimit-*`
-**Plans**: TBD
+**Plans**: 6 (1/6 hoàn thành — xem `01-01-SUMMARY.md`)
 
 ### Phase 2: Ví & Danh mục
 **Goal**: User quản lý đầy đủ ví tiền (kể cả chuyển tiền giữa ví, đối chiếu số dư) và cây danh mục 2 cấp gắn icon, làm nền cho module giao dịch ở phase sau.

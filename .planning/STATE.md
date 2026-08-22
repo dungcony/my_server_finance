@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 1 CONTEXT.md đã tạo — chốt cấu hình môi trường (.env bắt buộc + Docker Compose + profile dev/test) và hạ tầng idempotency/rate limit. Sẵn sàng chạy `/gsd-plan-phase 1`
-last_updated: "2026-08-22T15:58:34.751Z"
-last_activity: "2026-08-22 — Discuss Phase 1 xong (24 quyết định D-01…D-24). Trước đó: review đối chiếu planning với `db/migration/V1–V5`, thêm CORE-09/10/11 + BUDGET-08 (84 requirements), sửa mô tả sai về múi giờ và ranh giới trigger"
+status: executing
+stopped_at: Hoan thanh 01-01-PLAN.md - khung Spring Boot + entity xac thuc khop schema V1/V7
+last_updated: "2026-08-22T16:35:33.774Z"
+last_activity: 2026-08-22
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 17
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-22)
 
 **Core value:** Mọi API tuân thủ 3 nguyên tắc bất biến — ghi giao dịch nhanh, AI chỉ đề xuất qua `ai_drafts` chờ duyệt, riêng tư mặc định kiểm tra quyền ngay trong câu SQL
-**Current focus:** Phase 1 — Nền tảng & Xác thực
+**Current focus:** Phase 01 — nen-tang-xac-thuc
 
 ## Current Position
 
-Phase: 1 of 5 (Nền tảng & Xác thực)
-Plan: chưa lập (chờ `/gsd-plan-phase 1`) — CONTEXT.md đã xong
-Status: Context gathered — ready to plan
-Last activity: 2026-08-22 — Discuss Phase 1 xong (24 quyết định D-01…D-24). Trước đó: review đối chiếu planning với `db/migration/V1–V5`, thêm CORE-09/10/11 + BUDGET-08 (84 requirements), sửa mô tả sai về múi giờ và ranh giới trigger
+Phase: 01 (nen-tang-xac-thuc) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-08-22
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 32min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,10 @@ Recent decisions affecting current work:
 - [Roadmap]: Granularity coarse → 5 phase, gộp Auth vào Nền tảng, Wallet+Category chung 1 phase, Budget/Debt/Recurring/Goal/Report/JOB chung 1 phase
 - [Roadmap]: Group đặt gần cuối (Phase 5, trước AI) vì là tầng quyền phủ lên wallet/transaction/budget đã ổn định — xem "Ghi chú về thứ tự phase" trong ROADMAP.md
 - [Roadmap]: Testcontainers PostgreSQL bắt buộc từ Phase 3 (giao dịch) và dùng lại cho bộ test riêng tư nhóm ở Phase 5
+- springboot3-dotenv phien ban thuc dung duoc la 5.1.0, khong phai 4.0.0 nhu RESEARCH.md ghi
+- Khong tu import testcontainers-bom rieng - giu version 1.20.6 do Spring Boot 3.4.13 quan ly, vi Testcontainers 2.x doi ten artifact khong tuong thich nguoc
+- Ep -Duser.timezone=UTC cho JVM chay app va test - may dev Windows bao zone ID Asia/Saigon khong duoc PostgreSQL JDBC chap nhan
+- Cot Postgres CHAR(n) phai khai columnDefinition=bpchar(n) - Postgres bao physical type la bpchar khong phai char/varchar
 
 ### Pending Todos
 
@@ -92,8 +97,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-22
-Stopped at: Phase 1 CONTEXT.md đã tạo — chốt cấu hình môi trường (.env bắt buộc + Docker Compose + profile dev/test) và hạ tầng idempotency/rate limit. Sẵn sàng chạy `/gsd-plan-phase 1`
+Last session: 2026-08-22T16:35:33.767Z
+Stopped at: Hoan thanh 01-01-PLAN.md - khung Spring Boot + entity xac thuc khop schema V1/V7
 Resume file: None
 
 **Planned Phase:** 1 (Nền tảng & Xác thực) — 6 plans — 2026-08-22T15:58:34.737Z
