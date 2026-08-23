@@ -51,7 +51,7 @@ Ngoài phạm vi: giao dịch (Phase 3), ngân sách/báo cáo (Phase 4), nhóm 
   ```sql
   WHERE w.user_id = :currentUser
      OR w.group_id IN (SELECT group_id FROM group_members
-                       WHERE user_id = :currentUser AND status = 'active')
+                       WHERE user_id = :currentUser AND is_active = true)
   ```
   Vế nhóm hiện luôn trả rỗng (chưa ai vào nhóm) nên không ảnh hưởng kết quả, nhưng tới Phase 5
   không phải rà lại từng câu truy vấn để thêm — sót một câu là hoặc lộ dữ liệu người khác, hoặc
