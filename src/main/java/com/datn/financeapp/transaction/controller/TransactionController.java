@@ -4,6 +4,8 @@ import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.transaction.dto.BulkCreateTransactionRequest;
+import com.datn.financeapp.transaction.dto.BulkCreateTransactionResponse;
 import com.datn.financeapp.transaction.dto.CreateTransactionRequest;
 import com.datn.financeapp.transaction.dto.CreateTransactionResponse;
 import com.datn.financeapp.transaction.dto.DeleteTransactionResponse;
@@ -13,6 +15,7 @@ import com.datn.financeapp.transaction.dto.TransactionDetailResponse;
 import com.datn.financeapp.transaction.dto.TransactionFilterParams;
 import com.datn.financeapp.transaction.dto.TransactionListResponse;
 import com.datn.financeapp.transaction.dto.UpdateTransactionRequest;
+import com.datn.financeapp.transaction.service.TransactionBulkService;
 import com.datn.financeapp.transaction.service.TransactionService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -46,6 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final TransactionBulkService transactionBulkService;
 
     @GetMapping
     public TransactionListResponse list(
@@ -127,6 +131,15 @@ public class TransactionController {
     public ApiResponse<CreateTransactionResponse> create(@Valid @RequestBody CreateTransactionRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(transactionService.create(userId, req));
+    }
+
+    @PostMapping("/bulk")
+    @Idempotent
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<BulkCreateTransactionResponse> createBulk(
+            @Valid @RequestBody BulkCreateTransactionRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(transactionBulkService.createBulk(userId, req));
     }
 
     @PutMapping("/{id}")

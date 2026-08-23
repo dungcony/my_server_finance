@@ -559,6 +559,23 @@ public class TransactionService {
         return sb.toString();
     }
 
+    /**
+     * Bọc lại {@link #toListItemResponse} package-private cho {@code TransactionBulkService}
+     * (plan 03-04) — dùng để build phần tử {@code transaction[]} của phản hồi bulk mà không
+     * copy-paste logic build wallet/category ref.
+     */
+    TransactionListItemResponse buildListItemResponse(Transaction txn) {
+        return toListItemResponse(txn);
+    }
+
+    /**
+     * Đọc lại bản ghi vừa ghi qua {@link TransactionWriter#write} — dùng cho
+     * {@code TransactionBulkService} sau khi mỗi dòng commit ở transaction riêng.
+     */
+    Transaction findPersistedOrThrow(UUID transactionId) {
+        return transactionRepository.findById(transactionId).orElseThrow();
+    }
+
     private TransactionListItemResponse toListItemResponse(Transaction txn) {
         Wallet wallet = walletRepository.findById(txn.getWalletId()).orElse(null);
         Wallet destinationWallet = txn.getDestinationWalletId() != null
