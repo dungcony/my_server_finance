@@ -17,7 +17,7 @@ import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.common.wallet.WalletMinimalRepository;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -60,7 +60,7 @@ class AuthProfilePasswordIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
-    private WalletMinimalRepository walletMinimalRepository;
+    private WalletRepository walletRepository;
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
@@ -75,7 +75,7 @@ class AuthProfilePasswordIntegrationTest {
     void cleanTables() {
         passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
-        walletMinimalRepository.deleteAll();
+        walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 

@@ -9,7 +9,7 @@ import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
-import com.datn.financeapp.common.wallet.WalletMinimalRepository;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -93,7 +93,7 @@ class AuthRefreshRotationIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
-    private WalletMinimalRepository walletMinimalRepository;
+    private WalletRepository walletRepository;
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
@@ -101,7 +101,7 @@ class AuthRefreshRotationIntegrationTest {
     @BeforeEach
     void cleanTables() {
         refreshTokenRepository.deleteAll();
-        walletMinimalRepository.deleteAll();
+        walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 

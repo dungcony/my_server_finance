@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
-import com.datn.financeapp.common.wallet.WalletMinimalRepository;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,7 +63,7 @@ class AuthIdempotencyRateLimitEndToEndTest {
     private UserRepository userRepository;
 
     @Autowired
-    private WalletMinimalRepository walletMinimalRepository;
+    private WalletRepository walletRepository;
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
@@ -75,7 +75,7 @@ class AuthIdempotencyRateLimitEndToEndTest {
     void cleanTables() {
         loginAttemptRepository.deleteAll();
         refreshTokenRepository.deleteAll();
-        walletMinimalRepository.deleteAll();
+        walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 

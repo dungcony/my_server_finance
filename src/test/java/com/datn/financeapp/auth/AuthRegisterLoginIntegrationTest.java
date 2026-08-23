@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
-import com.datn.financeapp.common.wallet.WalletMinimalRepository;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -89,7 +89,7 @@ class AuthRegisterLoginIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
-    private WalletMinimalRepository walletMinimalRepository;
+    private WalletRepository walletRepository;
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
@@ -97,7 +97,7 @@ class AuthRegisterLoginIntegrationTest {
     @BeforeEach
     void cleanTables() {
         refreshTokenRepository.deleteAll();
-        walletMinimalRepository.deleteAll();
+        walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -124,7 +124,7 @@ class AuthRegisterLoginIntegrationTest {
         Map<?, ?> user = (Map<?, ?>) data.get("user");
         String userId = (String) user.get("id");
 
-        var wallets = walletMinimalRepository.findAll().stream()
+        var wallets = walletRepository.findAll().stream()
                 .filter(w -> w.getUserId() != null && w.getUserId().toString().equals(userId))
                 .toList();
 

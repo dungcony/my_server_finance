@@ -22,8 +22,8 @@ import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.security.JwtService;
-import com.datn.financeapp.common.wallet.WalletMinimalRepository;
-import com.datn.financeapp.common.wallet.WalletMinimal;
+import com.datn.financeapp.wallet.entity.Wallet;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -59,7 +59,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptRepository loginAttemptRepository;
-    private final WalletMinimalRepository walletMinimalRepository;
+    private final WalletRepository walletRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -91,7 +91,7 @@ public class AuthService {
                 .build();
         userRepository.save(user);
 
-        WalletMinimal cashWallet = WalletMinimal.builder()
+        Wallet cashWallet = Wallet.builder()
                 .id(UUID.randomUUID())
                 .userId(user.getId())
                 .groupId(null)
@@ -104,7 +104,7 @@ public class AuthService {
                 .isDeleted(false)
                 .createdAt(now)
                 .build();
-        walletMinimalRepository.save(cashWallet);
+        walletRepository.save(cashWallet);
 
         return buildAuthResponse(user);
     }
@@ -236,7 +236,7 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(
                         "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
 
-        long walletCount = walletMinimalRepository.countByUserIdAndIsDeletedFalse(userId);
+        long walletCount = walletRepository.countByUserIdAndIsDeletedFalse(userId);
         Long transactionCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM transactions WHERE user_id = ? AND NOT is_deleted",
                 Long.class, userId);
