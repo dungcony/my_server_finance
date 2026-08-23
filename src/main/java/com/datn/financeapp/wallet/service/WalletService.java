@@ -62,12 +62,12 @@ public class WalletService {
         // phải sửa lại (D-27).
         Long sharedTotal = jdbcTemplate.queryForObject(
                 "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
-                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND status = 'active') "
+                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
                         + "AND include_in_total AND NOT is_deleted",
                 Long.class, userId);
         Long sharedWalletCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM wallets "
-                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND status = 'active') "
+                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
                         + "AND include_in_total AND NOT is_deleted",
                 Long.class, userId);
 

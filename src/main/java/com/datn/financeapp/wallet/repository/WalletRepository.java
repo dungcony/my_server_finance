@@ -14,6 +14,10 @@ import org.springframework.data.repository.query.Param;
  * quyền D-27 ngay trong câu SQL ({@code user_id = :currentUser OR group_id IN (...)}) — vế
  * nhóm hiện luôn trả rỗng (chưa ai vào {@code group_members}) nhưng viết sẵn để không phải rà
  * lại khi Group ra đời ở Phase 5.
+ *
+ * Lưu ý schema thật (đối chiếu {@code db/migration/V1__nen_tang.sql}, không phải theo mô tả
+ * trong PLAN/CONTEXT — CLAUDE.md quy tắc 0): {@code group_members} lọc thành viên đang hoạt
+ * động bằng cột {@code is_active BOOLEAN}, KHÔNG có cột {@code status}.
  */
 public interface WalletRepository extends JpaRepository<Wallet, UUID> {
 
@@ -29,7 +33,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Query(
             value = "SELECT * FROM wallets w WHERE w.id = :id AND NOT w.is_deleted "
                     + "AND (w.user_id = :currentUser OR w.group_id IN "
-                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND status = 'active'))",
+                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))",
             nativeQuery = true)
     Optional<Wallet> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
@@ -41,14 +45,14 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Query(
             value = "SELECT * FROM wallets w WHERE w.id = :id "
                     + "AND (w.user_id = :currentUser OR w.group_id IN "
-                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND status = 'active'))",
+                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))",
             nativeQuery = true)
     Optional<Wallet> findByIdForUserIncludingDeleted(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
             value = "SELECT * FROM wallets w WHERE NOT w.is_deleted "
                     + "AND (w.user_id = :currentUser OR (:includeShared = TRUE AND w.group_id IN "
-                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND status = 'active'))) "
+                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))) "
                     + "AND (:type IS NULL OR w.type = :type) "
                     + "AND (:onlyInTotal IS NULL OR w.include_in_total = :onlyInTotal) "
                     + "ORDER BY w.sort_order",

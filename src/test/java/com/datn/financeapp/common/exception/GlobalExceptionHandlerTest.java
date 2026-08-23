@@ -32,7 +32,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                         // Plan 04: AuthController mới thêm bị @WebMvcTest (không dùng controllers=)
                         // tự component-scan vào slice context, kéo theo AuthService không tồn tại
                         // ở đây — loại tường minh, cùng lý do với 3 bean phía trên.
-                        com.datn.financeapp.auth.controller.AuthController.class
+                        com.datn.financeapp.auth.controller.AuthController.class,
+                        // Phase 2 plan 02-02: WalletController mới thêm bị component-scan vào
+                        // cùng slice context, kéo theo WalletService không tồn tại ở đây (chỉ
+                        // GlobalExceptionHandlerTest + TestController được @Import tường minh) —
+                        // cùng lý do loại trừ với AuthController phía trên.
+                        com.datn.financeapp.wallet.controller.WalletController.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
