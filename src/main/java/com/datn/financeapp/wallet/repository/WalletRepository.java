@@ -2,6 +2,7 @@ package com.datn.financeapp.wallet.repository;
 
 import com.datn.financeapp.wallet.entity.Wallet;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -88,4 +89,40 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Modifying
     @Query("UPDATE Wallet w SET w.currentBalance = w.currentBalance + :delta WHERE w.id = :id")
     int adjustBalance(@Param("id") UUID id, @Param("delta") long delta);
+
+    /**
+     * D-36 — trừ ngược phần giao dịch nằm SAU mốc {@code asOf} để suy ra số dư ví tại mốc đó.
+     * Cần thiết vì giao dịch tương lai được phép ghi thật và cộng trừ ngay vào
+     * {@code wallets.current_balance} (không có trạng thái chờ) — cột này mang nghĩa "đã tính
+     * hết mọi giao dịch đã ghi", KHÔNG phải "tiền thật đến hôm nay". Dùng cho D-37: trường API
+     * {@code current_balance} = kết quả method này với {@code asOf = LocalDate.now()}.
+     *
+     * <p>SQL nguyên văn từ {@code db/README.md} mục "Suy ra số dư ví theo mốc thời gian". Trả
+     * {@code Optional} rỗng chỉ khi {@code walletId} không khớp bản ghi nào (GROUP BY không có
+     * dòng) — caller phải coi là lỗi NOT_FOUND, không catch âm thầm.
+     */
+    @Query(
+            value = "SELECT w.current_balance "
+                    + "- COALESCE(SUM(CASE "
+                    + "WHEN t.type = 'income' THEN t.amount "
+                    + "WHEN t.type = 'expense' THEN -t.amount "
+                    + "WHEN t.type = 'transfer' AND t.wallet_id = w.id THEN -t.amount END), 0) "
+                    + "- COALESCE((SELECT SUM(amount) FROM transactions "
+                    + "WHERE destination_wallet_id = w.id AND date > :asOf AND NOT is_deleted), 0) AS balance_as_of "
+                    + "FROM wallets w "
+                    + "LEFT JOIN transactions t ON t.wallet_id = w.id AND t.date > :asOf AND NOT t.is_deleted "
+                    + "WHERE w.id = :walletId "
+                    + "GROUP BY w.id, w.current_balance",
+            nativeQuery = true)
+    Optional<Long> findBalanceAsOf(@Param("walletId") UUID walletId, @Param("asOf") LocalDate asOf);
+
+    /**
+     * D-37 — quyết định có trả trường API {@code projected_balance} hay không: chỉ trả khi ví
+     * CÓ giao dịch tương lai (date > hôm nay), không có thì bỏ hẳn trường.
+     */
+    @Query(
+            value = "SELECT EXISTS(SELECT 1 FROM transactions "
+                    + "WHERE wallet_id = :walletId AND date > CURRENT_DATE AND NOT is_deleted)",
+            nativeQuery = true)
+    boolean hasFutureTransactions(@Param("walletId") UUID walletId);
 }
