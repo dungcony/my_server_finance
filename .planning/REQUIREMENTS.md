@@ -89,11 +89,11 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 - [ ] **TXN-01**: User xem danh sách giao dịch có phân trang, lọc đầy đủ (ngày, loại, ví, danh mục, nguồn, từ khoá, khoảng tiền, có/không transfer), kèm `summary` tính trên toàn bộ kết quả lọc và loại trừ transfer
 - [ ] **TXN-02**: User xem giao dịch gom theo ngày (`by-date`) và chi tiết một giao dịch (kèm `related_debt`/`recurring`/`ai_drafts` nếu có)
-- [ ] **TXN-03**: User tạo giao dịch expense/income/transfer — validate đúng ràng buộc theo `type` (category bắt buộc/rỗng, destination bắt buộc/rỗng), **cho phép ngày tương lai**, `amount` > 0, cập nhật số dư ví trong cùng 1 DB transaction
+- [x] **TXN-03**: User tạo giao dịch expense/income/transfer — validate đúng ràng buộc theo `type` (category bắt buộc/rỗng, destination bắt buộc/rỗng), **cho phép ngày tương lai**, `amount` > 0, cập nhật số dư ví trong cùng 1 DB transaction
 - [ ] **TXN-04**: User tạo tối đa 50 giao dịch cùng lúc (`bulk`) — dòng lỗi bị bỏ qua và báo trong `row_errors`, không từ chối toàn bộ
-- [ ] **TXN-05**: User sửa giao dịch (PUT) theo đúng 3 bước bắt buộc: hoàn tác ảnh hưởng cũ lên ví cũ → ghi giá trị mới → áp dụng ảnh hưởng mới lên ví mới, trong 1 DB transaction — không được cộng/trừ chênh lệch trực tiếp
-- [ ] **TXN-06**: User xoá giao dịch (mềm) — hoàn tác ảnh hưởng số dư ví trước; nếu gắn với khoản trả nợ thì cập nhật lại `paid_amount` liên quan
-- [ ] **TXN-07**: User nhân bản giao dịch sang hôm nay, có thể ghi đè ngày/số tiền
+- [x] **TXN-05**: User sửa giao dịch (PUT) theo đúng 3 bước bắt buộc: hoàn tác ảnh hưởng cũ lên ví cũ → ghi giá trị mới → áp dụng ảnh hưởng mới lên ví mới, trong 1 DB transaction — không được cộng/trừ chênh lệch trực tiếp
+- [x] **TXN-06**: User xoá giao dịch (mềm) — hoàn tác ảnh hưởng số dư ví trước; nếu gắn với khoản trả nợ thì cập nhật lại `paid_amount` liên quan
+- [x] **TXN-07**: User nhân bản giao dịch sang hôm nay, có thể ghi đè ngày/số tiền
 - [ ] **TXN-08**: Mọi thống kê/lọc theo danh mục cha phải cộng gộp cả giao dịch của mọi danh mục con (dùng một hàm dùng chung, không lặp điều kiện lọc ở nhiều nơi)
 - [x] **TXN-09
 **: API ví trả đúng hai con số số dư — `current_balance` (tiền thật đến hết hôm nay, tính bằng `cột current_balance − SUM(ảnh hưởng của giao dịch date > hôm nay)`) và `projected_balance` (bằng đúng cột CSDL, **chỉ trả khi ví có giao dịch tương lai**). Sửa lại `WalletResponse`/`WalletDetailResponse` của Phase 2 vốn đang map thẳng cột ra trường API
@@ -229,11 +229,11 @@ Chưa nằm trong roadmap hiện tại — ghi nhận để không quên.
 | CAT-06 | Phase 2 | Done |
 | TXN-01 | Phase 3 | Pending |
 | TXN-02 | Phase 3 | Pending |
-| TXN-03 | Phase 3 | Pending |
+| TXN-03 | Phase 3 | Done |
 | TXN-04 | Phase 3 | Pending |
-| TXN-05 | Phase 3 | Pending |
-| TXN-06 | Phase 3 | Pending |
-| TXN-07 | Phase 3 | Pending |
+| TXN-05 | Phase 3 | Done |
+| TXN-06 | Phase 3 | Done |
+| TXN-07 | Phase 3 | Done |
 | TXN-08 | Phase 3 | Pending |
 | TXN-09 | Phase 3 | Pending |
 | BUDGET-01 | Phase 4 | Pending |
