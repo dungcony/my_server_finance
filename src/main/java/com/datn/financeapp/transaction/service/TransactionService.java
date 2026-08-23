@@ -1,29 +1,45 @@
 package com.datn.financeapp.transaction.service;
 
 import com.datn.financeapp.category.entity.Category;
+import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
+import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.response.PageMeta;
+import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.transaction.dto.CreateTransactionRequest;
 import com.datn.financeapp.transaction.dto.CreateTransactionResponse;
 import com.datn.financeapp.transaction.dto.DeleteTransactionResponse;
 import com.datn.financeapp.transaction.dto.DuplicateTransactionRequest;
+import com.datn.financeapp.transaction.dto.TransactionByDateResponse;
+import com.datn.financeapp.transaction.dto.TransactionDetailResponse;
+import com.datn.financeapp.transaction.dto.TransactionFilterParams;
+import com.datn.financeapp.transaction.dto.TransactionListItemResponse;
+import com.datn.financeapp.transaction.dto.TransactionListResponse;
 import com.datn.financeapp.transaction.dto.TransactionResponse;
+import com.datn.financeapp.transaction.dto.TransactionSummaryDto;
 import com.datn.financeapp.transaction.dto.UpdateTransactionRequest;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +58,11 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
     private final CategoryRepository categoryRepository;
+    private final IconRepository iconRepository;
     private final TransactionWriter transactionWriter;
+    private final JdbcTemplate jdbcTemplate;
+
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     /**
      * api/04-GIAO-DICH.md mục 4. Validate ràng buộc theo {@code type} Ở TẦNG SERVICE TRƯỚC KHI
@@ -263,6 +283,329 @@ public class TransactionService {
         return new CreateTransactionResponse(
                 toResponse(saved),
                 new CreateTransactionResponse.NewBalance(original.getWalletId(), result.walletNewBalance()));
+    }
+
+    /**
+     * GET /transactions (TXN-01, api/04-GIAO-DICH.md mục 1). Điểm bắt buộc TXN-08: nếu {@code
+     * filters.categoryId() != null}, cộng gộp danh mục con bằng {@code
+     * categoryRepository.findCategoryTree(...)} rồi truyền mảng UUID vào query — KHÔNG tự viết
+     * lại điều kiện lọc {@code category_id = :categoryId} đơn thuần ở đây hay bất kỳ nơi khác
+     * ({@link #listByDate} tái sử dụng đúng phương thức private này).
+     */
+    @Transactional(readOnly = true)
+    public TransactionListResponse list(UUID userId, TransactionFilterParams filters, PageRequestParams page) {
+        LocalDate[] resolvedRange = resolveDateRange(filters);
+        LocalDate fromDate = resolvedRange[0];
+        LocalDate toDate = resolvedRange[1];
+        UUID[] categoryTree = resolveCategoryTree(filters.categoryId());
+        boolean includeTransfers = filters.includeTransfersOrDefault();
+
+        List<Transaction> rows = transactionRepository.search(
+                userId,
+                fromDate,
+                toDate,
+                filters.type(),
+                filters.walletId(),
+                categoryTree,
+                filters.source(),
+                filters.countsInReport(),
+                filters.search(),
+                filters.minAmount(),
+                filters.maxAmount(),
+                includeTransfers,
+                page.sortBy(),
+                page.sortOrder(),
+                page.pageSize(),
+                (page.page() - 1) * page.pageSize());
+
+        long totalItems = transactionRepository.countSearch(
+                userId,
+                fromDate,
+                toDate,
+                filters.type(),
+                filters.walletId(),
+                categoryTree,
+                filters.source(),
+                filters.countsInReport(),
+                filters.search(),
+                filters.minAmount(),
+                filters.maxAmount(),
+                includeTransfers);
+
+        TransactionRepository.SummaryProjection summaryRow = transactionRepository.summary(
+                userId,
+                fromDate,
+                toDate,
+                filters.type(),
+                filters.walletId(),
+                categoryTree,
+                filters.source(),
+                filters.countsInReport(),
+                filters.search(),
+                filters.minAmount(),
+                filters.maxAmount());
+
+        List<TransactionListItemResponse> items = rows.stream().map(this::toListItemResponse).toList();
+        int totalPages = (int) Math.ceil((double) totalItems / page.pageSize());
+        PageMeta pageMeta = new PageMeta(page.page(), page.pageSize(), totalItems, totalPages);
+        TransactionSummaryDto summary =
+                TransactionSummaryDto.of(summaryRow.getTotalIncome(), summaryRow.getTotalExpense());
+
+        return TransactionListResponse.of(items, pageMeta, summary);
+    }
+
+    /**
+     * GET /transactions/{id} (api/04-GIAO-DICH.md mục 3) — 404 nếu không thấy (không phải 403,
+     * T-03-09). {@code relatedDebt}/{@code recurring} LUÔN {@code null} ở Phase 3 (thuộc Phase
+     * 4) — không bịa dữ liệu.
+     */
+    @Transactional(readOnly = true)
+    public TransactionDetailResponse detail(UUID userId, UUID transactionId) {
+        Transaction txn = transactionRepository
+                .findByIdAndUserIdAndIsDeletedFalse(transactionId, userId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy giao dịch."));
+
+        TransactionListItemResponse base = toListItemResponse(txn);
+
+        TransactionDetailResponse.AiDraftRef aiDraft = null;
+        if (txn.getDraftId() != null) {
+            List<TransactionDetailResponse.AiDraftRef> rows = jdbcTemplate.query(
+                    "SELECT id, method, raw_input, confidence FROM ai_drafts WHERE id = ?",
+                    (rs, rowNum) -> new TransactionDetailResponse.AiDraftRef(
+                            UUID.fromString(rs.getString("id")),
+                            rs.getString("method"),
+                            rs.getString("raw_input"),
+                            rs.getObject("confidence") != null ? rs.getDouble("confidence") : null),
+                    txn.getDraftId());
+            aiDraft = rows.isEmpty() ? null : rows.get(0);
+        }
+
+        return new TransactionDetailResponse(
+                base.id(),
+                base.type(),
+                base.amount(),
+                base.date(),
+                base.displayName(),
+                base.note(),
+                base.source(),
+                base.wallet(),
+                base.destinationWallet(),
+                base.category(),
+                base.receiptUrl(),
+                base.recurringId(),
+                base.draftId(),
+                base.createdAt(),
+                base.updatedAt(),
+                null,
+                null,
+                aiDraft);
+    }
+
+    /**
+     * GET /transactions/by-date (TXN-02, api/04-GIAO-DICH.md mục 2) — dùng lại đúng query {@link
+     * TransactionRepository#search}/{@link TransactionRepository#summary} của {@link #list},
+     * không phân trang, nhóm theo {@code date} ở tầng Java (danh sách đã đủ nhỏ sau khi lọc theo
+     * kỳ). {@code day_label}/"hôm nay" tính theo GIỜ VIỆT NAM ({@link #VIETNAM_ZONE}), KHÔNG
+     * dùng {@code LocalDate.now()} trần trụi (múi giờ JVM đã ép UTC — xem pom.xml).
+     */
+    @Transactional(readOnly = true)
+    public TransactionByDateResponse listByDate(UUID userId, TransactionFilterParams filters) {
+        LocalDate[] resolvedRange = resolveDateRange(filters);
+        LocalDate fromDate = resolvedRange[0];
+        LocalDate toDate = resolvedRange[1];
+        UUID[] categoryTree = resolveCategoryTree(filters.categoryId());
+        boolean includeTransfers = filters.includeTransfersOrDefault();
+
+        List<Transaction> rows = transactionRepository.search(
+                userId,
+                fromDate,
+                toDate,
+                filters.type(),
+                filters.walletId(),
+                categoryTree,
+                filters.source(),
+                filters.countsInReport(),
+                filters.search(),
+                filters.minAmount(),
+                filters.maxAmount(),
+                includeTransfers,
+                "date",
+                "desc",
+                Integer.MAX_VALUE,
+                0);
+
+        TransactionRepository.SummaryProjection summaryRow = transactionRepository.summary(
+                userId,
+                fromDate,
+                toDate,
+                filters.type(),
+                filters.walletId(),
+                categoryTree,
+                filters.source(),
+                filters.countsInReport(),
+                filters.search(),
+                filters.minAmount(),
+                filters.maxAmount());
+        TransactionSummaryDto summary =
+                TransactionSummaryDto.of(summaryRow.getTotalIncome(), summaryRow.getTotalExpense());
+
+        Map<LocalDate, List<Transaction>> grouped = new LinkedHashMap<>();
+        rows.stream()
+                .sorted(Comparator.comparing(Transaction::getDate).reversed())
+                .forEach(t -> grouped.computeIfAbsent(t.getDate(), d -> new ArrayList<>()).add(t));
+
+        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+        LocalDate yesterday = today.minusDays(1);
+
+        List<TransactionByDateResponse.DayGroupDto> days = new ArrayList<>();
+        for (Map.Entry<LocalDate, List<Transaction>> entry : grouped.entrySet()) {
+            LocalDate date = entry.getKey();
+            List<Transaction> dayTransactions = entry.getValue();
+
+            long dayTotal = dayTransactions.stream()
+                    .filter(t -> !"transfer".equals(t.getType()))
+                    .mapToLong(t -> "income".equals(t.getType()) ? t.getAmount() : -t.getAmount())
+                    .sum();
+
+            days.add(new TransactionByDateResponse.DayGroupDto(
+                    date,
+                    String.format("%02d", date.getDayOfMonth()),
+                    dayLabel(date, today, yesterday),
+                    monthYearLabel(date),
+                    dayTotal,
+                    dayTransactions.stream().map(this::toListItemResponse).toList()));
+        }
+
+        String periodLabel = buildPeriodLabel(fromDate, toDate);
+        return new TransactionByDateResponse(
+                new TransactionByDateResponse.PeriodSummaryDto(
+                        periodLabel, summary.totalIncome(), summary.totalExpense(), summary.difference()),
+                days);
+    }
+
+    /** TXN-08: cộng gộp danh mục con vào cha — điểm gọi DUY NHẤT của {@code findCategoryTree}. */
+    private UUID[] resolveCategoryTree(UUID categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        return categoryRepository.findCategoryTree(categoryId).toArray(new UUID[0]);
+    }
+
+    /**
+     * {@code period} (week/month/quarter/year) ưu tiên hơn {@code fromDate}/{@code toDate} client
+     * gửi trực tiếp (api/00-QUY-UOC-CHUNG.md mục 7.2). Tính theo {@code LocalDate.now()} (không
+     * cần múi giờ Việt Nam ở đây — biên kỳ báo cáo không phải nhãn hiển thị "hôm nay/hôm qua").
+     */
+    private LocalDate[] resolveDateRange(TransactionFilterParams filters) {
+        if (filters.period() == null) {
+            return new LocalDate[] {filters.fromDate(), filters.toDate()};
+        }
+        LocalDate now = LocalDate.now(VIETNAM_ZONE);
+        return switch (filters.period()) {
+            case "week" -> new LocalDate[] {
+                now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+            };
+            case "month" -> new LocalDate[] {
+                now.with(TemporalAdjusters.firstDayOfMonth()), now.with(TemporalAdjusters.lastDayOfMonth())
+            };
+            case "quarter" -> {
+                int quarterStartMonth = ((now.getMonthValue() - 1) / 3) * 3 + 1;
+                LocalDate quarterStart = LocalDate.of(now.getYear(), quarterStartMonth, 1);
+                yield new LocalDate[] {quarterStart, quarterStart.plusMonths(3).minusDays(1)};
+            }
+            case "year" -> new LocalDate[] {
+                now.with(TemporalAdjusters.firstDayOfYear()), now.with(TemporalAdjusters.lastDayOfYear())
+            };
+            default -> new LocalDate[] {filters.fromDate(), filters.toDate()};
+        };
+    }
+
+    private String dayLabel(LocalDate date, LocalDate today, LocalDate yesterday) {
+        if (date.equals(today)) {
+            return "Hôm nay";
+        }
+        if (date.equals(yesterday)) {
+            return "Hôm qua";
+        }
+        return switch (date.getDayOfWeek()) {
+            case MONDAY -> "Thứ hai";
+            case TUESDAY -> "Thứ ba";
+            case WEDNESDAY -> "Thứ tư";
+            case THURSDAY -> "Thứ năm";
+            case FRIDAY -> "Thứ sáu";
+            case SATURDAY -> "Thứ bảy";
+            case SUNDAY -> "Chủ nhật";
+        };
+    }
+
+    private String monthYearLabel(LocalDate date) {
+        return "tháng " + date.getMonthValue() + " " + date.getYear();
+    }
+
+    private String buildPeriodLabel(LocalDate fromDate, LocalDate toDate) {
+        if (fromDate == null && toDate == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        if (fromDate != null) {
+            sb.append(String.format("%02d/%02d", fromDate.getDayOfMonth(), fromDate.getMonthValue()));
+        }
+        sb.append(" – ");
+        if (toDate != null) {
+            sb.append(String.format("%02d/%02d", toDate.getDayOfMonth(), toDate.getMonthValue()));
+        }
+        return sb.toString();
+    }
+
+    private TransactionListItemResponse toListItemResponse(Transaction txn) {
+        Wallet wallet = walletRepository.findById(txn.getWalletId()).orElse(null);
+        Wallet destinationWallet = txn.getDestinationWalletId() != null
+                ? walletRepository.findById(txn.getDestinationWalletId()).orElse(null)
+                : null;
+
+        TransactionListItemResponse.CategoryRef categoryRef = null;
+        if (txn.getCategoryId() != null) {
+            Category category = categoryRepository.findById(txn.getCategoryId()).orElse(null);
+            if (category != null) {
+                Icon icon = iconRepository.findById(category.getIconId()).orElse(null);
+                TransactionListItemResponse.IconRef iconRef =
+                        icon != null ? new TransactionListItemResponse.IconRef(icon.getCode(), icon.getPathData()) : null;
+                TransactionListItemResponse.ParentRef parentRef = null;
+                if (category.getParentCategoryId() != null) {
+                    Category parent =
+                            categoryRepository.findById(category.getParentCategoryId()).orElse(null);
+                    if (parent != null) {
+                        parentRef = new TransactionListItemResponse.ParentRef(parent.getId(), parent.getName());
+                    }
+                }
+                categoryRef = new TransactionListItemResponse.CategoryRef(
+                        category.getId(), category.getName(), category.getType(), iconRef, category.getColor(), parentRef);
+            }
+        }
+
+        return new TransactionListItemResponse(
+                txn.getId(),
+                txn.getType(),
+                txn.getAmount(),
+                txn.getDate(),
+                txn.getDisplayName(),
+                txn.getNote(),
+                txn.getSource(),
+                wallet != null
+                        ? new TransactionListItemResponse.WalletRef(wallet.getId(), wallet.getName(), wallet.getType())
+                        : null,
+                destinationWallet != null
+                        ? new TransactionListItemResponse.WalletRef(
+                                destinationWallet.getId(), destinationWallet.getName(), destinationWallet.getType())
+                        : null,
+                categoryRef,
+                txn.getReceiptUrl(),
+                txn.getRecurringId(),
+                txn.getDraftId(),
+                txn.getCreatedAt(),
+                txn.getUpdatedAt());
     }
 
     /**

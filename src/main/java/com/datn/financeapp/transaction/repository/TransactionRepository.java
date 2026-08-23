@@ -1,6 +1,8 @@
 package com.datn.financeapp.transaction.repository;
 
 import com.datn.financeapp.transaction.entity.Transaction;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -33,4 +35,124 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
      */
     @Query(value = "SELECT EXISTS(SELECT 1 FROM debt_payments WHERE transaction_id = :id)", nativeQuery = true)
     boolean existsDebtPaymentLink(@Param("id") UUID id);
+
+    /**
+     * TXN-01/TXN-08 (api/04-GIAO-DICH.md mục 1). Điều kiện quyền {@code user_id = :userId} nằm
+     * NGAY TRONG câu SQL (T-03-09). {@code categoryTree} PHẢI là mảng UUID lấy từ {@code
+     * CategoryRepository.findCategoryTree(categoryId)} (TXN-08) — cộng gộp danh mục con vào cha,
+     * KHÔNG tự viết {@code category_id = :categoryId} đơn thuần ở đây hay bất kỳ nơi nào khác.
+     * {@code search} bind qua {@code @Param}, không nối chuỗi Java (T-03-08, chống SQL injection).
+     */
+    @Query(
+            value = "SELECT t.* FROM transactions t "
+                    + "WHERE t.user_id = :userId AND NOT t.is_deleted "
+                    + "AND (:fromDate IS NULL OR t.date >= :fromDate) "
+                    + "AND (:toDate IS NULL OR t.date <= :toDate) "
+                    + "AND (:type IS NULL OR t.type = :type) "
+                    + "AND (:walletId IS NULL OR t.wallet_id = :walletId OR t.destination_wallet_id = :walletId) "
+                    + "AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[]))) "
+                    + "AND (:source IS NULL OR t.source = :source) "
+                    + "AND (:countsInReport IS NULL OR t.counts_in_report = :countsInReport) "
+                    + "AND (:search IS NULL OR t.display_name ILIKE CONCAT('%',:search,'%') OR t.note ILIKE CONCAT('%',:search,'%')) "
+                    + "AND (:minAmount IS NULL OR t.amount >= :minAmount) "
+                    + "AND (:maxAmount IS NULL OR t.amount <= :maxAmount) "
+                    + "AND (:includeTransfers = TRUE OR t.type <> 'transfer') "
+                    + "ORDER BY "
+                    + "CASE WHEN :sortBy = 'amount' AND :sortOrder = 'asc' THEN t.amount END ASC, "
+                    + "CASE WHEN :sortBy = 'amount' AND :sortOrder = 'desc' THEN t.amount END DESC, "
+                    + "CASE WHEN :sortBy = 'created_at' AND :sortOrder = 'asc' THEN t.created_at END ASC, "
+                    + "CASE WHEN :sortBy = 'created_at' AND :sortOrder = 'desc' THEN t.created_at END DESC, "
+                    + "CASE WHEN (:sortBy IS NULL OR :sortBy = 'date') AND :sortOrder = 'asc' THEN t.date END ASC, "
+                    + "CASE WHEN (:sortBy IS NULL OR :sortBy = 'date') AND :sortOrder = 'desc' THEN t.date END DESC "
+                    + "LIMIT :limit OFFSET :offset",
+            nativeQuery = true)
+    List<Transaction> search(
+            @Param("userId") UUID userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate,
+            @Param("type") String type,
+            @Param("walletId") UUID walletId,
+            @Param("categoryTree") UUID[] categoryTree,
+            @Param("source") String source,
+            @Param("countsInReport") Boolean countsInReport,
+            @Param("search") String search,
+            @Param("minAmount") Long minAmount,
+            @Param("maxAmount") Long maxAmount,
+            @Param("includeTransfers") boolean includeTransfers,
+            @Param("sortBy") String sortBy,
+            @Param("sortOrder") String sortOrder,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    /** Cùng điều kiện WHERE với {@link #search}, không phân trang — phục vụ {@code total_items}. */
+    @Query(
+            value = "SELECT COUNT(*) FROM transactions t "
+                    + "WHERE t.user_id = :userId AND NOT t.is_deleted "
+                    + "AND (:fromDate IS NULL OR t.date >= :fromDate) "
+                    + "AND (:toDate IS NULL OR t.date <= :toDate) "
+                    + "AND (:type IS NULL OR t.type = :type) "
+                    + "AND (:walletId IS NULL OR t.wallet_id = :walletId OR t.destination_wallet_id = :walletId) "
+                    + "AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[]))) "
+                    + "AND (:source IS NULL OR t.source = :source) "
+                    + "AND (:countsInReport IS NULL OR t.counts_in_report = :countsInReport) "
+                    + "AND (:search IS NULL OR t.display_name ILIKE CONCAT('%',:search,'%') OR t.note ILIKE CONCAT('%',:search,'%')) "
+                    + "AND (:minAmount IS NULL OR t.amount >= :minAmount) "
+                    + "AND (:maxAmount IS NULL OR t.amount <= :maxAmount) "
+                    + "AND (:includeTransfers = TRUE OR t.type <> 'transfer')",
+            nativeQuery = true)
+    long countSearch(
+            @Param("userId") UUID userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate,
+            @Param("type") String type,
+            @Param("walletId") UUID walletId,
+            @Param("categoryTree") UUID[] categoryTree,
+            @Param("source") String source,
+            @Param("countsInReport") Boolean countsInReport,
+            @Param("search") String search,
+            @Param("minAmount") Long minAmount,
+            @Param("maxAmount") Long maxAmount,
+            @Param("includeTransfers") boolean includeTransfers);
+
+    /**
+     * Tổng thu/chi trên TOÀN BỘ kết quả lọc (không phân trang) — LUÔN loại {@code type =
+     * 'transfer'} bất kể {@code includeTransfers} (CLAUDE.md §2 bất biến: transfer không phải
+     * thu, không phải chi, dù nó vẫn xuất hiện trong danh sách {@link #search}).
+     */
+    @Query(
+            value = "SELECT "
+                    + "COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income, "
+                    + "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount END), 0) AS total_expense "
+                    + "FROM transactions t "
+                    + "WHERE t.user_id = :userId AND NOT t.is_deleted AND t.type <> 'transfer' "
+                    + "AND (:fromDate IS NULL OR t.date >= :fromDate) "
+                    + "AND (:toDate IS NULL OR t.date <= :toDate) "
+                    + "AND (:type IS NULL OR t.type = :type) "
+                    + "AND (:walletId IS NULL OR t.wallet_id = :walletId OR t.destination_wallet_id = :walletId) "
+                    + "AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[]))) "
+                    + "AND (:source IS NULL OR t.source = :source) "
+                    + "AND (:countsInReport IS NULL OR t.counts_in_report = :countsInReport) "
+                    + "AND (:search IS NULL OR t.display_name ILIKE CONCAT('%',:search,'%') OR t.note ILIKE CONCAT('%',:search,'%')) "
+                    + "AND (:minAmount IS NULL OR t.amount >= :minAmount) "
+                    + "AND (:maxAmount IS NULL OR t.amount <= :maxAmount)",
+            nativeQuery = true)
+    SummaryProjection summary(
+            @Param("userId") UUID userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate,
+            @Param("type") String type,
+            @Param("walletId") UUID walletId,
+            @Param("categoryTree") UUID[] categoryTree,
+            @Param("source") String source,
+            @Param("countsInReport") Boolean countsInReport,
+            @Param("search") String search,
+            @Param("minAmount") Long minAmount,
+            @Param("maxAmount") Long maxAmount);
+
+    /** Projection cho {@link #summary} — Spring Data JPA tự map cột theo tên getter. */
+    interface SummaryProjection {
+        Long getTotalIncome();
+
+        Long getTotalExpense();
+    }
 }
