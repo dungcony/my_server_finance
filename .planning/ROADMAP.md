@@ -50,7 +50,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 ### Phase 2: Ví & Danh mục
 **Goal**: User quản lý đầy đủ ví tiền (kể cả chuyển tiền giữa ví, đối chiếu số dư) và cây danh mục 2 cấp gắn icon, làm nền cho module giao dịch ở phase sau.
 **Depends on**: Phase 1
-**Requirements**: WALLET-01, WALLET-02, WALLET-03, WALLET-04, WALLET-05, WALLET-06, WALLET-07, CAT-01, CAT-02, CAT-03, CAT-04, CAT-05, CAT-06
+**Requirements**: WALLET-01, WALLET-02, WALLET-03, WALLET-04, WALLET-05, WALLET-06, WALLET-07, WALLET-08, CAT-01, CAT-02, CAT-03, CAT-04, CAT-05, CAT-06
 **Kỹ thuật (từ SUMMARY.md)**:
   - JPA làm chủ đạo cho CRUD ví/danh mục; native SQL/JdbcTemplate cho `UPDATE ... SET balance = balance + :delta` (atomic update, tránh lost-update thay vì load-modify-save)
   - Row-level lock (`PESSIMISTIC_WRITE`) trên ví khi chuyển tiền
@@ -63,6 +63,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   3. Gọi API đối chiếu số dư ví trả đúng kết quả theo công thức `initial_balance + thu - chi - chuyển đi + chuyển đến`, ghi log khi lệch
   4. User tạo danh mục cha/con tối đa 2 tầng, con cùng `type` với cha; không xoá được danh mục còn con/giao dịch/ngân sách đang dùng, danh mục hệ thống không sửa/xoá được
   5. User xem danh sách nhóm lớn và kho icon lọc theo `icon_group`/`search`
+  6. User nhập số dư thực tế khi kiểm kê ví — hệ thống tạo đúng một giao dịch bù phần chênh (`source=adjustment`) chứ không ghi đè `current_balance`, phép đối chiếu ở tiêu chí 3 vẫn đúng sau khi điều chỉnh; chênh bằng 0 thì không tạo giao dịch nào
 **Plans**: TBD
 
 ### Phase 3: Giao dịch
