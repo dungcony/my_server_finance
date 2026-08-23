@@ -1,15 +1,23 @@
 package com.datn.financeapp.auth.service;
 
 import com.datn.financeapp.auth.dto.AuthResponse;
+import com.datn.financeapp.auth.dto.ChangePasswordRequest;
+import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.LoginRequest;
 import com.datn.financeapp.auth.dto.RefreshRequest;
 import com.datn.financeapp.auth.dto.RefreshResponse;
 import com.datn.financeapp.auth.dto.RegisterRequest;
+import com.datn.financeapp.auth.dto.ResetPasswordRequest;
+import com.datn.financeapp.auth.dto.UpdateProfileRequest;
+import com.datn.financeapp.auth.dto.UserDetailDto;
+import com.datn.financeapp.auth.dto.UserStatsDto;
 import com.datn.financeapp.auth.dto.UserSummaryDto;
 import com.datn.financeapp.auth.entity.LoginAttempt;
+import com.datn.financeapp.auth.entity.PasswordResetToken;
 import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.entity.User;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
+import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.common.exception.BusinessException;
@@ -29,6 +37,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,8 +60,13 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptRepository loginAttemptRepository;
     private final WalletMinimalRepository walletMinimalRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final PasswordResetNotifier passwordResetNotifier;
+    private final JdbcTemplate jdbcTemplate;
+
+    private static final long RESET_CODE_TTL_MINUTES = 15;
 
     /**
      * AUTH-01: tạo user + ví "Tiền mặt" số dư 0 trong CÙNG một @Transactional — tránh trường
@@ -207,6 +221,152 @@ public class AuthService {
         } else {
             refreshTokenRepository.revokeByTokenHash(hash);
         }
+    }
+
+    /**
+     * AUTH-05: GET /auth/me — hồ sơ đầy đủ kèm {@code stats}. Phase 1 chưa có repository riêng
+     * cho {@code transactions}/{@code group_members} (module nghiệp vụ thuộc Phase 2/5+) — dùng
+     * native {@code COUNT(*)} trực tiếp lên bảng đã có sẵn từ V1/V2, luôn trả số thật (0 nếu
+     * chưa có dữ liệu), không lỗi, không null.
+     */
+    @Transactional(readOnly = true)
+    public UserDetailDto getMe(UUID userId) {
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+
+        long walletCount = walletMinimalRepository.countByUserIdAndIsDeletedFalse(userId);
+        Long transactionCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE user_id = ? AND NOT is_deleted",
+                Long.class, userId);
+        Long groupCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM group_members WHERE user_id = ? AND is_active",
+                Long.class, userId);
+
+        UserStatsDto stats = new UserStatsDto(
+                walletCount, transactionCount == null ? 0 : transactionCount,
+                groupCount == null ? 0 : groupCount);
+
+        return new UserDetailDto(
+                user.getId(), user.getEmail(), user.getFullName(), user.getAvatarUrl(),
+                user.getPlan(), user.getCreatedAt(), user.getLastLoginAt(), stats);
+    }
+
+    /**
+     * AUTH-05: PATCH /auth/me — chỉ đổi được {@code fullName}/{@code avatarUrl} (kiểu dữ liệu
+     * DTO không có field email/plan nên không có cách nào truyền lên). Field null trong request
+     * nghĩa là "không đổi" (PATCH bán phần).
+     */
+    @Transactional
+    public UserSummaryDto updateProfile(UUID userId, UpdateProfileRequest req) {
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+
+        if (req.fullName() != null) {
+            user.setFullName(req.fullName());
+        }
+        if (req.avatarUrl() != null) {
+            user.setAvatarUrl(req.avatarUrl());
+        }
+        userRepository.save(user);
+
+        return new UserSummaryDto(
+                user.getId(), user.getEmail(), user.getFullName(), user.getAvatarUrl(),
+                user.getPlan(), user.getCreatedAt());
+    }
+
+    /**
+     * AUTH-06: POST /auth/change-password.
+     *
+     * <p><b>Quyết định D-24 về "phiên hiện tại":</b> {@code api/01-XAC-THUC.md} mục 7 chỉ nhận
+     * {@code old_password}/{@code new_password} trong body, KHÔNG nhận refresh token. Request
+     * không mang refresh token nào để "giữ lại" — do đó revoke TOÀN BỘ refresh token của user,
+     * không có ngoại lệ. Vẫn an toàn hơn đặc tả gốc (chặt hơn, không vi phạm): access token hiện
+     * tại (1h) còn dùng được tới khi hết hạn tự nhiên, người dùng chỉ không refresh được nữa.
+     */
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest req) {
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+
+        if (!passwordEncoder.matches(req.oldPassword(), user.getPasswordHash())) {
+            throw new BusinessException(
+                    "WRONG_OLD_PASSWORD", HttpStatus.BAD_REQUEST.value(), "Mật khẩu cũ không đúng.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        userRepository.save(user);
+
+        // T-05-03: gọi lại đúng method Plan 04 viết sẵn, KHÔNG viết lại logic revoke.
+        refreshTokenRepository.revokeAllActiveForUser(userId);
+    }
+
+    /**
+     * AUTH-06: POST /auth/forgot-password. T-05-01 (mitigate): CẢ HAI nhánh (email tồn tại/không
+     * tồn tại) đều return void, không throw — Controller luôn trả 200 với message giống hệt
+     * nhau. Nhánh "không tồn tại" không tạo token, không gọi notifier.
+     */
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest req) {
+        Optional<User> userOpt = userRepository.findByEmail(req.email().toLowerCase());
+        if (userOpt.isEmpty()) {
+            return;
+        }
+
+        User user = userOpt.get();
+        String rawResetCode = generateSecureRandomToken();
+        PasswordResetToken token = PasswordResetToken.builder()
+                .id(UUID.randomUUID())
+                .userId(user.getId())
+                .tokenHash(sha256Hex(rawResetCode))
+                .expiresAt(Instant.now().plus(RESET_CODE_TTL_MINUTES, ChronoUnit.MINUTES))
+                .createdAt(Instant.now())
+                .build();
+        passwordResetTokenRepository.save(token);
+
+        passwordResetNotifier.sendResetCode(user.getEmail(), rawResetCode);
+    }
+
+    /**
+     * AUTH-06: POST /auth/reset-password. Mã sai/hết hạn/đã dùng đều trả cùng lỗi
+     * {@code RESET_CODE_INVALID} (không phân biệt "sai" và "hết hạn" theo đúng đặc tả gộp chung
+     * 1 mã). T-05-04 (mitigate): đánh dấu {@code usedAt} trong CÙNG transaction với đổi mật
+     * khẩu — mã không thể dùng lại lần 2.
+     */
+    @Transactional
+    public void resetPassword(ResetPasswordRequest req) {
+        String hash = sha256Hex(req.resetCode());
+        PasswordResetToken token = passwordResetTokenRepository
+                .findByTokenHashAndUsedAtIsNull(hash)
+                .orElseThrow(() -> new BusinessException(
+                        "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
+                        "Mã sai, hết hạn hoặc đã dùng."));
+
+        if (token.getExpiresAt().isBefore(Instant.now())) {
+            throw new BusinessException(
+                    "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
+                    "Mã sai, hết hạn hoặc đã dùng.");
+        }
+
+        User user = userRepository
+                .findById(token.getUserId())
+                .orElseThrow(() -> new BusinessException(
+                        "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
+                        "Mã sai, hết hạn hoặc đã dùng."));
+        user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        userRepository.save(user);
+
+        token.setUsedAt(Instant.now());
+        passwordResetTokenRepository.save(token);
+
+        // api/01 mục 9: "Thành công thì thu hồi toàn bộ thẻ của tài khoản" — không có ngoại lệ
+        // "trừ phiên hiện tại" ở đây, khác với change-password.
+        refreshTokenRepository.revokeAllActiveForUser(user.getId());
     }
 
     // ---------------------------------------------------------------------
