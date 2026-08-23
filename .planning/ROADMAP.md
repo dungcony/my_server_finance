@@ -11,7 +11,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Nền tảng & Xác thực** - Khung project, response/error format, idempotency, rate limit, JWT auth đầy đủ vòng đời tài khoản
-- [ ] **Phase 2: Ví & Danh mục** - CRUD ví/chuyển tiền/đối chiếu số dư và cây danh mục 2 cấp + kho icon
+- [x] **Phase 2: Ví & Danh mục** - CRUD ví/chuyển tiền/đối chiếu số dư và cây danh mục 2 cấp + kho icon
 - [ ] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
 - [ ] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
 - [ ] **Phase 5: Nhóm gia đình & Trợ lý AI** - Tầng quyền chia sẻ ví/ngân sách nhóm với riêng tư tuyệt đối, và AI rule-based (parse-text/OCR mẫu) qua ai_drafts
@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Nền tảng & Xác thực | 6/6 | Complete | 2026-08-23 |
-| 2. Ví & Danh mục | 3/4 | In progress | - |
+| 2. Ví & Danh mục | 4/4 | Complete | 2026-08-23 |
 | 3. Giao dịch | 0/TBD | Not started | - |
 | 4. Nghiệp vụ phái sinh & Báo cáo | 0/TBD | Not started | - |
 | 5. Nhóm gia đình & Trợ lý AI | 0/TBD | Not started | - |
