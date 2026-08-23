@@ -51,7 +51,10 @@ findings:
   medium: 2
   low: 3
   total: 7
+  fixed: 3
+  fixed_ids: [HG-01, HG-02, MD-01]
 status: issues_found
+fix_report: 02-REVIEW-FIX.md
 ---
 
 # Phase 02: Ví & Danh mục — Báo cáo Code Review
@@ -88,7 +91,9 @@ con dưới cha KHÔNG kiểm tra chủ sở hữu) và một lỗi crash tiềm
 
 ## Vấn đề mức High
 
-### HG-01: `CategoryService.create` không kiểm tra quyền sở hữu danh mục cha khi tạo con
+> **Đã sửa cả hai finding High — xem `02-REVIEW-FIX.md`.**
+
+### HG-01: `CategoryService.create` không kiểm tra quyền sở hữu danh mục cha khi tạo con — ĐÃ SỬA
 
 **File:** `src/main/java/com/datn/financeapp/category/service/CategoryService.java:122-127`
 **Vấn đề:** Khi tạo danh mục con (`parentCategoryId` khác null), code tra cha bằng
@@ -118,7 +123,7 @@ chặn. `findByIdAndVisibleToUser` xử lý đúng cả hai trường hợp (h�
 
 ---
 
-### HG-02: `CategoryService.update` không kiểm tra quyền sở hữu danh mục cha mới khi đổi `parent_category_id`
+### HG-02: `CategoryService.update` không kiểm tra quyền sở hữu danh mục cha mới khi đổi `parent_category_id` — ĐÃ SỬA
 
 **File:** `src/main/java/com/datn/financeapp/category/service/CategoryService.java:234-239`
 **Vấn đề:** Cùng lỗi như HG-01 nhưng ở luồng sửa: khi đổi `parent_category_id` sang một danh mục
@@ -137,7 +142,9 @@ Category newParent = categoryRepository
 
 ## Vấn đề mức Medium
 
-### MD-01: `WalletTransferService.lockAndCheckOwnership` ném `NullPointerException` thay vì 404 khi ví là ví chung
+### MD-01: `WalletTransferService.lockAndCheckOwnership` ném `NullPointerException` thay vì 404 khi ví là ví chung — ĐÃ SỬA
+
+> Sửa cùng đợt với 2 finding High (yêu cầu tường minh của người thực thi fix), xem `02-REVIEW-FIX.md`.
 
 **File:** `src/main/java/com/datn/financeapp/wallet/service/WalletTransferService.java:213`
 **Vấn đề:**
