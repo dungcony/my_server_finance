@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Hoàn thành 01-05-PLAN.md - 5 endpoint còn lại vòng đời tài khoản (profile/change-password/forgot-password/reset-password) + test AUTH-07
-last_updated: "2026-08-23T01:41:19.124Z"
+status: verifying
+stopped_at: "Hoàn thành 01-06-PLAN.md - đóng Phase 1: ROADMAP khớp thực tế, test end-to-end Auth+Idempotency+RateLimit, fix flaky JwtServiceTest"
+last_updated: "2026-08-23T02:05:36.236Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 
 Phase: 01 (nen-tang-xac-thuc) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-23
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [████████░░] 83%
 | Phase 01-nen-tang-xac-thuc P03 | 35min | 2 tasks | 13 files |
 | Phase 01 P04 | 46 | 2 tasks | 17 files |
 | Phase 01 P05 | 28 | 2 tasks | 14 files |
+| Phase 01 P06 | 24 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,10 @@ Recent decisions affecting current work:
 - changePassword thu hoi TOAN BO refresh token (khong co ngoai le phien hien tai) vi request khong mang refresh token nao de giu lai - D-24
 - forgotPassword luon return void ca 2 nhanh, khong throw phan biet - response giong het nhau chong do email (T-05-01)
 - GET /auth/me dung JdbcTemplate native COUNT cho transactions/group_members - Phase 1 chua co repository nghiep vu rieng, ngoai le hop ly cho toi khi module do ton tai
+- ROADMAP.md Phase 1 cap nhat khop thuc te D-08 - khong con mo ta sai viet V6/V7 truoc khi viet code Java, 6/6 plan Complete
+- CORE-05/06/08 xac nhan chua co be mat kiem chung o Phase 1 (khong multi-user/DELETE/amount), CORE-07 da hoan thanh (Instant khop TIMESTAMPTZ) - verify bang grep that
+- Test end-to-end de nguyen RateLimitFilter that (khong no-op nhu cac test truoc) - verify JwtAuthFilter->RateLimitFilter->IdempotencyAspect->AuthController phoi hop dung qua HTTP that
+- Sua JwtServiceTest flaky bang cach dao bit byte GIUA mang signature da giai ma base64url thay vi doi ky tu cuoi chuoi ma hoa (co the roi vao padding, la no-op)
 
 ### Pending Todos
 
@@ -114,8 +119,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T01:41:19.117Z
-Stopped at: Hoàn thành 01-05-PLAN.md - 5 endpoint còn lại vòng đời tài khoản (profile/change-password/forgot-password/reset-password) + test AUTH-07
+Last session: 2026-08-23T02:05:36.108Z
+Stopped at: Hoàn thành 01-06-PLAN.md - đóng Phase 1: ROADMAP khớp thực tế, test end-to-end Auth+Idempotency+RateLimit, fix flaky JwtServiceTest
 Resume file: None
 
 **Planned Phase:** 1 (Nền tảng & Xác thực) — 6 plans — 2026-08-22T15:58:34.737Z

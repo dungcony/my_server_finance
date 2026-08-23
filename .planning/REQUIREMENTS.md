@@ -17,10 +17,14 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 **: Mọi endpoint POST tạo mới hỗ trợ header `Idempotency-Key`, nhớ kết quả trong 24 giờ
 - [x] **CORE-04
 **: Rate limiting theo endpoint (auth 5/phút/IP, AI 30/phút/user, còn lại 120/phút/user), trả header `X-RateLimit-*`
-- [ ] **CORE-05**: Mọi truy vấn có kiểm tra quyền ngay trong câu SQL; không có quyền trả 404 (không phải 403), trừ trường hợp biết chắc tài nguyên tồn tại nhưng thiếu vai trò
-- [ ] **CORE-06**: Xoá mềm (`is_deleted`) cho các bảng quan trọng; API DELETE idempotent (gọi lại vẫn 200)
-- [ ] **CORE-07**: Lưu/trả timestamp (`created_at`, `updated_at`) theo UTC. **Lưu ý:** `transactions.date` là kiểu `DATE` (ngày lịch thuần, không có múi giờ) — gom nhóm báo cáo theo ngày/tháng dùng thẳng cột này, **không** chuyển đổi múi giờ. Chỉ các cột `TIMESTAMPTZ` mới cần quan tâm UTC↔giờ Việt Nam
-- [ ] **CORE-08**: Số tiền là số nguyên VND, không dùng kiểu dấu phẩy động ở bất kỳ tầng nào
+- [x] **CORE-05
+**: Mọi truy vấn có kiểm tra quyền ngay trong câu SQL; không có quyền trả 404 (không phải 403), trừ trường hợp biết chắc tài nguyên tồn tại nhưng thiếu vai trò
+- [x] **CORE-06
+**: Xoá mềm (`is_deleted`) cho các bảng quan trọng; API DELETE idempotent (gọi lại vẫn 200)
+- [x] **CORE-07
+**: Lưu/trả timestamp (`created_at`, `updated_at`) theo UTC. **Lưu ý:** `transactions.date` là kiểu `DATE` (ngày lịch thuần, không có múi giờ) — gom nhóm báo cáo theo ngày/tháng dùng thẳng cột này, **không** chuyển đổi múi giờ. Chỉ các cột `TIMESTAMPTZ` mới cần quan tâm UTC↔giờ Việt Nam
+- [x] **CORE-08
+**: Số tiền là số nguyên VND, không dùng kiểu dấu phẩy động ở bất kỳ tầng nào
 - [x] **CORE-09
 **: Viết `db/migration/V6__va_loi_bao_mat.sql` vá ba lỗi của schema hiện có: (a) `v_budget_progress` thiếu điều kiện phạm vi người dùng — hiện cộng chi tiêu của **mọi** user trong hệ thống khi ngân sách không chỉ định `wallet_id`, ảnh hưởng cả ngân sách cá nhân lẫn nhóm; (b) `fn_category_tree` không lọc `is_deleted` ở nhánh danh mục cha; (c) `groups` thiếu cột hạn mã mời mà `api/10` yêu cầu
 - [x] **CORE-10
