@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: "Hoàn thành 01-06-PLAN.md - đóng Phase 1: ROADMAP khớp thực tế, test end-to-end Auth+Idempotency+RateLimit, fix flaky JwtServiceTest"
-last_updated: "2026-08-23T09:47:04.238Z"
+status: executing
+stopped_at: Hoàn thành 02-01-PLAN.md - thay WalletMinimal bằng entity Wallet đầy đủ, AuthService+5 test Phase 1 chuyển sang WalletRepository, 35/35 test xanh
+last_updated: "2026-08-23T09:55:44.773Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
-  percent: 60
+  completed_plans: 7
+  percent: 70
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-22)
 
 **Core value:** Mọi API tuân thủ 3 nguyên tắc bất biến — ghi giao dịch nhanh, AI chỉ đề xuất qua `ai_drafts` chờ duyệt, riêng tư mặc định kiểm tra quyền ngay trong câu SQL
-**Current focus:** Phase 01 — nen-tang-xac-thuc
+**Current focus:** Phase 02 — vi-danh-muc
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Ready to plan
+Phase: 02 (vi-danh-muc) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-08-23
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██████████] 100%
 | Phase 01 P04 | 46 | 2 tasks | 17 files |
 | Phase 01 P05 | 28 | 2 tasks | 14 files |
 | Phase 01 P06 | 24 | 2 tasks | 5 files |
+| Phase 02-vi-danh-muc P01 | 7min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - CORE-05/06/08 xac nhan chua co be mat kiem chung o Phase 1 (khong multi-user/DELETE/amount), CORE-07 da hoan thanh (Instant khop TIMESTAMPTZ) - verify bang grep that
 - Test end-to-end de nguyen RateLimitFilter that (khong no-op nhu cac test truoc) - verify JwtAuthFilter->RateLimitFilter->IdempotencyAspect->AuthController phoi hop dung qua HTTP that
 - Sua JwtServiceTest flaky bang cach dao bit byte GIUA mang signature da giai ma base64url thay vi doi ky tu cuoi chuoi ma hoa (co the roi vao padding, la no-op)
+- Copy nguyên trạng WalletMinimal sang Wallet, giữ columnDefinition=bpchar(7); không thêm field mới ở plan 02-01
+- WalletRepository chỉ giữ 1 method tối thiểu ở plan 02-01, mở rộng CRUD/quyền vào cùng file ở plan 02-02, không tạo repository mới
 
 ### Pending Todos
 
@@ -119,8 +122,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T02:05:36.108Z
-Stopped at: Hoàn thành 01-06-PLAN.md - đóng Phase 1: ROADMAP khớp thực tế, test end-to-end Auth+Idempotency+RateLimit, fix flaky JwtServiceTest
+Last session: 2026-08-23T09:55:44.760Z
+Stopped at: Hoàn thành 02-01-PLAN.md - thay WalletMinimal bằng entity Wallet đầy đủ, AuthService+5 test Phase 1 chuyển sang WalletRepository, 35/35 test xanh
 Resume file: None
 
 **Planned Phase:** 02 (vi-danh-muc) — 4 plans — 2026-08-23T09:47:04.225Z
