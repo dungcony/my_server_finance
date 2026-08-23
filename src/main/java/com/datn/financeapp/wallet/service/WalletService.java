@@ -95,12 +95,21 @@ public class WalletService {
 
         WalletStatsDto stats = loadStats(wallet.getId());
 
+        // D-37/TXN-09: currentBalance API = tiền thật đến hết hôm nay (trừ ngược giao dịch
+        // tương lai) — KHÔNG map thẳng cột wallet.getCurrentBalance() (đã gồm cả tương lai).
+        long currentBalanceAsOfToday = walletRepository
+                .findBalanceAsOf(wallet.getId(), LocalDate.now())
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+        boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
+        Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
+
         return new WalletDetailResponse(
                 wallet.getId(),
                 wallet.getName(),
                 wallet.getType(),
                 wallet.getInitialBalance(),
-                wallet.getCurrentBalance(),
+                currentBalanceAsOfToday,
                 wallet.getIncludeInTotal(),
                 wallet.getGroupId() != null,
                 wallet.getGroupId(),
@@ -108,7 +117,8 @@ public class WalletService {
                 wallet.getColor(),
                 wallet.getSortOrder(),
                 stats,
-                wallet.getCreatedAt());
+                wallet.getCreatedAt(),
+                projectedBalance);
     }
 
     /**
@@ -277,17 +287,27 @@ public class WalletService {
     }
 
     private WalletResponse toResponse(Wallet wallet) {
+        // D-37/TXN-09: cùng logic trừ ngược như detail() — currentBalance API luôn là tiền thật
+        // đến hết hôm nay, projectedBalance chỉ khác NULL khi ví có giao dịch tương lai.
+        long currentBalanceAsOfToday = walletRepository
+                .findBalanceAsOf(wallet.getId(), LocalDate.now())
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+        boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
+        Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
+
         return new WalletResponse(
                 wallet.getId(),
                 wallet.getName(),
                 wallet.getType(),
-                wallet.getCurrentBalance(),
+                currentBalanceAsOfToday,
                 wallet.getIncludeInTotal(),
                 wallet.getGroupId() != null,
                 wallet.getGroupId(),
                 wallet.getIcon(),
                 wallet.getColor(),
                 wallet.getSortOrder(),
-                wallet.getCreatedAt());
+                wallet.getCreatedAt(),
+                projectedBalance);
     }
 }

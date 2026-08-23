@@ -1,6 +1,8 @@
 package com.datn.financeapp.wallet.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.transaction.service.TransactionWriteCommand;
+import com.datn.financeapp.transaction.service.TransactionWriter;
 import com.datn.financeapp.wallet.dto.AdjustBalanceRequest;
 import com.datn.financeapp.wallet.dto.AdjustBalanceResponse;
 import com.datn.financeapp.wallet.dto.ReconcileResponse;
@@ -37,6 +39,7 @@ public class WalletTransferService {
 
     private final WalletRepository walletRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final TransactionWriter transactionWriter;
 
     /**
      * api/02-VI.md mục 8. Khoá 2 ví theo thứ tự {@code UUID.compareTo()} cố định (T-02-12) rồi
@@ -75,30 +78,21 @@ public class WalletTransferService {
         }
 
         LocalDate date = req.date() != null ? req.date() : LocalDate.now();
-        UUID transactionId = UUID.randomUUID();
 
-        jdbcTemplate.update(
-                "INSERT INTO transactions (id, user_id, wallet_id, destination_wallet_id, category_id, "
-                        + "type, amount, date, note, source, counts_in_report, is_deleted, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, NULL, 'transfer', ?, ?, ?, 'manual', TRUE, FALSE, now(), now())",
-                transactionId, userId, sourceId, destinationId, amount, date, req.note());
-
-        walletRepository.adjustBalance(sourceId, -amount);
-        walletRepository.adjustBalance(destinationId, amount);
-
-        long newSourceBalance = sourceWallet.getCurrentBalance() - amount;
-        long newDestinationBalance = destinationWallet.getCurrentBalance() + amount;
+        TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
+                UUID.randomUUID(), userId, sourceId, destinationId, null, "transfer", amount, date,
+                req.note(), null, "manual", true, null, null, null));
 
         return new TransferResponse(
                 new TransferResponse.TransactionInfo(
-                        transactionId,
+                        result.transactionId(),
                         "transfer",
                         amount,
                         date,
                         new TransferResponse.WalletRef(sourceWallet.getId(), sourceWallet.getName()),
                         new TransferResponse.WalletRef(destinationWallet.getId(), destinationWallet.getName()),
                         req.note()),
-                new TransferResponse.NewBalance(newSourceBalance, newDestinationBalance));
+                new TransferResponse.NewBalance(result.walletNewBalance(), result.destinationWalletNewBalance()));
     }
 
     /**
@@ -141,17 +135,19 @@ public class WalletTransferService {
                     "Thiếu danh mục hệ thống 'Cập nhật số dư' (type=" + type + ") — kiểm tra seed V8.");
         }
 
-        UUID transactionId = UUID.randomUUID();
-        jdbcTemplate.update(
-                "INSERT INTO transactions (id, user_id, wallet_id, destination_wallet_id, category_id, "
-                        + "type, amount, date, note, source, counts_in_report, is_deleted, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, NULL, ?, ?, ?, CURRENT_DATE, ?, 'adjustment', ?, FALSE, now(), now())",
-                transactionId, userId, walletId, categoryId, type, amount, req.note(), countsInReport);
-
-        walletRepository.adjustBalance(walletId, difference);
+        TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
+                UUID.randomUUID(), userId, walletId, null, categoryId, type, amount, LocalDate.now(),
+                req.note(), null, "adjustment", countsInReport, null, null, null));
 
         return new AdjustBalanceResponse(
-                walletId, previousBalance, req.actualBalance(), difference, true, transactionId, type, countsInReport);
+                walletId,
+                previousBalance,
+                req.actualBalance(),
+                difference,
+                true,
+                result.transactionId(),
+                type,
+                countsInReport);
     }
 
     /**

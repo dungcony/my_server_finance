@@ -34,9 +34,13 @@ public class TransactionWriter {
      *   <li>{@code income} → cộng ví nguồn</li>
      *   <li>{@code transfer} → trừ ví nguồn, cộng ví đích</li>
      * </ul>
-     * Đọc lại số dư mới bằng {@code walletRepository.findByIdForUpdate(...)} SAU khi
+     * Đọc lại số dư mới bằng {@code walletRepository.findCurrentBalanceNative(...)} SAU khi
      * {@code adjustBalance} — vì {@code adjustBalance} là {@code @Modifying} UPDATE trực tiếp,
      * không tự đồng bộ persistence context, nên phải query lại thay vì cộng tay trong Java.
+     * Dùng bản native (không qua entity manager) thay vì {@code findByIdForUpdate}: nếu caller
+     * (vd. {@code WalletTransferService.transfer()}) đã load ví này qua JPQL trong CÙNG
+     * transaction trước khi gọi {@code write()}, {@code findByIdForUpdate} sẽ trả lại đúng
+     * instance đã cache trong Hibernate identity map — mang số dư CŨ trước UPDATE.
      */
     @Transactional
     public WriteResult write(TransactionWriteCommand cmd) {
@@ -74,28 +78,24 @@ public class TransactionWriter {
             case "expense" -> {
                 walletRepository.adjustBalance(cmd.walletId(), -cmd.amount());
                 walletNewBalance = walletRepository
-                        .findByIdForUpdate(cmd.walletId())
-                        .orElseThrow()
-                        .getCurrentBalance();
+                        .findCurrentBalanceNative(cmd.walletId())
+                        .orElseThrow();
             }
             case "income" -> {
                 walletRepository.adjustBalance(cmd.walletId(), cmd.amount());
                 walletNewBalance = walletRepository
-                        .findByIdForUpdate(cmd.walletId())
-                        .orElseThrow()
-                        .getCurrentBalance();
+                        .findCurrentBalanceNative(cmd.walletId())
+                        .orElseThrow();
             }
             case "transfer" -> {
                 walletRepository.adjustBalance(cmd.walletId(), -cmd.amount());
                 walletRepository.adjustBalance(cmd.destinationWalletId(), cmd.amount());
                 walletNewBalance = walletRepository
-                        .findByIdForUpdate(cmd.walletId())
-                        .orElseThrow()
-                        .getCurrentBalance();
+                        .findCurrentBalanceNative(cmd.walletId())
+                        .orElseThrow();
                 destinationWalletNewBalance = walletRepository
-                        .findByIdForUpdate(cmd.destinationWalletId())
-                        .orElseThrow()
-                        .getCurrentBalance();
+                        .findCurrentBalanceNative(cmd.destinationWalletId())
+                        .orElseThrow();
             }
             default -> throw new IllegalArgumentException("Loại giao dịch không hợp lệ: " + cmd.type());
         }

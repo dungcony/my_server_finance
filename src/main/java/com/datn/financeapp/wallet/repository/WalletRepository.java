@@ -91,6 +91,19 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     int adjustBalance(@Param("id") UUID id, @Param("delta") long delta);
 
     /**
+     * Đọc {@code current_balance} bằng native SQL — CỐ Ý bỏ qua Hibernate first-level cache
+     * (identity map). Dùng ngay sau {@link #adjustBalance} khi caller trong CÙNG transaction đã
+     * load {@link Wallet} qua {@link #findByIdForUpdate} TRƯỚC đó (ví dụ
+     * {@code WalletTransferService.transfer()} khoá 2 ví rồi mới gọi {@code TransactionWriter}):
+     * {@code adjustBalance} là {@code @Modifying} bulk UPDATE, không tự đồng bộ persistence
+     * context, nên gọi lại {@code findByIdForUpdate} sẽ trả về ĐÚNG instance đã cache (stale,
+     * số dư cũ) thay vì query lại DB. Native query này truy vấn thẳng bảng, không qua entity
+     * manager, nên luôn đọc giá trị mới nhất sau UPDATE.
+     */
+    @Query(value = "SELECT current_balance FROM wallets WHERE id = :id", nativeQuery = true)
+    Optional<Long> findCurrentBalanceNative(@Param("id") UUID id);
+
+    /**
      * D-36 — trừ ngược phần giao dịch nằm SAU mốc {@code asOf} để suy ra số dư ví tại mốc đó.
      * Cần thiết vì giao dịch tương lai được phép ghi thật và cộng trừ ngay vào
      * {@code wallets.current_balance} (không có trạng thái chờ) — cột này mang nghĩa "đã tính
