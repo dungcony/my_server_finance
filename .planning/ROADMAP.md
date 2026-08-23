@@ -10,7 +10,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
-- [ ] **Phase 1: Nền tảng & Xác thực** - Khung project, response/error format, idempotency, rate limit, JWT auth đầy đủ vòng đời tài khoản
+- [x] **Phase 1: Nền tảng & Xác thực** - Khung project, response/error format, idempotency, rate limit, JWT auth đầy đủ vòng đời tài khoản
 - [ ] **Phase 2: Ví & Danh mục** - CRUD ví/chuyển tiền/đối chiếu số dư và cây danh mục 2 cấp + kho icon
 - [ ] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
 - [ ] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
@@ -30,7 +30,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   - Idempotency: bảng DB `idempotency_keys`, `INSERT ... ON CONFLICT DO NOTHING`, áp dụng qua `HandlerInterceptor`/AOP `@Idempotent`
   - Rate limit: Bucket4j in-memory + Caffeine cache, filter đặt sau filter JWT, theo IP (auth) hoặc `user_id` (còn lại)
   - `ddl-auto=validate`, Flyway sở hữu schema, trỏ tới `db/migration/` gốc (không copy)
-  - **Việc đầu tiên của phase — verify migration V6/V7 đã có, không viết lại:** `V6__va_loi_bao_mat.sql` (CORE-09) và `V7__ha_tang_xac_thuc.sql` (CORE-10) **đã tồn tại** trong `db/migration/` (commit 533e95b, trước khi phase này bắt đầu thực thi) — 4 bảng hạ tầng Auth/Idempotency đã có sẵn đúng cột yêu cầu. Việc đầu tiên của Plan 01 là dựng project + trỏ Flyway vào `db/migration/` gốc, chạy thật `V1`→`V7` trên DB sạch để xác nhận không lỗi checksum/thứ tự (đã xác nhận xanh qua `01-01-SUMMARY.md`, cả `mvn spring-boot:run` lẫn Testcontainers)
+  - **Việc đầu tiên của phase — verify migration đã có, không viết mới:** `V6__va_loi_bao_mat.sql` (CORE-09) và `V7__ha_tang_xac_thuc.sql` (CORE-10) đã tồn tại sẵn trong `db/migration/` (commit 533e95b) trước khi Phase 1 bắt đầu lập kế hoạch chi tiết. Việc đầu tiên là dựng project trỏ Flyway vào `db/migration/` gốc và chạy thật V1→V7 trên PostgreSQL sạch để xác nhận không lỗi checksum/thứ tự, đúng cột/kiểu dữ liệu cho 4 bảng hạ tầng Auth/Idempotency — không phải viết migration mới (đã xác nhận xanh qua `01-01-SUMMARY.md`, cả `mvn spring-boot:run` lẫn Testcontainers)
   - **Ranh giới trigger:** quy tắc thật là *không trigger cho số dư ví*. Schema đã có sẵn 6 trigger, trong đó `trg_debt_payments_sync`/`trg_goal_contributions_sync` (V4) **sở hữu** `paid_amount`/`saved_amount`/`status` — liên quan tới Phase 4, không phải phase này, nhưng ghi ở đây để không diễn đạt sai lan sang các phase sau
 **Success Criteria** (what must be TRUE):
   1. `V6` và `V7` chạy sạch trên PostgreSQL: `v_budget_progress` đã có điều kiện phạm vi người dùng, `fn_category_tree` lọc `is_deleted`, `groups` có cột hạn mã mời, và 4 bảng hạ tầng xác thực tồn tại
@@ -39,7 +39,13 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   4. User đăng nhập sai mật khẩu 5 lần liên tiếp bị khoá 15 phút; refresh token dùng lại sau khi đã dùng một lần sẽ thu hồi toàn bộ phiên
   5. Gọi lại cùng một request POST kèm `Idempotency-Key` trong 24h trả lại đúng kết quả lần đầu, không tạo bản ghi trùng
   6. Gọi endpoint auth quá 5 lần/phút/IP (hoặc endpoint thường quá 120 lần/phút/user) bị chặn kèm header `X-RateLimit-*`
-**Plans**: 6 (5/6 hoàn thành — xem `01-01-SUMMARY.md`, `01-02-SUMMARY.md`, `01-03-SUMMARY.md`, `01-04-SUMMARY.md`, `01-05-SUMMARY.md`)
+**Plans**:
+- [x] 01-01-PLAN.md — Khung Maven, cấu hình môi trường, verify migration V1-V7, entity tối thiểu
+- [x] 01-02-PLAN.md — common/ (response wrapper, exception handler, JWT service, SecurityConfig)
+- [x] 01-03-PLAN.md — Idempotency AOP + Rate limiting 3 tầng
+- [x] 01-04-PLAN.md — Auth lõi: register/login/refresh/logout
+- [x] 01-05-PLAN.md — Auth còn lại: profile, đổi/quên/đặt lại mật khẩu, test khoá đăng nhập
+- [x] 01-06-PLAN.md — Đóng phase: cập nhật ROADMAP, test end-to-end, verify toàn bộ suite
 
 ### Phase 2: Ví & Danh mục
 **Goal**: User quản lý đầy đủ ví tiền (kể cả chuyển tiền giữa ví, đối chiếu số dư) và cây danh mục 2 cấp gắn icon, làm nền cho module giao dịch ở phase sau.
@@ -128,7 +134,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Nền tảng & Xác thực | 5/6 | In progress | - |
+| 1. Nền tảng & Xác thực | 6/6 | Complete | 2026-08-23 |
 | 2. Ví & Danh mục | 0/TBD | Not started | - |
 | 3. Giao dịch | 0/TBD | Not started | - |
 | 4. Nghiệp vụ phái sinh & Báo cáo | 0/TBD | Not started | - |
