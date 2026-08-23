@@ -210,7 +210,7 @@ public class WalletTransferService {
                 .findByIdForUpdate(walletId)
                 .orElseThrow(() -> new BusinessException(
                         "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
-        if (!wallet.getUserId().equals(userId)) {
+        if (!userId.equals(wallet.getUserId())) {
             throw new BusinessException("NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví.");
         }
         return wallet;

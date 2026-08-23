@@ -95,6 +95,8 @@ class WalletTransferIntegrationTest {
         jdbcTemplate.update("DELETE FROM transactions");
         refreshTokenRepository.deleteAll();
         walletRepository.deleteAll();
+        jdbcTemplate.update("DELETE FROM group_members");
+        jdbcTemplate.update("DELETE FROM groups");
         userRepository.deleteAll();
     }
 
@@ -203,6 +205,37 @@ class WalletTransferIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.new_balance.source_wallet").value(-400_000));
+    }
+
+    @Test
+    void transferFromGroupWalletWithNullUserId_returns404NotFound() throws Exception {
+        String token = registerAndGetAccessToken("chuyen.tu.vi.chung@example.com");
+        String destId = createWallet(token, "Ví Đích", "bank", 0);
+
+        java.util.UUID userId = jdbcTemplate.queryForObject(
+                "SELECT id FROM users WHERE email = ?", java.util.UUID.class, "chuyen.tu.vi.chung@example.com");
+        java.util.UUID groupId = java.util.UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO groups (id, name, created_by_id, invite_code, invite_code_expires_at) "
+                        + "VALUES (?, ?, ?, ?, now() + interval '7 days')",
+                groupId, "Nhóm Kiểm Thử Ví Chung", userId, "GRP" + System.nanoTime());
+        java.util.UUID groupWalletId = java.util.UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO wallets (id, user_id, group_id, name, type, initial_balance, current_balance) "
+                        + "VALUES (?, NULL, ?, ?, 'bank', 1000000, 1000000)",
+                groupWalletId, groupId, "Ví Chung Nhóm");
+
+        Map<String, Object> body = Map.of(
+                "source_wallet_id", groupWalletId.toString(),
+                "destination_wallet_id", destId,
+                "amount", 100_000);
+
+        mockMvc.perform(post("/wallets/transfer")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
     }
 
     @Test
