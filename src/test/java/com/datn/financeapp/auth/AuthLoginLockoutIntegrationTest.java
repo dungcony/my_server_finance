@@ -104,7 +104,7 @@ class AuthLoginLockoutIntegrationTest {
         userRepository.deleteAll();
     }
 
-    private void dangKy(String email, String password, String fullName) throws Exception {
+    private void register(String email, String password, String fullName) throws Exception {
         Map<String, Object> body = Map.of("email", email, "password", password, "full_name", fullName);
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -112,7 +112,7 @@ class AuthLoginLockoutIntegrationTest {
                 .andExpect(status().isCreated());
     }
 
-    private void loginSai(String email, String wrongPassword) throws Exception {
+    private void loginWithWrongPassword(String email, String wrongPassword) throws Exception {
         Map<String, Object> body = Map.of("email", email, "password", wrongPassword);
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -122,38 +122,38 @@ class AuthLoginLockoutIntegrationTest {
     }
 
     @Test
-    void sai5LanLienTiep_LanThu6DuDungPassword_VanBiAccountLocked() throws Exception {
+    void after5FailedAttempts_6thWithCorrectPassword_isStillLocked() throws Exception {
         String email = "khoa.5lan@example.com";
-        String matKhauDung = "matkhaudung1";
-        dangKy(email, matKhauDung, "Khoá 5 Lần");
+        String correctPassword = "matkhaudung1";
+        register(email, correctPassword, "Khoá 5 Lần");
 
         for (int i = 0; i < 5; i++) {
-            loginSai(email, "sai-mat-khau-" + i);
+            loginWithWrongPassword(email, "sai-mat-khau-" + i);
         }
 
-        Map<String, Object> dungPassword = Map.of("email", email, "password", matKhauDung);
+        Map<String, Object> correctLogin = Map.of("email", email, "password", correctPassword);
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dungPassword)))
+                        .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("ACCOUNT_LOCKED"));
     }
 
     @Test
-    void khoaHetHanTuNhien_LoginDungPasswordLaiThanhCong() throws Exception {
+    void lockoutExpiresNaturally_LoginWithCorrectPasswordSucceedsAgain() throws Exception {
         String email = "khoa.het.han@example.com";
-        String matKhauDung = "matkhaudung1";
-        dangKy(email, matKhauDung, "Khoá Hết Hạn");
+        String correctPassword = "matkhaudung1";
+        register(email, correctPassword, "Khoá Hết Hạn");
 
         for (int i = 0; i < 5; i++) {
-            loginSai(email, "sai-mat-khau-" + i);
+            loginWithWrongPassword(email, "sai-mat-khau-" + i);
         }
 
         // Xác nhận đang bị khoá.
-        Map<String, Object> dungPassword = Map.of("email", email, "password", matKhauDung);
+        Map<String, Object> correctLogin = Map.of("email", email, "password", correctPassword);
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dungPassword)))
+                        .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("ACCOUNT_LOCKED"));
 
@@ -161,44 +161,44 @@ class AuthLoginLockoutIntegrationTest {
         // isLockedOut() tính động mỗi lần gọi (không cron job riêng), khoá tự hết hạn theo thời
         // gian.
         List<LoginAttempt> attempts = loginAttemptRepository.findTop5ByEmailOrderByAttemptedAtDesc(email);
-        Instant qua16Phut = Instant.now().minus(16, ChronoUnit.MINUTES);
+        Instant sixteenMinutesAgo = Instant.now().minus(16, ChronoUnit.MINUTES);
         for (LoginAttempt attempt : attempts) {
-            attempt.setAttemptedAt(qua16Phut);
+            attempt.setAttemptedAt(sixteenMinutesAgo);
             loginAttemptRepository.save(attempt);
         }
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dungPassword)))
+                        .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty());
     }
 
     @Test
-    void motLanDungChenGiua5LanSai_KhongBiKhoa() throws Exception {
+    void oneCorrectAttemptInterspersedAmong5Failures_isNotLocked() throws Exception {
         String email = "chen.giua@example.com";
-        String matKhauDung = "matkhaudung1";
-        dangKy(email, matKhauDung, "Chen Giữa");
+        String correctPassword = "matkhaudung1";
+        register(email, correctPassword, "Chen Giữa");
 
         // sai, sai, ĐÚNG, sai, sai, sai -> 5 bản ghi gần nhất không phải toàn bộ succeeded=false.
-        loginSai(email, "sai-1");
-        loginSai(email, "sai-2");
+        loginWithWrongPassword(email, "sai-1");
+        loginWithWrongPassword(email, "sai-2");
 
-        Map<String, Object> dungPassword = Map.of("email", email, "password", matKhauDung);
+        Map<String, Object> correctLogin = Map.of("email", email, "password", correctPassword);
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dungPassword)))
+                        .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isOk());
 
-        loginSai(email, "sai-3");
-        loginSai(email, "sai-4");
-        loginSai(email, "sai-5");
+        loginWithWrongPassword(email, "sai-3");
+        loginWithWrongPassword(email, "sai-4");
+        loginWithWrongPassword(email, "sai-5");
 
         // 5 bản ghi gần nhất: đúng, sai, sai, sai (chỉ 4 lần sai liên tiếp gần nhất + 1 đúng
         // chen giữa) -> KHÔNG đủ điều kiện khoá (allFailed = false).
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dungPassword)))
+                        .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isOk());
     }
 }

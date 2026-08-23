@@ -129,7 +129,7 @@ class AuthRefreshRotationIntegrationTest {
     }
 
     @Test
-    void refreshHopLe_ThuHoiTokenCu_CapTokenMoi() throws Exception {
+    void validRefresh_revokesOldToken_issuesNewToken() throws Exception {
         String rawOldToken = registerAndGetRefreshToken("refresh.hop.le@example.com");
         UUID userId = userIdOf("refresh.hop.le@example.com");
 
@@ -154,7 +154,7 @@ class AuthRefreshRotationIntegrationTest {
     }
 
     @Test
-    void reuseTokenDaRevoke_ThuHoiToanBoPhien_Tra401RefreshTokenInvalid() throws Exception {
+    void reuseOfRevokedToken_revokesAllSessions_returns401RefreshTokenInvalid() throws Exception {
         String rawOldToken = registerAndGetRefreshToken("reuse.detect@example.com");
         UUID userId = userIdOf("reuse.detect@example.com");
 
@@ -177,7 +177,7 @@ class AuthRefreshRotationIntegrationTest {
     }
 
     @Test
-    void haiRequestRefreshDongThoiCungToken_ChiDung1RequestThanhCong() throws Exception {
+    void twoConcurrentRefreshRequestsWithSameToken_onlyOneSucceeds() throws Exception {
         String rawToken = registerAndGetRefreshToken("race.condition@example.com");
 
         Map<String, Object> body = Map.of("refresh_token", rawToken);
@@ -225,9 +225,9 @@ class AuthRefreshRotationIntegrationTest {
     }
 
     @Test
-    void logoutKhongLogoutAllDevices_ChiThuHoiTokenHienTai_TokenKhacVanActive() throws Exception {
+    void logoutWithoutLogoutAllDevices_revokesOnlyCurrentToken_otherTokenStaysActive() throws Exception {
         String email = "logout.mot.thiet.bi@example.com";
-        String rawTokenThuNhat = registerAndGetRefreshToken(email);
+        String rawFirstToken = registerAndGetRefreshToken(email);
         UUID userId = userIdOf(email);
 
         // Đăng nhập lần 2 để có thêm 1 refresh token active khác (giả lập thiết bị thứ hai).
@@ -240,9 +240,9 @@ class AuthRefreshRotationIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         Map<?, ?> parsed = objectMapper.readValue(loginResponse, Map.class);
-        String rawTokenThuHai = (String) ((Map<?, ?>) parsed.get("data")).get("refresh_token");
+        String rawSecondToken = (String) ((Map<?, ?>) parsed.get("data")).get("refresh_token");
 
-        Map<String, Object> logoutBody = Map.of("refresh_token", rawTokenThuNhat, "logout_all_devices", false);
+        Map<String, Object> logoutBody = Map.of("refresh_token", rawFirstToken, "logout_all_devices", false);
         mockMvc.perform(post("/auth/logout")
                         .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
                                 .authentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
@@ -254,7 +254,7 @@ class AuthRefreshRotationIntegrationTest {
         List<RefreshToken> active = refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(userId);
         assertThat(active).hasSize(1);
         // Token còn active phải là token thứ hai (đăng nhập lần 2), không phải token vừa logout.
-        String activeRawTokenHash = sha256Hex(rawTokenThuHai);
+        String activeRawTokenHash = sha256Hex(rawSecondToken);
         assertThat(active.get(0).getTokenHash()).isEqualTo(activeRawTokenHash);
     }
 

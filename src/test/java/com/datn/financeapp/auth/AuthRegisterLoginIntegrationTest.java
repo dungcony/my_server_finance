@@ -102,7 +102,7 @@ class AuthRegisterLoginIntegrationTest {
     }
 
     @Test
-    void dangKyThanhCong_TaoUserViViTienMatSoDu0_TrongCungTransaction() throws Exception {
+    void register_succeeds_createsUserAndCashWalletWithZeroBalanceInSameTransaction() throws Exception {
         Map<String, Object> body = Map.of(
                 "email", "minh.nguyen@example.com",
                 "password", "matkhau123",
@@ -134,7 +134,7 @@ class AuthRegisterLoginIntegrationTest {
     }
 
     @Test
-    void dangKyLaiEmailDaTonTai_Tra409EmailAlreadyExists() throws Exception {
+    void register_emailAlreadyExists_returns409EmailAlreadyExists() throws Exception {
         Map<String, Object> body = Map.of(
                 "email", "trung.lap@example.com",
                 "password", "matkhau123",
@@ -153,7 +153,7 @@ class AuthRegisterLoginIntegrationTest {
     }
 
     @Test
-    void dangNhapSaiPasswordVaSaiEmail_CaHaiTraCungMaLoiVaCungThongBao() throws Exception {
+    void login_wrongPasswordAndWrongEmail_bothReturnSameErrorCodeAndMessage() throws Exception {
         Map<String, Object> registerBody = Map.of(
                 "email", "dang.nhap@example.com",
                 "password", "matkhaudung1",
@@ -163,36 +163,36 @@ class AuthRegisterLoginIntegrationTest {
                         .content(objectMapper.writeValueAsString(registerBody)))
                 .andExpect(status().isCreated());
 
-        Map<String, Object> saiPassword = Map.of("email", "dang.nhap@example.com", "password", "sairoi123");
-        String responseSaiPassword = mockMvc.perform(post("/auth/login")
+        Map<String, Object> wrongPassword = Map.of("email", "dang.nhap@example.com", "password", "sairoi123");
+        String responseWrongPassword = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(saiPassword)))
+                        .content(objectMapper.writeValueAsString(wrongPassword)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        Map<String, Object> saiEmail = Map.of("email", "khong.ton.tai@example.com", "password", "khoiquantam1");
-        String responseSaiEmail = mockMvc.perform(post("/auth/login")
+        Map<String, Object> wrongEmail = Map.of("email", "khong.ton.tai@example.com", "password", "khoiquantam1");
+        String responseWrongEmail = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(saiEmail)))
+                        .content(objectMapper.writeValueAsString(wrongEmail)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        String messageSaiPassword = (String) ((Map<?, ?>) ((Map<?, ?>) objectMapper.readValue(responseSaiPassword, Map.class)
+        String messageWrongPassword = (String) ((Map<?, ?>) ((Map<?, ?>) objectMapper.readValue(responseWrongPassword, Map.class)
                 .get("error"))).get("message");
-        String messageSaiEmail = (String) ((Map<?, ?>) ((Map<?, ?>) objectMapper.readValue(responseSaiEmail, Map.class)
+        String messageWrongEmail = (String) ((Map<?, ?>) ((Map<?, ?>) objectMapper.readValue(responseWrongEmail, Map.class)
                 .get("error"))).get("message");
 
-        assertThat(messageSaiPassword).isEqualTo(messageSaiEmail);
+        assertThat(messageWrongPassword).isEqualTo(messageWrongEmail);
     }
 
     @Test
-    void khoaTaiKhoanSau5LanSaiLienTiep_LanThu6TraAccountLocked() throws Exception {
+    void after5FailedAttempts_6thLoginReturnsAccountLocked() throws Exception {
         Map<String, Object> registerBody = Map.of(
                 "email", "bi.khoa@example.com",
                 "password", "matkhaudung1",
@@ -202,18 +202,18 @@ class AuthRegisterLoginIntegrationTest {
                         .content(objectMapper.writeValueAsString(registerBody)))
                 .andExpect(status().isCreated());
 
-        Map<String, Object> saiPassword = Map.of("email", "bi.khoa@example.com", "password", "sai-mat-khau");
+        Map<String, Object> wrongPassword = Map.of("email", "bi.khoa@example.com", "password", "sai-mat-khau");
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(saiPassword)))
+                            .content(objectMapper.writeValueAsString(wrongPassword)))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
         }
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(saiPassword)))
+                        .content(objectMapper.writeValueAsString(wrongPassword)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("ACCOUNT_LOCKED"));
     }

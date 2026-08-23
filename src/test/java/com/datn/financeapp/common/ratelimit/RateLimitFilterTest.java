@@ -28,7 +28,7 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void quaNamLanTrongMotPhutToiAuthTuCungIp_LanThuSauBi429() throws Exception {
+    void moreThan5RequestsPerMinuteToAuthFromSameIp_6thRequestIs429() throws Exception {
         RateLimitFilter filter = new RateLimitFilter(new RateLimitProperties());
         String ip = "10.0.0.1";
 
@@ -52,7 +52,7 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void haiUserKhacNhauCungIp_QuotaDocLapTheoUser() throws Exception {
+    void twoDifferentUsersSameIp_quotaIsIndependentPerUser() throws Exception {
         RateLimitFilter filter = new RateLimitFilter(new RateLimitProperties());
         String sharedIp = "10.0.0.2";
         String userA = UUID.randomUUID().toString();
@@ -83,7 +83,7 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void moiResponseDeuCoDuBaHeaderRateLimit() throws Exception {
+    void everyResponseHasAllThreeRateLimitHeaders() throws Exception {
         RateLimitFilter filter = new RateLimitFilter(new RateLimitProperties());
         MockHttpServletRequest request = requestFrom("10.0.0.3", "/wallets");
         MockHttpServletResponse response = new MockHttpServletResponse();

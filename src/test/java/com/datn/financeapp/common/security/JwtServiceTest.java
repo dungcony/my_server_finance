@@ -23,7 +23,7 @@ class JwtServiceTest {
     private final JwtService jwtService = new JwtService(TEST_SECRET, 3600);
 
     @Test
-    void generateVaParse_traDungSubjectVaClaimPlan() {
+    void generateAndParse_returnsCorrectSubjectAndPlanClaim() {
         UUID userId = UUID.randomUUID();
 
         String token = jwtService.generateAccessToken(userId, "free");
@@ -34,7 +34,7 @@ class JwtServiceTest {
     }
 
     @Test
-    void tokenHetHan_nemExpiredJwtException() {
+    void expiredToken_throwsExpiredJwtException() {
         JwtService expiredJwtService = new JwtService(TEST_SECRET, -10);
         String token = expiredJwtService.generateAccessToken(UUID.randomUUID(), "free");
 
@@ -42,7 +42,7 @@ class JwtServiceTest {
     }
 
     @Test
-    void tokenBiSuaChuKy_nemSignatureException() {
+    void tamperedSignature_throwsSignatureException() {
         String token = jwtService.generateAccessToken(UUID.randomUUID(), "free");
         // Sửa 1 ký tự cuối cùng của chữ ký (phần sau dấu chấm cuối) để phá vỡ signature
         String tampered = token.substring(0, token.length() - 1)
@@ -52,7 +52,7 @@ class JwtServiceTest {
     }
 
     @Test
-    void khongChapNhanThuatToanKhac_HS384DungKeyKhac() {
+    void rejectsDifferentAlgorithm_HS384WithDifferentKey() {
         // Sinh token bằng key/thuật toán khác (HS384, key hợp lệ riêng) — parser cấu hình
         // đúng key HS256 phải từ chối vì chữ ký không khớp key đã cấu hình.
         var otherKey = io.jsonwebtoken.Jwts.SIG.HS384.key().build();

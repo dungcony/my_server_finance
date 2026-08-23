@@ -1,6 +1,6 @@
 # Deferred Items — Phase 01 nen-tang-xac-thuc
 
-## `JwtServiceTest.tokenBiSuaChuKy_nemSignatureException` không ổn định (flaky) khi chạy cùng full suite
+## `JwtServiceTest.tamperedSignature_throwsSignatureException` không ổn định (flaky) khi chạy cùng full suite
 
 - **Phát hiện trong:** Plan 04, khi chạy `mvn test` toàn bộ project để xác nhận không có regression
 - **File:** `src/test/java/com/datn/financeapp/common/security/JwtServiceTest.java` (tạo ở Plan 02, không thuộc phạm vi sửa của Plan 04)

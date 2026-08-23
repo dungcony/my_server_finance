@@ -42,7 +42,7 @@ public class GlobalExceptionHandlerTest {
     private MockMvc mockMvc;
 
     @Test
-    void validationError_traHetTatCaLoiTruong() throws Exception {
+    void validationError_returnsAllFieldErrors() throws Exception {
         mockMvc.perform(post("/test/validate")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -54,7 +54,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void businessException_traDungMaVaHttpStatus() throws Exception {
+    void businessException_returnsCorrectCodeAndHttpStatus() throws Exception {
         mockMvc.perform(post("/test/business").with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
@@ -62,7 +62,7 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void runtimeException_khongLoMessageGoc() throws Exception {
+    void runtimeException_doesNotLeakOriginalMessage() throws Exception {
         mockMvc.perform(post("/test/runtime").with(csrf()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.success").value(false))

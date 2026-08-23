@@ -79,14 +79,14 @@ class AuthProfilePasswordIntegrationTest {
         userRepository.deleteAll();
     }
 
-    private User dangKyUser(String email, String password, String fullName) {
+    private User registerUser(String email, String password, String fullName) {
         authService.register(new RegisterRequest(email, password, fullName));
         return userRepository.findByEmail(email).orElseThrow();
     }
 
     @Test
-    void patchMe_DoiFullName_ThanhCong() {
-        User user = dangKyUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
+    void patchMe_UpdatesFullName_Succeeds() {
+        User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
         var result = authService.updateProfile(user.getId(), new UpdateProfileRequest("Tên Mới", null));
 
@@ -100,8 +100,8 @@ class AuthProfilePasswordIntegrationTest {
     }
 
     @Test
-    void getMe_TraDuStatsMacDinh0KhiChuaCoGiaoDichNhomKhac() {
-        User user = dangKyUser("xem.ho.so@example.com", "matkhaudung1", "Xem Hồ Sơ");
+    void getMe_NoTransactionsOrGroupsYet_returnsStatsDefaultingToZero() {
+        User user = registerUser("xem.ho.so@example.com", "matkhaudung1", "Xem Hồ Sơ");
 
         UserDetailDto detail = authService.getMe(user.getId());
 
@@ -111,8 +111,8 @@ class AuthProfilePasswordIntegrationTest {
     }
 
     @Test
-    void changePassword_MatKhauCuDung_ThuHoiToanBoRefreshTokenActive() {
-        User user = dangKyUser("doi.matkhau@example.com", "matkhaucu123", "Đổi Mật Khẩu");
+    void changePassword_correctOldPassword_revokesAllActiveRefreshTokens() {
+        User user = registerUser("doi.matkhau@example.com", "matkhaucu123", "Đổi Mật Khẩu");
 
         // Giả lập 2 phiên đăng nhập trước đó — mỗi login cấp thêm 1 refresh token active.
         authService.login(
@@ -133,8 +133,8 @@ class AuthProfilePasswordIntegrationTest {
     }
 
     @Test
-    void changePassword_MatKhauCuSai_NemWrongOldPassword() {
-        User user = dangKyUser("sai.matkhau.cu@example.com", "matkhaudung1", "Sai Mật Khẩu Cũ");
+    void changePassword_wrongOldPassword_throwsWrongOldPassword() {
+        User user = registerUser("sai.matkhau.cu@example.com", "matkhaudung1", "Sai Mật Khẩu Cũ");
 
         assertThatThrownBy(() -> authService.changePassword(
                         user.getId(), new ChangePasswordRequest("matkhausai999", "matkhaumoi456")))
@@ -143,8 +143,8 @@ class AuthProfilePasswordIntegrationTest {
     }
 
     @Test
-    void forgotPassword_EmailTonTaiVaKhongTonTai_KhongThrowCaHai_ChiEmailTonTaiTaoToken() {
-        dangKyUser("ton.tai@example.com", "matkhaudung1", "Email Tồn Tại");
+    void forgotPassword_existingAndNonExistingEmail_neitherThrows_onlyExistingEmailCreatesToken() {
+        registerUser("ton.tai@example.com", "matkhaudung1", "Email Tồn Tại");
 
         // Cả 2 nhánh đều return void, không throw — verify bằng cách gọi không bắt exception.
         authService.forgotPassword(new ForgotPasswordRequest("ton.tai@example.com"));
@@ -154,12 +154,12 @@ class AuthProfilePasswordIntegrationTest {
     }
 
     @Test
-    void resetPassword_MaDungChuaHetHan_DoiThanhCong_DungLaiLan2BiTuChoi() {
-        User user = dangKyUser("dat.lai@example.com", "matkhaucu123", "Đặt Lại Mật Khẩu");
+    void resetPassword_validUnexpiredCode_succeeds_reuseOnSecondCallIsRejected() {
+        User user = registerUser("dat.lai@example.com", "matkhaucu123", "Đặt Lại Mật Khẩu");
         authService.forgotPassword(new ForgotPasswordRequest("dat.lai@example.com"));
 
         PasswordResetToken savedToken = passwordResetTokenRepository.findAll().get(0);
-        String rawResetCode = layRawResetCodeTuLog(savedToken);
+        String rawResetCode = extractRawResetCodeFromLog(savedToken);
 
         authService.resetPassword(new ResetPasswordRequest(rawResetCode, "matkhaumoi789"));
 
@@ -175,12 +175,12 @@ class AuthProfilePasswordIntegrationTest {
     }
 
     @Test
-    void resetPassword_MaHetHan_TraResetCodeInvalid() {
-        dangKyUser("het.han@example.com", "matkhaucu123", "Hết Hạn");
+    void resetPassword_expiredCode_returnsResetCodeInvalid() {
+        registerUser("het.han@example.com", "matkhaucu123", "Hết Hạn");
         authService.forgotPassword(new ForgotPasswordRequest("het.han@example.com"));
 
         PasswordResetToken savedToken = passwordResetTokenRepository.findAll().get(0);
-        String rawResetCode = layRawResetCodeTuLog(savedToken);
+        String rawResetCode = extractRawResetCodeFromLog(savedToken);
 
         // Giả lập hết hạn: ghi thẳng expiresAt trong quá khứ qua repository trước khi gọi API.
         savedToken.setExpiresAt(Instant.now().minus(1, ChronoUnit.MINUTES));
@@ -196,7 +196,7 @@ class AuthProfilePasswordIntegrationTest {
      * AuthService, ghi thẳng token_hash mới khớp raw code test tự chọn để verify hành vi
      * reset-password mà không phụ thuộc bắt log output.
      */
-    private String layRawResetCodeTuLog(PasswordResetToken savedToken) {
+    private String extractRawResetCodeFromLog(PasswordResetToken savedToken) {
         String rawResetCode = "test-raw-reset-code-" + UUID.randomUUID();
         savedToken.setTokenHash(sha256Hex(rawResetCode));
         passwordResetTokenRepository.save(savedToken);

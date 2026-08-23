@@ -114,7 +114,7 @@ class IdempotencyAspectIntegrationTest {
     }
 
     @Test
-    void goiHaiLanCungKeySauKhiHoanThanh_ChiChayNghiepVuMotLan() throws Exception {
+    void calledTwiceWithSameKeyAfterCompletion_runsBusinessLogicOnlyOnce() throws Exception {
         String key = "key-completed-" + UUID.randomUUID();
 
         mockMvc.perform(post("/__test-only/idempotent-echo")
@@ -135,7 +135,7 @@ class IdempotencyAspectIntegrationTest {
     }
 
     @Test
-    void goiLaiKhiDangProcessing_Nhan409RequestInProgress() throws Exception {
+    void calledAgainWhileProcessing_returns409RequestInProgress() throws Exception {
         String key = "key-processing-" + UUID.randomUUID();
         String endpoint = "POST /__test-only/idempotent-echo";
 
@@ -160,7 +160,7 @@ class IdempotencyAspectIntegrationTest {
     }
 
     @Test
-    void nghiepVuNemException_XoaBanGhiProcessing_RetrySauChayLaiBinhThuong() throws Exception {
+    void businessLogicThrows_deletesProcessingRecord_retryRunsNormallyAfterwards() throws Exception {
         String key = "key-exception-" + UUID.randomUUID();
         TestOnlyController.throwOnNextCall = true;
 
@@ -182,7 +182,7 @@ class IdempotencyAspectIntegrationTest {
     }
 
     @Test
-    void khongCoHeaderIdempotencyKey_ChayBinhThuongKhongDungBang() throws Exception {
+    void noIdempotencyKeyHeader_runsNormallyWithoutUsingTable() throws Exception {
         mockMvc.perform(post("/__test-only/idempotent-echo")
                         .with(authentication(FIXED_USER_AUTH))
                         .contentType(MediaType.APPLICATION_JSON))

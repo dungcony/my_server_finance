@@ -79,3 +79,20 @@ Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gố
 ## Ngôn ngữ
 
 Giao tiếp, commit message: **tiếng Việt**. Code (biến, hàm, class, comment kỹ thuật): **tiếng Anh** chuẩn Java. JSON field `snake_case`, map sang `camelCase` ở tầng model Java nhưng giữ nguyên khoá khi (de)serialize.
+
+**Tên định danh trong code LUÔN là tiếng Anh — không có ngoại lệ cho code test.** Quy tắc này
+áp dụng cho mọi tên biến, tên method, tên class, tên hàm helper, **kể cả tên method `@Test` và
+helper trong file test**. Không viết tiếng Việt không dấu trong định danh.
+
+| Sai | Đúng |
+|---|---|
+| `void dangKy(...)` | `void register(...)` |
+| `void loginSai(...)` | `void loginWithWrongPassword(...)` |
+| `sai5LanLienTiep_LanThu6DuDungPassword_VanBiAccountLocked()` | `after5FailedAttempts_6thWithCorrectPassword_isStillLocked()` |
+| `void tokenBiSuaChuKy_nemSignatureException()` | `void tamperedSignature_throwsSignatureException()` |
+
+Tên method test đặt theo mẫu `<điều kiện>_<hành động>_<kết quả mong đợi>` bằng tiếng Anh.
+
+Chỗ ĐƯỢC dùng tiếng Việt trong file code: giá trị chuỗi dữ liệu nghiệp vụ (`"Tiền mặt"`,
+`"Ăn uống"`), thông điệp lỗi trả cho người dùng, và comment giải thích — comment viết tiếng
+Việt có dấu đầy đủ. Riêng định danh thì tuyệt đối tiếng Anh.
