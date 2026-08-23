@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 02-02-PLAN.md - WalletController CRUD 7 endpoint, 11 test qua Testcontainers, sửa bug D-27 dùng sai cột group_members.status thành is_active
-last_updated: "2026-08-23T10:11:52.614Z"
+stopped_at: Hoan thanh 02-03-PLAN.md - CategoryController CRUD 8 endpoint, fn_category_tree boc thanh repository method, 12 test qua Testcontainers (cay 2 cap D-28 muc 4 + quyen truy cap 404)
+last_updated: "2026-08-23T10:22:59.882Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 02 (vi-danh-muc) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-23
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [████████░░] 80%
 | Phase 01 P06 | 24 | 2 tasks | 5 files |
 | Phase 02-vi-danh-muc P01 | 7min | 2 tasks | 8 files |
 | Phase 02 P02 | 40min | 2 tasks | 13 files |
+| Phase 02-vi-danh-muc P03 | 35min | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Recent decisions affecting current work:
 - Điều kiện quyền D-27 dùng group_members.is_active (BOOLEAN), KHÔNG phải status = 'active' — cột status không tồn tại trong db/migration/V1__nen_tang.sql, PLAN/CONTEXT Phase 2 mô tả sai theo mẫu chưa đối chiếu schema thật
 - DELETE /wallets/{id} dùng findByIdForUserIncludingDeleted (không lọc is_deleted) để phân biệt 404 với no-op 200 idempotent theo CORE-06
 - @WebMvcTest slice test (GlobalExceptionHandlerTest) phải liệt kê tường minh mọi Controller nghiệp vụ mới vào excludeFilters, nếu không Spring component-scan kéo controller vào context thiếu Service bean
+- Danh mục KHÔNG áp dụng vế nhóm gia đình của D-27 - categories.user_id không liên kết group_id trong schema V1 thật (khác wallets); danh mục hệ thống user_id IS NULL luôn hiển thị cho mọi người theo api/03-DANH-MUC.md muc 9
+- has_budget trong CategoryDetailResponse.stats va CATEGORY_HAS_BUDGET luon bo qua o Phase 2 - bang budgets chua co service, TODO Phase 4 noi that
 
 ### Pending Todos
 
@@ -126,8 +129,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T10:11:52.607Z
-Stopped at: Hoàn thành 02-02-PLAN.md - WalletController CRUD 7 endpoint, 11 test qua Testcontainers, sửa bug D-27 dùng sai cột group_members.status thành is_active
+Last session: 2026-08-23T10:22:59.873Z
+Stopped at: Hoan thanh 02-03-PLAN.md - CategoryController CRUD 8 endpoint, fn_category_tree boc thanh repository method, 12 test qua Testcontainers (cay 2 cap D-28 muc 4 + quyen truy cap 404)
 Resume file: None
 
 **Planned Phase:** 02 (vi-danh-muc) — 4 plans — 2026-08-23T09:47:04.225Z

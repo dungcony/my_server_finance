@@ -69,12 +69,18 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Danh mục & biểu tượng (CAT)
 
-- [ ] **CAT-01**: User xem danh sách danh mục dạng cây 2 cấp (gồm cả hệ thống và riêng của mình), lọc theo `type`
-- [ ] **CAT-02**: User tạo danh mục cha hoặc con — chỉ 2 tầng cứng, con phải cùng `type` với cha, cha bắt buộc có `category_group_id`, con kế thừa từ cha
-- [ ] **CAT-03**: User sửa danh mục — không sửa được `type`; đổi `parent_category_id` phải giữ đúng 2 tầng và không cho phép nếu danh mục đang có con
-- [ ] **CAT-04**: User xoá danh mục — chặn nếu còn con, còn giao dịch (trừ khi có `replacement_category_id` cùng `type`), hoặc còn ngân sách đang dùng; danh mục hệ thống không sửa/xoá được
-- [ ] **CAT-05**: User sắp xếp lại danh mục trong cùng cấp
-- [ ] **CAT-06**: User xem danh sách nhóm lớn (`category_groups`, chỉ đọc) và kho biểu tượng (`icons`, lọc theo `icon_group`/`search`)
+- [x] **CAT-01
+**: User xem danh sách danh mục dạng cây 2 cấp (gồm cả hệ thống và riêng của mình), lọc theo `type`
+- [x] **CAT-02
+**: User tạo danh mục cha hoặc con — chỉ 2 tầng cứng, con phải cùng `type` với cha, cha bắt buộc có `category_group_id`, con kế thừa từ cha
+- [x] **CAT-03
+**: User sửa danh mục — không sửa được `type`; đổi `parent_category_id` phải giữ đúng 2 tầng và không cho phép nếu danh mục đang có con
+- [x] **CAT-04
+**: User xoá danh mục — chặn nếu còn con, còn giao dịch (trừ khi có `replacement_category_id` cùng `type`), hoặc còn ngân sách đang dùng; danh mục hệ thống không sửa/xoá được
+- [x] **CAT-05
+**: User sắp xếp lại danh mục trong cùng cấp
+- [x] **CAT-06
+**: User xem danh sách nhóm lớn (`category_groups`, chỉ đọc) và kho biểu tượng (`icons`, lọc theo `icon_group`/`search`)
 
 ### Giao dịch (TXN)
 
