@@ -1,4 +1,4 @@
-package com.datn.financeapp.common.wallet;
+package com.datn.financeapp.wallet.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,8 +13,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Entity tối thiểu chỉ phục vụ AUTH-01 (tạo ví Tiền mặt lúc đăng ký).
- * Module wallet/ đầy đủ thuộc Phase 2 — không mở rộng entity này ở Phase 1.
+ * Entity đầy đủ cho bảng {@code wallets} — thay thế {@code common.wallet.WalletMinimal} tạm
+ * thời của Phase 1 (D-26). Dùng cho toàn bộ nghiệp vụ ví ở Phase 2 (CRUD, chuyển tiền, đối
+ * chiếu, điều chỉnh số dư) và các phase sau.
  */
 @Entity
 @Table(name = "wallets")
@@ -23,23 +24,22 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WalletMinimal {
+public class Wallet {
 
     @Id
     private UUID id;
 
-    /** Ví cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_wallets_owner). Phase 1 luôn dùng nhánh user_id. */
+    /** Ví cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_wallets_owner). */
     @Column(name = "user_id")
     private UUID userId;
 
-    /** Phase 1 luôn để null khi tạo ví Tiền mặt lúc đăng ký. */
     @Column(name = "group_id")
     private UUID groupId;
 
     @Column(name = "name", nullable = false)
     private String name;
 
-    /** CHECK IN ('cash','bank','e_wallet','credit_card') — set "cash" khi tạo ví lúc đăng ký. */
+    /** CHECK IN ('cash','bank','e_wallet','credit_card'). */
     @Column(name = "type", nullable = false)
     private String type;
 
