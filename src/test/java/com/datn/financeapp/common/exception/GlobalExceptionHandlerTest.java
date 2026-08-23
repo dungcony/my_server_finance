@@ -37,7 +37,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                         // cùng slice context, kéo theo WalletService không tồn tại ở đây (chỉ
                         // GlobalExceptionHandlerTest + TestController được @Import tường minh) —
                         // cùng lý do loại trừ với AuthController phía trên.
-                        com.datn.financeapp.wallet.controller.WalletController.class
+                        com.datn.financeapp.wallet.controller.WalletController.class,
+                        // Phase 2 plan 02-03: CategoryController mới thêm — cùng lý do loại trừ.
+                        com.datn.financeapp.category.controller.CategoryController.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
