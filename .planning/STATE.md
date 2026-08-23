@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 01-03-PLAN.md - hạ tầng idempotency + rate limit 3 tầng
-last_updated: "2026-08-22T17:11:41.763Z"
-last_activity: 2026-08-22
+stopped_at: Hoàn thành 01-04-PLAN.md - 4 endpoint vòng đời phiên đăng nhập (register/login/refresh/logout)
+last_updated: "2026-08-23T01:29:22.539Z"
+last_activity: 2026-08-23
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 01 (nen-tang-xac-thuc) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
-Last activity: 2026-08-22
+Last activity: 2026-08-23
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01 P01 | 32min | 2 tasks | 16 files |
 | Phase 01-nen-tang-xac-thuc P02 | 52min | 2 tasks | 13 files |
 | Phase 01-nen-tang-xac-thuc P03 | 35min | 2 tasks | 13 files |
+| Phase 01 P04 | 46 | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,10 @@ Recent decisions affecting current work:
 - Tách IdempotencyTransactionHelper thành bean riêng vì self-invocation trong @Aspect bean không đi qua Spring AOP proxy, khiến @Transactional bị bỏ qua âm thầm nếu gọi method nội bộ cùng class
 - GlobalExceptionHandlerTest phải excludeFilters thêm RateLimitFilter khỏi @WebMvcTest — mọi @Component mới trong common/ có nguy cơ bị @WebMvcTest tự nạp nhầm vào context slice test
 - Test Testcontainers cho idempotency_keys phải insert user thật qua JdbcTemplate trước — FK fk_idem_user ràng buộc user_id, UserRepository thật chưa tồn tại tới Plan 04
+- Thêm @Transactional(noRollbackFor = BusinessException.class) cho login()/refresh() — rollback mặc định xoá bằng chứng login_attempts/revoke cùng lúc với exception, phá vỡ lockout và reuse detection
+- FilterAutoRegistrationConfig tắt Spring Boot tự đăng ký Filter bean vào servlet container — JwtAuthFilter/RateLimitFilter từng chạy 2 lần/request, rate limit tiêu 2 token/request
+- Thêm spring.jackson.property-naming-strategy=SNAKE_CASE toàn cục vào application.yml — JSON field đúng snake_case theo api/00-QUY-UOC-CHUNG.md cho mọi DTO hiện tại/tương lai
+- LogoutRequest suy luận thêm field refreshToken ngoài logout_all_devices — api/01 mục 4 không đặc tả rõ trường mang token, dùng cùng cấu trúc refresh_token như /auth/refresh
 
 ### Pending Todos
 
@@ -105,8 +110,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-22T17:11:41.755Z
-Stopped at: Hoàn thành 01-03-PLAN.md - hạ tầng idempotency + rate limit 3 tầng
+Last session: 2026-08-23T01:29:22.530Z
+Stopped at: Hoàn thành 01-04-PLAN.md - 4 endpoint vòng đời phiên đăng nhập (register/login/refresh/logout)
 Resume file: None
 
 **Planned Phase:** 1 (Nền tảng & Xác thực) — 6 plans — 2026-08-22T15:58:34.737Z

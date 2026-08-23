@@ -39,7 +39,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   4. User đăng nhập sai mật khẩu 5 lần liên tiếp bị khoá 15 phút; refresh token dùng lại sau khi đã dùng một lần sẽ thu hồi toàn bộ phiên
   5. Gọi lại cùng một request POST kèm `Idempotency-Key` trong 24h trả lại đúng kết quả lần đầu, không tạo bản ghi trùng
   6. Gọi endpoint auth quá 5 lần/phút/IP (hoặc endpoint thường quá 120 lần/phút/user) bị chặn kèm header `X-RateLimit-*`
-**Plans**: 6 (3/6 hoàn thành — xem `01-01-SUMMARY.md`, `01-02-SUMMARY.md`, `01-03-SUMMARY.md`)
+**Plans**: 6 (4/6 hoàn thành — xem `01-01-SUMMARY.md`, `01-02-SUMMARY.md`, `01-03-SUMMARY.md`, `01-04-SUMMARY.md`)
 
 ### Phase 2: Ví & Danh mục
 **Goal**: User quản lý đầy đủ ví tiền (kể cả chuyển tiền giữa ví, đối chiếu số dư) và cây danh mục 2 cấp gắn icon, làm nền cho module giao dịch ở phase sau.

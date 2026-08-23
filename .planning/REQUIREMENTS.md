@@ -30,13 +30,18 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Xác thực & tài khoản (AUTH)
 
-- [ ] **AUTH-01**: User đăng ký bằng email/password, server tự băm mật khẩu (bcrypt ≥12 hoặc argon2id), tự tạo ví "Tiền mặt" số dư 0, sinh cặp access/refresh token
-- [ ] **AUTH-02**: User đăng nhập, sai email hoặc sai mật khẩu trả cùng mã lỗi `INVALID_CREDENTIALS` để tránh dò email
-- [ ] **AUTH-03**: Refresh token dùng một lần, phát hiện tái sử dụng thì thu hồi toàn bộ phiên của tài khoản
-- [ ] **AUTH-04**: User đăng xuất thu hồi refresh token hiện tại; đổi mật khẩu/reset thành công thu hồi mọi refresh token khác
+- [x] **AUTH-01
+**: User đăng ký bằng email/password, server tự băm mật khẩu (bcrypt ≥12 hoặc argon2id), tự tạo ví "Tiền mặt" số dư 0, sinh cặp access/refresh token
+- [x] **AUTH-02
+**: User đăng nhập, sai email hoặc sai mật khẩu trả cùng mã lỗi `INVALID_CREDENTIALS` để tránh dò email
+- [x] **AUTH-03
+**: Refresh token dùng một lần, phát hiện tái sử dụng thì thu hồi toàn bộ phiên của tài khoản
+- [x] **AUTH-04
+**: User đăng xuất thu hồi refresh token hiện tại; đổi mật khẩu/reset thành công thu hồi mọi refresh token khác
 - [ ] **AUTH-05**: User xem/sửa hồ sơ (`full_name`, `avatar_url`) — không sửa được `email`, `plan` qua endpoint này
 - [ ] **AUTH-06**: User đổi mật khẩu (yêu cầu mật khẩu cũ đúng) và quên/đặt lại mật khẩu qua email (luôn trả 200 dù email không tồn tại, mã hạn 15 phút dùng 1 lần)
-- [ ] **AUTH-07**: Khoá đăng nhập tài khoản 15 phút sau 5 lần sai liên tiếp; ghi log mọi lần đăng nhập thành công/thất bại kèm IP
+- [x] **AUTH-07
+**: Khoá đăng nhập tài khoản 15 phút sau 5 lần sai liên tiếp; ghi log mọi lần đăng nhập thành công/thất bại kèm IP
 - [x] **AUTH-08
 **: JWT access token (hạn 1 giờ) chỉ chứa id/plan/exp, không chứa dữ liệu nhạy cảm; refresh token (hạn 30 ngày) lưu bản băm trong DB
 
