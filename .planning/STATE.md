@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 01-04-PLAN.md - 4 endpoint vòng đời phiên đăng nhập (register/login/refresh/logout)
-last_updated: "2026-08-23T01:29:22.539Z"
+stopped_at: Hoàn thành 01-05-PLAN.md - 5 endpoint còn lại vòng đời tài khoản (profile/change-password/forgot-password/reset-password) + test AUTH-07
+last_updated: "2026-08-23T01:41:19.124Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 01 (nen-tang-xac-thuc) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-08-23
 
-Progress: [███████░░░] 67%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [███████░░░] 67%
 | Phase 01-nen-tang-xac-thuc P02 | 52min | 2 tasks | 13 files |
 | Phase 01-nen-tang-xac-thuc P03 | 35min | 2 tasks | 13 files |
 | Phase 01 P04 | 46 | 2 tasks | 17 files |
+| Phase 01 P05 | 28 | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - FilterAutoRegistrationConfig tắt Spring Boot tự đăng ký Filter bean vào servlet container — JwtAuthFilter/RateLimitFilter từng chạy 2 lần/request, rate limit tiêu 2 token/request
 - Thêm spring.jackson.property-naming-strategy=SNAKE_CASE toàn cục vào application.yml — JSON field đúng snake_case theo api/00-QUY-UOC-CHUNG.md cho mọi DTO hiện tại/tương lai
 - LogoutRequest suy luận thêm field refreshToken ngoài logout_all_devices — api/01 mục 4 không đặc tả rõ trường mang token, dùng cùng cấu trúc refresh_token như /auth/refresh
+- changePassword thu hoi TOAN BO refresh token (khong co ngoai le phien hien tai) vi request khong mang refresh token nao de giu lai - D-24
+- forgotPassword luon return void ca 2 nhanh, khong throw phan biet - response giong het nhau chong do email (T-05-01)
+- GET /auth/me dung JdbcTemplate native COUNT cho transactions/group_members - Phase 1 chua co repository nghiep vu rieng, ngoai le hop ly cho toi khi module do ton tai
 
 ### Pending Todos
 
@@ -110,8 +114,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T01:29:22.530Z
-Stopped at: Hoàn thành 01-04-PLAN.md - 4 endpoint vòng đời phiên đăng nhập (register/login/refresh/logout)
+Last session: 2026-08-23T01:41:19.117Z
+Stopped at: Hoàn thành 01-05-PLAN.md - 5 endpoint còn lại vòng đời tài khoản (profile/change-password/forgot-password/reset-password) + test AUTH-07
 Resume file: None
 
 **Planned Phase:** 1 (Nền tảng & Xác thực) — 6 plans — 2026-08-22T15:58:34.737Z
