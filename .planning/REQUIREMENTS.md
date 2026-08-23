@@ -53,11 +53,16 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Ví tiền (WALLET)
 
-- [ ] **WALLET-01**: User xem danh sách ví của mình (lọc theo `type`, `only_in_total`, `include_shared`) và tổng tài sản (tách riêng cá nhân/chung, không cộng đôi)
-- [ ] **WALLET-02**: User tạo ví (tên không trùng, `current_balance` = `initial_balance` lúc tạo, không sinh giao dịch nào)
-- [ ] **WALLET-03**: User sửa ví — không sửa được `current_balance` và `type` qua PATCH (chỉ đổi qua giao dịch)
-- [ ] **WALLET-04**: User xoá ví (mềm) — chặn nếu còn giao dịch và không xác nhận `delete_transactions`, không xoá được ví cuối cùng
-- [ ] **WALLET-05**: User sắp xếp lại thứ tự hiển thị ví
+- [x] **WALLET-01
+**: User xem danh sách ví của mình (lọc theo `type`, `only_in_total`, `include_shared`) và tổng tài sản (tách riêng cá nhân/chung, không cộng đôi)
+- [x] **WALLET-02
+**: User tạo ví (tên không trùng, `current_balance` = `initial_balance` lúc tạo, không sinh giao dịch nào)
+- [x] **WALLET-03
+**: User sửa ví — không sửa được `current_balance` và `type` qua PATCH (chỉ đổi qua giao dịch)
+- [x] **WALLET-04
+**: User xoá ví (mềm) — chặn nếu còn giao dịch và không xác nhận `delete_transactions`, không xoá được ví cuối cùng
+- [x] **WALLET-05
+**: User sắp xếp lại thứ tự hiển thị ví
 - [ ] **WALLET-06**: User chuyển tiền giữa 2 ví trong 1 giao dịch DB — tạo đúng một bản ghi `type=transfer` với cả `wallet_id` và `destination_wallet_id`, mặc định cho phép chuyển dù không đủ số dư trừ khi `fail_if_insufficient=true`
 - [ ] **WALLET-07**: User/hệ thống đối chiếu số dư ví **thủ công qua API** (`POST /wallets/{id}/reconcile`) theo công thức `initial_balance + thu - chi - chuyển đi + chuyển đến`, ghi log khi lệch. **Job tự động hằng ngày bị loại khỏi phạm vi** — xem D-25 ở CONTEXT Phase 2: đồ án không chạy 24/7 nên job định kỳ gần như không bao giờ nổ; endpoint vẫn giữ vì test WALLET-08 dùng nó để chứng minh điều chỉnh số dư không phá sổ sách
 - [ ] **WALLET-08**: User điều chỉnh số dư ví theo kiểm kê thực tế — máy chủ tính phần chênh và tạo MỘT giao dịch bù (`source=adjustment`, danh mục hệ thống "Cập nhật số dư", chiều suy từ dấu của chênh lệch), KHÔNG ghi đè `current_balance`; chênh bằng 0 thì không tạo giao dịch; người dùng chọn `counts_in_report` để quyết định khoản đó có vào báo cáo thu-chi hay không

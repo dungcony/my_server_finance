@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 02-01-PLAN.md - thay WalletMinimal bằng entity Wallet đầy đủ, AuthService+5 test Phase 1 chuyển sang WalletRepository, 35/35 test xanh
-last_updated: "2026-08-23T09:55:44.773Z"
+stopped_at: Hoàn thành 02-02-PLAN.md - WalletController CRUD 7 endpoint, 11 test qua Testcontainers, sửa bug D-27 dùng sai cột group_members.status thành is_active
+last_updated: "2026-08-23T10:11:52.614Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 02 (vi-danh-muc) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-23
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [███████░░░] 70%
 | Phase 01 P05 | 28 | 2 tasks | 14 files |
 | Phase 01 P06 | 24 | 2 tasks | 5 files |
 | Phase 02-vi-danh-muc P01 | 7min | 2 tasks | 8 files |
+| Phase 02 P02 | 40min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,9 @@ Recent decisions affecting current work:
 - Sua JwtServiceTest flaky bang cach dao bit byte GIUA mang signature da giai ma base64url thay vi doi ky tu cuoi chuoi ma hoa (co the roi vao padding, la no-op)
 - Copy nguyên trạng WalletMinimal sang Wallet, giữ columnDefinition=bpchar(7); không thêm field mới ở plan 02-01
 - WalletRepository chỉ giữ 1 method tối thiểu ở plan 02-01, mở rộng CRUD/quyền vào cùng file ở plan 02-02, không tạo repository mới
+- Điều kiện quyền D-27 dùng group_members.is_active (BOOLEAN), KHÔNG phải status = 'active' — cột status không tồn tại trong db/migration/V1__nen_tang.sql, PLAN/CONTEXT Phase 2 mô tả sai theo mẫu chưa đối chiếu schema thật
+- DELETE /wallets/{id} dùng findByIdForUserIncludingDeleted (không lọc is_deleted) để phân biệt 404 với no-op 200 idempotent theo CORE-06
+- @WebMvcTest slice test (GlobalExceptionHandlerTest) phải liệt kê tường minh mọi Controller nghiệp vụ mới vào excludeFilters, nếu không Spring component-scan kéo controller vào context thiếu Service bean
 
 ### Pending Todos
 
@@ -122,8 +126,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T09:55:44.760Z
-Stopped at: Hoàn thành 02-01-PLAN.md - thay WalletMinimal bằng entity Wallet đầy đủ, AuthService+5 test Phase 1 chuyển sang WalletRepository, 35/35 test xanh
+Last session: 2026-08-23T10:11:52.607Z
+Stopped at: Hoàn thành 02-02-PLAN.md - WalletController CRUD 7 endpoint, 11 test qua Testcontainers, sửa bug D-27 dùng sai cột group_members.status thành is_active
 Resume file: None
 
 **Planned Phase:** 02 (vi-danh-muc) — 4 plans — 2026-08-23T09:47:04.225Z
