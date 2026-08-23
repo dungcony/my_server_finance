@@ -5,11 +5,14 @@ import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.wallet.dto.CreateWalletRequest;
 import com.datn.financeapp.wallet.dto.ReorderWalletsRequest;
+import com.datn.financeapp.wallet.dto.TransferRequest;
+import com.datn.financeapp.wallet.dto.TransferResponse;
 import com.datn.financeapp.wallet.dto.UpdateWalletRequest;
 import com.datn.financeapp.wallet.dto.WalletDetailResponse;
 import com.datn.financeapp.wallet.dto.WalletResponse;
 import com.datn.financeapp.wallet.dto.WalletSummaryResponse;
 import com.datn.financeapp.wallet.service.WalletService;
+import com.datn.financeapp.wallet.service.WalletTransferService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -27,12 +30,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 7 endpoint CRUD ví (WALLET-01..05, api/02-VI.md mục 1-7). {@code /wallets/transfer},
- * {@code /wallets/{id}/adjust-balance}, {@code /wallets/{id}/reconcile} thuộc plan 02-04.
+ * 7 endpoint CRUD ví (WALLET-01..05, api/02-VI.md mục 1-7) + chuyển tiền/điều chỉnh số
+ * dư/đối chiếu (WALLET-06..08, api/02-VI.md mục 8-10, plan 02-04).
  *
- * Chỉ {@code POST /wallets} gắn annotation chặn ghi trùng (D-11: chỉ POST-tạo-mới).
- * PATCH/DELETE/reorder KHÔNG gắn — reorder và update là hành động ghi đè, delete tự idempotent
- * theo nghiệp vụ (CORE-06), không cần cơ chế Idempotency-Key.
+ * {@code POST /wallets}, {@code POST /wallets/transfer}, {@code POST /wallets/{id}/adjust-balance}
+ * gắn annotation chặn ghi trùng (D-11: chỉ POST-tạo-mới). PATCH/DELETE/reorder/reconcile KHÔNG
+ * gắn — reorder và update là hành động ghi đè, delete tự idempotent theo nghiệp vụ (CORE-06),
+ * reconcile là POST-hành-động dò lỗi phải luôn tính lại (tương tự lý do D-11 loại /auth/login).
  */
 @RestController
 @RequestMapping("/wallets")
@@ -40,6 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WalletController {
 
     private final WalletService walletService;
+    private final WalletTransferService walletTransferService;
 
     @GetMapping
     public ApiResponse<List<WalletResponse>> list(
@@ -91,5 +96,13 @@ public class WalletController {
         UUID userId = SecurityContextUtil.currentUserId();
         walletService.reorder(userId, req);
         return ApiResponse.of(null);
+    }
+
+    @PostMapping("/transfer")
+    @Idempotent
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<TransferResponse> transfer(@Valid @RequestBody TransferRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(walletTransferService.transfer(userId, req));
     }
 }

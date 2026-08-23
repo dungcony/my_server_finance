@@ -1,10 +1,12 @@
 package com.datn.financeapp.wallet.repository;
 
 import com.datn.financeapp.wallet.entity.Wallet;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -66,4 +68,24 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Modifying
     @Query("UPDATE Wallet w SET w.sortOrder = :order WHERE w.id = :id AND w.userId = :currentUser")
     int updateSortOrder(@Param("id") UUID id, @Param("order") int order, @Param("currentUser") UUID currentUser);
+
+    /**
+     * Khoá bi quan (SELECT ... FOR UPDATE) — dùng trước khi đọc/ghi {@code current_balance} để
+     * tránh lost-update khi có request đồng thời trên cùng ví (transfer/adjust-balance). Mẫu
+     * theo {@code RefreshTokenRepository.findActiveByTokenHashForUpdate}. KHÔNG kiểm tra quyền
+     * D-27 ở đây — caller phải tự kiểm tra {@code wallet.getUserId()} sau khi lock, vì 2 ví
+     * trong 1 lần transfer có thể thuộc 2 chủ sở hữu khác nhau và ta cần phân biệt rõ ví nào
+     * sai quyền để trả đúng lỗi.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Wallet w WHERE w.id = :id AND NOT w.isDeleted")
+    Optional<Wallet> findByIdForUpdate(@Param("id") UUID id);
+
+    /**
+     * Atomic UPDATE số dư — KHÔNG load-modify-save (CLAUDE.md backend mục 3). {@code delta} có
+     * thể âm (trừ) hoặc dương (cộng).
+     */
+    @Modifying
+    @Query("UPDATE Wallet w SET w.currentBalance = w.currentBalance + :delta WHERE w.id = :id")
+    int adjustBalance(@Param("id") UUID id, @Param("delta") long delta);
 }
