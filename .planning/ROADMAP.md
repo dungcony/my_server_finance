@@ -82,12 +82,16 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   - `@EntityGraph`/`JOIN FETCH` hoặc DTO projection để tránh N+1 khi list giao dịch kèm category/wallet/icon
   - Index `(user_id,date)`, `(wallet_id,date)`, `(category_id,date)` — verify đã có trong migration thật
   - `amount` luôn kiểu `Long`, không bao giờ `Double`/`float`
+  - **Cho phép ngày tương lai (quyết định 23/08/2026):** bỏ hẳn luật chặn `date > hôm nay`. Giao dịch tương lai ghi thật vào `transactions` ngay và cộng trừ `wallets.current_balance` ngay — không trạng thái chờ, không job kích hoạt. Cột `current_balance` do đó mang nghĩa "số dư đã tính hết mọi giao dịch đã ghi"
+  - **Số dư theo mốc thời gian tính bằng trừ ngược:** `số dư tại T = current_balance − SUM(ảnh hưởng của giao dịch date > T)`. Không cộng xuôi từ `initial_balance` — trừ ngược quét ít dòng hơn và giữ được hai nguồn độc lập cho phép đối chiếu WALLET-08 (không phải sửa WALLET-08)
+  - **Cột CSDL ≠ trường API — điểm dễ sai nhất của phase:** trường API `current_balance` là tiền thật đến hết hôm nay (đã trừ ngược); trường `projected_balance` mới bằng đúng cột CSDL và chỉ trả khi ví **có** giao dịch tương lai. Đừng map thẳng entity sang DTO. Chi tiết ở `db/README.md` mục "Suy ra số dư ví theo mốc thời gian"
 **Success Criteria** (what must be TRUE):
-  1. User tạo giao dịch expense/income/transfer đúng validate theo `type` (category bắt buộc/rỗng, destination bắt buộc/rỗng), không cho ngày tương lai, số dư ví cập nhật đúng trong cùng 1 DB transaction
+  1. User tạo giao dịch expense/income/transfer đúng validate theo `type` (category bắt buộc/rỗng, destination bắt buộc/rỗng), **ngày tương lai được chấp nhận**, số dư ví cập nhật đúng trong cùng 1 DB transaction
   2. User sửa (PUT) một giao dịch đổi cả số tiền lẫn ví — số dư ví cũ và ví mới đều đúng tuyệt đối, không có trường hợp cộng/trừ chênh lệch sai
   3. User xoá (mềm) một giao dịch hoàn tác đúng ảnh hưởng lên số dư ví; gọi xoá lại (idempotent) vẫn trả 200
   4. User tạo bulk tối đa 50 giao dịch, dòng lỗi bị bỏ qua và báo trong `row_errors` mà không từ chối toàn bộ lô
   5. Lọc/xem tổng `summary` theo danh mục cha tự động cộng gộp giao dịch của mọi danh mục con, loại trừ giao dịch `transfer`
+  6. Ví có giao dịch ngày tương lai trả về đúng hai con số: `current_balance` (tiền thật đến hết hôm nay) và `projected_balance` (đã gồm tương lai); ví không có giao dịch tương lai thì **không** trả `projected_balance`. Sang ngày khoản đó đến hạn, `current_balance` tự nhảy đúng mà không cần job nào chạy
 **Plans**: TBD
 
 ### Phase 4: Nghiệp vụ phái sinh & Báo cáo
