@@ -60,7 +60,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 **Success Criteria** (what must be TRUE):
   1. User tạo/sửa/xoá (mềm)/sắp xếp ví; không sửa được `current_balance`/`type` qua PATCH; không xoá được ví cuối cùng hoặc ví còn giao dịch nếu chưa xác nhận `delete_transactions`
   2. User chuyển tiền giữa 2 ví trong một giao dịch DB tạo đúng một bản ghi `type=transfer`, mặc định cho phép chuyển dù thiếu số dư trừ khi `fail_if_insufficient=true`
-  3. Gọi API đối chiếu số dư ví trả đúng kết quả theo công thức `initial_balance + thu - chi - chuyển đi + chuyển đến`, ghi log khi lệch
+  3. Gọi API đối chiếu số dư ví trả đúng kết quả theo công thức `initial_balance + thu - chi - chuyển đi + chuyển đến`, ghi log khi lệch (chỉ endpoint thủ công — job tự động hằng ngày loại khỏi phạm vi theo D-25)
   4. User tạo danh mục cha/con tối đa 2 tầng, con cùng `type` với cha; không xoá được danh mục còn con/giao dịch/ngân sách đang dùng, danh mục hệ thống không sửa/xoá được
   5. User xem danh sách nhóm lớn và kho icon lọc theo `icon_group`/`search`
   6. User nhập số dư thực tế khi kiểm kê ví — hệ thống tạo đúng một giao dịch bù phần chênh (`source=adjustment`) chứ không ghi đè `current_balance`, phép đối chiếu ở tiêu chí 3 vẫn đúng sau khi điều chỉnh; chênh bằng 0 thì không tạo giao dịch nào
