@@ -232,8 +232,7 @@ public class CategoryService {
             }
             if (newParentId != null) {
                 Category newParent = categoryRepository
-                        .findById(newParentId)
-                        .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                        .findByIdAndVisibleToUser(newParentId, userId)
                         .orElseThrow(() -> new BusinessException(
                                 "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục cha."));
                 if (newParent.getParentCategoryId() != null) {

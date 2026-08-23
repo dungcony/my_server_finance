@@ -202,6 +202,23 @@ class CategoryAccessControlIntegrationTest {
     }
 
     @Test
+    void userA_patchOwnCategoryParentToUserBPrivateCategory_returns404NotFound() throws Exception {
+        String tokenA = registerAndGetAccessToken("nguoi.a.cat.patch.parent@example.com");
+        String tokenB = registerAndGetAccessToken("nguoi.b.cat.patch.parent@example.com");
+        String parentOfB = createCategory(tokenB, "Danh Mục Cha Riêng Của B Patch");
+        String categoryOfA = createCategory(tokenA, "Danh Mục Của A Patch Parent");
+
+        Map<String, Object> body = Map.of("parent_category_id", parentOfB);
+
+        mockMvc.perform(patch("/categories/" + categoryOfA)
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
+    @Test
     void bothUsers_seeSystemCategory_returns200() throws Exception {
         String tokenA = registerAndGetAccessToken("nguoi.a.cat.system@example.com");
         String tokenB = registerAndGetAccessToken("nguoi.b.cat.system@example.com");
