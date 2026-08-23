@@ -44,11 +44,30 @@ class JwtServiceTest {
     @Test
     void tamperedSignature_throwsSignatureException() {
         String token = jwtService.generateAccessToken(UUID.randomUUID(), "free");
-        // Sửa 1 ký tự cuối cùng của chữ ký (phần sau dấu chấm cuối) để phá vỡ signature
-        String tampered = token.substring(0, token.length() - 1)
-                + (token.charAt(token.length() - 1) == 'A' ? 'B' : 'A');
+        String tampered = flipMiddleSignatureByte(token);
 
         assertThrows(SignatureException.class, () -> jwtService.parseAndValidate(tampered));
+    }
+
+    /**
+     * Sửa chữ ký JWT theo cách KHÔNG THỂ là no-op — giải mã base64url phần chữ ký (segment thứ 3
+     * sau dấu chấm cuối) thành mảng byte thật, đảo bit của byte ở GIỮA mảng rồi mã hoá lại. Cách
+     * cũ (đổi ký tự cuối cùng của chuỗi base64url) có xác suất nhỏ rơi đúng vào phần đệm
+     * (padding) không ảnh hưởng byte giải mã, khiến verify vẫn qua và test flaky khi chạy chung
+     * full suite (không tái hiện khi chạy riêng) — xem deferred-items.md Phase 01.
+     */
+    private String flipMiddleSignatureByte(String token) {
+        int lastDot = token.lastIndexOf('.');
+        String headerAndPayload = token.substring(0, lastDot);
+        String signatureSegment = token.substring(lastDot + 1);
+
+        byte[] signatureBytes = Base64.getUrlDecoder().decode(signatureSegment);
+        int middleIndex = signatureBytes.length / 2;
+        signatureBytes[middleIndex] ^= 0xFF;
+
+        String tamperedSignatureSegment =
+                Base64.getUrlEncoder().withoutPadding().encodeToString(signatureBytes);
+        return headerAndPayload + "." + tamperedSignatureSegment;
     }
 
     @Test
