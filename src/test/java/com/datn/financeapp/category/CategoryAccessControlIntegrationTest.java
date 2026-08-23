@@ -181,6 +181,27 @@ class CategoryAccessControlIntegrationTest {
     }
 
     @Test
+    void userA_createChildUnderUserBPrivateParent_returns404NotFound() throws Exception {
+        String tokenA = registerAndGetAccessToken("nguoi.a.cat.create.child@example.com");
+        String tokenB = registerAndGetAccessToken("nguoi.b.cat.create.child@example.com");
+        String parentOfB = createCategory(tokenB, "Danh Mục Cha Riêng Của B");
+
+        Map<String, Object> body = Map.of(
+                "name", "Con Của A Dưới Cha B",
+                "type", "expense",
+                "icon_id", findIconId("khac"),
+                "color", "#3d6b7d",
+                "parent_category_id", parentOfB);
+
+        mockMvc.perform(post("/categories")
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
+    @Test
     void bothUsers_seeSystemCategory_returns200() throws Exception {
         String tokenA = registerAndGetAccessToken("nguoi.a.cat.system@example.com");
         String tokenB = registerAndGetAccessToken("nguoi.b.cat.system@example.com");

@@ -121,8 +121,7 @@ public class CategoryService {
 
         if (req.parentCategoryId() != null) {
             parent = categoryRepository
-                    .findById(req.parentCategoryId())
-                    .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
+                    .findByIdAndVisibleToUser(req.parentCategoryId(), userId)
                     .orElseThrow(() -> new BusinessException(
                             "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục cha."));
 
