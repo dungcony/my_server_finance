@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-08-23T15:53:04.742Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-08-23T16:19:06.106Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 14
-  completed_plans: 11
-  percent: 79
+  completed_plans: 12
+  percent: 86
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 03 (giao-dich) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-23
 
-Progress: [████████░░] 79%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 79%
 | Phase 02-vi-danh-muc P03 | 35min | 2 tasks | 19 files |
 | Phase 02-vi-danh-muc P04 | 55min | 2 tasks | 11 files |
 | Phase 03-giao-dich P01 | 14min | 2 tasks | 10 files |
+| Phase 03-giao-dich P02 | 45min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,9 @@ Recent decisions affecting current work:
 - TransactionWriter đọc số dư mới bằng native SQL (findCurrentBalanceNative) thay vì JPQL findByIdForUpdate - tránh Hibernate identity map trả instance cache cũ khi caller đã load ví cùng transaction truoc do
 - TransactionWriter là @Component (bean hạ tầng D-31), không phải @Service - một method @Transactional duy nhất, dùng chung cho TransactionService/WalletTransferService/Phase 4
 - @JsonInclude(NON_NULL) đặt trực tiếp trên WalletResponse/WalletDetailResponse (không cấu hình Jackson toàn cục) để bỏ hẳn projected_balance khi null theo D-37
+- DESTINATION_WALLET_NOT_ALLOWED là mã lỗi mới (400), đối xứng CATEGORY_NOT_ALLOWED - vá lỗ hổng tài liệu chưa từng mô tả ca chi/thu kèm ví đích dù ck_txn_shape (V2) đã chặn cứng ở CSDL
+- update()/delete() giao dịch gọi trực tiếp TransactionRepository.save() + WalletRepository.adjustBalance() trong CÙNG một @Transactional, không qua TransactionWriter - writer chỉ INSERT bản ghi mới, không phù hợp sửa tại chỗ
+- validateShape() để package-private (không private, không public) trong TransactionService - chuẩn bị điểm nối cho TransactionBulkService (plan 03-04) gọi lại đúng logic validate từng dòng bulk
 
 ### Pending Todos
 
@@ -138,8 +142,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T15:53:04.734Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-08-23T16:19:06.098Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (giao-dich) — 4 plans — 2026-08-23T15:19:49.096Z
