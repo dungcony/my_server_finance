@@ -64,7 +64,11 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   4. User tạo danh mục cha/con tối đa 2 tầng, con cùng `type` với cha; không xoá được danh mục còn con/giao dịch/ngân sách đang dùng, danh mục hệ thống không sửa/xoá được
   5. User xem danh sách nhóm lớn và kho icon lọc theo `icon_group`/`search`
   6. User nhập số dư thực tế khi kiểm kê ví — hệ thống tạo đúng một giao dịch bù phần chênh (`source=adjustment`) chứ không ghi đè `current_balance`, phép đối chiếu ở tiêu chí 3 vẫn đúng sau khi điều chỉnh; chênh bằng 0 thì không tạo giao dịch nào
-**Plans**: TBD
+**Plans**:
+- [x] 02-01-PLAN.md — Thay thế WalletMinimal bằng entity Wallet đầy đủ (D-26)
+- [x] 02-02-PLAN.md — WalletRepository/WalletService/WalletController — CRUD ví (WALLET-01..05)
+- [x] 02-03-PLAN.md — CategoryController CRUD 2 cấp, fn_category_tree (CAT-01..06)
+- [x] 02-04-PLAN.md — WalletTransferService — chuyển tiền/điều chỉnh số dư/đối chiếu (WALLET-06..08)
 
 ### Phase 3: Giao dịch
 **Goal**: User ghi nhận, sửa, xoá, nhân bản giao dịch expense/income/transfer với số dư ví luôn chính xác tuyệt đối kể cả trong các thao tác sửa/xoá phức tạp — đây là module lõi mà mọi phase sau phụ thuộc.

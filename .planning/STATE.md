@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Hoan thanh 02-03-PLAN.md - CategoryController CRUD 8 endpoint, fn_category_tree boc thanh repository method, 12 test qua Testcontainers (cay 2 cap D-28 muc 4 + quyen truy cap 404)
-last_updated: "2026-08-23T10:22:59.882Z"
+status: verifying
+stopped_at: Hoàn thành 02-04-PLAN.md - chuyển tiền/điều chỉnh số dư/đối chiếu (WALLET-06..08), Phase 2 hoàn tất 4/4 plan
+last_updated: "2026-08-23T10:38:09.774Z"
 last_activity: 2026-08-23
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 
 Phase: 02 (vi-danh-muc) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-23
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [█████████░] 90%
 | Phase 02-vi-danh-muc P01 | 7min | 2 tasks | 8 files |
 | Phase 02 P02 | 40min | 2 tasks | 13 files |
 | Phase 02-vi-danh-muc P03 | 35min | 2 tasks | 19 files |
+| Phase 02-vi-danh-muc P04 | 55min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Recent decisions affecting current work:
 - @WebMvcTest slice test (GlobalExceptionHandlerTest) phải liệt kê tường minh mọi Controller nghiệp vụ mới vào excludeFilters, nếu không Spring component-scan kéo controller vào context thiếu Service bean
 - Danh mục KHÔNG áp dụng vế nhóm gia đình của D-27 - categories.user_id không liên kết group_id trong schema V1 thật (khác wallets); danh mục hệ thống user_id IS NULL luôn hiển thị cho mọi người theo api/03-DANH-MUC.md muc 9
 - has_budget trong CategoryDetailResponse.stats va CATEGORY_HAS_BUDGET luon bo qua o Phase 2 - bang budgets chua co service, TODO Phase 4 noi that
+- Tách WalletTransferService riêng khỏi WalletService để tránh transaction self-invocation - nhóm transfer/adjust-balance/reconcile đều thao tác trực tiếp current_balance qua lock + atomic UPDATE
+- Khoá 2 ví theo UUID.compareTo() cố định (nhỏ trước, lớn sau) bất kể vai trò nguồn/đích trước khi SELECT FOR UPDATE - chống deadlock A->B/B->A đồng thời
+- POST /wallets/{id}/reconcile khong gan @Idempotent - la hanh dong do loi phai luon tinh lai, khong duoc cache ket qua cu
 
 ### Pending Todos
 
@@ -129,8 +133,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-23T10:22:59.873Z
-Stopped at: Hoan thanh 02-03-PLAN.md - CategoryController CRUD 8 endpoint, fn_category_tree boc thanh repository method, 12 test qua Testcontainers (cay 2 cap D-28 muc 4 + quyen truy cap 404)
+Last session: 2026-08-23T10:38:09.764Z
+Stopped at: Hoàn thành 02-04-PLAN.md - chuyển tiền/điều chỉnh số dư/đối chiếu (WALLET-06..08), Phase 2 hoàn tất 4/4 plan
 Resume file: None
 
 **Planned Phase:** 02 (vi-danh-muc) — 4 plans — 2026-08-23T09:47:04.225Z
