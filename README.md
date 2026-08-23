@@ -75,3 +75,27 @@ src/main/java/com/datn/financeapp/
 ```
 
 Migration Flyway dùng chung với toàn dự án tại `../../db/migration/` (thư mục gốc DATN) — **không copy** vào đây.
+
+## Trạng thái Phase 1 (Nền tảng & Xác thực)
+
+**Hoàn thành.** 9/9 endpoint auth theo `api/01-XAC-THUC.md` hoạt động qua HTTP thật:
+
+- `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` — vòng đời phiên đăng nhập, JWT access token 1h + refresh token rotation/reuse detection
+- `GET /auth/me`, `PATCH /auth/me` — xem/sửa hồ sơ kèm thống kê ví/giao dịch/nhóm
+- `POST /auth/change-password`, `/auth/forgot-password`, `/auth/reset-password` — đổi/quên/đặt lại mật khẩu
+
+Hạ tầng dùng chung cho mọi phase sau đã sẵn sàng, không cần dựng lại:
+
+- **Idempotency** (`common/idempotency/`): annotation `@Idempotent` + AOP, bảng `idempotency_keys`, dọn bản ghi quá 24h bằng job `@Scheduled`
+- **Rate limit** (`common/ratelimit/`): Bucket4j + Caffeine 3 tầng (`auth` 5/phút/IP, `ai` 30/phút/user, còn lại 120/phút/user), header `X-RateLimit-*` trên mọi response
+- **Response wrapper** (`common/response/`, `common/exception/`): khung `{success, data}`/`{success, error}` thống nhất, `GlobalExceptionHandler` gom mọi lỗi
+
+Chạy toàn bộ test suite (cần Docker Desktop đang chạy, dùng Testcontainers):
+
+```bash
+mvn test
+```
+
+32 test hiện tại (unit + integration Testcontainers + 1 test end-to-end HTTP thật xác nhận Auth + Idempotency + Rate limit phối hợp đúng cùng nhau) đều xanh khi chạy liên tục 1 lần, không filter.
+
+Xem `.planning/ROADMAP.md` Phase 2 cho bước tiếp theo (Ví & Danh mục).
