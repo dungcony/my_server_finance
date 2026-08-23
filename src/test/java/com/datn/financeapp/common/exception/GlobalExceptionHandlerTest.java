@@ -39,7 +39,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                         // cùng lý do loại trừ với AuthController phía trên.
                         com.datn.financeapp.wallet.controller.WalletController.class,
                         // Phase 2 plan 02-03: CategoryController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.category.controller.CategoryController.class
+                        com.datn.financeapp.category.controller.CategoryController.class,
+                        // Phase 3 plan 03-02: TransactionController mới thêm — cùng lý do loại trừ.
+                        com.datn.financeapp.transaction.controller.TransactionController.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser

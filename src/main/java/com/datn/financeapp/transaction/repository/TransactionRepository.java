@@ -19,6 +19,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     Optional<Transaction> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
 
     /**
+     * Dùng cho DELETE idempotent (CORE-06): tìm giao dịch theo id + quyền D-27 KHÔNG lọc
+     * {@code is_deleted} — cho phép service phân biệt "không tồn tại/không có quyền" (404) với
+     * "đã xoá mềm rồi, gọi lại vẫn 200" (không phải lỗi).
+     */
+    Optional<Transaction> findByIdAndUserId(UUID id, UUID userId);
+
+    /**
      * Dùng cho D-32 (plan sau): chặn xoá giao dịch đang gắn với một khoản trả nợ
      * ({@code debt_payments.transaction_id}, {@code ON DELETE RESTRICT} + {@code UNIQUE} —
      * db/migration/V4__so_no_muc_tieu.sql). Viết sẵn ở đây vì thuộc điểm nối của entity, dùng
