@@ -3,7 +3,10 @@ package com.datn.financeapp.wallet.controller;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.wallet.dto.AdjustBalanceRequest;
+import com.datn.financeapp.wallet.dto.AdjustBalanceResponse;
 import com.datn.financeapp.wallet.dto.CreateWalletRequest;
+import com.datn.financeapp.wallet.dto.ReconcileResponse;
 import com.datn.financeapp.wallet.dto.ReorderWalletsRequest;
 import com.datn.financeapp.wallet.dto.TransferRequest;
 import com.datn.financeapp.wallet.dto.TransferResponse;
@@ -104,5 +107,21 @@ public class WalletController {
     public ApiResponse<TransferResponse> transfer(@Valid @RequestBody TransferRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(walletTransferService.transfer(userId, req));
+    }
+
+    @PostMapping("/{id}/adjust-balance")
+    @Idempotent
+    public ApiResponse<AdjustBalanceResponse> adjustBalance(
+            @PathVariable UUID id, @Valid @RequestBody AdjustBalanceRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(walletTransferService.adjustBalance(userId, id, req));
+    }
+
+    @PostMapping("/{id}/reconcile")
+    public ApiResponse<ReconcileResponse> reconcile(
+            @PathVariable UUID id,
+            @RequestParam(name = "auto_fix", required = false, defaultValue = "false") boolean autoFix) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(walletTransferService.reconcile(userId, id, autoFix));
     }
 }
