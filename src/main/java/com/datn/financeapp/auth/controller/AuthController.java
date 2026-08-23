@@ -1,18 +1,28 @@
 package com.datn.financeapp.auth.controller;
 
 import com.datn.financeapp.auth.dto.AuthResponse;
+import com.datn.financeapp.auth.dto.ChangePasswordRequest;
+import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.LoginRequest;
 import com.datn.financeapp.auth.dto.LogoutRequest;
 import com.datn.financeapp.auth.dto.RefreshRequest;
 import com.datn.financeapp.auth.dto.RefreshResponse;
 import com.datn.financeapp.auth.dto.RegisterRequest;
+import com.datn.financeapp.auth.dto.ResetPasswordRequest;
+import com.datn.financeapp.auth.dto.UpdateProfileRequest;
+import com.datn.financeapp.auth.dto.UserDetailDto;
+import com.datn.financeapp.auth.dto.UserSummaryDto;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.ClientIpResolver;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,6 +68,39 @@ public class AuthController {
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestBody LogoutRequest req) {
         authService.logout(req.refreshToken(), req.logoutAllDevices());
+        return ApiResponse.of(null);
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<UserDetailDto> me() {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(authService.getMe(userId));
+    }
+
+    @PatchMapping("/me")
+    public ApiResponse<UserSummaryDto> updateProfile(@Valid @RequestBody UpdateProfileRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(authService.updateProfile(userId, req));
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        authService.changePassword(userId, req);
+        return ApiResponse.of(null);
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        // AuthService.forgotPassword không throw ở bất kỳ nhánh nào — response LUÔN 200 giống
+        // hệt nhau dù email tồn tại hay không (T-05-01, chống dò danh sách người dùng).
+        authService.forgotPassword(req);
+        return ApiResponse.of(null);
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        authService.resetPassword(req);
         return ApiResponse.of(null);
     }
 }
