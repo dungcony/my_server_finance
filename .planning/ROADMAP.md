@@ -94,7 +94,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
   6. Ví có giao dịch ngày tương lai trả về đúng hai con số: `current_balance` (tiền thật đến hết hôm nay) và `projected_balance` (đã gồm tương lai); ví không có giao dịch tương lai thì **không** trả `projected_balance`. Sang ngày khoản đó đến hạn, `current_balance` tự nhảy đúng mà không cần job nào chạy
 **Plans:** 4 plans
 Plans:
-- [ ] 03-01-PLAN.md — Gộp đường ghi giao dịch (D-30): entity Transaction + TransactionWriter, sửa WalletTransferService, sửa 2 trường số dư ví (TXN-09)
+- [x] 03-01-PLAN.md — Gộp đường ghi giao dịch (D-30): entity Transaction + TransactionWriter, sửa WalletTransferService, sửa 2 trường số dư ví (TXN-09)
 - [ ] 03-02-PLAN.md — CRUD giao dịch đơn: tạo/sửa 3 bước/xoá chặn debt/nhân bản (TXN-03, TXN-05, TXN-06, TXN-07)
 - [ ] 03-03-PLAN.md — Danh sách/theo ngày/chi tiết, cộng gộp danh mục con (TXN-01, TXN-02, TXN-08)
 - [ ] 03-04-PLAN.md — Tạo hàng loạt, mỗi dòng 1 DB transaction, 1 Idempotency-Key cho cả lô (TXN-04)

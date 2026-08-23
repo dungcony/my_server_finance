@@ -95,7 +95,8 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 - [ ] **TXN-06**: User xoá giao dịch (mềm) — hoàn tác ảnh hưởng số dư ví trước; nếu gắn với khoản trả nợ thì cập nhật lại `paid_amount` liên quan
 - [ ] **TXN-07**: User nhân bản giao dịch sang hôm nay, có thể ghi đè ngày/số tiền
 - [ ] **TXN-08**: Mọi thống kê/lọc theo danh mục cha phải cộng gộp cả giao dịch của mọi danh mục con (dùng một hàm dùng chung, không lặp điều kiện lọc ở nhiều nơi)
-- [ ] **TXN-09**: API ví trả đúng hai con số số dư — `current_balance` (tiền thật đến hết hôm nay, tính bằng `cột current_balance − SUM(ảnh hưởng của giao dịch date > hôm nay)`) và `projected_balance` (bằng đúng cột CSDL, **chỉ trả khi ví có giao dịch tương lai**). Sửa lại `WalletResponse`/`WalletDetailResponse` của Phase 2 vốn đang map thẳng cột ra trường API
+- [x] **TXN-09
+**: API ví trả đúng hai con số số dư — `current_balance` (tiền thật đến hết hôm nay, tính bằng `cột current_balance − SUM(ảnh hưởng của giao dịch date > hôm nay)`) và `projected_balance` (bằng đúng cột CSDL, **chỉ trả khi ví có giao dịch tương lai**). Sửa lại `WalletResponse`/`WalletDetailResponse` của Phase 2 vốn đang map thẳng cột ra trường API
 
 ### Ngân sách (BUDGET)
 
