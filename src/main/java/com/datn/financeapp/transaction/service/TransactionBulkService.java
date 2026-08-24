@@ -8,6 +8,7 @@ import com.datn.financeapp.transaction.dto.CreateTransactionRequest;
 import com.datn.financeapp.transaction.dto.TransactionListItemResponse;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.transaction.dto.BulkCreateTransactionRequest;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -39,6 +40,7 @@ public class TransactionBulkService {
     private final TransactionWriter transactionWriter;
     private final TransactionService transactionService;
     private final CategoryRepository categoryRepository;
+    private final WalletRepository walletRepository;
 
     /**
      * Xử lý tối đa {@value #MAX_ROWS} dòng. Vượt hạn mức -> {@code TOO_MANY_ROWS} 400 NGAY ĐẦU,
@@ -103,6 +105,11 @@ public class TransactionBulkService {
                     "INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền phải lớn hơn 0.");
         }
 
+        requireWalletAccess(item.walletId(), userId);
+        if (item.destinationWalletId() != null) {
+            requireWalletAccess(item.destinationWalletId(), userId);
+        }
+
         if (item.categoryId() != null) {
             Category category = categoryRepository
                     .findByIdAndVisibleToUser(item.categoryId(), userId)
@@ -133,5 +140,25 @@ public class TransactionBulkService {
                 null,
                 item.draftId(),
                 item.receiptUrl()));
+    }
+
+    /**
+     * T-03-12 — mỗi dòng bulk phải kiểm quyền ví y hệt {@code TransactionService.create()}, không
+     * có đường tắt vì "đã ở trong lô". Điều kiện quyền nằm NGAY TRONG câu SQL của
+     * {@link WalletRepository#findByIdForUser} (CLAUDE.md §7), không lọc ở tầng Java. Không có
+     * quyền -> {@code NOT_FOUND} 404 chứ không phải 403, để không lộ việc ví có tồn tại hay
+     * không.
+     *
+     * <p>Khác {@code TransactionService.lockWalletsInOrder()}: ở đây KHÔNG khoá bi quan
+     * {@code FOR UPDATE}. Mỗi dòng bulk là một transaction riêng (D-34) nên không có nguy cơ
+     * deadlock giữa các dòng của cùng một lô; bản thân {@code TransactionWriter.write()} cập
+     * nhật số dư bằng {@code UPDATE ... SET current_balance = current_balance + ?} nguyên tử
+     * nên không cần đọc-rồi-ghi.
+     */
+    private void requireWalletAccess(UUID walletId, UUID userId) {
+        walletRepository
+                .findByIdForUser(walletId, userId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
     }
 }

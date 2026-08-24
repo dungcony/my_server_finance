@@ -4,12 +4,14 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -72,7 +74,7 @@ public class IdempotencyAspect {
                             "INTERNAL_ERROR", 500, "Không đọc lại được bản ghi idempotency vừa xung đột."));
 
             if (STATUS_COMPLETED.equals(existing.getStatus())) {
-                return buildResponseFromCache(existing);
+                return buildResponseFromCache(existing, pjp);
             }
 
             throw new BusinessException(
@@ -113,13 +115,37 @@ public class IdempotencyAspect {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private Object buildResponseFromCache(IdempotencyKeyEntity existing) throws Exception {
-        Object parsed = existing.getResponseBody() == null
-                ? null
-                : objectMapper.readValue(existing.getResponseBody(), Object.class);
+    /**
+     * Trả lại kết quả cache đúng KIỂU mà method controller khai báo — KHÔNG deserialize thành
+     * {@code Object} thô.
+     *
+     * <p>Method controller chạy sau khi qua CGLIB proxy, mà proxy ép kiểu giá trị trả về về đúng
+     * kiểu khai báo của method. Deserialize thành {@code Object} cho ra {@code LinkedHashMap},
+     * proxy ép nó về {@code ApiResponse} và ném {@link ClassCastException} ngay tại dispatcher —
+     * lỗi này nằm ở hạ tầng dùng chung nên ảnh hưởng MỌI endpoint {@code @Idempotent} trả thẳng
+     * {@code ApiResponse}, chỉ lộ ra khi có test replay thật (tìm thấy khi viết test D-35 cho
+     * {@code POST /transactions/bulk}).
+     *
+     * <p>Cách sửa: đọc kiểu trả về thật của method từ {@link MethodSignature} rồi deserialize
+     * đúng kiểu đó. Với method khai báo {@code ResponseEntity}, giữ nguyên hành vi cũ — bọc
+     * {@code ResponseEntity} quanh phần body đã parse, vì kiểu generic bên trong không lấy được
+     * từ chữ ký một cách an toàn.
+     */
+    private Object buildResponseFromCache(IdempotencyKeyEntity existing, ProceedingJoinPoint pjp) throws Exception {
+        String cachedBody = existing.getResponseBody();
         int status = existing.getResponseStatus() != null ? existing.getResponseStatus() : HttpStatus.OK.value();
-        return ResponseEntity.status(status).body(parsed);
+        Method method = ((MethodSignature) pjp.getSignature()).getMethod();
+
+        if (ResponseEntity.class.isAssignableFrom(method.getReturnType())) {
+            Object parsed = cachedBody == null ? null : objectMapper.readValue(cachedBody, Object.class);
+            return ResponseEntity.status(status).body(parsed);
+        }
+
+        if (cachedBody == null) {
+            return null;
+        }
+        return objectMapper.readValue(
+                cachedBody, objectMapper.getTypeFactory().constructType(method.getGenericReturnType()));
     }
 
     private HttpServletRequest currentRequest() {
