@@ -96,8 +96,8 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 Plans:
 - [x] 03-01-PLAN.md — Gộp đường ghi giao dịch (D-30): entity Transaction + TransactionWriter, sửa WalletTransferService, sửa 2 trường số dư ví (TXN-09)
 - [x] 03-02-PLAN.md — CRUD giao dịch đơn: tạo/sửa 3 bước/xoá chặn debt/nhân bản (TXN-03, TXN-05, TXN-06, TXN-07)
-- [ ] 03-03-PLAN.md — Danh sách/theo ngày/chi tiết, cộng gộp danh mục con (TXN-01, TXN-02, TXN-08)
-- [ ] 03-04-PLAN.md — Tạo hàng loạt, mỗi dòng 1 DB transaction, 1 Idempotency-Key cho cả lô (TXN-04)
+- [x] 03-03-PLAN.md — Danh sách/theo ngày/chi tiết, cộng gộp danh mục con (TXN-01, TXN-02, TXN-08)
+- [x] 03-04-PLAN.md — Tạo hàng loạt, mỗi dòng 1 DB transaction, 1 Idempotency-Key cho cả lô (TXN-04)
 
 ### Phase 4: Nghiệp vụ phái sinh & Báo cáo
 **Goal**: User quản lý ngân sách, sổ nợ, giao dịch định kỳ, mục tiêu tiết kiệm và xem báo cáo thống kê — tất cả xây trên nền giao dịch đã ổn định ở Phase 3; các background job hằng ngày giữ dữ liệu nhất quán mà không cần người dùng can thiệp.
