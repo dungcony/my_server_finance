@@ -120,7 +120,16 @@ Plans:
   5. Báo cáo tổng quan/theo kỳ/xu hướng loại trừ hoàn toàn giao dịch transfer và cộng gộp danh mục con; xuất báo cáo trả 202 kèm `job_id` và có thể poll tới khi có link tải
   6. Các job nền (đối chiếu số dư, lặp ngân sách, sinh định kỳ, nhắc nợ) tự chạy hằng ngày theo lịch mà không cần gọi API thủ công
   7. Test riêng tư ngân sách (BUDGET-08) chạy xanh: B chi tiền vào danh mục X, ngân sách cá nhân của A cùng danh mục vẫn hiện `spent_amount = 0` — chốt lỗ hổng `v_budget_progress` đã vá ở CORE-09
-**Plans**: TBD
+**Plans:** 7 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Hạ tầng thông báo: bảng notifications/export_jobs, GET/PATCH /notifications, api/11-THONG-BAO.md (BUDGET-06, JOB-04)
+- [ ] 04-02-PLAN.md — Ngân sách: CRUD, gợi ý hạn mức, cảnh báo qua TransactionRecordedEvent AFTER_COMMIT, test riêng tư BUDGET-08 (BUDGET-01..06, BUDGET-08)
+- [ ] 04-03-PLAN.md — Sổ nợ: tạo/trả/huỷ trả/write-off/xoá qua TransactionWriter, ranh giới trigger V4 (DEBT-01..07)
+- [ ] 04-04-PLAN.md — Mục tiêu tiết kiệm: hai chế độ nạp create_transaction, ranh giới trigger V4 (GOAL-01..04)
+- [ ] 04-05-PLAN.md — Định kỳ: CRUD, RecurringRunnerService/RecurringPeriodWriter 2-bean, ngày 29/30/31, bắt kịp kỳ bỏ lỡ (RECUR-01..03)
+- [ ] 04-06-PLAN.md — Báo cáo: 6 endpoint + export CSV async, sửa 3 file tài liệu múi giờ (REPORT-01..05)
+- [ ] 04-07-PLAN.md — Tác vụ nền: 5 job @Scheduled (đối chiếu ví, lặp ngân sách, định kỳ, nhắc nợ, dọn export) (BUDGET-07, JOB-01..04)
 
 ### Phase 5: Nhóm gia đình & Trợ lý AI
 **Goal**: User chia sẻ ví/ngân sách trong nhóm gia đình với riêng tư cá nhân tuyệt đối được kiểm chứng bằng test tự động, và có thể dùng trợ lý AI rule-based để nhập nhanh giao dịch qua câu nói hoặc ảnh hoá đơn, luôn qua bước duyệt của người dùng.
