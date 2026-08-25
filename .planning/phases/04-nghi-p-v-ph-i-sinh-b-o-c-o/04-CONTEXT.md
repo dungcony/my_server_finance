@@ -201,6 +201,37 @@ và cộng gộp danh mục con qua `fn_category_tree`. Nên bọc thành query 
   5. Báo cáo loại `transfer` + cộng gộp danh mục con
   6. Toàn bộ test Phase 1+2+3 vẫn xanh sau khi thêm event bắn từ `TransactionWriter` (D-41)
 
+### Bổ sung sau research (D-59..D-61)
+
+Ba quyết định chốt ngày 25/08/2026 sau khi `04-RESEARCH.md` đối chiếu tài liệu với schema thật.
+
+- **D-59: `POST /reports/export` thay vì `GET`, và sửa `api/06-BAO-CAO.md` trong cùng phase.**
+  `api/06` hiện ghi `GET /reports/export`, nhưng endpoint này **tạo bản ghi `export_jobs`** — có
+  side-effect, trái quy ước REST của chính dự án (`api/00` mục 14: tạo mới → `POST`). `GET` cũng
+  không dùng được header `Idempotency-Key` và có thể bị proxy/cache lặp lại.
+  Hợp đồng chốt:
+  - `POST /reports/export` → `202` + `{ job_id, status }`, hỗ trợ `Idempotency-Key`
+  - `GET /reports/export/{job_id}` → poll trạng thái
+  - `GET /reports/export/{job_id}/download` → tải tệp (giữ nguyên D-43)
+  Cập nhật `api/06-BAO-CAO.md` mục 7 trong cùng lần thay đổi.
+
+- **D-60: Xoá `AT TIME ZONE 'Asia/Ho_Chi_Minh'` khỏi CẢ HAI file `api/*.md`, không chỉ
+  `source/server/CLAUDE.md`.**
+  D-55 giả định `api/00` mục 13 "đã được sửa ở phase trước" — **giả định này sai**. Research đối
+  chiếu `git log` xác nhận cả `api/00-QUY-UOC-CHUNG.md` mục 13 lẫn `api/06-BAO-CAO.md`
+  (mục "Ba nguyên tắc chung #3") **vẫn còn nguyên câu sai**, chưa từng được sửa.
+  Vậy có **ba** chỗ phải sửa dứt điểm ở phase này: `source/server/CLAUDE.md` dòng 75,
+  `api/00-QUY-UOC-CHUNG.md` mục 13, `api/06-BAO-CAO.md`. Lý do vẫn như D-55: `transactions.date`
+  kiểu `DATE` thuần không có múi giờ, chuyển đổi sẽ ra kết quả sai.
+  Lưu ý repo: hai file `api/*.md` nằm ở **repo gốc `DATN/`**, không phải repo `source/server/` —
+  phải commit riêng ở repo gốc.
+
+- **D-61: Mọi query báo cáo của Phase 4 hard-code `counts_in_report = TRUE`.**
+  Cột này thêm ở `V8`. Khác với `TransactionRepository` của Phase 3, nơi nó là **tham số lọc**
+  người dùng tự chọn khi xem sổ giao dịch — ở báo cáo nó là **hằng số**, không nhận từ query param.
+  Không nhắc trong CONTEXT.md ban đầu, nhưng là nguyên tắc thứ ba của báo cáo, ngang hàng với
+  "loại `transfer`" và "cộng gộp danh mục con".
+
 ### Claude's Discretion
 
 Không cần hỏi lại, làm theo chuẩn dự án, `api/*.md` và pattern Phase 1–3:
