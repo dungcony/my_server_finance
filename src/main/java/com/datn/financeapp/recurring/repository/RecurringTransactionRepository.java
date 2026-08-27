@@ -43,16 +43,22 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
             @Param("type") String type);
 
     /**
-     * Các khoản tới hạn cho tác vụ nền (api/09 mục A4). Dùng đúng ba điều kiện của đặc tả để chỉ
-     * mục riêng phần {@code idx_rec_due ... WHERE is_enabled} phát huy tác dụng.
+     * Các khoản tới hạn cho tác vụ nền (api/09 mục A4). Điều kiện {@code is_enabled = TRUE} viết
+     * đúng dạng để chỉ mục riêng phần {@code idx_rec_due ... WHERE is_enabled} phát huy tác dụng.
      *
-     * <p>Vế {@code end_date IS NULL OR end_date >= :today} lọc bỏ khoản đã hết hạn hẳn. Khoản còn
-     * hạn nhưng {@code end_date} nằm giữa các kỳ bỏ lỡ vẫn được vòng lặp catch-up trong
-     * {@code RecurringPeriodWriter} cắt đúng chỗ.
+     * <p><b>So với đặc tả, vế {@code end_date} đối chiếu với {@code next_run_date} chứ KHÔNG phải
+     * với hôm nay.</b> api/09 viết {@code end_date >= hôm nay}, nhưng điều kiện đó bỏ sót một ca
+     * thật: khoản kết thúc tháng trước mà người dùng vắng mặt từ trước đó nữa vẫn còn vài kỳ CHƯA
+     * ghi nằm TRƯỚC {@code end_date}. Lọc theo hôm nay thì những kỳ đó biến mất vĩnh viễn — đúng
+     * kiểu sai mà D-50 cảnh báo: số dư thiếu vài kỳ nhưng vẫn "trông hợp lý".
+     *
+     * <p>Đối chiếu với {@code next_run_date} lấy đủ các khoản còn nợ kỳ; vòng lặp catch-up trong
+     * {@code RecurringPeriodWriter} vẫn cắt đúng tại {@code end_date} nên không kỳ nào vượt quá hạn
+     * người dùng đặt.
      */
     @Query(
             value = "SELECT * FROM recurring_transactions WHERE is_enabled = TRUE "
-                    + "AND next_run_date <= :today AND (end_date IS NULL OR end_date >= :today)",
+                    + "AND next_run_date <= :today AND (end_date IS NULL OR end_date >= next_run_date)",
             nativeQuery = true)
     List<RecurringTransaction> findDue(@Param("today") LocalDate today);
 }

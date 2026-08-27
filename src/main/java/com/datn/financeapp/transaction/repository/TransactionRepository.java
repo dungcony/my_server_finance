@@ -28,6 +28,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     Optional<Transaction> findByIdAndUserId(UUID id, UUID userId);
 
     /**
+     * Lịch sử giao dịch đã sinh từ một khoản định kỳ — {@code GET /recurring/{id}} (api/09 mục A).
+     * Bỏ bản ghi đã xoá mềm, mới nhất trước.
+     *
+     * <p>Không có điều kiện quyền: chỉ gọi sau khi service đã kiểm tra quyền trên chính khoản định
+     * kỳ, và mọi giao dịch sinh ra từ một khoản đều thuộc cùng {@code user_id} với khoản đó.
+     */
+    List<Transaction> findAllByRecurringIdAndIsDeletedFalseOrderByDateDesc(UUID recurringId);
+
+    /** {@code run_count} của api/09 mục A1 — số giao dịch còn sống đã sinh từ khoản định kỳ này. */
+    long countByRecurringIdAndIsDeletedFalse(UUID recurringId);
+
+    /**
      * Dùng cho D-32 (plan sau): chặn xoá giao dịch đang gắn với một khoản trả nợ
      * ({@code debt_payments.transaction_id}, {@code ON DELETE RESTRICT} + {@code UNIQUE} —
      * db/migration/V4__so_no_muc_tieu.sql). Viết sẵn ở đây vì thuộc điểm nối của entity, dùng
