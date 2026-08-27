@@ -12,7 +12,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 
 - [x] **Phase 1: Nền tảng & Xác thực** - Khung project, response/error format, idempotency, rate limit, JWT auth đầy đủ vòng đời tài khoản
 - [x] **Phase 2: Ví & Danh mục** - CRUD ví/chuyển tiền/đối chiếu số dư và cây danh mục 2 cấp + kho icon
-- [ ] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
+- [x] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
 - [ ] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
 - [ ] **Phase 5: Nhóm gia đình & Trợ lý AI** - Tầng quyền chia sẻ ví/ngân sách nhóm với riêng tư tuyệt đối, và AI rule-based (parse-text/OCR mẫu) qua ai_drafts
 
@@ -123,7 +123,7 @@ Plans:
 **Plans:** 7 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Hạ tầng thông báo: bảng notifications/export_jobs, GET/PATCH /notifications, api/11-THONG-BAO.md (BUDGET-06, JOB-04)
+- [x] 04-01-PLAN.md — Hạ tầng thông báo: bảng notifications/export_jobs, GET/PATCH /notifications, api/11-THONG-BAO.md (BUDGET-06, JOB-04)
 - [ ] 04-02-PLAN.md — Ngân sách: CRUD, gợi ý hạn mức, cảnh báo qua TransactionRecordedEvent AFTER_COMMIT, test riêng tư BUDGET-08 (BUDGET-01..06, BUDGET-08)
 - [ ] 04-03-PLAN.md — Sổ nợ: tạo/trả/huỷ trả/write-off/xoá qua TransactionWriter, ranh giới trigger V4 (DEBT-01..07)
 - [ ] 04-04-PLAN.md — Mục tiêu tiết kiệm: hai chế độ nạp create_transaction, ranh giới trigger V4 (GOAL-01..04)
