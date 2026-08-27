@@ -157,10 +157,14 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Mục tiêu tiết kiệm (GOAL)
 
-- [ ] **GOAL-01**: User tạo/sửa/xoá mục tiêu tiết kiệm — `initial_amount` lúc tạo không sinh giao dịch
-- [ ] **GOAL-02**: User xem đánh giá khả thi (`feasible`/`challenging`/`not_feasible`) dựa trên `monthly_required` so với thu nhập trung bình
-- [ ] **GOAL-03**: User nạp tiền vào mục tiêu — hai chế độ: chuyển tiền thật (transfer, yêu cầu goal có `wallet_id`) hoặc chỉ ghi nhận tiến độ. Backend chèn bản ghi `goal_contributions`; **`savings_goals.saved_amount` và `status` do trigger `trg_goal_contributions_sync` (V4) sở hữu — backend không tự ghi**, kể cả việc chuyển `completed` khi đạt target
-- [ ] **GOAL-04**: User rút lại một lần nạp — backend xoá bản ghi `goal_contributions` và hoàn tác giao dịch liên quan nếu có; `saved_amount`/`status` tự cập nhật qua trigger (kể cả mở lại `in_progress`), backend không can thiệp
+- [x] **GOAL-01
+**: User tạo/sửa/xoá mục tiêu tiết kiệm — `initial_amount` lúc tạo không sinh giao dịch
+- [x] **GOAL-02
+**: User xem đánh giá khả thi (`feasible`/`challenging`/`not_feasible`) dựa trên `monthly_required` so với thu nhập trung bình
+- [x] **GOAL-03
+**: User nạp tiền vào mục tiêu — hai chế độ: chuyển tiền thật (transfer, yêu cầu goal có `wallet_id`) hoặc chỉ ghi nhận tiến độ. Backend chèn bản ghi `goal_contributions`; **`savings_goals.saved_amount` và `status` do trigger `trg_goal_contributions_sync` (V4) sở hữu — backend không tự ghi**, kể cả việc chuyển `completed` khi đạt target
+- [x] **GOAL-04
+**: User rút lại một lần nạp — backend xoá bản ghi `goal_contributions` và hoàn tác giao dịch liên quan nếu có; `saved_amount`/`status` tự cập nhật qua trigger (kể cả mở lại `in_progress`), backend không can thiệp
 
 ### Nhóm gia đình (GROUP)
 
