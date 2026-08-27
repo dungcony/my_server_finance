@@ -1,11 +1,13 @@
 package com.datn.financeapp.transaction.service;
 
 import com.datn.financeapp.transaction.entity.Transaction;
+import com.datn.financeapp.transaction.event.TransactionRecordedEvent;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,14 @@ public class TransactionWriter {
 
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
+
+    /**
+     * D-41 — bắn {@link TransactionRecordedEvent} sau khi ghi xong. {@code TransactionWriter}
+     * KHÔNG biết ai lắng nghe; người nghe (vd. {@code BudgetAlertListener}) dùng
+     * {@code @TransactionalEventListener(AFTER_COMMIT)} nên Spring tự hoãn việc gọi handler tới
+     * sau khi transaction này commit.
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Ghi một giao dịch mới + cập nhật số dư (các) ví liên quan theo đúng chiều tiền của
@@ -99,6 +109,14 @@ public class TransactionWriter {
             }
             default -> throw new IllegalArgumentException("Loại giao dịch không hợp lệ: " + cmd.type());
         }
+
+        // D-41: publish TRONG transaction đang mở — Spring hoãn việc GỌI handler
+        // @TransactionalEventListener(AFTER_COMMIT) tới sau khi transaction này commit. Nếu
+        // transaction rollback, handler không bao giờ chạy: không sinh cảnh báo cho giao dịch
+        // chưa thực sự tồn tại.
+        eventPublisher.publishEvent(new TransactionRecordedEvent(
+                transactionId, cmd.userId(), cmd.walletId(), cmd.categoryId(),
+                cmd.type(), cmd.amount(), cmd.date()));
 
         return new WriteResult(transactionId, walletNewBalance, destinationWalletNewBalance);
     }
