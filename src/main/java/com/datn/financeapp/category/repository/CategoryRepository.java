@@ -46,6 +46,22 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
             @Param("type") String type,
             @Param("rootsOnly") boolean rootsOnly);
 
+    /**
+     * Tra danh mục HỆ THỐNG theo tên + loại ({@code user_id IS NULL}). Cần cho module sổ nợ
+     * (Phase 4): giao dịch sinh ra từ sổ nợ phải gắn đúng bốn danh mục hệ thống "Cho vay" /
+     * "Thu nợ" / "Đi vay" / "Trả nợ" (api/08 mục "Cần danh mục riêng cho sổ nợ"), nhưng client
+     * KHÔNG gửi {@code category_id} lên — backend tự tra theo tên.
+     *
+     * <p>Bốn danh mục này đã được chèn sẵn ở {@code V5__du_lieu_he_thong.sql} (dòng 94-102), là
+     * danh mục CẤP CHA nên {@code parent_category_id IS NULL} — điều kiện đó loại luôn khả năng
+     * bắt nhầm một danh mục con trùng tên do người dùng tự tạo.
+     */
+    @Query(
+            value = "SELECT * FROM categories c WHERE c.name = :name AND c.type = :type "
+                    + "AND c.user_id IS NULL AND c.parent_category_id IS NULL AND NOT c.is_deleted",
+            nativeQuery = true)
+    Optional<Category> findSystemCategoryByName(@Param("name") String name, @Param("type") String type);
+
     boolean existsByParentCategoryIdAndIsDeletedFalse(UUID parentId);
 
     @Query(
