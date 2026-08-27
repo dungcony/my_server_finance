@@ -43,7 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                         // Phase 3 plan 03-02: TransactionController mới thêm — cùng lý do loại trừ.
                         com.datn.financeapp.transaction.controller.TransactionController.class,
                         // Phase 4 plan 04-01: NotificationController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.notification.controller.NotificationController.class
+                        com.datn.financeapp.notification.controller.NotificationController.class,
+                        // Phase 4 plan 04-02: BudgetController mới thêm — cùng lý do loại trừ.
+                        com.datn.financeapp.budget.controller.BudgetController.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
