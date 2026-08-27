@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 04-02-PLAN.md (module ngân sách)
-last_updated: "2026-08-27T15:13:58.970Z"
+stopped_at: Hoàn thành 04-03-PLAN.md (module sổ nợ)
+last_updated: "2026-08-27T15:35:43.275Z"
 last_activity: 2026-08-27
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 21
-  completed_plans: 16
-  percent: 76
+  completed_plans: 17
+  percent: 81
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 04 (nghi-p-v-ph-i-sinh-b-o-c-o) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-08-27
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [████████░░] 76%
 | Phase 03-giao-dich P02 | 45min | 3 tasks | 14 files |
 | Phase 04 P01 | - | 2 tasks | 13 files |
 | Phase 04 P02 | 50m | 3 tasks | 18 files |
+| Phase 04 P03 | 35 phút | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - BudgetProgressRepository khai Repository<Budget, UUID> — Spring Data yêu cầu kiểu domain là entity được quản lý, projection chỉ là kiểu trả về của query
 - Listener @TransactionalEventListener(AFTER_COMMIT) có ghi CSDL bắt buộc kèm @Transactional(REQUIRES_NEW) — transaction gốc đã đóng khi handler chạy
 - Cảnh báo ngân sách tìm theo chiều ngược :categoryId IN fn_category_tree(budgets.category_id) để chi vào danh mục con kích hoạt ngân sách đặt ở danh mục cha
+- 04-03: Không tạo migration V11 — bốn danh mục hệ thống sổ nợ đã có sẵn từ V5 (giả định của plan sai, đối chiếu schema thật theo quy tắc 0)
+- 04-03: Đọc lại giá trị sau trigger phải dùng query trả SCALAR — native query trả entity vẫn bị Hibernate identity map trả lại instance cũ
 
 ### Pending Todos
 
@@ -149,8 +152,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T15:13:58.963Z
-Stopped at: Hoàn thành 04-02-PLAN.md (module ngân sách)
+Last session: 2026-08-27T15:35:43.268Z
+Stopped at: Hoàn thành 04-03-PLAN.md (module sổ nợ)
 Resume file: None
 
 **Planned Phase:** 03 (giao-dich) — 4 plans — 2026-08-23T15:19:49.096Z

@@ -125,7 +125,7 @@ Plans:
 Plans:
 - [x] 04-01-PLAN.md — Hạ tầng thông báo: bảng notifications/export_jobs, GET/PATCH /notifications, api/11-THONG-BAO.md (BUDGET-06, JOB-04)
 - [x] 04-02-PLAN.md — Ngân sách: CRUD, gợi ý hạn mức, cảnh báo qua TransactionRecordedEvent AFTER_COMMIT, test riêng tư BUDGET-08 (BUDGET-01..06, BUDGET-08)
-- [ ] 04-03-PLAN.md — Sổ nợ: tạo/trả/huỷ trả/write-off/xoá qua TransactionWriter, ranh giới trigger V4 (DEBT-01..07)
+- [x] 04-03-PLAN.md — Sổ nợ: tạo/trả/huỷ trả/write-off/xoá qua TransactionWriter, ranh giới trigger V4 (DEBT-01..06; DEBT-07 chỉ phần truy vấn, job ở Plan 07)
 - [ ] 04-04-PLAN.md — Mục tiêu tiết kiệm: hai chế độ nạp create_transaction, ranh giới trigger V4 (GOAL-01..04)
 - [ ] 04-05-PLAN.md — Định kỳ: CRUD, RecurringRunnerService/RecurringPeriodWriter 2-bean, ngày 29/30/31, bắt kịp kỳ bỏ lỡ (RECUR-01..03)
 - [ ] 04-06-PLAN.md — Báo cáo: 6 endpoint + export CSV async, sửa 3 file tài liệu múi giờ (REPORT-01..05)

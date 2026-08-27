@@ -135,12 +135,18 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Sổ nợ (DEBT)
 
-- [ ] **DEBT-01**: User tạo khoản nợ (cho vay/đi vay) — trong 1 DB transaction tạo `debt` + giao dịch thật tương ứng (Cho vay/Đi vay), cập nhật số dư ví, gắn `origin_transaction_id`
-- [ ] **DEBT-02**: User xem danh sách/chi tiết/tổng quan khoản nợ (lọc type, status, quá hạn)
-- [ ] **DEBT-03**: User ghi một lần trả nợ — backend chèn bản ghi `debt_payments` và tạo giao dịch thật (Thu nợ/Trả nợ). **`debts.paid_amount` và `debts.status` do trigger `trg_debt_payments_sync` (V4) sở hữu — backend TUYỆT ĐỐI không tự ghi hai cột này**, trigger tính lại bằng `SUM()` mỗi lần bảng con thay đổi. Không sửa được `principal_amount`/`type`/`wallet_id`
-- [ ] **DEBT-04**: User huỷ một lần trả nợ — backend xoá bản ghi `debt_payments` và hoàn tác giao dịch liên quan; `paid_amount`/`status` tự cập nhật qua trigger (kể cả việc mở lại `outstanding` từ `settled`), backend không can thiệp
-- [ ] **DEBT-05**: User đánh dấu nợ không đòi nữa (`write-off`) — chỉ đổi status, không sinh giao dịch mới
-- [ ] **DEBT-06**: User xoá khoản nợ — hoàn tác toàn bộ giao dịch gốc và mọi giao dịch trả nợ liên quan, cập nhật lại số dư
+- [x] **DEBT-01
+**: User tạo khoản nợ (cho vay/đi vay) — trong 1 DB transaction tạo `debt` + giao dịch thật tương ứng (Cho vay/Đi vay), cập nhật số dư ví, gắn `origin_transaction_id`
+- [x] **DEBT-02
+**: User xem danh sách/chi tiết/tổng quan khoản nợ (lọc type, status, quá hạn)
+- [x] **DEBT-03
+**: User ghi một lần trả nợ — backend chèn bản ghi `debt_payments` và tạo giao dịch thật (Thu nợ/Trả nợ). **`debts.paid_amount` và `debts.status` do trigger `trg_debt_payments_sync` (V4) sở hữu — backend TUYỆT ĐỐI không tự ghi hai cột này**, trigger tính lại bằng `SUM()` mỗi lần bảng con thay đổi. Không sửa được `principal_amount`/`type`/`wallet_id`
+- [x] **DEBT-04
+**: User huỷ một lần trả nợ — backend xoá bản ghi `debt_payments` và hoàn tác giao dịch liên quan; `paid_amount`/`status` tự cập nhật qua trigger (kể cả việc mở lại `outstanding` từ `settled`), backend không can thiệp
+- [x] **DEBT-05
+**: User đánh dấu nợ không đòi nữa (`write-off`) — chỉ đổi status, không sinh giao dịch mới
+- [x] **DEBT-06
+**: User xoá khoản nợ — hoàn tác toàn bộ giao dịch gốc và mọi giao dịch trả nợ liên quan, cập nhật lại số dư
 - [ ] **DEBT-07**: Hệ thống nhắc nợ đến hạn (còn 7 ngày, còn 1 ngày, quá hạn nhắc lại mỗi 7 ngày)
 
 ### Giao dịch định kỳ (RECUR)
