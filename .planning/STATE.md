@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 04-01-PLAN.md (hạ tầng thông báo)
-last_updated: "2026-08-27T14:41:51.257Z"
-last_activity: 2026-08-25
+stopped_at: Hoàn thành 04-02-PLAN.md (module ngân sách)
+last_updated: "2026-08-27T15:13:58.970Z"
+last_activity: 2026-08-27
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 21
-  completed_plans: 15
-  percent: 71
+  completed_plans: 16
+  percent: 76
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 
 ## Current Position
 
-Phase: 4
-Plan: 04-01 hoàn thành (1/7). 04-02 → 04-07 đã lập kế hoạch, chưa thực thi
-Status: In progress
+Phase: 04 (nghi-p-v-ph-i-sinh-b-o-c-o) — EXECUTING
+Plan: 2 of 7
+Status: Ready to execute
 Last activity: 2026-08-27
 
-Progress: [███████░░░] 71%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [███████░░░] 71%
 | Phase 03-giao-dich P01 | 14min | 2 tasks | 10 files |
 | Phase 03-giao-dich P02 | 45min | 3 tasks | 14 files |
 | Phase 04 P01 | - | 2 tasks | 13 files |
+| Phase 04 P02 | 50m | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,9 @@ Recent decisions affecting current work:
 - update()/delete() giao dịch gọi trực tiếp TransactionRepository.save() + WalletRepository.adjustBalance() trong CÙNG một @Transactional, không qua TransactionWriter - writer chỉ INSERT bản ghi mới, không phù hợp sửa tại chỗ
 - validateShape() để package-private (không private, không public) trong TransactionService - chuẩn bị điểm nối cho TransactionBulkService (plan 03-04) gọi lại đúng logic validate từng dòng bulk
 - uq_notif_budget_alert đổi sang UNIQUE đầy đủ (không partial WHERE) và biểu thức ngày dùng (created_at AT TIME ZONE 'UTC')::date để IMMUTABLE, tương thích ON CONFLICT qua Spring Data JPA native query
+- BudgetProgressRepository khai Repository<Budget, UUID> — Spring Data yêu cầu kiểu domain là entity được quản lý, projection chỉ là kiểu trả về của query
+- Listener @TransactionalEventListener(AFTER_COMMIT) có ghi CSDL bắt buộc kèm @Transactional(REQUIRES_NEW) — transaction gốc đã đóng khi handler chạy
+- Cảnh báo ngân sách tìm theo chiều ngược :categoryId IN fn_category_tree(budgets.category_id) để chi vào danh mục con kích hoạt ngân sách đặt ở danh mục cha
 
 ### Pending Todos
 
@@ -145,8 +149,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T14:41:51.251Z
-Stopped at: Hoàn thành 04-01-PLAN.md (hạ tầng thông báo)
+Last session: 2026-08-27T15:13:58.963Z
+Stopped at: Hoàn thành 04-02-PLAN.md (module ngân sách)
 Resume file: None
 
 **Planned Phase:** 03 (giao-dich) — 4 plans — 2026-08-23T15:19:49.096Z

@@ -100,12 +100,18 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Ngân sách (BUDGET)
 
-- [ ] **BUDGET-01**: User xem danh sách ngân sách kèm tiến độ tính động lúc gọi API (không lưu cột `spent_amount`), cộng gộp danh mục con, đúng 3 trạng thái (normal/near_limit/over_limit)
-- [ ] **BUDGET-02**: User xem tổng quan ngân sách kỳ hiện tại và chi tiết một ngân sách (kèm dự báo ngày hết ngân sách nếu sớm hơn `end_date`)
-- [ ] **BUDGET-03**: User tạo ngân sách — `category_id` phải loại expense, chặn trùng (cùng danh mục + ví + kỳ chồng lấn), tự tính `end_date` từ `period_type`
-- [ ] **BUDGET-04**: User sửa ngân sách — không sửa được `category_id` và `period_type` (phải xoá tạo lại); xoá ngân sách
-- [ ] **BUDGET-05**: User xem gợi ý hạn mức từ AI (`suggested_limit` = TB chi 3 kỳ gần nhất × 1.05, làm tròn hàng trăm nghìn; trả `null` nếu <1 tháng dữ liệu)
-- [ ] **BUDGET-06**: User xem danh sách cảnh báo ngân sách (severity critical/alert) kèm hành động gợi ý cụ thể
+- [x] **BUDGET-01
+**: User xem danh sách ngân sách kèm tiến độ tính động lúc gọi API (không lưu cột `spent_amount`), cộng gộp danh mục con, đúng 3 trạng thái (normal/near_limit/over_limit)
+- [x] **BUDGET-02
+**: User xem tổng quan ngân sách kỳ hiện tại và chi tiết một ngân sách (kèm dự báo ngày hết ngân sách nếu sớm hơn `end_date`)
+- [x] **BUDGET-03
+**: User tạo ngân sách — `category_id` phải loại expense, chặn trùng (cùng danh mục + ví + kỳ chồng lấn), tự tính `end_date` từ `period_type`
+- [x] **BUDGET-04
+**: User sửa ngân sách — không sửa được `category_id` và `period_type` (phải xoá tạo lại); xoá ngân sách
+- [x] **BUDGET-05
+**: User xem gợi ý hạn mức từ AI (`suggested_limit` = TB chi 3 kỳ gần nhất × 1.05, làm tròn hàng trăm nghìn; trả `null` nếu <1 tháng dữ liệu)
+- [x] **BUDGET-06
+**: User xem danh sách cảnh báo ngân sách (severity critical/alert) kèm hành động gợi ý cụ thể
 - [ ] **BUDGET-07**: Hệ thống tự động lặp kỳ ngân sách mới hằng ngày cho ngân sách `auto_renew=true` đã hết kỳ, chống tạo trùng
 - [x] **BUDGET-08**: **Test riêng tư ngân sách chạy ngay tại Phase 4** (không đợi Phase 5): user A và user B cùng nhóm, B chi 1 triệu vào danh mục X, ngân sách **cá nhân** của A cho danh mục X phải hiện `spent_amount = 0`. Test này chốt vĩnh viễn lỗ hổng mà CORE-09
 (a) vừa vá — nếu ai đó `CREATE OR REPLACE VIEW` làm hỏng lại, test phải đỏ ngay
