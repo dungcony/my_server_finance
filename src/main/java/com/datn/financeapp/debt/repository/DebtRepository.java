@@ -32,17 +32,28 @@ public interface DebtRepository extends JpaRepository<Debt, UUID> {
             @Param("currentUser") UUID currentUser, @Param("type") String type, @Param("status") String status);
 
     /**
-     * Đọc lại bản ghi SAU khi trigger {@code trg_debt_payments_sync} đã UPDATE bảng cha — native
-     * query truy vấn thẳng bảng, CỐ Ý bỏ qua Hibernate first-level cache (identity map). Đúng mẫu
-     * {@code WalletRepository.findCurrentBalanceNative}: trigger UPDATE ở tầng CSDL không đồng bộ
-     * ngược vào persistence context, nên {@code findById} sẽ trả instance CŨ với
-     * {@code paid_amount}/{@code status} trước khi trigger chạy.
+     * Đọc lại tiến độ khoản nợ SAU khi trigger {@code trg_debt_payments_sync} đã UPDATE bảng cha.
      *
-     * <p>KHÔNG có điều kiện quyền — cố ý tách khỏi {@link #findByIdAndUserId}. Chỉ dùng khi
-     * service ĐÃ kiểm tra quyền ở bước load trước đó và giờ chỉ cần giá trị mới nhất.
+     * <p><b>Vì sao trả SCALAR chứ không trả entity {@link Debt}:</b> native query trả về entity
+     * vẫn đi qua Hibernate identity map — nếu service đã load cùng bản ghi đó trước trong CÙNG
+     * transaction (bước kiểm tra quyền), Hibernate sẽ trả lại ĐÚNG instance đã cache, mang
+     * {@code paid_amount}/{@code status} CŨ trước khi trigger chạy, và câu SELECT mới trở thành vô
+     * nghĩa. Đã dính đúng lỗi này khi chạy test thật: lần trả thứ hai báo paid_amount = 1.000.000
+     * thay vì 2.000.000.
+     *
+     * <p>Trả về scalar thì Hibernate không hydrate qua identity map, nên luôn là giá trị mới nhất
+     * dưới CSDL — đúng nguyên lý đã dùng ở {@code WalletRepository.findCurrentBalanceNative}
+     * (cũng trả scalar, cũng vì lý do này).
+     *
+     * <p>KHÔNG có điều kiện quyền — cố ý tách khỏi {@link #findByIdAndUserId}. Chỉ dùng khi service
+     * ĐÃ kiểm tra quyền ở bước load trước đó và giờ chỉ cần giá trị mới nhất.
      */
-    @Query(value = "SELECT * FROM debts WHERE id = :id", nativeQuery = true)
-    Optional<Debt> findByIdNative(@Param("id") UUID id);
+    @Query(value = "SELECT paid_amount FROM debts WHERE id = :id", nativeQuery = true)
+    Optional<Long> findPaidAmountNative(@Param("id") UUID id);
+
+    /** Cặp đôi với {@link #findPaidAmountNative} — cùng lý do trả scalar. */
+    @Query(value = "SELECT status FROM debts WHERE id = :id", nativeQuery = true)
+    Optional<String> findStatusNative(@Param("id") UUID id);
 
     /**
      * DEBT-07/JOB-04 — nguồn dữ liệu cho tác vụ nhắc nợ đến hạn (api/08 mục 9). Plan này chỉ cung
