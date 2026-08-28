@@ -15,6 +15,7 @@ import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.notification.repository.NotificationRepository;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.math.BigDecimal;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BudgetService {
 
     private static final String STATUS_NORMAL = "normal";
@@ -68,6 +71,7 @@ public class BudgetService {
     private final CategoryRepository categoryRepository;
     private final IconRepository iconRepository;
     private final WalletRepository walletRepository;
+    private final NotificationRepository notificationRepository;
 
     // ---------------------------------------------------------------------
     // Đọc
@@ -325,6 +329,78 @@ public class BudgetService {
         Budget budget = budgetRepository.findByIdForUser(budgetId, userId).orElseThrow(this::notFound);
         budget.setIsActive(false);
         budgetRepository.save(budget);
+    }
+
+    // ---------------------------------------------------------------------
+    // Tác vụ nền JOB-02 (D-57, api/05 mục 8)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Quét mọi ngân sách {@code auto_renew=true} đã hết kỳ và tự tạo kỳ mới. KHÔNG {@code
+     * @Transactional} ở method top-level: mỗi ngân sách xử lý ĐỘC LẬP trong transaction riêng của
+     * {@link #renewOneBudget} (cùng tinh thần D-51/D-52) — một ngân sách lỗi không được cuốn theo
+     * những ngân sách đã lặp thành công trước đó trong cùng lần chạy job.
+     */
+    public void renewExpiredBudgets() {
+        List<Budget> toRenew = budgetRepository.findAutoRenewExpired(LocalDate.now());
+        for (Budget old : toRenew) {
+            try {
+                renewOneBudget(old.getId());
+            } catch (Exception e) {
+                log.error("Lỗi khi tự động lặp kỳ ngân sách {}", old.getId(), e);
+            }
+        }
+    }
+
+    /**
+     * Tạo kỳ mới nối tiếp kỳ đã hết hạn, tắt {@code is_active} của kỳ cũ. Chống trùng khi job chạy
+     * lại (ví dụ tác vụ hôm qua lỗi giữa chừng) bằng kiểm tra {@link BudgetRepository#existsOverlapping}
+     * TRƯỚC khi tạo — lớp bảo vệ Java, cộng thêm {@code ex_bud_no_overlap} là lớp bảo vệ CSDL cuối
+     * cùng nếu Java race.
+     */
+    @Transactional
+    public void renewOneBudget(UUID oldBudgetId) {
+        Budget old = budgetRepository.findById(oldBudgetId).orElseThrow(this::notFound);
+
+        LocalDate newStart = old.getEndDate().plusDays(1);
+        LocalDate newEnd = endOfPeriod(old.getPeriodType(), newStart);
+
+        boolean exists = budgetRepository.existsOverlapping(
+                old.getUserId(), old.getCategoryId(), old.getWalletId(), newStart, newEnd);
+        if (exists) {
+            return; // đã lặp rồi (job chạy lại), bỏ qua im lặng
+        }
+
+        old.setIsActive(false);
+        budgetRepository.save(old);
+
+        Budget renewed = Budget.builder()
+                .id(UUID.randomUUID())
+                .userId(old.getUserId())
+                .groupId(old.getGroupId())
+                .categoryId(old.getCategoryId())
+                .walletId(old.getWalletId())
+                .limitAmount(old.getLimitAmount())
+                .periodType(old.getPeriodType())
+                .startDate(newStart)
+                .endDate(newEnd)
+                .autoRenew(true)
+                .isActive(true)
+                .createdAt(Instant.now())
+                .build();
+        budgetRepository.save(renewed);
+
+        Category category = categoryRepository.findByIdAndVisibleToUser(old.getCategoryId(), old.getUserId())
+                .orElse(null);
+        String categoryName = category != null ? category.getName() : "Danh mục đã xoá";
+        notificationRepository.insertGenericNotification(
+                old.getUserId(),
+                "budget_renewed",
+                "Ngân sách đã bắt đầu kỳ mới",
+                "Ngân sách " + categoryName + " đã tự động chuyển sang kỳ mới từ "
+                        + String.format("%02d/%02d", newStart.getDayOfMonth(), newStart.getMonthValue())
+                        + " đến " + String.format("%02d/%02d", newEnd.getDayOfMonth(), newEnd.getMonthValue()) + ".",
+                renewed.getId());
     }
 
     // ---------------------------------------------------------------------

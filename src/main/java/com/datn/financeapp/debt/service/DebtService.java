@@ -16,6 +16,7 @@ import com.datn.financeapp.debt.entity.Debt;
 import com.datn.financeapp.debt.entity.DebtPayment;
 import com.datn.financeapp.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.debt.repository.DebtRepository;
+import com.datn.financeapp.notification.repository.NotificationRepository;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
 import com.datn.financeapp.transaction.service.TransactionService;
 import com.datn.financeapp.transaction.service.TransactionWriteCommand;
@@ -34,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +58,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DebtService {
 
     private static final String TYPE_LENDING = "lending";
@@ -74,6 +77,7 @@ public class DebtService {
     private final TransactionRepository transactionRepository;
     private final TransactionWriter transactionWriter;
     private final TransactionService transactionService;
+    private final NotificationRepository notificationRepository;
 
     // ---------------------------------------------------------------------
     // Ghi
@@ -462,6 +466,43 @@ public class DebtService {
                         new DebtSummaryResponse.OverduePart(payableOverdueTotal, payableOverdueCount)),
                 receivableTotal - payableTotal,
                 dueSoon);
+    }
+
+    // ---------------------------------------------------------------------
+    // Tác vụ nền JOB-04 (D-57, api/08 mục 9)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Quét TOÀN HỆ THỐNG khoản nợ còn outstanding có due_date, ghi nhắc nợ đúng ba mốc: còn 7
+     * ngày, còn 1 ngày, quá hạn nhắc lại mỗi 7 ngày. Mỗi khoản xử lý ĐỘC LẬP — một khoản lỗi không
+     * chặn khoản khác (cùng tinh thần D-51/D-52/T-04-20).
+     */
+    public void sendDueReminders() {
+        List<Debt> debts = debtRepository.findAllOutstandingWithDueDate();
+        for (Debt debt : debts) {
+            try {
+                evaluateAndNotify(debt);
+            } catch (Exception e) {
+                log.error("Lỗi khi gửi nhắc nợ cho khoản {}", debt.getId(), e);
+            }
+        }
+    }
+
+    /** api/08 mục 9 — ba mốc nhắc: còn 7 ngày, còn 1 ngày, quá hạn (nhắc lại mỗi 7 ngày). */
+    private void evaluateAndNotify(Debt debt) {
+        long daysUntilDue = ChronoUnit.DAYS.between(LocalDate.now(), debt.getDueDate());
+        String content;
+        if (daysUntilDue == 7) {
+            content = "Còn 7 ngày đến hạn khoản nợ với " + debt.getCounterpartyName() + ".";
+        } else if (daysUntilDue == 1) {
+            content = "Ngày mai đến hạn khoản nợ với " + debt.getCounterpartyName() + ".";
+        } else if (daysUntilDue < 0 && daysUntilDue % 7 == 0) {
+            content = "Đã quá hạn khoản nợ với " + debt.getCounterpartyName() + ".";
+        } else {
+            return; // không rơi vào mốc nhắc nào trong ba mốc trên
+        }
+        notificationRepository.insertGenericNotification(
+                debt.getUserId(), "debt_reminder", "Nhắc nợ đến hạn", content, debt.getId());
     }
 
     // ---------------------------------------------------------------------

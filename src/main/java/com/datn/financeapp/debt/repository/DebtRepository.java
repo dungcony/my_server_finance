@@ -64,4 +64,14 @@ public interface DebtRepository extends JpaRepository<Debt, UUID> {
                     + "AND due_date IS NOT NULL ORDER BY due_date",
             nativeQuery = true)
     List<Debt> findOutstandingWithDueDate(@Param("currentUser") UUID currentUser);
+
+    /**
+     * JOB-04 (D-57, api/08 mục 9) — quét TOÀN HỆ THỐNG, không lọc theo user. Khác
+     * {@link #findOutstandingWithDueDate} vốn nhận {@code currentUser} cho endpoint người dùng tự
+     * gọi; đây là truy vấn riêng cho tác vụ nền.
+     */
+    @Query(
+            value = "SELECT * FROM debts WHERE status = 'outstanding' AND due_date IS NOT NULL",
+            nativeQuery = true)
+    List<Debt> findAllOutstandingWithDueDate();
 }

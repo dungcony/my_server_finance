@@ -12,6 +12,7 @@ import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -162,6 +163,44 @@ public class WalletTransferService {
                 .orElseThrow(() -> new BusinessException(
                         "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
 
+        return doReconcile(wallet, autoFix);
+    }
+
+    /**
+     * JOB-01 (D-57, api/02 mục 10) — quét TOÀN BỘ ví, tự sửa lệch (autoFix luôn true), ghi log khi
+     * phát hiện lệch. KHÔNG {@code @Transactional} ở method top-level: mỗi ví xử lý ĐỘC LẬP trong
+     * transaction riêng của {@link #reconcileOneWalletAutoFix} — một ví lỗi không được cuốn theo
+     * những ví đã đối chiếu thành công trước đó trong cùng lần chạy job (T-04-20).
+     */
+    public void reconcileAllWallets() {
+        List<UUID> allWalletIds = walletRepository.findAllActiveWalletIds();
+        for (UUID walletId : allWalletIds) {
+            try {
+                reconcileOneWalletAutoFix(walletId);
+            } catch (Exception e) {
+                log.error("Lỗi khi đối chiếu ví {}", walletId, e);
+            }
+        }
+    }
+
+    /**
+     * Đối chiếu MỘT ví cho tác vụ nền — job hệ thống không có "người dùng đang gọi" nên đọc
+     * {@link Wallet} trực tiếp qua {@code walletRepository.findById}, bỏ qua bước kiểm tra quyền
+     * D-27 mà {@link #reconcile} áp dụng cho request người dùng. Tái dùng đúng công thức đối chiếu
+     * ở {@link #doReconcile} — không viết lại.
+     */
+    @Transactional
+    public void reconcileOneWalletAutoFix(UUID walletId) {
+        Wallet wallet = walletRepository
+                .findById(walletId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+        doReconcile(wallet, true);
+    }
+
+    /** Công thức đối chiếu dùng chung cho cả endpoint thủ công (WALLET-07) và job hệ thống (JOB-01). */
+    private ReconcileResponse doReconcile(Wallet wallet, boolean autoFix) {
+        UUID walletId = wallet.getId();
         Long computedBalance = jdbcTemplate.queryForObject(
                 "SELECT w.initial_balance "
                         + "  + COALESCE(SUM(CASE WHEN t.type='income'  THEN t.amount END), 0) "
