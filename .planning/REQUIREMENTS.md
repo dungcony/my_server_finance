@@ -151,9 +151,9 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Giao dịch định kỳ (RECUR)
 
-- [ ] **RECUR-01**: User tạo/sửa/xoá khoản định kỳ — `category_id` phải cùng `type`, đặt `next_run_date=start_date`, không sinh giao dịch ngay khi tạo
-- [ ] **RECUR-02**: User tạm dừng/bật lại khoản định kỳ, hoặc chạy ngay (`run-now`) mà không đổi `next_run_date`
-- [ ] **RECUR-03**: Hệ thống sinh giao dịch tự động hằng ngày cho khoản đến hạn — xử lý đúng ngày 29/30/31 không tồn tại (dùng ngày cuối tháng đích nhưng giữ nguyên ngày gốc cho các kỳ sau), chống ghi trùng bằng UNIQUE `(recurring_id, date)` ở DB, và bắt kịp đủ các kỳ bị bỏ lỡ nếu user vắng mặt lâu
+- [x] **RECUR-01**: User tạo/sửa/xoá khoản định kỳ — `category_id` phải cùng `type`, đặt `next_run_date=start_date`, không sinh giao dịch ngay khi tạo
+- [x] **RECUR-02**: User tạm dừng/bật lại khoản định kỳ, hoặc chạy ngay (`run-now`) mà không đổi `next_run_date`
+- [x] **RECUR-03**: Hệ thống sinh giao dịch tự động hằng ngày cho khoản đến hạn — xử lý đúng ngày 29/30/31 không tồn tại (dùng ngày cuối tháng đích nhưng giữ nguyên ngày gốc cho các kỳ sau), chống ghi trùng bằng UNIQUE `(recurring_id, date)` ở DB, và bắt kịp đủ các kỳ bị bỏ lỡ nếu user vắng mặt lâu
 
 ### Mục tiêu tiết kiệm (GOAL)
 
@@ -272,9 +272,9 @@ Chưa nằm trong roadmap hiện tại — ghi nhận để không quên.
 | DEBT-05 | Phase 4 | Pending |
 | DEBT-06 | Phase 4 | Pending |
 | DEBT-07 | Phase 4 | Pending |
-| RECUR-01 | Phase 4 | Pending |
-| RECUR-02 | Phase 4 | Pending |
-| RECUR-03 | Phase 4 | Pending |
+| RECUR-01 | Phase 4 | Complete |
+| RECUR-02 | Phase 4 | Complete |
+| RECUR-03 | Phase 4 | Complete |
 | GOAL-01 | Phase 4 | Pending |
 | GOAL-02 | Phase 4 | Pending |
 | GOAL-03 | Phase 4 | Pending |
