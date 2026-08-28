@@ -118,11 +118,16 @@ Nguồn: `api/00-QUY-UOC-CHUNG.md` đến `api/10-NHOM-GIA-DINH.md`, `THIET-KE-C
 
 ### Báo cáo & thống kê (REPORT)
 
-- [ ] **REPORT-01**: Mọi endpoint báo cáo tuân thủ 2 nguyên tắc bắt buộc: loại `type=transfer`, cộng gộp danh mục con vào cha (qua `fn_category_tree`). Gom nhóm theo ngày/tháng dùng thẳng `transactions.date` kiểu `DATE` — không chuyển đổi múi giờ
-- [ ] **REPORT-02**: User xem tổng hợp màn Tổng quan (`/reports/home`) gộp đủ dữ liệu cần thiết
-- [ ] **REPORT-03**: User xem báo cáo thu chi theo kỳ (`summary`), theo nhóm danh mục lớn (biểu đồ tròn), theo từng danh mục (xếp hạng, có dòng "Không phân loại")
-- [ ] **REPORT-04**: User xem xu hướng chi tiêu theo ngày trong tháng (đường tích luỹ chỉ chạy tới hôm nay) và theo tháng (so sánh tối đa 24 tháng)
-- [ ] **REPORT-05**: User xuất báo cáo (pdf/excel/csv) xử lý bất đồng bộ — trả 202 + `job_id`, poll trạng thái, link tải hạn 24h
+- [x] **REPORT-01
+**: Mọi endpoint báo cáo tuân thủ 2 nguyên tắc bắt buộc: loại `type=transfer`, cộng gộp danh mục con vào cha (qua `fn_category_tree`). Gom nhóm theo ngày/tháng dùng thẳng `transactions.date` kiểu `DATE` — không chuyển đổi múi giờ
+- [x] **REPORT-02
+**: User xem tổng hợp màn Tổng quan (`/reports/home`) gộp đủ dữ liệu cần thiết
+- [x] **REPORT-03
+**: User xem báo cáo thu chi theo kỳ (`summary`), theo nhóm danh mục lớn (biểu đồ tròn), theo từng danh mục (xếp hạng, có dòng "Không phân loại")
+- [x] **REPORT-04
+**: User xem xu hướng chi tiêu theo ngày trong tháng (đường tích luỹ chỉ chạy tới hôm nay) và theo tháng (so sánh tối đa 24 tháng)
+- [x] **REPORT-05
+**: User xuất báo cáo (pdf/excel/csv) xử lý bất đồng bộ — trả 202 + `job_id`, poll trạng thái, link tải hạn 24h
 
 ### Trợ lý AI — giai đoạn rule-based (AI)
 

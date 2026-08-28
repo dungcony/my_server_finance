@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 04-05-PLAN.md (kết thúc Wave 2)
-last_updated: "2026-08-27T15:52:35.264Z"
-last_activity: 2026-08-27
+stopped_at: Hoàn thành 04-06-PLAN.md
+last_updated: "2026-08-28T14:23:11.238Z"
+last_activity: 2026-08-28
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 21
-  completed_plans: 19
-  percent: 90
+  completed_plans: 20
+  percent: 95
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-22)
 
 **Core value:** Mọi API tuân thủ 3 nguyên tắc bất biến — ghi giao dịch nhanh, AI chỉ đề xuất qua `ai_drafts` chờ duyệt, riêng tư mặc định kiểm tra quyền ngay trong câu SQL
-**Current focus:** Phase 04 — nghi-p-v-ph-i-sinh-b-o-c-o
+**Current focus:** Phase 04 — nghiệp vụ phái sinh, báo cáo
 
 ## Current Position
 
-Phase: 04 (nghi-p-v-ph-i-sinh-b-o-c-o) — EXECUTING
-Plan: 5 of 7
+Phase: 04 — EXECUTING
+Plan: 7 of 7
 Status: Ready to execute
-Last activity: 2026-08-27
+Last activity: 2026-08-28
 
-Progress: [█████████░] 90%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Progress: [█████████░] 90%
 | Phase 04 P02 | 50m | 3 tasks | 18 files |
 | Phase 04 P03 | 35 phút | 2 tasks | 17 files |
 | Phase 04 P04 | 25m | 2 tasks | 13 files |
+| Phase 04 P06 | 75min | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,10 @@ Recent decisions affecting current work:
 - Plan 04-04: initial_amount sinh goal_contributions transaction_id = null — không sinh giao dịch (đúng api/09) mà trigger vẫn cộng đúng tiến độ ban đầu
 - Plan 04-04: cancelContribution xoá giao dịch TRƯỚC, xoá bản ghi con SAU — ngược sổ nợ, vì FK là ON DELETE SET NULL và D-32 chỉ soi debt_payments
 - Plan 04-04: chế độ nạp đọc tường minh create_transaction (D-49), không suy đoán từ goal.wallet_id
+- ExportAsyncRunner.runExport can @Transactional tuong minh - @Async khong tu mo transaction, markCompleted/markFailed la @Modifying can context
+- Cong gop danh muc con o truy van NHOM TOAN BO danh muc dung JOIN categories root COALESCE(parent_category_id, id) thay vi goi fn_category_tree tung danh muc
+- budgets_needing_attention trong GET /reports/home tai dung BudgetService.alerts(userId) co san, khong viet lai logic v_budget_progress o report/
+- POST /reports/export thay GET (D-59), download_url la duong dan tuong doi backend khong sinh token tai rieng (D-43)
 
 ### Pending Todos
 
@@ -156,8 +161,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T15:52:35.257Z
-Stopped at: Hoàn thành 04-04-PLAN.md
+Last session: 2026-08-28T14:23:11.230Z
+Stopped at: Hoàn thành 04-06-PLAN.md
 Resume file: None
 
 **Planned Phase:** 03 (giao-dich) — 4 plans — 2026-08-23T15:19:49.096Z
