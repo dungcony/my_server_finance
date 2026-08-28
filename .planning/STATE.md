@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Hoàn thành 04-06-PLAN.md
-last_updated: "2026-08-28T14:23:11.238Z"
+stopped_at: Hoàn thành 04-07-PLAN.md; kiểm chứng phase 4 tìm ra 2 gap
+last_updated: "2026-08-28T14:34:43.580Z"
 last_activity: 2026-08-28
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
   percent: 95
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-22)
 
 **Core value:** Mọi API tuân thủ 3 nguyên tắc bất biến — ghi giao dịch nhanh, AI chỉ đề xuất qua `ai_drafts` chờ duyệt, riêng tư mặc định kiểm tra quyền ngay trong câu SQL
-**Current focus:** Phase 04 — nghiệp vụ phái sinh, báo cáo
+**Current focus:** Phase 04 — nghiệp vụ phái sinh, báo cáo (đóng gap)
 
 ## Current Position
 
-Phase: 04 — EXECUTING
+Phase: 04 — GAPS FOUND
 Plan: 7 of 7
-Status: Ready to execute
+Status: 7/7 plan xong; kiểm chứng 5/7 success criteria — cần đóng 2 gap (DebtReminderWorker, ExportAsyncRunner)
 Last activity: 2026-08-28
 
 Progress: [██████████] 95%
