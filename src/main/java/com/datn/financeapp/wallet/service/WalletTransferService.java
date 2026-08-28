@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class WalletTransferService {
     private final WalletRepository walletRepository;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionWriter transactionWriter;
+    private final ReconciliationWorker reconciliationWorker;
 
     /**
      * api/02-VI.md mục 8. Khoá 2 ví theo thứ tự {@code UUID.compareTo()} cố định (T-02-12) rồi
@@ -176,63 +178,84 @@ public class WalletTransferService {
         List<UUID> allWalletIds = walletRepository.findAllActiveWalletIds();
         for (UUID walletId : allWalletIds) {
             try {
-                reconcileOneWalletAutoFix(walletId);
+                reconciliationWorker.reconcileOneWalletAutoFix(walletId);
             } catch (Exception e) {
                 log.error("Lỗi khi đối chiếu ví {}", walletId, e);
             }
         }
     }
 
-    /**
-     * Đối chiếu MỘT ví cho tác vụ nền — job hệ thống không có "người dùng đang gọi" nên đọc
-     * {@link Wallet} trực tiếp qua {@code walletRepository.findById}, bỏ qua bước kiểm tra quyền
-     * D-27 mà {@link #reconcile} áp dụng cho request người dùng. Tái dùng đúng công thức đối chiếu
-     * ở {@link #doReconcile} — không viết lại.
-     */
-    @Transactional
-    public void reconcileOneWalletAutoFix(UUID walletId) {
-        Wallet wallet = walletRepository
-                .findById(walletId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
-        doReconcile(wallet, true);
-    }
-
     /** Công thức đối chiếu dùng chung cho cả endpoint thủ công (WALLET-07) và job hệ thống (JOB-01). */
     private ReconcileResponse doReconcile(Wallet wallet, boolean autoFix) {
-        UUID walletId = wallet.getId();
-        Long computedBalance = jdbcTemplate.queryForObject(
-                "SELECT w.initial_balance "
-                        + "  + COALESCE(SUM(CASE WHEN t.type='income'  THEN t.amount END), 0) "
-                        + "  - COALESCE(SUM(CASE WHEN t.type='expense' THEN t.amount END), 0) "
-                        + "  - COALESCE(SUM(CASE WHEN t.type='transfer' AND t.wallet_id = w.id THEN t.amount END), 0) "
-                        + "  + COALESCE(SUM(CASE WHEN t.type='transfer' AND t.destination_wallet_id = w.id THEN t.amount END), 0) "
-                        + "FROM wallets w "
-                        + "LEFT JOIN transactions t ON (t.wallet_id = w.id OR t.destination_wallet_id = w.id) AND NOT t.is_deleted "
-                        + "WHERE w.id = ? "
-                        + "GROUP BY w.id, w.initial_balance",
-                Long.class, walletId);
-        if (computedBalance == null) {
-            computedBalance = wallet.getInitialBalance();
+        return reconciliationWorker.doReconcile(wallet, autoFix);
+    }
+
+    /**
+     * Bean riêng chỉ để {@code reconcileOneWalletAutoFix} đi qua đúng Spring AOP proxy cho
+     * {@code @Transactional} khi được gọi từ vòng lặp {@link #reconcileAllWallets} — gọi trực
+     * tiếp method {@code @Transactional} khác trong CÙNG class ({@code this.xxx()}) là self-
+     * invocation, bỏ qua proxy và làm mất transaction hoàn toàn (bài học
+     * {@code IdempotencyTransactionHelper}, Phase 1).
+     */
+    @Component
+    @RequiredArgsConstructor
+    static class ReconciliationWorker {
+
+        private static final Logger workerLog = LoggerFactory.getLogger(ReconciliationWorker.class);
+
+        private final WalletRepository walletRepository;
+        private final JdbcTemplate jdbcTemplate;
+
+        /**
+         * Đối chiếu MỘT ví cho tác vụ nền — job hệ thống không có "người dùng đang gọi" nên đọc
+         * {@link Wallet} trực tiếp qua {@code walletRepository.findById}, bỏ qua bước kiểm tra
+         * quyền D-27 mà {@code reconcile()} áp dụng cho request người dùng.
+         */
+        @Transactional
+        void reconcileOneWalletAutoFix(UUID walletId) {
+            Wallet wallet = walletRepository
+                    .findById(walletId)
+                    .orElseThrow(() -> new BusinessException(
+                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+            doReconcile(wallet, true);
         }
 
-        long storedBalance = wallet.getCurrentBalance();
-        long difference = storedBalance - computedBalance;
-        boolean wasFixed = false;
-
-        if (difference != 0) {
-            log.warn(
-                    "Lệch số dư ví phát hiện khi reconcile: walletId={}, storedBalance={}, "
-                            + "computedBalance={}, difference={}, timestamp={}",
-                    walletId, storedBalance, computedBalance, difference, Instant.now());
-
-            if (autoFix) {
-                walletRepository.adjustBalance(walletId, -difference);
-                wasFixed = true;
+        ReconcileResponse doReconcile(Wallet wallet, boolean autoFix) {
+            UUID walletId = wallet.getId();
+            Long computedBalance = jdbcTemplate.queryForObject(
+                    "SELECT w.initial_balance "
+                            + "  + COALESCE(SUM(CASE WHEN t.type='income'  THEN t.amount END), 0) "
+                            + "  - COALESCE(SUM(CASE WHEN t.type='expense' THEN t.amount END), 0) "
+                            + "  - COALESCE(SUM(CASE WHEN t.type='transfer' AND t.wallet_id = w.id THEN t.amount END), 0) "
+                            + "  + COALESCE(SUM(CASE WHEN t.type='transfer' AND t.destination_wallet_id = w.id THEN t.amount END), 0) "
+                            + "FROM wallets w "
+                            + "LEFT JOIN transactions t ON (t.wallet_id = w.id OR t.destination_wallet_id = w.id) AND NOT t.is_deleted "
+                            + "WHERE w.id = ? "
+                            + "GROUP BY w.id, w.initial_balance",
+                    Long.class, walletId);
+            if (computedBalance == null) {
+                computedBalance = wallet.getInitialBalance();
             }
-        }
 
-        return new ReconcileResponse(walletId, storedBalance, computedBalance, difference, difference == 0, wasFixed);
+            long storedBalance = wallet.getCurrentBalance();
+            long difference = storedBalance - computedBalance;
+            boolean wasFixed = false;
+
+            if (difference != 0) {
+                workerLog.warn(
+                        "Lệch số dư ví phát hiện khi reconcile: walletId={}, storedBalance={}, "
+                                + "computedBalance={}, difference={}, timestamp={}",
+                        walletId, storedBalance, computedBalance, difference, Instant.now());
+
+                if (autoFix) {
+                    walletRepository.adjustBalance(walletId, -difference);
+                    wasFixed = true;
+                }
+            }
+
+            return new ReconcileResponse(
+                    walletId, storedBalance, computedBalance, difference, difference == 0, wasFixed);
+        }
     }
 
     /**

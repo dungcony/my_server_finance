@@ -72,6 +72,7 @@ public class BudgetService {
     private final IconRepository iconRepository;
     private final WalletRepository walletRepository;
     private final NotificationRepository notificationRepository;
+    private final BudgetRenewalWorker budgetRenewalWorker;
 
     // ---------------------------------------------------------------------
     // Đọc
@@ -338,69 +339,18 @@ public class BudgetService {
     /**
      * Quét mọi ngân sách {@code auto_renew=true} đã hết kỳ và tự tạo kỳ mới. KHÔNG {@code
      * @Transactional} ở method top-level: mỗi ngân sách xử lý ĐỘC LẬP trong transaction riêng của
-     * {@link #renewOneBudget} (cùng tinh thần D-51/D-52) — một ngân sách lỗi không được cuốn theo
-     * những ngân sách đã lặp thành công trước đó trong cùng lần chạy job.
+     * {@link BudgetRenewalWorker#renewOneBudget} (cùng tinh thần D-51/D-52) — một ngân sách lỗi
+     * không được cuốn theo những ngân sách đã lặp thành công trước đó trong cùng lần chạy job.
      */
     public void renewExpiredBudgets() {
         List<Budget> toRenew = budgetRepository.findAutoRenewExpired(LocalDate.now());
         for (Budget old : toRenew) {
             try {
-                renewOneBudget(old.getId());
+                budgetRenewalWorker.renewOneBudget(old.getId());
             } catch (Exception e) {
                 log.error("Lỗi khi tự động lặp kỳ ngân sách {}", old.getId(), e);
             }
         }
-    }
-
-    /**
-     * Tạo kỳ mới nối tiếp kỳ đã hết hạn, tắt {@code is_active} của kỳ cũ. Chống trùng khi job chạy
-     * lại (ví dụ tác vụ hôm qua lỗi giữa chừng) bằng kiểm tra {@link BudgetRepository#existsOverlapping}
-     * TRƯỚC khi tạo — lớp bảo vệ Java, cộng thêm {@code ex_bud_no_overlap} là lớp bảo vệ CSDL cuối
-     * cùng nếu Java race.
-     */
-    @Transactional
-    public void renewOneBudget(UUID oldBudgetId) {
-        Budget old = budgetRepository.findById(oldBudgetId).orElseThrow(this::notFound);
-
-        LocalDate newStart = old.getEndDate().plusDays(1);
-        LocalDate newEnd = endOfPeriod(old.getPeriodType(), newStart);
-
-        boolean exists = budgetRepository.existsOverlapping(
-                old.getUserId(), old.getCategoryId(), old.getWalletId(), newStart, newEnd);
-        if (exists) {
-            return; // đã lặp rồi (job chạy lại), bỏ qua im lặng
-        }
-
-        old.setIsActive(false);
-        budgetRepository.save(old);
-
-        Budget renewed = Budget.builder()
-                .id(UUID.randomUUID())
-                .userId(old.getUserId())
-                .groupId(old.getGroupId())
-                .categoryId(old.getCategoryId())
-                .walletId(old.getWalletId())
-                .limitAmount(old.getLimitAmount())
-                .periodType(old.getPeriodType())
-                .startDate(newStart)
-                .endDate(newEnd)
-                .autoRenew(true)
-                .isActive(true)
-                .createdAt(Instant.now())
-                .build();
-        budgetRepository.save(renewed);
-
-        Category category = categoryRepository.findByIdAndVisibleToUser(old.getCategoryId(), old.getUserId())
-                .orElse(null);
-        String categoryName = category != null ? category.getName() : "Danh mục đã xoá";
-        notificationRepository.insertGenericNotification(
-                old.getUserId(),
-                "budget_renewed",
-                "Ngân sách đã bắt đầu kỳ mới",
-                "Ngân sách " + categoryName + " đã tự động chuyển sang kỳ mới từ "
-                        + String.format("%02d/%02d", newStart.getDayOfMonth(), newStart.getMonthValue())
-                        + " đến " + String.format("%02d/%02d", newEnd.getDayOfMonth(), newEnd.getMonthValue()) + ".",
-                renewed.getId());
     }
 
     // ---------------------------------------------------------------------
@@ -593,7 +543,7 @@ public class BudgetService {
      * dài đúng một tháng, không bị cụt. Với {@code start_date} là mặc định (ngày 1) thì hai cách
      * cho kết quả giống hệt nhau.
      */
-    private LocalDate endOfPeriod(String periodType, LocalDate startDate) {
+    static LocalDate endOfPeriod(String periodType, LocalDate startDate) {
         return switch (periodType) {
             case "week" -> startDate.plusDays(6);
             case "month" -> startDate.plusMonths(1).minusDays(1);
