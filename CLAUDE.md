@@ -72,7 +72,7 @@ Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gố
 4. **Sửa/xoá giao dịch phải đúng 3 bước** trong cùng 1 `@Transactional`: hoàn tác ảnh hưởng cũ → ghi giá trị mới → áp dụng ảnh hưởng mới. Tránh transaction self-invocation (gọi method `@Transactional` từ trong cùng class) làm mất annotation.
 5. **Mọi truy vấn ví/giao dịch/ngân sách/nợ/mục tiêu phải kiểm tra quyền ngay trong JPQL/native query**, không load hết rồi lọc ở code Java. Không có quyền → 404.
 6. **Mọi thống kê/lọc theo danh mục cha phải cộng gộp danh mục con** — dùng lại một repository method gọi `fn_category_tree`, không lặp điều kiện lọc ở nhiều nơi.
-7. **Mọi báo cáo phải loại `type='transfer'`** và tính theo giờ Việt Nam (`AT TIME ZONE 'Asia/Ho_Chi_Minh'` trong SQL) khi group theo ngày/tháng.
+7. **Mọi báo cáo phải loại `type='transfer'`.** Gom nhóm báo cáo theo ngày/tháng dùng thẳng cột `transactions.date` (kiểu `DATE` thuần, không có thành phần giờ) — KHÔNG chuyển đổi múi giờ dưới bất kỳ hình thức nào. Đây là thiết kế cố ý để tránh hẳn lớp bug múi giờ.
 8. **`amount` luôn kiểu `Long`**, không bao giờ `Double`/`float` ở bất kỳ tầng nào.
 9. **AI (parse-text/OCR) không bao giờ tự tạo `transactions`** — luôn qua `ai_drafts.status='pending'`, chờ duyệt; khi duyệt phải ghi `user_corrections`.
 
