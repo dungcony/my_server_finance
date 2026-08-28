@@ -129,7 +129,7 @@ Plans:
 - [x] 04-04-PLAN.md — Mục tiêu tiết kiệm: hai chế độ nạp create_transaction, ranh giới trigger V4 (GOAL-01..04)
 - [x] 04-05-PLAN.md — Định kỳ: CRUD, RecurringRunnerService/RecurringPeriodWriter 2-bean, ngày 29/30/31, bắt kịp kỳ bỏ lỡ (RECUR-01..03)
 - [x] 04-06-PLAN.md — Báo cáo: 6 endpoint + export CSV async, sửa 3 file tài liệu múi giờ (REPORT-01..05)
-- [ ] 04-07-PLAN.md — Tác vụ nền: 5 job @Scheduled (đối chiếu ví, lặp ngân sách, định kỳ, nhắc nợ, dọn export) (BUDGET-07, JOB-01..04)
+- [x] 04-07-PLAN.md — Tác vụ nền: 5 job @Scheduled (đối chiếu ví, lặp ngân sách, định kỳ, nhắc nợ, dọn export) (BUDGET-07, JOB-01..04)
 
 ### Phase 5: Nhóm gia đình & Trợ lý AI
 **Goal**: User chia sẻ ví/ngân sách trong nhóm gia đình với riêng tư cá nhân tuyệt đối được kiểm chứng bằng test tự động, và có thể dùng trợ lý AI rule-based để nhập nhanh giao dịch qua câu nói hoặc ảnh hoá đơn, luôn qua bước duyệt của người dùng.
