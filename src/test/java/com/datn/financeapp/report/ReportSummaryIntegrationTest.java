@@ -257,7 +257,8 @@ class ReportSummaryIntegrationTest {
                 .andExpect(jsonPath("$.data.daily_trend").exists())
                 .andExpect(jsonPath("$.data.top_spending").exists())
                 .andExpect(jsonPath("$.data.recent_transactions").exists())
-                .andExpect(jsonPath("$.data.recent_transactions[0].amount").value(42_000));
+                .andExpect(jsonPath("$.data.recent_transactions[0].amount").value(42_000))
+                .andExpect(jsonPath("$.data.budgets_needing_attention").exists());
     }
 
     /** REPORT-04 — current_line CHỈ có điểm dữ liệu tới hôm nay, không kéo dài hết tháng. */

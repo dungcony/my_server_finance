@@ -1,5 +1,7 @@
 package com.datn.financeapp.report.service;
 
+import com.datn.financeapp.budget.dto.BudgetAlertResponse;
+import com.datn.financeapp.budget.service.BudgetService;
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
@@ -46,6 +48,7 @@ public class ReportQueryService {
     private final CategoryRepository categoryRepository;
     private final IconRepository iconRepository;
     private final WalletRepository walletRepository;
+    private final BudgetService budgetService;
     private final JdbcTemplate jdbcTemplate;
 
     // ------------------------------------------------------------ 2. summary
@@ -407,6 +410,8 @@ public class ReportQueryService {
                     wallet == null ? null : new ReportHomeResponse.WalletRef(wallet.getName())));
         }
 
+        List<BudgetAlertResponse> budgetsNeedingAttention = budgetService.alerts(userId);
+
         return new ReportHomeResponse(
                 new ReportHomeResponse.Balance(
                         personalTotal == null ? 0 : personalTotal, sharedTotal == null ? 0 : sharedTotal),
@@ -415,7 +420,8 @@ public class ReportQueryService {
                         range.label(), totalIncome, totalExpense, totalIncome - totalExpense),
                 new ReportHomeResponse.DailyTrend(trend.currentLine(), trend.avg3MonthsLine(), maxValue, note),
                 topSpending,
-                recentTransactions);
+                recentTransactions,
+                budgetsNeedingAttention);
     }
 
     // ------------------------------------------------------------- helpers
