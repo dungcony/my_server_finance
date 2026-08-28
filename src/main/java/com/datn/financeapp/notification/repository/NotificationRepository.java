@@ -72,4 +72,23 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
             @Param("title") String title,
             @Param("content") String content,
             @Param("budgetId") UUID budgetId);
+
+    /**
+     * Chèn thông báo dạng chung — dùng cho JOB-02 ({@code budget_renewed}) và JOB-04
+     * ({@code debt_reminder}) ở Plan 07. Khác {@link #insertBudgetAlertIfNotExists}: không có
+     * {@code ON CONFLICT}, vì chống trùng của hai job này nằm ở tầng service (kiểm tra kỳ mới đã
+     * tồn tại hay chưa trước khi gọi tới, hoặc chỉ gọi đúng ba mốc ngày cố định) chứ không phải
+     * UNIQUE index như {@code uq_notif_budget_alert}.
+     */
+    @Modifying
+    @Query(
+            value = "INSERT INTO notifications (id, user_id, type, title, content, reference_id) "
+                    + "VALUES (gen_random_uuid(), :userId, :type, :title, :content, :referenceId)",
+            nativeQuery = true)
+    void insertGenericNotification(
+            @Param("userId") UUID userId,
+            @Param("type") String type,
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("referenceId") UUID referenceId);
 }

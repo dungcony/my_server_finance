@@ -65,4 +65,34 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
             @Param("walletId") UUID walletId,
             @Param("startDate") java.time.LocalDate startDate,
             @Param("endDate") java.time.LocalDate endDate);
+
+    /**
+     * JOB-02 (D-57, api/05 mục 8) — ngân sách {@code auto_renew=true}, đang hiệu lực, đã hết kỳ
+     * (so {@code end_date} với hôm nay, không phải {@code next_run_date} — bảng này không có cột
+     * đó, khác {@code recurring_transactions}). Dùng index {@code idx_bud_renew} (V3) sẵn có.
+     */
+    @Query(
+            value = "SELECT * FROM budgets b WHERE b.auto_renew = TRUE AND b.is_active = TRUE "
+                    + "AND b.end_date < :today",
+            nativeQuery = true)
+    List<Budget> findAutoRenewExpired(@Param("today") java.time.LocalDate today);
+
+    /**
+     * Lớp bảo vệ Java TRƯỚC khi tạo kỳ mới trong {@code renewOneBudget} — kiểm tra chống trùng khi
+     * job chạy lại (ví dụ retry sau lỗi giữa chừng). {@code ex_bud_no_overlap} (V3, EXCLUDE gist)
+     * là lớp bảo vệ CSDL cuối cùng nếu kiểm tra Java này bị race.
+     */
+    @Query(
+            value = "SELECT EXISTS(SELECT 1 FROM budgets b WHERE b.user_id = :userId "
+                    + "AND b.category_id = :categoryId "
+                    + "AND (CAST(:walletId AS uuid) IS NULL AND b.wallet_id IS NULL OR b.wallet_id = :walletId) "
+                    + "AND b.is_active = TRUE "
+                    + "AND b.start_date = :newStart AND b.end_date = :newEnd)",
+            nativeQuery = true)
+    boolean existsOverlapping(
+            @Param("userId") UUID userId,
+            @Param("categoryId") UUID categoryId,
+            @Param("walletId") UUID walletId,
+            @Param("newStart") java.time.LocalDate newStart,
+            @Param("newEnd") java.time.LocalDate newEnd);
 }

@@ -15,6 +15,7 @@ import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.notification.repository.NotificationRepository;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.math.BigDecimal;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class BudgetService {
 
     private static final String STATUS_NORMAL = "normal";
@@ -68,6 +71,8 @@ public class BudgetService {
     private final CategoryRepository categoryRepository;
     private final IconRepository iconRepository;
     private final WalletRepository walletRepository;
+    private final NotificationRepository notificationRepository;
+    private final BudgetRenewalWorker budgetRenewalWorker;
 
     // ---------------------------------------------------------------------
     // Đọc
@@ -328,6 +333,27 @@ public class BudgetService {
     }
 
     // ---------------------------------------------------------------------
+    // Tác vụ nền JOB-02 (D-57, api/05 mục 8)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Quét mọi ngân sách {@code auto_renew=true} đã hết kỳ và tự tạo kỳ mới. KHÔNG {@code
+     * @Transactional} ở method top-level: mỗi ngân sách xử lý ĐỘC LẬP trong transaction riêng của
+     * {@link BudgetRenewalWorker#renewOneBudget} (cùng tinh thần D-51/D-52) — một ngân sách lỗi
+     * không được cuốn theo những ngân sách đã lặp thành công trước đó trong cùng lần chạy job.
+     */
+    public void renewExpiredBudgets() {
+        List<Budget> toRenew = budgetRepository.findAutoRenewExpired(LocalDate.now());
+        for (Budget old : toRenew) {
+            try {
+                budgetRenewalWorker.renewOneBudget(old.getId());
+            } catch (Exception e) {
+                log.error("Lỗi khi tự động lặp kỳ ngân sách {}", old.getId(), e);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
     // Ánh xạ và tính toán phụ trợ
     // ---------------------------------------------------------------------
 
@@ -517,7 +543,7 @@ public class BudgetService {
      * dài đúng một tháng, không bị cụt. Với {@code start_date} là mặc định (ngày 1) thì hai cách
      * cho kết quả giống hệt nhau.
      */
-    private LocalDate endOfPeriod(String periodType, LocalDate startDate) {
+    static LocalDate endOfPeriod(String periodType, LocalDate startDate) {
         return switch (periodType) {
             case "week" -> startDate.plusDays(6);
             case "month" -> startDate.plusMonths(1).minusDays(1);
