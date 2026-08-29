@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-08-29T04:14:56.027Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-08-29T04:24:50.491Z"
 last_activity: 2026-08-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 22
-  percent: 85
+  completed_plans: 23
+  percent: 88
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 06 (n-i-api-th-t-v-i-app-flutter) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-08-29
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [█████████░] 85%
 | Phase 04 P04 | 25m | 2 tasks | 13 files |
 | Phase 04 P06 | 75min | 3 tasks | 20 files |
 | Phase 06 P01 | 35min | 4 tasks | 11 files |
+| Phase 06-n-i-api-th-t-v-i-app-flutter P02 | 20min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,8 @@ Recent decisions affecting current work:
 - 06-01: pathPrefix RateLimitProperties gan cung /v1/auth/, /v1/ai/ thay vi doc dong qua @Value - context-path da chot D-05
 - 06-01: computeAffectedBudgets goi dong bo trong cung @Transactional cua TransactionService, khac BudgetAlertListener chay AFTER_COMMIT
 - 06-01: DevDataSeeder chi @Profile(dev), matkhau seed co dinh SeedPass123! chap nhan duoc vi khong bao gio bat o prod (T-06-02, accept)
+- 06-02: giu dung cach hien thuc D-02 theo PATTERNS.md (luon gan MockInterceptor + tu quyet dinh path) thay vi RESEARCH.md phac thao ban dau
+- 06-02: 2 integration_test/real_backend/*.dart goi truc tiep ApiClient (khong qua UI app.main()) de co lap kiem chung tang mang cho SC1/SC2a
 
 ### Pending Todos
 
@@ -160,6 +163,7 @@ None yet.
 - **Hai chỗ tài liệu còn sai về múi giờ báo cáo** (`api/00` mục 13 và `source/server/CLAUDE.md` quy tắc 7 vẫn ghi `AT TIME ZONE`) — mâu thuẫn CORE-07/REPORT-01. Thuộc Phase 4, đã ghi vào `<deferred>` của 01-CONTEXT.md
 - **Ranh giới trigger dễ hiểu sai:** "không viết trigger" chỉ áp dụng cho số dư ví. `paid_amount`/`saved_amount`/`status` của debt/goal do trigger V4 sở hữu, backend không ghi — xem chi tiết ở Phase 4 trong ROADMAP.md
 - 06-01: Docker daemon khong san sang tren may dev - TransactionAffectedBudgetsIntegrationTest va AuthIdempotencyRateLimitEndToEndTest chua chay that, chi verify bang compile sach. Can chay lai khi co Docker truoc khi dong Phase 6
+- 06-02: Khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 
 ## Deferred Items
 
@@ -171,8 +175,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-29T04:14:56.018Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-08-29T04:24:50.482Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
 
 **Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z
