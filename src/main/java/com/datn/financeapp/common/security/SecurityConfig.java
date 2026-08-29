@@ -19,6 +19,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *
  * D-18: RateLimitFilter đặt SAU JwtAuthFilter để tầng ai/default đọc được user_id từ
  * SecurityContext đã được JwtAuthFilter set trước đó trong cùng request.
+ *
+ * <p>{@code exceptionHandling(authenticationEntryPoint)} BẮT BUỘC: thiếu nó thì request
+ * thiếu/hỏng token trả 403 (anonymous → AccessDeniedException) thay vì 401, và
+ * {@code GlobalExceptionHandler.handleAuthentication} không bao giờ chạy vì Spring Security
+ * xử lý lỗi xác thực ngay trong filter chain, trước DispatcherServlet.
  */
 @Configuration
 @EnableWebSecurity
@@ -27,6 +32,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -36,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/register", "/auth/login", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/reset-password").permitAll()
                         .anyRequest().authenticated())
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(rateLimitFilter, JwtAuthFilter.class);
         return http.build();
