@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: 7/7 plan xong; kiểm chứng 5/7 success criteria — cần đóng 2 gap (DebtReminderWorker, ExportAsyncRunner)
 stopped_at: Phase 6 context gathered
-last_updated: "2026-08-29T01:34:52.283Z"
+last_updated: "2026-08-29T03:35:16.155Z"
 last_activity: 2026-08-28
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 21
+  total_plans: 26
   completed_plans: 21
-  percent: 100
+  percent: 81
 ---
 
 # Project State
@@ -169,4 +169,4 @@ Last session: --stopped-at
 Stopped at: Phase 6 context gathered
 Resume file: --resume-file
 
-**Planned Phase:** 03 (giao-dich) — 4 plans — 2026-08-23T15:19:49.096Z
+**Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z

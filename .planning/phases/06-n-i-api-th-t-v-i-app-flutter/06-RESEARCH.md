@@ -548,7 +548,7 @@ Future<void> onRequest(RequestOptions options, RequestInterceptorHandler handler
 
 **Không có claim compliance/bảo mật cấp cao nào chỉ dựa trên `[ASSUMED]`** — mọi phát hiện về context-path, rate-limit, idempotency, endpoint đối chiếu đều `[VERIFIED]` qua đọc mã trực tiếp.
 
-## Open Questions
+## Open Questions (RESOLVED — cả 3 câu đã được trả lời trong action của 06-01/06-02-PLAN.md)
 
 1. **`affected_budgets` — có nên sửa trong Phase 6 hay tách plan riêng?**
    - Đã biết: backend trả rỗng vĩnh viễn, app có UI phụ thuộc, đặc tả `api/04` yêu cầu trả thật, `BudgetService.alerts()` có logic tương tự tái dùng được.
