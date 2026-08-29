@@ -163,6 +163,7 @@ Recent decisions affecting current work:
 None yet.
 
 ### Blockers/Concerns
+- **3 bug thật chỉ lộ ra khi chạy backend thật** (đã vá, xem commit `182df0f`, `b538383`, `0eb2305`): (1) mọi native query dùng `:param IS NULL` không CAST → PostgreSQL ném `could not determine data type of parameter`, khiến GET /transactions|/wallets|/categories|/icons trả 500 với gần như mọi lần gọi từ app; (2) `SecurityConfig` thiếu `exceptionHandling` → request thiếu/hỏng token trả 403 thay vì 401, và `GlobalExceptionHandler.handleAuthentication` không bao giờ chạy vì Spring Security xử lý trong filter chain trước DispatcherServlet; (3) app đặt `validateStatus: (_) => true` nên 401 không sinh `DioException` → `AuthInterceptor.onError` chưa từng chạy, cơ chế tự làm mới thẻ hoàn toàn không hoạt động. Cả ba đều biên dịch sạch và qua được mọi kiểm tra tĩnh — bài học: đối chiếu tài liệu không thay được một lần chạy thật.
 
 [Issues that affect future work]
 
@@ -173,12 +174,7 @@ None yet.
 - **Cần thêm mã lỗi mới `REQUEST_IN_PROGRESS` (409) vào `api/00-QUY-UOC-CHUNG.md` mục 6** — đặc tả hiện thiếu mã cho tình huống Idempotency-Key trùng khi lần đầu đang xử lý (xem D-14). Sửa trong Phase 1
 - **Hai chỗ tài liệu còn sai về múi giờ báo cáo** (`api/00` mục 13 và `source/server/CLAUDE.md` quy tắc 7 vẫn ghi `AT TIME ZONE`) — mâu thuẫn CORE-07/REPORT-01. Thuộc Phase 4, đã ghi vào `<deferred>` của 01-CONTEXT.md
 - **Ranh giới trigger dễ hiểu sai:** "không viết trigger" chỉ áp dụng cho số dư ví. `paid_amount`/`saved_amount`/`status` của debt/goal do trigger V4 sở hữu, backend không ghi — xem chi tiết ở Phase 4 trong ROADMAP.md
-- 06-01: Docker daemon khong san sang tren may dev - TransactionAffectedBudgetsIntegrationTest va AuthIdempotencyRateLimitEndToEndTest chua chay that, chi verify bang compile sach. Can chay lai khi co Docker truoc khi dong Phase 6
-- 06-02: Khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
-- 06-03: khong co Android emulator + backend that trong moi truong thuc thi - 3 integration_test/real_backend/*.dart moi (transfer, edit-3step, idempotency) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
-- 06-04: khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi (refresh_token_concurrency, budgets_and_reports_smoke) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
-- 06-05 (dong Phase 6): xac nhan lai TOAN BO 7 file integration_test/real_backend/*.dart (auth_me, category_rollup, transfer_excluded_from_report, edit_transaction_3step, idempotency, refresh_token_concurrency, budgets_and_reports_smoke) tu 06-02/06-03/06-04 CHUA TUNG duoc chay tren emulator that + backend that trong BAT KY phien thuc thi nao cua Phase 6 - khong co Android emulator ket noi, khong co backend dang chay. Test Testcontainers backend (TransactionAffectedBudgetsIntegrationTest, AuthIdempotencyRateLimitEndToEndTest tu 06-01) cung CHUA chay that vi khong co Docker daemon. Checkpoint Task 4 cua 06-05-PLAN.md (xac nhan 4 man chinh + dem luot /auth/refresh D-14) CHUA thuc hien duoc trong phien nay vi cung thieu emulator/backend - nguoi dung se tu chay sau. Phase 6 duoc dong voi tai lieu ghi ro dieu nay, khong am tham danh dau dat (D-03 tinh than ap dung rong hon ca SC#6)
-- 06-05: Checkpoint Task 4 (xac nhan 4 man chinh + dem luot /auth/refresh D-14) CHUA thuc hien - khong co Android emulator/backend dang chay trong phien thuc thi; nguoi dung se tu chay sau
+- ĐÃ GIẢI QUYẾT (29/08/2026): toàn bộ 7 `integration_test/real_backend/*.dart` ĐÃ CHẠY THẬT và PASS 7/7 trên emulator Pixel 7 API 36 + backend dev thật (PostgreSQL 16 qua docker compose, Flyway V1–V10). Bộ test backend chạy đủ với Docker: 164/164 PASS. Checkpoint D-14 đã đo thật bằng Tomcat access log: 3 request 401 đồng thời → đúng 1 lần POST /auth/refresh → cả 3 retry 200. Các blocker "chưa chạy thật" của 06-01→06-05 không còn hiệu lực.
 
 ## Deferred Items
 

@@ -182,7 +182,13 @@ Plans:
   8. `CHUYEN-SANG-API-THAT.md` được cập nhật cột "Backend phải làm gì" thành ghi chú chỗ thực tế đã vấp, và mọi sai lệch tài liệu/API phát hiện trong lúc nối đã sửa lại ở `api/*.md`
 **Ghi chú thứ tự thực hiện**: theo đúng trình tự 8 bước ở mục 8 của `CHUYEN-SANG-API-THAT.md` — `/auth/me` trước, rồi nhóm chỉ đọc (`/wallets`, `/categories`, `/transactions`), rồi nhóm ghi (`POST /transactions`), rồi `PUT`/`DELETE`, rồi báo cáo/ngân sách, cuối cùng mới AI. Sau mỗi bước chạy lại phép thử tương ứng thay vì để dồn tới cuối.
 
-**Ghi chú khi đóng phase:** Success Criteria #6 (duyệt bản nháp AI có sửa → `user_corrections`) KHÔNG kiểm chứng được trong phase này — phụ thuộc Phase 5 (`GroupController`/`AiController`) chưa code (D-01/D-03, 06-CONTEXT.md). Dời sang phase nối nhóm `ai` sau khi Phase 5 hoàn thành. 7/8 tiêu chí còn lại đã kiểm chứng qua `integration_test/real_backend/` + thử tay trên máy ảo Pixel 7.
+**Ghi chú khi đóng phase:** Success Criteria #6 (duyệt bản nháp AI có sửa → `user_corrections`) KHÔNG kiểm chứng được trong phase này — phụ thuộc Phase 5 (`GroupController`/`AiController`) chưa code (D-01/D-03, 06-CONTEXT.md). Dời sang phase nối nhóm `ai` sau khi Phase 5 hoàn thành.
+
+**Kiểm chứng thật (29/08/2026):** 7/7 `integration_test/real_backend/*.dart` PASS trên emulator Pixel 7 API 36 + backend dev thật (PostgreSQL 16 qua `docker compose`, Flyway V1–V10). Bộ test backend 164/164 PASS với Docker. SC#5/D-14 đo trực tiếp bằng Tomcat access log: 3 request 401 đồng thời → **đúng 1 lần** `POST /auth/refresh` → cả 3 retry 200.
+
+Việc chạy thật này làm lộ **3 bug mà mọi kiểm tra tĩnh đều bỏ qua** (đã vá — `182df0f`, `b538383`, `0eb2305`): native query thiếu `CAST` khiến `GET /transactions|/wallets|/categories|/icons` trả 500 với gần như mọi lần gọi; `SecurityConfig` thiếu `exceptionHandling` khiến thẻ hỏng/thiếu trả 403 thay vì 401; và `validateStatus: (_) => true` ở app khiến `AuthInterceptor.onError` chưa từng chạy — cơ chế tự làm mới thẻ hoàn toàn không hoạt động.
+
+**Còn lại cần mắt người:** SC#3 (bốn màn chính hiển thị đúng dữ liệu backend thật, số dư ví và tiến độ ngân sách đổi ngay sau khi ghi giao dịch) — các test tự động kiểm tầng mạng và nghiệp vụ, không kiểm giao diện. Lưu ý màn Thêm giao dịch vẫn chưa dựng theo thiết kế (`integration_test/add_transaction_flow_test.dart` fail từ trước Phase 6, không phải hồi quy của phase này).
 
 **Plans:** 5 plans (ai bị hoãn — D-01/D-02/D-03 06-CONTEXT.md — chưa có `GroupController`/`AiController`, Success Criteria #6 dời sang phase nối `ai` sau Phase 5)
 
