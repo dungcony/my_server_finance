@@ -88,7 +88,7 @@ class AuthIdempotencyRateLimitEndToEndTest {
             headers.set("Idempotency-Key", idempotencyKey);
         }
         return restTemplate.exchange(
-                "/auth/register",
+                "/v1/auth/register",
                 org.springframework.http.HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
