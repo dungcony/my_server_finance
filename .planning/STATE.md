@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: 7/7 plan xong; kiểm chứng 5/7 success criteria — cần đóng 2 gap (DebtReminderWorker, ExportAsyncRunner)
+status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-08-29T03:35:16.155Z"
-last_activity: 2026-08-28
+last_updated: "2026-08-29T04:04:50.301Z"
+last_activity: 2026-08-29 -- Phase 06 execution started
 progress:
   total_phases: 6
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-22)
 
 **Core value:** Mọi API tuân thủ 3 nguyên tắc bất biến — ghi giao dịch nhanh, AI chỉ đề xuất qua `ai_drafts` chờ duyệt, riêng tư mặc định kiểm tra quyền ngay trong câu SQL
-**Current focus:** Phase 04 — nghiệp vụ phái sinh, báo cáo (đóng gap)
+**Current focus:** Phase 06 — n-i-api-th-t-v-i-app-flutter
 
 ## Current Position
 
-Phase: 04 — GAPS FOUND
-Plan: 7 of 7
-Status: 7/7 plan xong; kiểm chứng 5/7 success criteria — cần đóng 2 gap (DebtReminderWorker, ExportAsyncRunner)
-Last activity: 2026-08-28
+Phase: 06 (n-i-api-th-t-v-i-app-flutter) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 06
+Last activity: 2026-08-29 -- Phase 06 execution started
 
 Progress: [██████████] 95%
 
@@ -136,6 +136,7 @@ Recent decisions affecting current work:
 - Cong gop danh muc con o truy van NHOM TOAN BO danh muc dung JOIN categories root COALESCE(parent_category_id, id) thay vi goi fn_category_tree tung danh muc
 - budgets_needing_attention trong GET /reports/home tai dung BudgetService.alerts(userId) co san, khong viet lai logic v_budget_progress o report/
 - POST /reports/export thay GET (D-59), download_url la duong dan tuong doi backend khong sinh token tai rieng (D-43)
+- 06-01: STATE.md sửa lại — DebtReminderWorker/ExportAsyncRunner ĐÃ hiện thực đầy đủ kèm test tích hợp (DebtReminderJobIntegrationTest, ExportJobIntegrationTest); dòng "cần đóng 2 gap" trước đó lỗi thời, không phải gap thật
 
 ### Pending Todos
 
