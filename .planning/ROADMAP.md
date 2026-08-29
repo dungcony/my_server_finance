@@ -15,6 +15,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 - [x] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
 - [ ] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
 - [ ] **Phase 5: Nhóm gia đình & Trợ lý AI** - Tầng quyền chia sẻ ví/ngân sách nhóm với riêng tư tuyệt đối, và AI rule-based (parse-text/OCR mẫu) qua ai_drafts
+- [ ] **Phase 6: Nối API thật với app Flutter** - Bỏ dữ liệu mẫu ở app, chạy end-to-end trên backend thật cho 7 nhóm API app đang gọi
 
 ## Phase Details
 
@@ -150,10 +151,49 @@ Plans:
   5. User duyệt (approve/approve-bulk tối đa 20) bản nháp tạo đúng giao dịch thật, cập nhật số dư ví, và ghi lại `user_corrections` nếu người dùng có sửa trước khi duyệt
 **Plans**: TBD
 
+### Phase 6: Nối API thật với app Flutter
+**Goal**: App Flutter chạy hoàn toàn bằng backend thật (`--dart-define=USE_MOCK=false`) cho 7 nhóm API mà giao diện đang thực sự gọi, với ba quy tắc bất biến được kiểm chứng bằng phép thử tay trên máy ảo — không phải chỉ "gọi được", mà "trả đúng".
+**Depends on**: Phase 5
+**Requirements**: TBD (chủ yếu là tích hợp, không sinh yêu cầu nghiệp vụ mới)
+**Bối cảnh — vì sao phase này tồn tại**:
+  - App đã cố tình thiết kế để nối dễ: dữ liệu mẫu nằm gọn ở tầng Dio (`core/network/mock/`), **không có nhánh `if (useMock)` nào trong nghiệp vụ**. Repository/provider/UI chạy đúng một đường dẫn mã. Đổi sang backend thật về nguyên tắc chỉ là đổi một cờ lúc build
+  - **Đọc trước khi lập kế hoạch:** `source/app/CHUYEN-SANG-API-THAT.md` — có sẵn bảng đối chiếu từng điểm cuối (mock đang giả lập gì ↔ backend phải làm gì), ba phép thử nghiệp vụ, và trình tự 8 bước nối
+  - `MockRouter` (`source/app/lib/core/network/mock/mock_router.dart`) là **danh sách chính xác những điểm cuối giao diện đang thực sự gọi** — đối chiếu với controller backend, đây là nguồn sự thật cho phạm vi phase
+**Phạm vi — 7 nhóm app đang gọi**:
+  - `auth` (login/register/refresh/logout/me) · `wallets` (+summary, +transfer, +{id}) · `categories` · `transactions` (list, by-date, {id}, POST/PUT/DELETE) · `budgets` (+summary, +suggestion, CRUD) · `reports` (home, daily-trend, by-category-group, by-category) · `ai` (drafts, parse-text)
+  - **Ngoài phạm vi:** `/debts`, `/goals`, `/recurring`, `/notifications`, `/groups` — backend đã có (Phase 4) nhưng **app chưa dựng màn hình nào dùng chúng**, `MockRouter` còn trả lỗi "dựng ở Phase 7". Nối chúng lúc này không kiểm chứng được qua UI
+  - **Phụ thuộc:** phần `ai/` cần backend Phase 5 xong (AI rule-based). Nếu Phase 5 chưa xong khi bắt đầu phase này, nối 6 nhóm trước và để `ai` lại cuối
+**Điểm đã phát hiện lệch — phải xử lý trong phase này**:
+  - **Base URL lệch ba chiều:** `app_config.dart` mặc định `http://10.0.2.2:8080/v1`; `CHUYEN-SANG-API-THAT.md` viết `/api/v1`; backend **không cấu hình `server.servlet.context-path`** nên controller phục vụ trần ở `/auth`, `/wallets`… Quyết định: thêm `context-path` ở backend cho khớp `api/00-QUY-UOC-CHUNG.md` (version nằm trong path), rồi sửa lại dòng ví dụ sai trong tài liệu app
+  - `10.0.2.2` là cách máy ảo Android gọi về `localhost` máy phát triển — không phải `localhost`
+**Giả định app đang đặt vào backend — phải khớp, nếu không app vẫn chạy mà mất an toàn**:
+  - **Refresh token dùng một lần:** `AuthInterceptor` đã gộp nhiều yêu cầu cùng hết hạn thành **một** lần refresh. Backend phải rotation + reuse detection (đã làm ở Phase 1) — cần kiểm chứng thật qua app
+  - **Idempotency-Key:** app **đã tự gắn** cho mọi POST; `TransactionWriter` giữ nguyên khoá qua các lần thử lại. Backend phải trả lại phản hồi cũ trong 24h thay vì xử lý lần nữa
+  - **`user_corrections`:** khi duyệt bản nháp AI có sửa, app gửi phần khác biệt (`DraftCorrection.diff()`). Backend bỏ qua thì **không có lỗi nào hiện ra**, dữ liệu lặng lẽ mất
+  - **Cột CSDL ≠ trường API:** `current_balance` (tiền thật đến hết hôm nay) vs `projected_balance` (chỉ trả khi ví có giao dịch tương lai) — app đã có mô hình riêng cho hai trường này
+**Success Criteria** (what must be TRUE):
+  1. App chạy `--dart-define=USE_MOCK=false` đăng nhập được bằng tài khoản thật, `GET /auth/me` trả đúng người dùng theo thẻ đang gửi — đường mạng, prefix URL và vòng đời thẻ chạy thông trên máy ảo Pixel 7
+  2. Ba phép thử nghiệp vụ ở mục 2 của `CHUYEN-SANG-API-THAT.md` chạy đúng **trên backend thật, thao tác qua giao diện app**: (a) chi vào danh mục con "Cà phê" hiện lên khi lọc theo cha "Ăn uống"; (b) chuyển 500k giữa hai ví không làm đổi tổng chi tháng; (c) sửa khoản chi 100k ở ví A thành 80k ở ví B thì ví A hoàn đủ 100k, ví B trừ 80k
+  3. Bốn màn chính (Tổng quan, Sổ giao dịch, Ngân sách, Thêm giao dịch) hiển thị đúng dữ liệu từ backend thật, số dư ví và tiến độ ngân sách đổi ngay sau khi ghi một giao dịch
+  4. Để app mất mạng giữa chừng rồi thử lại một `POST /transactions` với cùng `Idempotency-Key` — chỉ sinh **một** giao dịch, không trùng
+  5. Nhiều yêu cầu cùng hết hạn thẻ một lúc chỉ gây **một** lần gọi `/auth/refresh`, và phiên không bị thu hồi oan
+  6. Duyệt một bản nháp AI **có sửa** tạo đúng giao dịch thật và ghi được `user_corrections` — kiểm bằng truy vấn CSDL, không chỉ nhìn giao diện
+  7. `core/network/mock/` **vẫn còn nguyên và vẫn chạy được** với `USE_MOCK=true` — giữ làm mốc đối chiếu khi nghi backend trả sai khung; chỉ đổi mặc định cờ cho bản phát hành
+  8. `CHUYEN-SANG-API-THAT.md` được cập nhật cột "Backend phải làm gì" thành ghi chú chỗ thực tế đã vấp, và mọi sai lệch tài liệu/API phát hiện trong lúc nối đã sửa lại ở `api/*.md`
+**Ghi chú thứ tự thực hiện**: theo đúng trình tự 8 bước ở mục 8 của `CHUYEN-SANG-API-THAT.md` — `/auth/me` trước, rồi nhóm chỉ đọc (`/wallets`, `/categories`, `/transactions`), rồi nhóm ghi (`POST /transactions`), rồi `PUT`/`DELETE`, rồi báo cáo/ngân sách, cuối cùng mới AI. Sau mỗi bước chạy lại phép thử tương ứng thay vì để dồn tới cuối.
+**Plans:** 5 plans (ai bị hoãn — D-01/D-02/D-03 06-CONTEXT.md — chưa có `GroupController`/`AiController`, Success Criteria #6 dời sang phase nối `ai` sau Phase 5)
+
+Plans:
+- [ ] 06-01-PLAN.md — Hạ tầng: context-path /v1 + vá rate-limit/test path, điền affected_budgets thật, DevDataSeeder, sửa STATE.md
+- [ ] 06-02-PLAN.md — MockInterceptor ngoại lệ /ai/*, sửa doc prefix, integration_test auth/me + cộng gộp danh mục con (SC1, SC2a)
+- [ ] 06-03-PLAN.md — integration_test transfer/sửa 3 bước/idempotency (SC2b, SC2c, SC4)
+- [ ] 06-04-PLAN.md — TokenStorage test-hook + integration_test refresh gộp + smoke budgets/reports (SC5)
+- [ ] 06-05-PLAN.md — Đóng phase: cờ useMock=false, cập nhật tài liệu, ROADMAP Progress, checkpoint xác nhận 4 màn chính (SC3, SC7, SC8)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -162,6 +202,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 3. Giao dịch | 0/TBD | Not started | - |
 | 4. Nghiệp vụ phái sinh & Báo cáo | 0/TBD | Not started | - |
 | 5. Nhóm gia đình & Trợ lý AI | 0/TBD | Not started | - |
+| 6. Nối API thật với app Flutter | 0/TBD | Not started | - |
 
 ## Ghi chú về thứ tự phase
 
