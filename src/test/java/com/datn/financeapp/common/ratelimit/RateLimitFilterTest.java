@@ -33,13 +33,13 @@ class RateLimitFilterTest {
         String ip = "10.0.0.1";
 
         for (int i = 1; i <= 5; i++) {
-            MockHttpServletRequest request = requestFrom(ip, "/auth/login");
+            MockHttpServletRequest request = requestFrom(ip, "/v1/auth/login");
             MockHttpServletResponse response = new MockHttpServletResponse();
             filter.doFilter(request, response, new MockFilterChain());
             assertThat(response.getStatus()).isNotEqualTo(429);
         }
 
-        MockHttpServletRequest sixthRequest = requestFrom(ip, "/auth/login");
+        MockHttpServletRequest sixthRequest = requestFrom(ip, "/v1/auth/login");
         MockHttpServletResponse sixthResponse = new MockHttpServletResponse();
         filter.doFilter(sixthRequest, sixthResponse, new MockFilterChain());
 

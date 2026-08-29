@@ -1,5 +1,7 @@
 package com.datn.financeapp.transaction.service;
 
+import com.datn.financeapp.budget.repository.BudgetProgressRepository;
+import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
@@ -7,6 +9,7 @@ import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.response.PageRequestParams;
+import com.datn.financeapp.transaction.dto.AffectedBudgetResponse;
 import com.datn.financeapp.transaction.dto.CreateTransactionRequest;
 import com.datn.financeapp.transaction.dto.CreateTransactionResponse;
 import com.datn.financeapp.transaction.dto.DeleteTransactionResponse;
@@ -61,6 +64,7 @@ public class TransactionService {
     private final IconRepository iconRepository;
     private final TransactionWriter transactionWriter;
     private final JdbcTemplate jdbcTemplate;
+    private final BudgetProgressRepository budgetProgressRepository;
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -120,7 +124,8 @@ public class TransactionService {
         Transaction saved = transactionRepository.findById(result.transactionId()).orElseThrow();
         return new CreateTransactionResponse(
                 toResponse(saved),
-                new CreateTransactionResponse.NewBalance(req.walletId(), result.walletNewBalance()));
+                new CreateTransactionResponse.NewBalance(req.walletId(), result.walletNewBalance()),
+                computeAffectedBudgets(userId, req.type(), req.categoryId(), date));
     }
 
     /**
@@ -196,7 +201,8 @@ public class TransactionService {
         Transaction reloaded = transactionRepository.findById(transactionId).orElseThrow();
         return new CreateTransactionResponse(
                 toResponse(reloaded),
-                new CreateTransactionResponse.NewBalance(req.walletId(), walletNewBalance));
+                new CreateTransactionResponse.NewBalance(req.walletId(), walletNewBalance),
+                computeAffectedBudgets(userId, req.type(), req.categoryId(), old.getDate()));
     }
 
     /**
@@ -282,7 +288,41 @@ public class TransactionService {
         Transaction saved = transactionRepository.findById(result.transactionId()).orElseThrow();
         return new CreateTransactionResponse(
                 toResponse(saved),
-                new CreateTransactionResponse.NewBalance(original.getWalletId(), result.walletNewBalance()));
+                new CreateTransactionResponse.NewBalance(original.getWalletId(), result.walletNewBalance()),
+                computeAffectedBudgets(userId, original.getType(), original.getCategoryId(), date));
+    }
+
+    /**
+     * Tính affected_budgets cho response POST/PUT/duplicate — gọi ĐỒNG BỘ trong cùng
+     * @Transactional (khác BudgetAlertListener chạy AFTER_COMMIT bất đồng bộ), vì response
+     * phải trả ngay trong request này (api/04-GIAO-DICH.md dòng 264: "không phải gọi thêm lần
+     * nữa"). Chỉ tính khi type=expense và categoryId != null — cùng điều kiện BudgetAlertListener
+     * áp dụng.
+     */
+    private List<AffectedBudgetResponse> computeAffectedBudgets(
+            UUID userId, String type, UUID categoryId, LocalDate date) {
+        if (!"expense".equals(type) || categoryId == null) {
+            return List.of();
+        }
+        List<BudgetProgressProjection> affected =
+                budgetProgressRepository.findActiveByUserAndCategoryInTree(userId, categoryId, date);
+        List<AffectedBudgetResponse> result = new ArrayList<>();
+        for (BudgetProgressProjection budget : affected) {
+            if ("normal".equals(budget.getStatus())) {
+                continue;
+            }
+            Category root = categoryRepository.findById(budget.getCategoryId()).orElse(null);
+            String categoryName = root != null ? root.getName() : "";
+            long remaining = budget.getRemaining() == null ? 0L : budget.getRemaining();
+            int daysRemaining = budget.getDaysRemaining() == null ? 0 : budget.getDaysRemaining();
+            String alert = "over_limit".equals(budget.getStatus())
+                    ? "Vượt " + Math.abs(remaining) + " đ khi kỳ còn " + daysRemaining + " ngày."
+                    : "Còn " + remaining + " đ cho " + daysRemaining + " ngày còn lại của kỳ.";
+            result.add(new AffectedBudgetResponse(
+                    budget.getId(), categoryName, budget.getLimitAmount(), budget.getSpentAmount(),
+                    budget.getRatio(), budget.getStatus(), alert));
+        }
+        return result;
     }
 
     /**
