@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-08-29T04:04:50.301Z"
-last_activity: 2026-08-29 -- Phase 06 execution started
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-08-29T04:14:56.027Z"
+last_activity: 2026-08-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 21
-  percent: 81
+  completed_plans: 22
+  percent: 85
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 06 (n-i-api-th-t-v-i-app-flutter) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 06
-Last activity: 2026-08-29 -- Phase 06 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-08-29
 
-Progress: [██████████] 95%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Progress: [██████████] 95%
 | Phase 04 P03 | 35 phút | 2 tasks | 17 files |
 | Phase 04 P04 | 25m | 2 tasks | 13 files |
 | Phase 04 P06 | 75min | 3 tasks | 20 files |
+| Phase 06 P01 | 35min | 4 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Recent decisions affecting current work:
 - budgets_needing_attention trong GET /reports/home tai dung BudgetService.alerts(userId) co san, khong viet lai logic v_budget_progress o report/
 - POST /reports/export thay GET (D-59), download_url la duong dan tuong doi backend khong sinh token tai rieng (D-43)
 - 06-01: STATE.md sửa lại — DebtReminderWorker/ExportAsyncRunner ĐÃ hiện thực đầy đủ kèm test tích hợp (DebtReminderJobIntegrationTest, ExportJobIntegrationTest); dòng "cần đóng 2 gap" trước đó lỗi thời, không phải gap thật
+- 06-01: pathPrefix RateLimitProperties gan cung /v1/auth/, /v1/ai/ thay vi doc dong qua @Value - context-path da chot D-05
+- 06-01: computeAffectedBudgets goi dong bo trong cung @Transactional cua TransactionService, khac BudgetAlertListener chay AFTER_COMMIT
+- 06-01: DevDataSeeder chi @Profile(dev), matkhau seed co dinh SeedPass123! chap nhan duoc vi khong bao gio bat o prod (T-06-02, accept)
 
 ### Pending Todos
 
@@ -155,6 +159,7 @@ None yet.
 - **Cần thêm mã lỗi mới `REQUEST_IN_PROGRESS` (409) vào `api/00-QUY-UOC-CHUNG.md` mục 6** — đặc tả hiện thiếu mã cho tình huống Idempotency-Key trùng khi lần đầu đang xử lý (xem D-14). Sửa trong Phase 1
 - **Hai chỗ tài liệu còn sai về múi giờ báo cáo** (`api/00` mục 13 và `source/server/CLAUDE.md` quy tắc 7 vẫn ghi `AT TIME ZONE`) — mâu thuẫn CORE-07/REPORT-01. Thuộc Phase 4, đã ghi vào `<deferred>` của 01-CONTEXT.md
 - **Ranh giới trigger dễ hiểu sai:** "không viết trigger" chỉ áp dụng cho số dư ví. `paid_amount`/`saved_amount`/`status` của debt/goal do trigger V4 sở hữu, backend không ghi — xem chi tiết ở Phase 4 trong ROADMAP.md
+- 06-01: Docker daemon khong san sang tren may dev - TransactionAffectedBudgetsIntegrationTest va AuthIdempotencyRateLimitEndToEndTest chua chay that, chi verify bang compile sach. Can chay lai khi co Docker truoc khi dong Phase 6
 
 ## Deferred Items
 
@@ -166,8 +171,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: --stopped-at
-Stopped at: Phase 6 context gathered
-Resume file: --resume-file
+Last session: 2026-08-29T04:14:56.018Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
 
 **Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z

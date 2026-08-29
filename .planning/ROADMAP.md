@@ -184,7 +184,7 @@ Plans:
 **Plans:** 5 plans (ai bị hoãn — D-01/D-02/D-03 06-CONTEXT.md — chưa có `GroupController`/`AiController`, Success Criteria #6 dời sang phase nối `ai` sau Phase 5)
 
 Plans:
-- [ ] 06-01-PLAN.md — Hạ tầng: context-path /v1 + vá rate-limit/test path, điền affected_budgets thật, DevDataSeeder, sửa STATE.md
+- [x] 06-01-PLAN.md — Hạ tầng: context-path /v1 + vá rate-limit/test path, điền affected_budgets thật, DevDataSeeder, sửa STATE.md
 - [ ] 06-02-PLAN.md — MockInterceptor ngoại lệ /ai/*, sửa doc prefix, integration_test auth/me + cộng gộp danh mục con (SC1, SC2a)
 - [ ] 06-03-PLAN.md — integration_test transfer/sửa 3 bước/idempotency (SC2b, SC2c, SC4)
 - [ ] 06-04-PLAN.md — TokenStorage test-hook + integration_test refresh gộp + smoke budgets/reports (SC5)
@@ -199,10 +199,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Nền tảng & Xác thực | 6/6 | Complete | 2026-08-23 |
 | 2. Ví & Danh mục | 4/4 | Complete | 2026-08-23 |
-| 3. Giao dịch | 0/TBD | Not started | - |
-| 4. Nghiệp vụ phái sinh & Báo cáo | 0/TBD | Not started | - |
-| 5. Nhóm gia đình & Trợ lý AI | 0/TBD | Not started | - |
-| 6. Nối API thật với app Flutter | 0/TBD | Not started | - |
+| 3. Giao dịch | 4/4 | Complete | 2026-08-24 |
+| 4. Nghiệp vụ phái sinh & Báo cáo | 7/7 | Complete | 2026-08-28 |
+| 5. Nhóm gia đình & Trợ lý AI | TBD | Not started | - |
+| 6. Nối API thật với app Flutter | 1/5 | In progress | - |
 
 ## Ghi chú về thứ tự phase
 
