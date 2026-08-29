@@ -21,7 +21,7 @@ public class UpdateWalletRequest {
 
     private String icon;
 
-    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$")
+    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.")
     private String color;
 
     private final Map<String, Object> extraFields = new HashMap<>();

@@ -11,6 +11,6 @@ public record CreateCategoryRequest(
         @NotBlank @Size(min = 1, max = 50) String name,
         @NotBlank @Pattern(regexp = "^(expense|income)$") String type,
         @NotNull UUID iconId,
-        @NotBlank @Pattern(regexp = "^#[0-9A-Fa-f]{6}$") String color,
+        @NotBlank @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.") String color,
         UUID parentCategoryId,
         UUID categoryGroupId) {}

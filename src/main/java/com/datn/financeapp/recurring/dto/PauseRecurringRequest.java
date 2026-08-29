@@ -8,4 +8,4 @@ import jakarta.validation.constraints.NotNull;
  *
  * <p>Tạm dừng KHÔNG xoá lịch — {@code next_run_date} giữ nguyên, bật lại là chạy tiếp từ đó.
  */
-public record PauseRecurringRequest(@NotNull Boolean isEnabled) {}
+public record PauseRecurringRequest(@NotNull(message = "Vui lòng chọn bật hoặc tắt.") Boolean isEnabled) {}
