@@ -1,6 +1,7 @@
 package com.datn.financeapp.common.exception;
 
 import com.datn.financeapp.common.response.ErrorResponse;
+import com.datn.financeapp.common.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -42,9 +43,15 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
-        var body = new ErrorResponse(false,
-                new ErrorResponse.ErrorBody("UNAUTHENTICATED", "Vui lòng đăng nhập để tiếp tục."));
+    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
+        Object tokenError = request.getAttribute(JwtAuthFilter.ATTR_TOKEN_ERROR);
+        String code = tokenError instanceof String s ? s : "UNAUTHENTICATED";
+        String message = "TOKEN_EXPIRED".equals(code)
+                ? "Thẻ truy cập đã hết hạn."
+                : "TOKEN_INVALID".equals(code)
+                        ? "Thẻ truy cập không hợp lệ."
+                        : "Vui lòng đăng nhập để tiếp tục.";
+        var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
