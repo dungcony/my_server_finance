@@ -87,8 +87,12 @@ class AuthIdempotencyRateLimitEndToEndTest {
         if (idempotencyKey != null) {
             headers.set("Idempotency-Key", idempotencyKey);
         }
+        // Đường dẫn TƯƠNG ĐỐI, không có "/v1": TestRestTemplate của @SpringBootTest
+        // (WebEnvironment.RANDOM_PORT) đã tự gắn server.servlet.context-path vào base URL.
+        // Ghi "/v1/auth/register" ở đây sẽ thành "/v1/v1/auth/register" — không khớp
+        // permitAll() nên trả 401 thay vì 201.
         return restTemplate.exchange(
-                "/v1/auth/register",
+                "/auth/register",
                 org.springframework.http.HttpMethod.POST,
                 new HttpEntity<>(body, headers),
                 new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
