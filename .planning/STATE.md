@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-08-29T07:21:58.717Z"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-08-29T07:33:03.326Z"
 last_activity: 2026-08-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 26
-  completed_plans: 24
-  percent: 92
+  completed_plans: 25
+  percent: 96
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 ## Current Position
 
 Phase: 06 (n-i-api-th-t-v-i-app-flutter) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-08-29
 
-Progress: [█████████░] 92%
+Progress: [██████████] 96%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 92%
 | Phase 06 P01 | 35min | 4 tasks | 11 files |
 | Phase 06-n-i-api-th-t-v-i-app-flutter P02 | 20min | 3 tasks | 5 files |
 | Phase 06 P03 | 15min | 3 tasks | 3 files |
+| Phase 06 P04 | 25min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,8 @@ Recent decisions affecting current work:
 - 06-02: 2 integration_test/real_backend/*.dart goi truc tiep ApiClient (khong qua UI app.main()) de co lap kiem chung tang mang cho SC1/SC2a
 - 06-03: sua field period_summary.total_expense (khong phai total_expense phang) sau khi doi chieu api/06-BAO-CAO.md cho GET /reports/home
 - 06-03: ca 3 test tu tao vi rieng (POST /wallets, ten hau to timestamp) thay vi dung wallets[0]/[1] seed dung chung - co lap khoi 06-04 chay song song cung wave 3
+- 06-04: sua field GET /reports/by-category-group tra OBJECT {total, groups} khong phai mang tran nhu ban nhap PLAN dung getList
+- 06-04: category_id cua mot ngan sach de goi /budgets/suggestion nam o budgets[].category.id (nested), khong phai truong category_id phang
 
 ### Pending Todos
 
@@ -168,6 +171,7 @@ None yet.
 - 06-01: Docker daemon khong san sang tren may dev - TransactionAffectedBudgetsIntegrationTest va AuthIdempotencyRateLimitEndToEndTest chua chay that, chi verify bang compile sach. Can chay lai khi co Docker truoc khi dong Phase 6
 - 06-02: Khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 - 06-03: khong co Android emulator + backend that trong moi truong thuc thi - 3 integration_test/real_backend/*.dart moi (transfer, edit-3step, idempotency) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
+- 06-04: khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi (refresh_token_concurrency, budgets_and_reports_smoke) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 
 ## Deferred Items
 
@@ -179,8 +183,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-29T07:21:58.691Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-08-29T07:33:03.315Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None
 
 **Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z
