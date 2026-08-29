@@ -15,7 +15,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 - [x] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
 - [ ] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
 - [ ] **Phase 5: Nhóm gia đình & Trợ lý AI** - Tầng quyền chia sẻ ví/ngân sách nhóm với riêng tư tuyệt đối, và AI rule-based (parse-text/OCR mẫu) qua ai_drafts
-- [ ] **Phase 6: Nối API thật với app Flutter** - Bỏ dữ liệu mẫu ở app, chạy end-to-end trên backend thật cho 7 nhóm API app đang gọi
+- [x] **Phase 6: Nối API thật với app Flutter** - Bỏ dữ liệu mẫu ở app, chạy end-to-end trên backend thật cho 7 nhóm API app đang gọi (SC#6 dời sang sau Phase 5)
 
 ## Phase Details
 
@@ -181,14 +181,17 @@ Plans:
   7. `core/network/mock/` **vẫn còn nguyên và vẫn chạy được** với `USE_MOCK=true` — giữ làm mốc đối chiếu khi nghi backend trả sai khung; chỉ đổi mặc định cờ cho bản phát hành
   8. `CHUYEN-SANG-API-THAT.md` được cập nhật cột "Backend phải làm gì" thành ghi chú chỗ thực tế đã vấp, và mọi sai lệch tài liệu/API phát hiện trong lúc nối đã sửa lại ở `api/*.md`
 **Ghi chú thứ tự thực hiện**: theo đúng trình tự 8 bước ở mục 8 của `CHUYEN-SANG-API-THAT.md` — `/auth/me` trước, rồi nhóm chỉ đọc (`/wallets`, `/categories`, `/transactions`), rồi nhóm ghi (`POST /transactions`), rồi `PUT`/`DELETE`, rồi báo cáo/ngân sách, cuối cùng mới AI. Sau mỗi bước chạy lại phép thử tương ứng thay vì để dồn tới cuối.
+
+**Ghi chú khi đóng phase:** Success Criteria #6 (duyệt bản nháp AI có sửa → `user_corrections`) KHÔNG kiểm chứng được trong phase này — phụ thuộc Phase 5 (`GroupController`/`AiController`) chưa code (D-01/D-03, 06-CONTEXT.md). Dời sang phase nối nhóm `ai` sau khi Phase 5 hoàn thành. 7/8 tiêu chí còn lại đã kiểm chứng qua `integration_test/real_backend/` + thử tay trên máy ảo Pixel 7.
+
 **Plans:** 5 plans (ai bị hoãn — D-01/D-02/D-03 06-CONTEXT.md — chưa có `GroupController`/`AiController`, Success Criteria #6 dời sang phase nối `ai` sau Phase 5)
 
 Plans:
 - [x] 06-01-PLAN.md — Hạ tầng: context-path /v1 + vá rate-limit/test path, điền affected_budgets thật, DevDataSeeder, sửa STATE.md
-- [ ] 06-02-PLAN.md — MockInterceptor ngoại lệ /ai/*, sửa doc prefix, integration_test auth/me + cộng gộp danh mục con (SC1, SC2a)
-- [ ] 06-03-PLAN.md — integration_test transfer/sửa 3 bước/idempotency (SC2b, SC2c, SC4)
-- [ ] 06-04-PLAN.md — TokenStorage test-hook + integration_test refresh gộp + smoke budgets/reports (SC5)
-- [ ] 06-05-PLAN.md — Đóng phase: cờ useMock=false, cập nhật tài liệu, ROADMAP Progress, checkpoint xác nhận 4 màn chính (SC3, SC7, SC8)
+- [x] 06-02-PLAN.md — MockInterceptor ngoại lệ /ai/*, sửa doc prefix, integration_test auth/me + cộng gộp danh mục con (SC1, SC2a)
+- [x] 06-03-PLAN.md — integration_test transfer/sửa 3 bước/idempotency (SC2b, SC2c, SC4)
+- [x] 06-04-PLAN.md — TokenStorage test-hook + integration_test refresh gộp + smoke budgets/reports (SC5)
+- [x] 06-05-PLAN.md — Đóng phase: cờ useMock=false, cập nhật tài liệu, ROADMAP Progress, checkpoint xác nhận 4 màn chính (SC3, SC7, SC8)
 
 ## Progress
 
@@ -201,8 +204,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Ví & Danh mục | 4/4 | Complete | 2026-08-23 |
 | 3. Giao dịch | 4/4 | Complete | 2026-08-24 |
 | 4. Nghiệp vụ phái sinh & Báo cáo | 7/7 | Complete | 2026-08-28 |
-| 5. Nhóm gia đình & Trợ lý AI | TBD | Not started | - |
-| 6. Nối API thật với app Flutter | 1/5 | In progress | - |
+| 5. Nhóm gia đình & Trợ lý AI | 0/TBD | Not started | - |
+| 6. Nối API thật với app Flutter | 5/5 | Complete (SC#6 dời) | 2026-08-29 |
 
 ## Ghi chú về thứ tự phase
 

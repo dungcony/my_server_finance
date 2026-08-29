@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-08-29T07:33:03.326Z"
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-08-29T08:00:00.000Z"
 last_activity: 2026-08-29
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 26
-  completed_plans: 25
-  percent: 96
+  completed_plans: 26
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,14 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 
 ## Current Position
 
-Phase: 06 (n-i-api-th-t-v-i-app-flutter) — EXECUTING
-Plan: 5 of 5
-Status: Ready to execute
+Phase: 06 (n-i-api-th-t-v-i-app-flutter) — COMPLETE (5/5 plan, Success Criteria #6 dời sang phase nối `ai` sau Phase 5)
+Plan: 5 of 5 — hoàn thành
+Status: Phase 6 đóng. Phase 5 (Nhóm gia đình & Trợ lý AI) chưa lập kế hoạch — TBD, là việc tiếp theo nếu tiếp tục milestone.
 Last activity: 2026-08-29
 
-Progress: [██████████] 96%
+Progress: [██████████] 100% (của 26/26 plan đã lập kế hoạch trong 5/6 phase; Phase 5 chưa có plan nên chưa tính vào mẫu số)
+
+**Lưu ý trung thực (không được bỏ qua khi đọc lại):** 7 file `integration_test/real_backend/*.dart` viết ở 06-02/06-03/06-04 và các test Testcontainers backend viết ở 06-01 **CHƯA TỪNG được chạy thật** — không có Android emulator lẫn Docker daemon trong bất kỳ phiên thực thi nào của Phase 6. Toàn bộ chỉ được kiểm chứng bằng `flutter analyze`/`mvn compile` sạch và đối chiếu tay với `api/*.md`. Xem 06-05-SUMMARY.md mục "Xác nhận trung thực" để biết chi tiết và việc còn lại trước khi coi Phase 6 kiểm chứng đầy đủ trên môi trường thật.
 
 ## Performance Metrics
 
@@ -172,6 +174,7 @@ None yet.
 - 06-02: Khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 - 06-03: khong co Android emulator + backend that trong moi truong thuc thi - 3 integration_test/real_backend/*.dart moi (transfer, edit-3step, idempotency) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 - 06-04: khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi (refresh_token_concurrency, budgets_and_reports_smoke) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
+- 06-05 (dong Phase 6): xac nhan lai TOAN BO 7 file integration_test/real_backend/*.dart (auth_me, category_rollup, transfer_excluded_from_report, edit_transaction_3step, idempotency, refresh_token_concurrency, budgets_and_reports_smoke) tu 06-02/06-03/06-04 CHUA TUNG duoc chay tren emulator that + backend that trong BAT KY phien thuc thi nao cua Phase 6 - khong co Android emulator ket noi, khong co backend dang chay. Test Testcontainers backend (TransactionAffectedBudgetsIntegrationTest, AuthIdempotencyRateLimitEndToEndTest tu 06-01) cung CHUA chay that vi khong co Docker daemon. Checkpoint Task 4 cua 06-05-PLAN.md (xac nhan 4 man chinh + dem luot /auth/refresh D-14) CHUA thuc hien duoc trong phien nay vi cung thieu emulator/backend - nguoi dung se tu chay sau. Phase 6 duoc dong voi tai lieu ghi ro dieu nay, khong am tham danh dau dat (D-03 tinh than ap dung rong hon ca SC#6)
 
 ## Deferred Items
 
@@ -183,8 +186,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-29T07:33:03.315Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-08-29T08:00:00.000Z
+Stopped at: Completed 06-05-PLAN.md (Phase 6 đóng)
 Resume file: None
 
-**Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z
+**Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z — HOÀN THÀNH 2026-08-29
+
+**Việc tiếp theo nếu tiếp tục milestone:** lập kế hoạch chi tiết Phase 5 (Nhóm gia đình & Trợ lý AI) qua `/gsd-plan-phase 5`, sau đó quay lại nối nhóm `ai` (SC#6 của Phase 6) trong một phase kế tiếp.
