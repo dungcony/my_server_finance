@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Hoàn thành 04-07-PLAN.md; kiểm chứng phase 4 tìm ra 2 gap
-last_updated: "2026-08-28T14:34:43.580Z"
+status: 7/7 plan xong; kiểm chứng 5/7 success criteria — cần đóng 2 gap (DebtReminderWorker, ExportAsyncRunner)
+stopped_at: Phase 6 context gathered
+last_updated: "2026-08-29T01:34:52.283Z"
 last_activity: 2026-08-28
 progress:
-  total_phases: 5
-  completed_phases: 3
+  total_phases: 6
+  completed_phases: 4
   total_plans: 21
   completed_plans: 21
-  percent: 95
+  percent: 100
 ---
 
 # Project State
@@ -73,6 +73,10 @@ Progress: [██████████] 95%
 | Phase 04 P06 | 75min | 3 tasks | 20 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 6 added (29/08/2026): Nối API thật với app Flutter — bỏ dữ liệu mẫu ở app, chạy end-to-end trên backend thật cho 7 nhóm API app đang gọi (auth, wallets, categories, transactions, budgets, reports, ai). Ngoài phạm vi: debts/goals/recurring/notifications/groups vì app chưa dựng màn hình. Phát hiện lệch base URL ba chiều (`app_config.dart` `/v1` ↔ tài liệu `/api/v1` ↔ backend không có `context-path`) — phải chốt trong phase này.
 
 ### Decisions
 
@@ -161,8 +165,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T14:23:11.230Z
-Stopped at: Hoàn thành 04-06-PLAN.md
-Resume file: None
+Last session: --stopped-at
+Stopped at: Phase 6 context gathered
+Resume file: --resume-file
 
 **Planned Phase:** 03 (giao-dich) — 4 plans — 2026-08-23T15:19:49.096Z
