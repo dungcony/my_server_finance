@@ -1,6 +1,5 @@
 package com.datn.financeapp.budget.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -16,8 +15,10 @@ public record BudgetSummaryResponse(
         int overLimitCount,
         int nearLimitCount) {
 
-    /** Kỳ đại diện, suy từ ngân sách đang hiệu lực; NULL khi người dùng chưa có ngân sách nào. */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
+    /**
+     * Kỳ đại diện, suy từ ngân sách đang hiệu lực; khi người dùng chưa có ngân sách nào thì
+     * mặc định là THÁNG HIỆN TẠI, không bao giờ null — api/05 mục 3 luôn trả trường này.
+     */
     public record Period(
             String periodType, String label, LocalDate startDate, LocalDate endDate, Integer daysRemaining) {}
 }

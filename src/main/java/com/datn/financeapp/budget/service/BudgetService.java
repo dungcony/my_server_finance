@@ -113,7 +113,7 @@ public class BudgetService {
                 .count();
 
         return new BudgetSummaryResponse(
-                rows.isEmpty() ? null : toPeriod(rows.get(0)),
+                rows.isEmpty() ? currentMonthPeriod() : toPeriod(rows.get(0)),
                 totalLimit,
                 totalSpent,
                 totalLimit - totalSpent,
@@ -492,6 +492,24 @@ public class BudgetService {
         LocalDate depletion = today.plusDays((long) Math.floor(remaining / dailySpending));
 
         return depletion.isBefore(row.getEndDate()) ? depletion : null;
+    }
+
+    /**
+     * Kỳ mặc định khi người dùng CHƯA có ngân sách nào — tháng hiện tại.
+     *
+     * <p>api/05-NGAN-SACH.md mục 3 luôn trả {@code period}; trả {@code null} làm app sập ngay khi
+     * parse (`period` không nullable ở model Flutter), tức màn Ngân sách trắng với mọi tài khoản
+     * mới đăng ký. Kỳ là thuộc tính của MỐC THỜI GIAN đang xem, không phải của tập ngân sách.
+     */
+    private BudgetSummaryResponse.Period currentMonthPeriod() {
+        LocalDate start = startOfCurrentPeriod("month");
+        LocalDate end = endOfPeriod("month", start);
+        return new BudgetSummaryResponse.Period(
+                "month",
+                periodLabel("month"),
+                start,
+                end,
+                (int) ChronoUnit.DAYS.between(LocalDate.now(), end));
     }
 
     private BudgetSummaryResponse.Period toPeriod(BudgetProgressProjection row) {
