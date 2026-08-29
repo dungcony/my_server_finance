@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-08-29T08:00:00.000Z"
+status: verifying
+stopped_at: Completed 06-05-PLAN.md (Phase 6 đóng; checkpoint Task 4 chờ người dùng tự xác nhận)
+last_updated: "2026-08-29T07:46:28.739Z"
 last_activity: 2026-08-29
 progress:
   total_phases: 6
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-22)
 
 Phase: 06 (n-i-api-th-t-v-i-app-flutter) — COMPLETE (5/5 plan, Success Criteria #6 dời sang phase nối `ai` sau Phase 5)
 Plan: 5 of 5 — hoàn thành
-Status: Phase 6 đóng. Phase 5 (Nhóm gia đình & Trợ lý AI) chưa lập kế hoạch — TBD, là việc tiếp theo nếu tiếp tục milestone.
+Status: Phase complete — ready for verification
 Last activity: 2026-08-29
 
-Progress: [██████████] 100% (của 26/26 plan đã lập kế hoạch trong 5/6 phase; Phase 5 chưa có plan nên chưa tính vào mẫu số)
+Progress: [██████████] 100%
 
 **Lưu ý trung thực (không được bỏ qua khi đọc lại):** 7 file `integration_test/real_backend/*.dart` viết ở 06-02/06-03/06-04 và các test Testcontainers backend viết ở 06-01 **CHƯA TỪNG được chạy thật** — không có Android emulator lẫn Docker daemon trong bất kỳ phiên thực thi nào của Phase 6. Toàn bộ chỉ được kiểm chứng bằng `flutter analyze`/`mvn compile` sạch và đối chiếu tay với `api/*.md`. Xem 06-05-SUMMARY.md mục "Xác nhận trung thực" để biết chi tiết và việc còn lại trước khi coi Phase 6 kiểm chứng đầy đủ trên môi trường thật.
 
@@ -77,6 +77,7 @@ Progress: [██████████] 100% (của 26/26 plan đã lập k�
 | Phase 06-n-i-api-th-t-v-i-app-flutter P02 | 20min | 3 tasks | 5 files |
 | Phase 06 P03 | 15min | 3 tasks | 3 files |
 | Phase 06 P04 | 25min | 3 tasks | 4 files |
+| Phase 06 P05 | 15min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,8 @@ Recent decisions affecting current work:
 - 06-03: ca 3 test tu tao vi rieng (POST /wallets, ten hau to timestamp) thay vi dung wallets[0]/[1] seed dung chung - co lap khoi 06-04 chay song song cung wave 3
 - 06-04: sua field GET /reports/by-category-group tra OBJECT {total, groups} khong phai mang tran nhu ban nhap PLAN dung getList
 - 06-04: category_id cua mot ngan sach de goi /budgets/suggestion nam o budgets[].category.id (nested), khong phai truong category_id phang
+- 06-05: api/04-GIAO-DICH.md khong sua - doi chieu AffectedBudgetResponse.java xac nhan khop dac ta san co, khong co lech
+- 06-05: khong tu khoi dong emulator/backend de tu chay checkpoint Task 4 thay nguoi dung - PLAN tu ghi verify la MISSING khong the tu dong hoa, nguoi dung da xac nhan se tu chay sau
 
 ### Pending Todos
 
@@ -175,6 +178,7 @@ None yet.
 - 06-03: khong co Android emulator + backend that trong moi truong thuc thi - 3 integration_test/real_backend/*.dart moi (transfer, edit-3step, idempotency) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 - 06-04: khong co Android emulator + backend that trong moi truong thuc thi - 2 integration_test/real_backend/*.dart moi (refresh_token_concurrency, budgets_and_reports_smoke) CHUA duoc chay that, chi verify bang flutter analyze + doi chieu ky JSON contract
 - 06-05 (dong Phase 6): xac nhan lai TOAN BO 7 file integration_test/real_backend/*.dart (auth_me, category_rollup, transfer_excluded_from_report, edit_transaction_3step, idempotency, refresh_token_concurrency, budgets_and_reports_smoke) tu 06-02/06-03/06-04 CHUA TUNG duoc chay tren emulator that + backend that trong BAT KY phien thuc thi nao cua Phase 6 - khong co Android emulator ket noi, khong co backend dang chay. Test Testcontainers backend (TransactionAffectedBudgetsIntegrationTest, AuthIdempotencyRateLimitEndToEndTest tu 06-01) cung CHUA chay that vi khong co Docker daemon. Checkpoint Task 4 cua 06-05-PLAN.md (xac nhan 4 man chinh + dem luot /auth/refresh D-14) CHUA thuc hien duoc trong phien nay vi cung thieu emulator/backend - nguoi dung se tu chay sau. Phase 6 duoc dong voi tai lieu ghi ro dieu nay, khong am tham danh dau dat (D-03 tinh than ap dung rong hon ca SC#6)
+- 06-05: Checkpoint Task 4 (xac nhan 4 man chinh + dem luot /auth/refresh D-14) CHUA thuc hien - khong co Android emulator/backend dang chay trong phien thuc thi; nguoi dung se tu chay sau
 
 ## Deferred Items
 
@@ -186,8 +190,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-29T08:00:00.000Z
-Stopped at: Completed 06-05-PLAN.md (Phase 6 đóng)
+Last session: 2026-08-29T07:46:21.525Z
+Stopped at: Completed 06-05-PLAN.md (Phase 6 đóng; checkpoint Task 4 chờ người dùng tự xác nhận)
 Resume file: None
 
 **Planned Phase:** 06 (Nối API thật với app Flutter) — 5 plans — 2026-08-29T03:35:16.139Z — HOÀN THÀNH 2026-08-29
