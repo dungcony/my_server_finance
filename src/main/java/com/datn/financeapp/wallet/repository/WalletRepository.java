@@ -56,8 +56,8 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
             value = "SELECT * FROM wallets w WHERE NOT w.is_deleted "
                     + "AND (w.user_id = :currentUser OR (:includeShared = TRUE AND w.group_id IN "
                     + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))) "
-                    + "AND (:type IS NULL OR w.type = :type) "
-                    + "AND (:onlyInTotal IS NULL OR w.include_in_total = :onlyInTotal) "
+                    + "AND (CAST(:type AS text) IS NULL OR w.type = CAST(:type AS text)) "
+                    + "AND (CAST(:onlyInTotal AS boolean) IS NULL OR w.include_in_total = CAST(:onlyInTotal AS boolean)) "
                     + "ORDER BY w.sort_order",
             nativeQuery = true)
     List<Wallet> findAllForUser(

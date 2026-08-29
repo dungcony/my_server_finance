@@ -30,7 +30,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
                     + "FROM transactions t "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "AND (:walletId IS NULL OR t.wallet_id = :walletId OR t.destination_wallet_id = :walletId)",
+                    + "AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid))",
             nativeQuery = true)
     SummaryProjection summary(
             @Param("userId") UUID userId,

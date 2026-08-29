@@ -16,8 +16,8 @@ public interface IconRepository extends JpaRepository<Icon, UUID> {
 
     @Query(
             value = "SELECT * FROM icons WHERE is_active "
-                    + "AND (:iconGroup IS NULL OR icon_group = :iconGroup) "
-                    + "AND (:search IS NULL OR lower(display_name) LIKE :search OR lower(search_keywords) LIKE :search) "
+                    + "AND (CAST(:iconGroup AS text) IS NULL OR icon_group = CAST(:iconGroup AS text)) "
+                    + "AND (CAST(:search AS text) IS NULL OR lower(display_name) LIKE CAST(:search AS text) OR lower(search_keywords) LIKE CAST(:search AS text)) "
                     + "ORDER BY icon_group, sort_order",
             nativeQuery = true)
     List<Icon> search(@Param("iconGroup") String iconGroup, @Param("search") String searchPattern);

@@ -37,7 +37,7 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
     @Query(
             value = "SELECT * FROM categories c WHERE NOT c.is_deleted "
                     + "AND (c.user_id IS NULL OR c.user_id = :currentUser) "
-                    + "AND (:type IS NULL OR c.type = :type) "
+                    + "AND (CAST(:type AS text) IS NULL OR c.type = CAST(:type AS text)) "
                     + "AND (:rootsOnly = FALSE OR c.parent_category_id IS NULL) "
                     + "ORDER BY c.sort_order",
             nativeQuery = true)
