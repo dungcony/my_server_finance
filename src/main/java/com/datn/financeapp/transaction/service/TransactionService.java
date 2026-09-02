@@ -1,6 +1,7 @@
 package com.datn.financeapp.transaction.service;
 
 import com.datn.financeapp.budget.repository.BudgetProgressRepository;
+import com.datn.financeapp.budget.service.BudgetService;
 import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.entity.Icon;
@@ -315,9 +316,14 @@ public class TransactionService {
             String categoryName = root != null ? root.getName() : "";
             long remaining = budget.getRemaining() == null ? 0L : budget.getRemaining();
             int daysRemaining = budget.getDaysRemaining() == null ? 0 : budget.getDaysRemaining();
+            // Dùng lại BudgetService.formatAmount: api/04 mục 6 ghi "Còn 502.000 đ", có dấu
+            // chấm phân cách hàng nghìn. Nối thẳng số vào chuỗi cho ra "505000 đ" — lệch hợp
+            // đồng và lệch luôn với câu cảnh báo của chính module ngân sách.
             String alert = "over_limit".equals(budget.getStatus())
-                    ? "Vượt " + Math.abs(remaining) + " đ khi kỳ còn " + daysRemaining + " ngày."
-                    : "Còn " + remaining + " đ cho " + daysRemaining + " ngày còn lại của kỳ.";
+                    ? "Vượt " + BudgetService.formatAmount(Math.abs(remaining))
+                            + " đ khi kỳ còn " + daysRemaining + " ngày."
+                    : "Còn " + BudgetService.formatAmount(remaining)
+                            + " đ cho " + daysRemaining + " ngày còn lại của kỳ.";
             result.add(new AffectedBudgetResponse(
                     budget.getId(), categoryName, budget.getLimitAmount(), budget.getSpentAmount(),
                     budget.getRatio(), budget.getStatus(), alert));

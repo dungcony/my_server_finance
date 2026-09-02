@@ -577,8 +577,14 @@ public class BudgetService {
         return (long) (Math.ceil(amount / 100_000.0) * 100_000);
     }
 
-    /** Định dạng số tiền VND kiểu Việt Nam: dấu chấm phân cách hàng nghìn. */
-    static String formatAmount(long amount) {
+    /**
+     * Định dạng số tiền VND kiểu Việt Nam: dấu chấm phân cách hàng nghìn.
+     *
+     * <p>{@code public} vì {@code TransactionService} (package khác) cũng dựng câu cảnh báo ngân
+     * sách cho {@code affected_budgets} — dùng chung một chỗ định dạng để hai đường không trôi
+     * dạt về câu chữ.
+     */
+    public static String formatAmount(long amount) {
         return String.format("%,d", amount).replace(",", ".");
     }
 
