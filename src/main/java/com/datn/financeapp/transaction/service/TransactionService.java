@@ -435,6 +435,7 @@ public class TransactionService {
                 base.displayName(),
                 base.note(),
                 base.source(),
+                base.countsInReport(),
                 base.wallet(),
                 base.destinationWallet(),
                 base.category(),
@@ -660,6 +661,7 @@ public class TransactionService {
                 txn.getDisplayName(),
                 txn.getNote(),
                 txn.getSource(),
+                txn.getCountsInReport(),
                 wallet != null
                         ? new TransactionListItemResponse.WalletRef(wallet.getId(), wallet.getName(), wallet.getType())
                         : null,
@@ -772,6 +774,7 @@ public class TransactionService {
                 txn.getDisplayName(),
                 txn.getNote(),
                 txn.getSource(),
+                txn.getCountsInReport(),
                 wallet != null ? new TransactionResponse.WalletRef(wallet.getId(), wallet.getName(), wallet.getType()) : null,
                 destinationWallet != null
                         ? new TransactionResponse.WalletRef(

@@ -18,6 +18,15 @@ public record TransactionListItemResponse(
         String displayName,
         String note,
         String source,
+        /**
+         * Khoản này có được tính vào báo cáo thu-chi không (api/04 mục 4, cột
+         * {@code transactions.counts_in_report} của V8).
+         *
+         * <p>Trước đây chỉ NHẬN được lúc tạo mà không TRẢ LẠI trong response, nên client ghi cờ
+         * xuống rồi không đọc lại được — mở màn Sửa là mất giá trị đã đặt (FIX-07, đợt test
+         * 02/09/2026).
+         */
+        Boolean countsInReport,
         WalletRef wallet,
         WalletRef destinationWallet,
         CategoryRef category,

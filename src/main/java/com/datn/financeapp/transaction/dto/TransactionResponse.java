@@ -16,6 +16,8 @@ public record TransactionResponse(
         String displayName,
         String note,
         String source,
+        /** Xem {@link TransactionListItemResponse#countsInReport()}. */
+        Boolean countsInReport,
         WalletRef wallet,
         WalletRef destinationWallet,
         CategoryRef category,
