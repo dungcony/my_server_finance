@@ -1,6 +1,6 @@
 package com.datn.financeapp.report.dto;
 
-import com.datn.financeapp.budget.dto.BudgetAlertResponse;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +19,23 @@ public record ReportHomeResponse(
         DailyTrend dailyTrend,
         List<TopSpendingItem> topSpending,
         List<RecentTransactionItem> recentTransactions,
-        List<BudgetAlertResponse> budgetsNeedingAttention) {
+        List<BudgetAttentionItem> budgetsNeedingAttention) {
+
+    /**
+     * Một dòng của khối "ngân sách cần chú ý" trên màn Tổng quan.
+     *
+     * <p>Hình dạng riêng, KHÔNG dùng lại {@code BudgetAlertResponse} của {@code GET
+     * /budgets/alerts}: api/06 mục 1 quy định khối này chỉ có {@code id}/{@code category}/{@code
+     * ratio}/{@code status}, còn api/05 mục 7 quy định khối kia có thêm {@code percent_label},
+     * {@code title}, {@code content}, {@code suggestion} và đặt tên khoá khác ({@code budget_id},
+     * {@code severity}). Dùng chung một record khiến response lệch đặc tả mà không bên nào báo
+     * lỗi — client đọc {@code id} nhận về null và sập màn Tổng quan (FIX-06, đợt test 02/09/2026).
+     *
+     * <p>{@code status} giữ nguyên giá trị gốc của {@code v_budget_progress}
+     * ({@code near_limit}/{@code over_limit}), không quy đổi sang {@code alert}/{@code critical}
+     * như api/05 — hai đặc tả cố ý khác nhau ở điểm này.
+     */
+    public record BudgetAttentionItem(UUID id, String category, BigDecimal ratio, String status) {}
 
     public record Balance(Long personalTotal, Long sharedTotal) {}
 

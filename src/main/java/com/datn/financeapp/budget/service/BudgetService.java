@@ -16,6 +16,7 @@ import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.notification.repository.NotificationRepository;
+import com.datn.financeapp.report.dto.ReportHomeResponse;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.math.BigDecimal;
@@ -156,6 +157,39 @@ public class BudgetService {
                     null));
         }
         return alerts;
+    }
+
+    /**
+     * Khối "ngân sách cần chú ý" của {@code GET /reports/home} (api/06 mục 1).
+     *
+     * <p>Cùng nguồn dữ liệu với {@link #alerts(UUID)} nhưng KHÁC hình dạng response — api/06 quy
+     * định {@code id}/{@code category}/{@code ratio}/{@code status}, còn api/05 mục 7 quy định
+     * {@code budget_id}/{@code severity} kèm câu chữ soạn sẵn. Trước đây {@code /reports/home}
+     * dùng lại thẳng {@link BudgetAlertResponse}, khiến response lệch api/06: client đọc khoá
+     * {@code id} nhận về null và sập màn Tổng quan ngay khi có ngân sách đầu tiên vượt hạn mức
+     * (FIX-06, đợt test 02/09/2026). Tách method riêng để hai hợp đồng không kéo nhau nữa.
+     *
+     * <p>{@code status} giữ NGUYÊN giá trị gốc của {@code v_budget_progress}, không quy đổi sang
+     * {@code alert}/{@code critical}.
+     */
+    @Transactional(readOnly = true)
+    public List<ReportHomeResponse.BudgetAttentionItem> attentionItems(UUID userId) {
+        List<BudgetProgressProjection> rows = budgetProgressRepository.findAllForUser(userId, true, null).stream()
+                .filter(row -> !STATUS_NORMAL.equals(row.getStatus()))
+                .toList();
+
+        Map<UUID, Category> categories = loadCategories(userId, rows);
+
+        List<ReportHomeResponse.BudgetAttentionItem> items = new ArrayList<>(rows.size());
+        for (BudgetProgressProjection row : rows) {
+            Category category = categories.get(row.getCategoryId());
+            items.add(new ReportHomeResponse.BudgetAttentionItem(
+                    row.getId(),
+                    category != null ? category.getName() : "Danh mục đã xoá",
+                    nullToZero(row.getRatio()),
+                    row.getStatus()));
+        }
+        return items;
     }
 
     /**

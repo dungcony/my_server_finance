@@ -1,6 +1,5 @@
 package com.datn.financeapp.report.service;
 
-import com.datn.financeapp.budget.dto.BudgetAlertResponse;
 import com.datn.financeapp.budget.service.BudgetService;
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.entity.Icon;
@@ -410,7 +409,10 @@ public class ReportQueryService {
                     wallet == null ? null : new ReportHomeResponse.WalletRef(wallet.getName())));
         }
 
-        List<BudgetAlertResponse> budgetsNeedingAttention = budgetService.alerts(userId);
+        // Hình dạng riêng theo api/06 mục 1 — KHÔNG dùng lại budgetService.alerts() (hợp đồng
+        // của api/05 mục 7, tên khoá khác hẳn). Xem BudgetService.attentionItems().
+        List<ReportHomeResponse.BudgetAttentionItem> budgetsNeedingAttention =
+                budgetService.attentionItems(userId);
 
         return new ReportHomeResponse(
                 new ReportHomeResponse.Balance(
