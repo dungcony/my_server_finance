@@ -49,6 +49,17 @@ Backend REST API (Spring Boot 3.4.x, Java 17) cho ứng dụng Flutter Quản l�
    mvn spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
+   > **Dùng PowerShell trên Windows thì phải bọc dấu nháy:**
+   >
+   > ```powershell
+   > mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+   > ```
+   >
+   > Không bọc thì PowerShell cắt tham số tại dấu chấm đầu tiên, thành hai mảnh
+   > `-Dspring-boot` và `.run.profiles=dev`; Maven hiểu mảnh thứ hai là một
+   > lifecycle phase và báo `Unknown lifecycle phase ".run.profiles=dev"`.
+   > Quy tắc này áp dụng cho **mọi** tham số `-D...` có dấu chấm.
+
    Flyway sẽ tự động chạy toàn bộ migration ở `../../db/migration/` (V1 đến V7) lên database `finance_app` lúc khởi động.
 
 ## Chạy test
