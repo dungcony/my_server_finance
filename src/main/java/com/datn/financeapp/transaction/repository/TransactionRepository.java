@@ -75,7 +75,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
                     + "CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'asc' THEN t.created_at END ASC, "
                     + "CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'desc' THEN t.created_at END DESC, "
                     + "CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'asc' THEN t.date END ASC, "
-                    + "CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'desc' THEN t.date END DESC "
+                    + "CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'desc' THEN t.date END DESC, "
+                    // Tiêu chí phụ cho MỌI kiểu sắp xếp. Không có nó thì các bản ghi bằng nhau ở
+                    // tiêu chí chính rơi vào thứ tự tuỳ ý của PostgreSQL — rõ nhất khi sắp theo
+                    // `date`, vì cột đó kiểu DATE không mang giờ nên mọi giao dịch cùng ngày đều
+                    // bằng nhau và xáo trộn sau mỗi lần gọi (FIX-05, đợt test 02/09/2026).
+                    // Mới ghi nằm trên: đó là thứ người dùng vừa nhập và đang muốn nhìn lại.
+                    + "t.created_at DESC "
                     + "LIMIT :limit OFFSET :offset",
             nativeQuery = true)
     List<Transaction> search(

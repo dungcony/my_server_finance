@@ -284,4 +284,58 @@ class TransactionListQueryIntegrationTest {
         mockMvc.perform(get("/transactions/" + transactionId).header("Authorization", "Bearer " + otherToken))
                 .andExpect(status().isNotFound());
     }
+
+    /**
+     * FIX-05 (đợt test 02/09/2026) — nhiều giao dịch cùng một ngày hiện lộn xộn, không theo thứ
+     * tự nhập.
+     *
+     * <p>Gốc rễ: {@code ORDER BY} chỉ có tiêu chí chính. Cột {@code transactions.date} kiểu
+     * {@code DATE} không mang giờ, nên mọi giao dịch cùng ngày đều bằng nhau ở tiêu chí đó và
+     * PostgreSQL trả về theo thứ tự tuỳ ý — xáo trộn sau mỗi lần gọi mà không báo lỗi gì.
+     */
+    @Test
+    void listByDate_sapXepMoiGhiLenTrenTrongCungMotNgay() throws Exception {
+        String token = registerAndGetAccessToken("thu.tu.trong.ngay@example.com");
+        String walletId = firstWalletId(token);
+        String expenseCategoryId = systemCategoryId("expense");
+        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+
+        // Ghi lần lượt A → B → C, tất cả cùng một ngày. Số tiền khác nhau để nhận diện.
+        createTransaction(token, "expense", walletId, expenseCategoryId, 10_000, today, "A ghi trước");
+        createTransaction(token, "expense", walletId, expenseCategoryId, 20_000, today, "B ghi giữa");
+        createTransaction(token, "expense", walletId, expenseCategoryId, 30_000, today, "C ghi sau cùng");
+
+        mockMvc.perform(get("/transactions/by-date").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.days[0].transaction.length()").value(3))
+                // Mới ghi nhất lên đầu: C, B, A.
+                .andExpect(jsonPath("$.data.days[0].transaction[0].note").value("C ghi sau cùng"))
+                .andExpect(jsonPath("$.data.days[0].transaction[1].note").value("B ghi giữa"))
+                .andExpect(jsonPath("$.data.days[0].transaction[2].note").value("A ghi trước"));
+    }
+
+    /**
+     * Ngày vẫn là tiêu chí CHÍNH — {@code created_at} chỉ phá hoà khi hai bản ghi cùng ngày.
+     *
+     * <p>Ca này canh đúng chỗ dễ sửa hỏng: nếu ai đó đổi thành sắp thuần theo {@code created_at},
+     * giao dịch ghi lùi ngày (vừa nhập cho hôm qua) sẽ nhảy lên trên giao dịch của hôm nay.
+     */
+    @Test
+    void listByDate_ngayVanLaTieuChiChinhDuGhiLuiNgay() throws Exception {
+        String token = registerAndGetAccessToken("ghi.lui.ngay@example.com");
+        String walletId = firstWalletId(token);
+        String expenseCategoryId = systemCategoryId("expense");
+        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+
+        // Ghi khoản của HÔM NAY trước, rồi mới ghi bù cho HÔM QUA.
+        createTransaction(token, "expense", walletId, expenseCategoryId, 10_000, today, "Của hôm nay");
+        createTransaction(token, "expense", walletId, expenseCategoryId, 20_000, today.minusDays(1), "Ghi bù hôm qua");
+
+        mockMvc.perform(get("/transactions/by-date").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.days.length()").value(2))
+                .andExpect(jsonPath("$.data.days[0].day_label").value("Hôm nay"))
+                .andExpect(jsonPath("$.data.days[0].transaction[0].note").value("Của hôm nay"))
+                .andExpect(jsonPath("$.data.days[1].transaction[0].note").value("Ghi bù hôm qua"));
+    }
 }

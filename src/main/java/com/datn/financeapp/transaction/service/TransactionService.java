@@ -476,6 +476,10 @@ public class TransactionService {
                 filters.minAmount(),
                 filters.maxAmount(),
                 includeTransfers,
+                // Màn Sổ luôn xếp ngày mới nhất lên trên, không nhận sort_by của client — nó
+                // gom theo ngày nên thứ tự khác sẽ làm vỡ cách gom. Trong cùng một ngày,
+                // TransactionRepository#search có tiêu chí phụ created_at DESC nên khoản vừa
+                // ghi nằm trên cùng (FIX-05).
                 "date",
                 "desc",
                 Integer.MAX_VALUE,
