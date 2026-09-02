@@ -211,16 +211,28 @@ public class AuthService {
      * revoke, luôn trả 200 rỗng (api/01-XAC-THUC.md mục 4).
      */
     @Transactional
-    public void logout(String rawRefreshToken, boolean logoutAllDevices) {
-        String hash = sha256Hex(rawRefreshToken);
-
+    public void logout(UUID userId, String rawRefreshToken, boolean logoutAllDevices) {
+        // api/01 mục 4 KHÔNG đặc tả trường mang refresh token trong body — client hoàn toàn có
+        // thể gọi logout mà chỉ gửi {@code logout_all_devices}, và app Flutter đang làm đúng như
+        // vậy. Trước đây nhánh này băm thẳng null và ném NullPointerException, khiến endpoint
+        // trả 500: người dùng bấm Đăng xuất thì app kẹt lại màn cũ vì lời gọi mạng ném lỗi
+        // trước khi kịp xoá trạng thái đăng nhập (FIX-01, đợt test 02/09/2026).
+        //
+        // {@code userId} lấy từ JWT chứ không suy ra từ body: endpoint này bắt buộc xác thực nên
+        // danh tính luôn có sẵn và đáng tin hơn hẳn một trường tuỳ chọn do client gửi lên.
         if (logoutAllDevices) {
-            refreshTokenRepository
-                    .findByTokenHash(hash)
-                    .ifPresent(token -> refreshTokenRepository.revokeAllActiveForUser(token.getUserId()));
-        } else {
-            refreshTokenRepository.revokeByTokenHash(hash);
+            refreshTokenRepository.revokeAllActiveForUser(userId);
+            return;
         }
+
+        // Không gửi token thì không có gì để thu hồi riêng lẻ — phiên phía máy chủ tự hết hạn
+        // theo TTL, còn thẻ trên máy người dùng đã bị client xoá. Đúng tinh thần "idempotent về
+        // mặt hành vi" ghi ở javadoc trên: không ném lỗi, luôn trả 200.
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            return;
+        }
+
+        refreshTokenRepository.revokeByTokenHash(sha256Hex(rawRefreshToken));
     }
 
     /**

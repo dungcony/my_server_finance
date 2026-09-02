@@ -67,7 +67,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ApiResponse<Void> logout(@RequestBody LogoutRequest req) {
-        authService.logout(req.refreshToken(), req.logoutAllDevices());
+        authService.logout(SecurityContextUtil.currentUserId(), req.refreshToken(), req.logoutAllDevices());
         return ApiResponse.of(null);
     }
 
