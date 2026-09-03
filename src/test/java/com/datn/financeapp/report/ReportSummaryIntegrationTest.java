@@ -282,4 +282,72 @@ class ReportSummaryIntegrationTest {
             org.assertj.core.api.Assertions.assertThat(date).isLessThanOrEqualTo(today);
         }
     }
+
+    /**
+     * FIX-04 (đợt test 02/09/2026) — đổi ví ở màn Sổ nhưng số liệu không lọc theo.
+     *
+     * <p>Trước đây chỉ {@code /reports/summary} nhận {@code wallet_id}; ba điểm cuối còn lại
+     * không có tham số nào để lọc, nên màn Tổng quan và Báo cáo luôn hiện toàn bộ dù người dùng
+     * đã chọn một ví cụ thể. Ca này canh cả bốn.
+     */
+    @Test
+    void reports_locTheoViTrenMoiDiemCuoi() throws Exception {
+        String token = registerAndGetAccessToken("loc.theo.vi@example.com");
+        String walletA = createWallet(token, "Ví A lọc", 5_000_000);
+        String walletB = createWallet(token, "Ví B lọc", 5_000_000);
+        String categoryId = createCategory(token, "Ăn uống lọc ví", "expense", null);
+
+        createExpenseTransaction(token, walletA, categoryId, 300_000);
+        createExpenseTransaction(token, walletB, categoryId, 700_000);
+
+        // Không lọc: thấy cả hai ví.
+        mockMvc.perform(get("/reports/home").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period_summary.total_expense").value(1_000_000));
+
+        // Lọc ví A: chỉ thấy 300.000.
+        mockMvc.perform(get("/reports/home")
+                        .header("Authorization", "Bearer " + token)
+                        .param("wallet_id", walletA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period_summary.total_expense").value(300_000));
+
+        mockMvc.perform(get("/reports/by-category-group")
+                        .header("Authorization", "Bearer " + token)
+                        .param("period", "month")
+                        .param("wallet_id", walletB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(700_000));
+
+        mockMvc.perform(get("/reports/by-category")
+                        .header("Authorization", "Bearer " + token)
+                        .param("period", "month")
+                        .param("wallet_id", walletA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(300_000));
+
+        // daily-trend phải lọc CẢ đường trung bình ba tháng trước, không riêng đường tháng này —
+        // nếu chỉ lọc một đường thì mốc so sánh thuộc phạm vi khác hẳn và biểu đồ nói dối.
+        mockMvc.perform(get("/reports/daily-trend")
+                        .header("Authorization", "Bearer " + token)
+                        .param("wallet_id", walletA))
+                .andExpect(status().isOk());
+    }
+
+    /** Ví của người khác thì không lọc ra được gì — quyền nằm ngay trong câu truy vấn. */
+    @Test
+    void reports_locTheoViCuaNguoiKhacTraVeRong() throws Exception {
+        String ownerToken = registerAndGetAccessToken("chu.vi.bao.cao@example.com");
+        String ownerWallet = createWallet(ownerToken, "Ví riêng", 5_000_000);
+        String categoryId = createCategory(ownerToken, "Ăn uống riêng tư", "expense", null);
+        createExpenseTransaction(ownerToken, ownerWallet, categoryId, 500_000);
+
+        String otherToken = registerAndGetAccessToken("nguoi.la.bao.cao@example.com");
+
+        mockMvc.perform(get("/reports/home")
+                        .header("Authorization", "Bearer " + otherToken)
+                        .param("wallet_id", ownerWallet))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period_summary.total_expense").value(0));
+    }
 }

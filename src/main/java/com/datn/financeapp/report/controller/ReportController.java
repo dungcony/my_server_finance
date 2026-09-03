@@ -46,9 +46,10 @@ public class ReportController {
 
     @GetMapping("/home")
     public ApiResponse<ReportHomeResponse> home(
-            @RequestParam(required = false, defaultValue = "month") String period) {
+            @RequestParam(required = false, defaultValue = "month") String period,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(reportQueryService.home(userId, period));
+        return ApiResponse.of(reportQueryService.home(userId, period, walletId));
     }
 
     @GetMapping("/summary")
@@ -66,9 +67,10 @@ public class ReportController {
             @RequestParam(required = false) String period,
             @RequestParam(name = "from_date", required = false) LocalDate fromDate,
             @RequestParam(name = "to_date", required = false) LocalDate toDate,
-            @RequestParam(required = false, defaultValue = "expense") String type) {
+            @RequestParam(required = false, defaultValue = "expense") String type,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(reportQueryService.byCategoryGroup(userId, period, fromDate, toDate, type));
+        return ApiResponse.of(reportQueryService.byCategoryGroup(userId, period, fromDate, toDate, type, walletId));
     }
 
     @GetMapping("/by-category")
@@ -78,17 +80,20 @@ public class ReportController {
             @RequestParam(name = "to_date", required = false) LocalDate toDate,
             @RequestParam(required = false, defaultValue = "expense") String type,
             @RequestParam(required = false, defaultValue = "parent") String level,
-            @RequestParam(required = false, defaultValue = "10") int limit) {
+            @RequestParam(required = false, defaultValue = "10") int limit,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(reportQueryService.byCategory(userId, period, fromDate, toDate, type, level, limit));
+        return ApiResponse.of(
+                reportQueryService.byCategory(userId, period, fromDate, toDate, type, level, limit, walletId));
     }
 
     @GetMapping("/daily-trend")
     public ApiResponse<DailyTrendResponse> dailyTrend(
-            @RequestParam(required = false) String month) {
+            @RequestParam(required = false) String month,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
         UUID userId = SecurityContextUtil.currentUserId();
         YearMonth ym = month == null ? null : YearMonth.parse(month);
-        return ApiResponse.of(reportQueryService.dailyTrend(userId, ym));
+        return ApiResponse.of(reportQueryService.dailyTrend(userId, ym, walletId));
     }
 
     @GetMapping("/monthly-trend")

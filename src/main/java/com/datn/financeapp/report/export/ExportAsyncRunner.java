@@ -55,7 +55,10 @@ public class ExportAsyncRunner {
         try {
             LocalDate[] range = resolveRange(req);
             List<Transaction> transactions =
-                    reportRepository.eligibleTransactions(userId, range[0], range[1]);
+                    // Xuất báo cáo luôn lấy MỌI ví — `wallet_id` không nằm trong tham số của
+                    // POST /reports/export (api/06 mục 9), và tệp xuất ra là bản đầy đủ để lưu
+                    // trữ chứ không phải một lát cắt đang xem trên màn hình.
+                    reportRepository.eligibleTransactions(userId, range[0], range[1], null);
 
             Map<UUID, Category> categoryCache = new HashMap<>();
             Map<UUID, Wallet> walletCache = new HashMap<>();

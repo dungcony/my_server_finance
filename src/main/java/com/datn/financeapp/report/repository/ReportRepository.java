@@ -59,6 +59,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
                     + "JOIN categories root ON root.id = COALESCE(c.parent_category_id, c.id) "
                     + "JOIN category_groups cg ON cg.id = root.category_group_id "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.type = :type "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
                     + "GROUP BY cg.id, cg.name, cg.color "
@@ -68,7 +69,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             @Param("userId") UUID userId,
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
-            @Param("type") String type);
+            @Param("type") String type,
+            @Param("walletId") UUID walletId);
 
     interface CategoryGroupAmountProjection {
         UUID getCategoryGroupId();
@@ -94,6 +96,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
                     + "JOIN categories c ON c.id = t.category_id "
                     + "JOIN categories root ON root.id = COALESCE(c.parent_category_id, c.id) "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.type = :type AND root.category_group_id = :categoryGroupId "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
                     + "GROUP BY root.id, root.name "
@@ -104,7 +107,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
             @Param("type") String type,
-            @Param("categoryGroupId") UUID categoryGroupId);
+            @Param("categoryGroupId") UUID categoryGroupId,
+            @Param("walletId") UUID walletId);
 
     interface CategoryAmountProjection {
         UUID getCategoryId();
@@ -128,6 +132,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
                     + "JOIN categories c ON c.id = t.category_id "
                     + "JOIN categories root ON root.id = COALESCE(c.parent_category_id, c.id) "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.type = :type "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
                     + "GROUP BY root.id, root.name, root.icon_id, root.color "
@@ -139,7 +144,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
             @Param("type") String type,
-            @Param("limit") int limit);
+            @Param("limit") int limit,
+            @Param("walletId") UUID walletId);
 
     interface CategoryParentAmountProjection {
         UUID getCategoryId();
@@ -168,6 +174,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
                     + "FROM transactions t "
                     + "LEFT JOIN categories c ON c.id = t.category_id AND c.id <> :parentId "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.type = :type "
                     + "AND t.category_id = ANY(CAST(:categoryTree AS uuid[])) "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
@@ -180,7 +187,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             @Param("toDate") LocalDate toDate,
             @Param("type") String type,
             @Param("parentId") UUID parentId,
-            @Param("categoryTree") UUID[] categoryTree);
+            @Param("categoryTree") UUID[] categoryTree,
+            @Param("walletId") UUID walletId);
 
     /** REPORT-by-category, {@code level=child} (api/06 mục 4) — tách riêng từng danh mục con, KHÔNG cộng gộp. */
     @Query(
@@ -190,6 +198,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
                     + "FROM transactions t "
                     + "JOIN categories c ON c.id = t.category_id "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.type = :type "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
                     + "GROUP BY c.id, c.name, c.icon_id, c.color "
@@ -201,7 +210,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             @Param("fromDate") LocalDate fromDate,
             @Param("toDate") LocalDate toDate,
             @Param("type") String type,
-            @Param("limit") int limit);
+            @Param("limit") int limit,
+            @Param("walletId") UUID walletId);
 
     /**
      * REPORT-daily-trend (api/06 mục 5) — tổng chi từng ngày trong tháng. {@code endDate} PHẢI
@@ -212,6 +222,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             value = "SELECT t.date AS date, SUM(t.amount) AS amount "
                     + "FROM transactions t "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.type = 'expense' AND t.date >= :startDate AND t.date <= :endDate "
                     + "GROUP BY t.date "
                     + "ORDER BY t.date",
@@ -219,7 +230,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     List<DailyAmountProjection> dailyExpense(
             @Param("userId") UUID userId,
             @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
+            @Param("endDate") LocalDate endDate,
+            @Param("walletId") UUID walletId);
 
     interface DailyAmountProjection {
         LocalDate getDate();
@@ -256,9 +268,11 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     @Query(
             value = "SELECT t.* FROM transactions t "
                     + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
+                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
                     + "AND t.date >= :fromDate AND t.date <= :toDate "
                     + "ORDER BY t.date DESC, t.created_at DESC",
             nativeQuery = true)
     List<Transaction> eligibleTransactions(
-            @Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+            @Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+            @Param("walletId") UUID walletId);
 }

@@ -113,12 +113,12 @@ public class ReportQueryService {
     // ------------------------------------------------------- 3. by-category-group
 
     public CategoryGroupBreakdownResponse byCategoryGroup(
-            UUID userId, String period, LocalDate fromDate, LocalDate toDate, String type) {
+            UUID userId, String period, LocalDate fromDate, LocalDate toDate, String type, UUID walletId) {
         DateRange range = resolveRange(period, fromDate, toDate);
         String txnType = type == null ? "expense" : type;
 
         List<ReportRepository.CategoryGroupAmountProjection> rows =
-                reportRepository.byCategoryGroup(userId, range.from(), range.to(), txnType);
+                reportRepository.byCategoryGroup(userId, range.from(), range.to(), txnType, walletId);
         long total = rows.stream().mapToLong(r -> orZero(r.getAmount())).sum();
 
         List<CategoryGroupBreakdownResponse.GroupItem> groups = new ArrayList<>();
@@ -126,7 +126,7 @@ public class ReportQueryService {
             long amount = orZero(row.getAmount());
             double ratio = total == 0 ? 0 : (double) amount / total;
             List<ReportRepository.CategoryAmountProjection> catRows = reportRepository.byCategoryInGroup(
-                    userId, range.from(), range.to(), txnType, row.getCategoryGroupId());
+                    userId, range.from(), range.to(), txnType, row.getCategoryGroupId(), walletId);
             List<CategoryGroupBreakdownResponse.CategoryItem> categories = catRows.stream()
                     .map(c -> new CategoryGroupBreakdownResponse.CategoryItem(
                             c.getCategoryId(),
@@ -150,14 +150,21 @@ public class ReportQueryService {
     // ------------------------------------------------------------ 4. by-category
 
     public CategoryBreakdownResponse byCategory(
-            UUID userId, String period, LocalDate fromDate, LocalDate toDate, String type, String level, int limit) {
+            UUID userId,
+            String period,
+            LocalDate fromDate,
+            LocalDate toDate,
+            String type,
+            String level,
+            int limit,
+            UUID walletId) {
         DateRange range = resolveRange(period, fromDate, toDate);
         String txnType = type == null ? "expense" : type;
         boolean parentLevel = level == null || "parent".equals(level);
 
         List<ReportRepository.CategoryParentAmountProjection> rows = parentLevel
-                ? reportRepository.byCategoryParentLevel(userId, range.from(), range.to(), txnType, limit)
-                : reportRepository.byCategoryChildLevel(userId, range.from(), range.to(), txnType, limit);
+                ? reportRepository.byCategoryParentLevel(userId, range.from(), range.to(), txnType, limit, walletId)
+                : reportRepository.byCategoryChildLevel(userId, range.from(), range.to(), txnType, limit, walletId);
 
         long total = rows.stream().mapToLong(r -> orZero(r.getAmount())).sum();
         long transactionTotal = rows.stream().mapToLong(r -> orZero(r.getTransactionCount())).sum();
@@ -183,7 +190,8 @@ public class ReportQueryService {
                                 range.to(),
                                 txnType,
                                 row.getCategoryId(),
-                                tree.toArray(new UUID[0]))
+                                tree.toArray(new UUID[0]),
+                                walletId)
                         .stream()
                         .map(c -> new CategoryBreakdownResponse.ChildDetail(
                                 c.getCategoryId(),
@@ -212,7 +220,7 @@ public class ReportQueryService {
 
     // -------------------------------------------------------- 5. daily-trend
 
-    public DailyTrendResponse dailyTrend(UUID userId, YearMonth month) {
+    public DailyTrendResponse dailyTrend(UUID userId, YearMonth month, UUID walletId) {
         YearMonth target = month == null ? YearMonth.now() : month;
         LocalDate start = target.atDay(1);
         LocalDate monthEnd = target.atEndOfMonth();
@@ -221,8 +229,8 @@ public class ReportQueryService {
         boolean isCurrentOrFutureMonth = !effectiveEnd.isBefore(start);
 
         List<ReportRepository.DailyAmountProjection> rows = isCurrentOrFutureMonth
-                ? reportRepository.dailyExpense(userId, start, effectiveEnd)
-                : reportRepository.dailyExpense(userId, start, monthEnd);
+                ? reportRepository.dailyExpense(userId, start, effectiveEnd, walletId)
+                : reportRepository.dailyExpense(userId, start, monthEnd, walletId);
 
         List<DailyTrendResponse.CurrentPoint> currentLine = new ArrayList<>();
         long cumulative = 0;
@@ -240,7 +248,7 @@ public class ReportQueryService {
         for (int i = 1; i <= 3; i++) {
             YearMonth past = target.minusMonths(i);
             ReportRepository.SummaryProjection s =
-                    reportRepository.summary(userId, past.atDay(1), past.atEndOfMonth(), null);
+                    reportRepository.summary(userId, past.atDay(1), past.atEndOfMonth(), walletId);
             pastMonthTotals.add(orZero(s.getTotalExpense()));
         }
         double avgTotal = pastMonthTotals.stream().mapToLong(Long::longValue).average().orElse(0);
@@ -318,7 +326,7 @@ public class ReportQueryService {
      * annotation {@code @Transactional} riêng — chỉ class-level {@code readOnly=true} là đủ,
      * không có nguy cơ self-invocation vì không method con nào cần transaction MỚI).
      */
-    public ReportHomeResponse home(UUID userId, String period) {
+    public ReportHomeResponse home(UUID userId, String period, UUID walletId) {
         DateRange range = resolveRange(period, null, null);
 
         Long personalTotal = jdbcTemplate.queryForObject(
@@ -341,11 +349,11 @@ public class ReportQueryService {
                 .toList();
 
         ReportRepository.SummaryProjection summaryRow =
-                reportRepository.summary(userId, range.from(), range.to(), null);
+                reportRepository.summary(userId, range.from(), range.to(), walletId);
         long totalIncome = orZero(summaryRow.getTotalIncome());
         long totalExpense = orZero(summaryRow.getTotalExpense());
 
-        DailyTrendResponse trend = dailyTrend(userId, YearMonth.from(range.to()));
+        DailyTrendResponse trend = dailyTrend(userId, YearMonth.from(range.to()), walletId);
         long maxValue = trend.currentLine().stream()
                 .mapToLong(DailyTrendResponse.CurrentPoint::cumulative)
                 .max()
@@ -361,7 +369,7 @@ public class ReportQueryService {
                         trend.avg3MonthsSamePoint());
 
         CategoryBreakdownResponse topSpendingBreakdown =
-                byCategory(userId, period, null, null, "expense", "parent", 5);
+                byCategory(userId, period, null, null, "expense", "parent", 5, walletId);
         List<ReportHomeResponse.TopSpendingItem> topSpending = topSpendingBreakdown.items().stream()
                 .map(item -> new ReportHomeResponse.TopSpendingItem(
                         item.categoryId(),
@@ -374,7 +382,9 @@ public class ReportQueryService {
                         item.color()))
                 .toList();
 
-        List<Transaction> recent = reportRepository.eligibleTransactions(userId, range.from(), range.to()).stream()
+        List<Transaction> recent = reportRepository
+                .eligibleTransactions(userId, range.from(), range.to(), walletId)
+                .stream()
                 .limit(10)
                 .toList();
         List<ReportHomeResponse.RecentTransactionItem> recentTransactions = new ArrayList<>();
