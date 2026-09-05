@@ -24,5 +24,13 @@ public record UserSummaryDto(
         @JsonProperty("is_confirm") boolean isConfirm,
         /** {@code USER} / {@code ADMIN}. App nhận nhưng TUYỆT ĐỐI không dùng để ẩn/hiện chức năng. */
         String role,
+        /**
+         * D4: {@code password_hash} khác rỗng. App dùng để ẩn nút Đổi mật khẩu với tài khoản
+         * Google thuần. KHÔNG thay được bằng {@code is_confirm}: tài khoản đã liên kết cũng
+         * {@code true} mà vẫn đổi mật khẩu được (api/01 mục 13).
+         */
+        @JsonProperty("has_password") boolean hasPassword,
+        /** D4: {@code google_id} khác rỗng. Màn Tài khoản dùng để hiện "Đã liên kết Google". */
+        @JsonProperty("google_linked") boolean googleLinked,
         Instant createdAt) {
 }

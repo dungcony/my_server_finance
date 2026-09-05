@@ -14,6 +14,10 @@ public record UserDetailDto(
         /** Xem ghi chú cùng tên ở {@link UserSummaryDto} về khoá JSON. */
         @JsonProperty("is_confirm") boolean isConfirm,
         String role,
+        /** Xem ghi chú ở {@link UserSummaryDto}. */
+        @JsonProperty("has_password") boolean hasPassword,
+        /** Xem ghi chú ở {@link UserSummaryDto}. */
+        @JsonProperty("google_linked") boolean googleLinked,
         Instant createdAt,
         Instant lastLoginAt,
         UserStatsDto stats) {

@@ -337,6 +337,44 @@ class AuthGoogleLoginIntegrationTest {
     }
 
     // -----------------------------------------------------------------
+    // D4 — hai trường app dùng để ẩn nút Đổi mật khẩu
+    // -----------------------------------------------------------------
+
+    @Test
+    void loginWithGoogle_GoogleOnlyAccount_ReportsNoPasswordAndLinked() {
+        stubGoogle("sub-co-truong", "co.truong@example.com", "Có Trường");
+
+        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+
+        assertThat(res.user().hasPassword()).isFalse();
+        assertThat(res.user().googleLinked()).isTrue();
+    }
+
+    @Test
+    void login_EmailOnlyAccount_ReportsHasPasswordAndNotLinked() {
+        authService.register(new RegisterRequest("chi.email@example.com", PASSWORD, "Chỉ Email"));
+
+        AuthResponse res = authService.login(
+                new LoginRequest("chi.email@example.com", PASSWORD), "127.0.0.1", "test");
+
+        assertThat(res.user().hasPassword()).isTrue();
+        assertThat(res.user().googleLinked()).isFalse();
+    }
+
+    @Test
+    void loginWithGoogle_LinkedAccount_ReportsBothTrue() {
+        authService.register(new RegisterRequest("ca.hai.co@example.com", PASSWORD, "Cả Hai"));
+        stubGoogle("sub-ca-hai", "ca.hai.co@example.com", "Cả Hai");
+
+        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+
+        // Tài khoản đã liên kết VẪN đổi mật khẩu được — đây là lý do không dùng is_confirm
+        // thay cho has_password: cờ đó cũng true ở đây mà lại nói về chuyện khác.
+        assertThat(res.user().hasPassword()).isTrue();
+        assertThat(res.user().googleLinked()).isTrue();
+    }
+
+    // -----------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------
 

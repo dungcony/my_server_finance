@@ -304,6 +304,7 @@ public class AuthService {
         return new UserDetailDto(
                 user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
                 user.getPlan(), user.isConfirm(), user.getRole(),
+                user.getPasswordHash() != null, user.getGoogleId() != null,
                 user.getCreatedAt(), user.getLastLoginAt(), stats);
     }
 
@@ -327,9 +328,7 @@ public class AuthService {
         }
         userRepository.save(user);
 
-        return new UserSummaryDto(
-                user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
-                user.getPlan(), user.isConfirm(), user.getRole(), user.getCreatedAt());
+        return toSummary(user);
     }
 
     /**
@@ -640,13 +639,24 @@ public class AuthService {
         return mostRecentFailure.isAfter(Instant.now().minus(LOCKOUT_MINUTES, ChronoUnit.MINUTES));
     }
 
+    /**
+     * Gom một chỗ vì hai điểm gọi ({@code updateProfile} và {@code buildAuthResponse}) đều liệt
+     * kê nguyên danh sách trường — thêm trường mới mà quên một chỗ thì hai điểm cuối trả khác
+     * nhau, và app chỉ phát hiện ra khi bấm đúng luồng ít dùng hơn.
+     */
+    private UserSummaryDto toSummary(User user) {
+        return new UserSummaryDto(
+                user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
+                user.getPlan(), user.isConfirm(), user.getRole(),
+                user.getPasswordHash() != null, user.getGoogleId() != null,
+                user.getCreatedAt());
+    }
+
     private AuthResponse buildAuthResponse(User user) {
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getPlan());
         String rawRefreshToken = issueRefreshToken(user.getId());
 
-        UserSummaryDto userDto = new UserSummaryDto(
-                user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
-                user.getPlan(), user.isConfirm(), user.getRole(), user.getCreatedAt());
+        UserSummaryDto userDto = toSummary(user);
 
         return new AuthResponse(userDto, accessToken, rawRefreshToken, jwtService.getAccessTokenExpirySeconds());
     }
