@@ -16,6 +16,7 @@ import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
+import com.datn.financeapp.auth.service.PasswordResetNotifier;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
@@ -24,7 +25,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -70,6 +74,9 @@ class AuthProfilePasswordIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @MockitoSpyBean
+    private PasswordResetNotifier passwordResetNotifier;
 
     @BeforeEach
     void cleanTables() {
@@ -151,6 +158,23 @@ class AuthProfilePasswordIntegrationTest {
         authService.forgotPassword(new ForgotPasswordRequest("khong.ton.tai@example.com"));
 
         assertThat(passwordResetTokenRepository.findAll()).hasSize(1);
+    }
+
+    /**
+     * Mã gửi cho người dùng phải là 6 chữ số vì họ gõ tay từ email vào màn hình điện thoại. Test
+     * này bắt đúng chuỗi đi ra notifier — ba test còn lại tự ghi đè token_hash nên không canh
+     * được định dạng, và bản trước đây sinh chuỗi Base64 43 ký tự mà không gì phát hiện ra.
+     */
+    @Test
+    void forgotPassword_sendsSixDigitCodeToNotifier() {
+        registerUser("sau.chu.so@example.com", "matkhaudung1", "Sáu Chữ Số");
+
+        authService.forgotPassword(new ForgotPasswordRequest("sau.chu.so@example.com"));
+
+        ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(passwordResetNotifier)
+                .sendResetCode(Mockito.eq("sau.chu.so@example.com"), code.capture());
+        assertThat(code.getValue()).matches("\\d{6}");
     }
 
     @Test

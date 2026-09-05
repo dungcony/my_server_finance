@@ -331,7 +331,7 @@ public class AuthService {
         }
 
         User user = userOpt.get();
-        String rawResetCode = generateSecureRandomToken();
+        String rawResetCode = generateResetCode();
         PasswordResetToken token = PasswordResetToken.builder()
                 .id(UUID.randomUUID())
                 .userId(user.getId())
@@ -430,6 +430,16 @@ public class AuthService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /**
+     * Mã đặt lại là 6 chữ số vì người dùng phải GÕ TAY nó từ email vào màn hình điện thoại —
+     * chuỗi Base64 256-bit của {@link #generateSecureRandomToken()} an toàn hơn nhưng không ai
+     * gõ nổi 43 ký tự. Không gian mã nhỏ (10^6) được bù bằng ba lớp: mã sống 15 phút, dùng một
+     * lần, và rate limit forgot-password theo email.
+     */
+    private static String generateResetCode() {
+        return String.format("%06d", new SecureRandom().nextInt(1_000_000));
     }
 
     private static String generateSecureRandomToken() {
