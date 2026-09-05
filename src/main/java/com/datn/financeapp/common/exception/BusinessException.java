@@ -6,10 +6,9 @@ import lombok.Getter;
  * Exception nghiệp vụ tổng quát mang theo mã lỗi + HTTP status xác định.
  * GlobalExceptionHandler chuyển thẳng thành {success:false, error:{code, message, detail}}.
  *
- * <p><b>Luôn dùng các constructor nhận {@link ErrorCode}.</b> Constructor nhận {@code String} chỉ
- * còn tồn tại để chuyển dần từng module sang enum mà không phải sửa 147 chỗ trong một commit —
- * nó sẽ bị gỡ ở bước E5 (xem {@code prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/STATE.md}). Đừng viết chỗ
- * gọi mới bằng nó.
+ * <p><b>Mã lỗi chỉ nhận qua {@link ErrorCode}.</b> Constructor nhận {@code String} đã được gỡ ở
+ * bước E5 — chính nó là thứ cho phép gõ sai mã mà build vẫn qua. Muốn thêm mã lỗi mới thì khai
+ * một hằng số trong {@link ErrorCode}, đừng tìm cách truyền chuỗi vào đây.
  */
 @Getter
 public class BusinessException extends RuntimeException {
@@ -42,25 +41,4 @@ public class BusinessException extends RuntimeException {
         this.detail = detail;
     }
 
-    /**
-     * @deprecated Dùng {@link #BusinessException(ErrorCode)} hoặc
-     *     {@link #BusinessException(ErrorCode, String)}. Constructor này không kiểm được chính tả
-     *     mã lỗi lúc biên dịch — đúng vấn đề mà {@link ErrorCode} sinh ra để giải quyết. Sẽ gỡ ở
-     *     bước E5.
-     */
-    @Deprecated
-    public BusinessException(String code, int httpStatus, String message) {
-        this(code, httpStatus, message, null);
-    }
-
-    /**
-     * @deprecated Dùng {@link #BusinessException(ErrorCode, String, Object)}. Sẽ gỡ ở bước E5.
-     */
-    @Deprecated
-    public BusinessException(String code, int httpStatus, String message, Object detail) {
-        super(message);
-        this.code = code;
-        this.httpStatus = httpStatus;
-        this.detail = detail;
-    }
 }

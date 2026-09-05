@@ -103,7 +103,7 @@ public class GlobalExceptionHandlerTest {
 
         @PostMapping("/test/business")
         public void business() {
-            throw new BusinessException("EMAIL_ALREADY_EXISTS", 409, "Email đã có người dùng.");
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         @PostMapping("/test/runtime")
