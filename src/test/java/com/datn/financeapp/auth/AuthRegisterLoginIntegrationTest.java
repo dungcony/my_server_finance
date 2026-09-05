@@ -106,7 +106,7 @@ class AuthRegisterLoginIntegrationTest {
         Map<String, Object> body = Map.of(
                 "email", "minh.nguyen@example.com",
                 "password", "matkhau123",
-                "full_name", "Minh Nguyễn");
+                "username", "Minh Nguyễn");
 
         String response = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -138,7 +138,7 @@ class AuthRegisterLoginIntegrationTest {
         Map<String, Object> body = Map.of(
                 "email", "trung.lap@example.com",
                 "password", "matkhau123",
-                "full_name", "Người Trùng");
+                "username", "Người Trùng");
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -157,7 +157,7 @@ class AuthRegisterLoginIntegrationTest {
         Map<String, Object> registerBody = Map.of(
                 "email", "dang.nhap@example.com",
                 "password", "matkhaudung1",
-                "full_name", "Người Đăng Nhập");
+                "username", "Người Đăng Nhập");
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerBody)))
@@ -196,7 +196,7 @@ class AuthRegisterLoginIntegrationTest {
         Map<String, Object> registerBody = Map.of(
                 "email", "bi.khoa@example.com",
                 "password", "matkhaudung1",
-                "full_name", "Người Bị Khoá");
+                "username", "Người Bị Khoá");
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerBody)))

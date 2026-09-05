@@ -16,5 +16,5 @@ public record RegisterRequest(
                 regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
                 message = "Mật khẩu phải có ít nhất một chữ và một số.")
         String password,
-        @NotBlank @Size(min = 2, max = 100) String fullName) {
+        @NotBlank @Size(max = 100) String username) {
 }

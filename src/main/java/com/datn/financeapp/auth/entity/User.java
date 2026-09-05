@@ -37,8 +37,13 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "full_name", nullable = false)
-    private String fullName;
+    /**
+     * Tên hiển thị. Đổi tên từ {@code full_name} ở V12 — dự án chỉ còn MỘT trường tên,
+     * dùng cả trong ứng dụng lẫn trong nhóm gia đình. Nhập tự do: tiếng Việt có dấu,
+     * chữ hoa, khoảng trắng đều hợp lệ; KHÔNG bắt duy nhất, KHÔNG dùng để đăng nhập.
+     */
+    @Column(name = "username", nullable = false)
+    private String username;
 
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;

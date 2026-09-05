@@ -73,7 +73,7 @@ class WalletTransferConcurrencyTest {
                 .id(userId)
                 .email("concurrency-" + userId + "@example.com")
                 .passwordHash("hash")
-                .fullName("Người Kiểm Thử Đồng Thời")
+                .username("Người Kiểm Thử Đồng Thời")
                 .plan("free")
                 .createdAt(Instant.now())
                 .build();

@@ -107,7 +107,7 @@ class ExportJobIntegrationTest {
 
     private String registerAndGetAccessToken(String email) throws Exception {
         Map<String, Object> body =
-                Map.of("email", email, "password", "matkhau123", "full_name", "Người Kiểm Thử Xuất");
+                Map.of("email", email, "password", "matkhau123", "username", "Người Kiểm Thử Xuất");
         String response = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))

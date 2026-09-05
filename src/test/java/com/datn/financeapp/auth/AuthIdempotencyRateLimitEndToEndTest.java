@@ -81,7 +81,7 @@ class AuthIdempotencyRateLimitEndToEndTest {
 
     private ResponseEntity<Map<String, Object>> register(String email, String idempotencyKey) {
         Map<String, Object> body =
-                Map.of("email", email, "password", "matkhaudung1", "full_name", "Người Dùng E2E");
+                Map.of("email", email, "password", "matkhaudung1", "username", "Người Dùng E2E");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (idempotencyKey != null) {

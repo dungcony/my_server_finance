@@ -108,7 +108,7 @@ class TransactionDeleteDebtLinkIntegrationTest {
         Map<String, Object> body = Map.of(
                 "email", email,
                 "password", "matkhau123",
-                "full_name", "Người Kiểm Thử");
+                "username", "Người Kiểm Thử");
         String response = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))

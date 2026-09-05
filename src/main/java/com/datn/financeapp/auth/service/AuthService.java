@@ -85,7 +85,7 @@ public class AuthService {
                 .id(UUID.randomUUID())
                 .email(email)
                 .passwordHash(passwordEncoder.encode(req.password()))
-                .fullName(req.fullName())
+                .username(req.username())
                 .plan("free")
                 .createdAt(now)
                 .build();
@@ -261,7 +261,7 @@ public class AuthService {
                 groupCount == null ? 0 : groupCount);
 
         return new UserDetailDto(
-                user.getId(), user.getEmail(), user.getFullName(), user.getAvatarUrl(),
+                user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
                 user.getPlan(), user.getCreatedAt(), user.getLastLoginAt(), stats);
     }
 
@@ -277,8 +277,8 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(
                         "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
 
-        if (req.fullName() != null) {
-            user.setFullName(req.fullName());
+        if (req.username() != null) {
+            user.setUsername(req.username());
         }
         if (req.avatarUrl() != null) {
             user.setAvatarUrl(req.avatarUrl());
@@ -286,7 +286,7 @@ public class AuthService {
         userRepository.save(user);
 
         return new UserSummaryDto(
-                user.getId(), user.getEmail(), user.getFullName(), user.getAvatarUrl(),
+                user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
                 user.getPlan(), user.getCreatedAt());
     }
 
@@ -403,7 +403,7 @@ public class AuthService {
         String rawRefreshToken = issueRefreshToken(user.getId());
 
         UserSummaryDto userDto = new UserSummaryDto(
-                user.getId(), user.getEmail(), user.getFullName(), user.getAvatarUrl(),
+                user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
                 user.getPlan(), user.getCreatedAt());
 
         return new AuthResponse(userDto, accessToken, rawRefreshToken, jwtService.getAccessTokenExpirySeconds());

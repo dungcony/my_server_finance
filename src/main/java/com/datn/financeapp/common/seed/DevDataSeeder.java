@@ -44,7 +44,7 @@ public class DevDataSeeder implements CommandLineRunner {
     /** users.email có UNIQUE (uq_users_email, V1) — ON CONFLICT DO NOTHING an toàn. */
     private UUID ensureUser() {
         jdbcTemplate.update(
-                "INSERT INTO users (email, password_hash, full_name, plan) VALUES (?, ?, ?, 'free') "
+                "INSERT INTO users (email, password_hash, username, plan) VALUES (?, ?, ?, 'free') "
                         + "ON CONFLICT (email) DO NOTHING",
                 SEED_EMAIL, passwordEncoder.encode(SEED_PASSWORD), "Người dùng thử Phase 6");
         return jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = ?", UUID.class, SEED_EMAIL);

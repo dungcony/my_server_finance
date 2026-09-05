@@ -110,7 +110,7 @@ class DebtReminderJobIntegrationTest {
         Map<String, Object> body = Map.of(
                 "email", email,
                 "password", "matkhau123",
-                "full_name", "Người Kiểm Thử Nhắc Nợ");
+                "username", "Người Kiểm Thử Nhắc Nợ");
         String response = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))

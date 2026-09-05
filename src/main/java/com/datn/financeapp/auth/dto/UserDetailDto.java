@@ -7,7 +7,7 @@ import java.util.UUID;
 public record UserDetailDto(
         UUID id,
         String email,
-        String fullName,
+        String username,
         String avatarUrl,
         String plan,
         Instant createdAt,

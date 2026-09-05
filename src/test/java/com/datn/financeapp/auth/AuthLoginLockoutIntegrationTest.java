@@ -104,8 +104,8 @@ class AuthLoginLockoutIntegrationTest {
         userRepository.deleteAll();
     }
 
-    private void register(String email, String password, String fullName) throws Exception {
-        Map<String, Object> body = Map.of("email", email, "password", password, "full_name", fullName);
+    private void register(String email, String password, String username) throws Exception {
+        Map<String, Object> body = Map.of("email", email, "password", password, "username", username);
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))

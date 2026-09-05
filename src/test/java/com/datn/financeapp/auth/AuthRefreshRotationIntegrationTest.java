@@ -109,7 +109,7 @@ class AuthRefreshRotationIntegrationTest {
         Map<String, Object> body = Map.of(
                 "email", email,
                 "password", "matkhaudung1",
-                "full_name", "Người Test Refresh");
+                "username", "Người Test Refresh");
 
         String response = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

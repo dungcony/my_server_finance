@@ -79,20 +79,20 @@ class AuthProfilePasswordIntegrationTest {
         userRepository.deleteAll();
     }
 
-    private User registerUser(String email, String password, String fullName) {
-        authService.register(new RegisterRequest(email, password, fullName));
+    private User registerUser(String email, String password, String username) {
+        authService.register(new RegisterRequest(email, password, username));
         return userRepository.findByEmail(email).orElseThrow();
     }
 
     @Test
-    void patchMe_UpdatesFullName_Succeeds() {
+    void patchMe_UpdatesUsername_Succeeds() {
         User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
         var result = authService.updateProfile(user.getId(), new UpdateProfileRequest("Tên Mới", null));
 
-        assertThat(result.fullName()).isEqualTo("Tên Mới");
+        assertThat(result.username()).isEqualTo("Tên Mới");
         User reload = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(reload.getFullName()).isEqualTo("Tên Mới");
+        assertThat(reload.getUsername()).isEqualTo("Tên Mới");
         // UpdateProfileRequest không có field email/plan -> record chỉ 2 tham số, không có cách
         // nào gọi truyền email/plan qua đây (verify bằng compile-time, xem field list ở class).
         assertThat(reload.getEmail()).isEqualTo("cap.nhat@example.com");
