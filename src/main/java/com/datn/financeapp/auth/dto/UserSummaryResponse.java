@@ -11,7 +11,7 @@ import java.util.UUID;
  * ai gọi được API (tài khoản khoá/xoá không đăng nhập nổi — B3 chặn ở cả bốn cửa), trả ra chỉ
  * khiến app tưởng mình cần xử lý chúng.
  */
-public record UserSummaryDto(
+public record UserSummaryResponse(
         UUID id,
         String email,
         String username,

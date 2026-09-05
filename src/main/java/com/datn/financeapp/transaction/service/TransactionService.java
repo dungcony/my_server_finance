@@ -18,11 +18,11 @@ import com.datn.financeapp.transaction.dto.DeleteTransactionResponse;
 import com.datn.financeapp.transaction.dto.DuplicateTransactionRequest;
 import com.datn.financeapp.transaction.dto.TransactionByDateResponse;
 import com.datn.financeapp.transaction.dto.TransactionDetailResponse;
-import com.datn.financeapp.transaction.dto.TransactionFilterParams;
+import com.datn.financeapp.transaction.dto.TransactionFilterRequest;
 import com.datn.financeapp.transaction.dto.TransactionListItemResponse;
 import com.datn.financeapp.transaction.dto.TransactionListResponse;
 import com.datn.financeapp.transaction.dto.TransactionResponse;
-import com.datn.financeapp.transaction.dto.TransactionSummaryDto;
+import com.datn.financeapp.transaction.dto.TransactionSummaryResponse;
 import com.datn.financeapp.transaction.dto.UpdateTransactionRequest;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
@@ -324,7 +324,7 @@ public class TransactionService {
      * ({@link #listByDate} tái sử dụng đúng phương thức private này).
      */
     @Transactional(readOnly = true)
-    public TransactionListResponse list(UUID userId, TransactionFilterParams filters, PageRequestParams page) {
+    public TransactionListResponse list(UUID userId, TransactionFilterRequest filters, PageRequestParams page) {
         LocalDate[] resolvedRange = resolveDateRange(filters);
         LocalDate fromDate = resolvedRange[0];
         LocalDate toDate = resolvedRange[1];
@@ -379,8 +379,8 @@ public class TransactionService {
         List<TransactionListItemResponse> items = rows.stream().map(this::toListItemResponse).toList();
         int totalPages = (int) Math.ceil((double) totalItems / page.pageSize());
         PageMeta pageMeta = new PageMeta(page.page(), page.pageSize(), totalItems, totalPages);
-        TransactionSummaryDto summary =
-                TransactionSummaryDto.of(summaryRow.getTotalIncome(), summaryRow.getTotalExpense());
+        TransactionSummaryResponse summary =
+                TransactionSummaryResponse.of(summaryRow.getTotalIncome(), summaryRow.getTotalExpense());
 
         return TransactionListResponse.of(items, pageMeta, summary);
     }
@@ -441,7 +441,7 @@ public class TransactionService {
      * dùng {@code LocalDate.now()} trần trụi (múi giờ JVM đã ép UTC — xem pom.xml).
      */
     @Transactional(readOnly = true)
-    public TransactionByDateResponse listByDate(UUID userId, TransactionFilterParams filters) {
+    public TransactionByDateResponse listByDate(UUID userId, TransactionFilterRequest filters) {
         LocalDate[] resolvedRange = resolveDateRange(filters);
         LocalDate fromDate = resolvedRange[0];
         LocalDate toDate = resolvedRange[1];
@@ -482,8 +482,8 @@ public class TransactionService {
                 filters.search(),
                 filters.minAmount(),
                 filters.maxAmount());
-        TransactionSummaryDto summary =
-                TransactionSummaryDto.of(summaryRow.getTotalIncome(), summaryRow.getTotalExpense());
+        TransactionSummaryResponse summary =
+                TransactionSummaryResponse.of(summaryRow.getTotalIncome(), summaryRow.getTotalExpense());
 
         Map<LocalDate, List<Transaction>> grouped = new LinkedHashMap<>();
         rows.stream()
@@ -532,7 +532,7 @@ public class TransactionService {
      * gửi trực tiếp (api/00-QUY-UOC-CHUNG.md mục 7.2). Tính theo {@code LocalDate.now()} (không
      * cần múi giờ Việt Nam ở đây — biên kỳ báo cáo không phải nhãn hiển thị "hôm nay/hôm qua").
      */
-    private LocalDate[] resolveDateRange(TransactionFilterParams filters) {
+    private LocalDate[] resolveDateRange(TransactionFilterRequest filters) {
         if (filters.period() == null) {
             return new LocalDate[] {filters.fromDate(), filters.toDate()};
         }

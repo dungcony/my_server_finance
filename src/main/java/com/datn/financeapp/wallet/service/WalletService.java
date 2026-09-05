@@ -7,7 +7,7 @@ import com.datn.financeapp.wallet.dto.ReorderWalletsRequest;
 import com.datn.financeapp.wallet.dto.UpdateWalletRequest;
 import com.datn.financeapp.wallet.dto.WalletDetailResponse;
 import com.datn.financeapp.wallet.dto.WalletResponse;
-import com.datn.financeapp.wallet.dto.WalletStatsDto;
+import com.datn.financeapp.wallet.dto.WalletStatsResponse;
 import com.datn.financeapp.wallet.dto.WalletSummaryResponse;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
@@ -96,7 +96,7 @@ public class WalletService {
                 .findByIdForUser(walletId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
-        WalletStatsDto stats = loadStats(wallet.getId());
+        WalletStatsResponse stats = loadStats(wallet.getId());
 
         // D-37/TXN-09: currentBalance API = tiền thật đến hết hôm nay (trừ ngược giao dịch
         // tương lai) — KHÔNG map thẳng cột wallet.getCurrentBalance() (đã gồm cả tương lai).
@@ -290,7 +290,7 @@ public class WalletService {
         }
     }
 
-    private WalletStatsDto loadStats(UUID walletId) {
+    private WalletStatsResponse loadStats(UUID walletId) {
         Long transactionCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
                 Long.class, walletId, walletId);
@@ -307,7 +307,7 @@ public class WalletService {
                         rs -> rs.next() ? rs.getObject(1, LocalDate.class) : null,
                         walletId, walletId);
 
-        return new WalletStatsDto(
+        return new WalletStatsResponse(
                 transactionCount == null ? 0 : transactionCount,
                 incomeThisMonth == null ? 0 : incomeThisMonth,
                 expenseThisMonth == null ? 0 : expenseThisMonth,

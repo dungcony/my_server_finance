@@ -5,5 +5,5 @@ package com.datn.financeapp.auth.dto;
  * transaction/group nghiệp vụ — transactionCount/groupCount đếm trực tiếp trên bảng schema đã
  * có sẵn từ V1/V2, luôn trả số thật (0 nếu chưa có dữ liệu), không lỗi, không null.
  */
-public record UserStatsDto(long walletCount, long transactionCount, long groupCount) {
+public record UserStatsResponse(long walletCount, long transactionCount, long groupCount) {
 }

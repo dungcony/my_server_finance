@@ -12,8 +12,8 @@ import com.datn.financeapp.auth.dto.RefreshResponse;
 import com.datn.financeapp.auth.dto.RegisterRequest;
 import com.datn.financeapp.auth.dto.ResetPasswordRequest;
 import com.datn.financeapp.auth.dto.UpdateProfileRequest;
-import com.datn.financeapp.auth.dto.UserDetailDto;
-import com.datn.financeapp.auth.dto.UserSummaryDto;
+import com.datn.financeapp.auth.dto.UserDetailResponse;
+import com.datn.financeapp.auth.dto.UserSummaryResponse;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.ClientIpResolver;
@@ -85,13 +85,13 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<UserDetailDto> me() {
+    public ApiResponse<UserDetailResponse> me() {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(authService.getMe(userId));
     }
 
     @PatchMapping("/me")
-    public ApiResponse<UserSummaryDto> updateProfile(@Valid @RequestBody UpdateProfileRequest req) {
+    public ApiResponse<UserSummaryResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(authService.updateProfile(userId, req));
     }

@@ -8,7 +8,7 @@ import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.RegisterRequest;
 import com.datn.financeapp.auth.dto.ResetPasswordRequest;
 import com.datn.financeapp.auth.dto.UpdateProfileRequest;
-import com.datn.financeapp.auth.dto.UserDetailDto;
+import com.datn.financeapp.auth.dto.UserDetailResponse;
 import com.datn.financeapp.auth.entity.PasswordResetToken;
 import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.entity.User;
@@ -110,7 +110,7 @@ class AuthProfilePasswordIntegrationTest {
     void getMe_NoTransactionsOrGroupsYet_returnsStatsDefaultingToZero() {
         User user = registerUser("xem.ho.so@example.com", "matkhaudung1", "Xem Hồ Sơ");
 
-        UserDetailDto detail = authService.getMe(user.getId());
+        UserDetailResponse detail = authService.getMe(user.getId());
 
         assertThat(detail.stats().walletCount()).isEqualTo(1L); // ví Tiền mặt tạo lúc đăng ký
         assertThat(detail.stats().transactionCount()).isEqualTo(0L);

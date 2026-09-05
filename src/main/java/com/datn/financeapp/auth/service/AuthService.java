@@ -11,9 +11,9 @@ import com.datn.financeapp.auth.dto.RefreshResponse;
 import com.datn.financeapp.auth.dto.RegisterRequest;
 import com.datn.financeapp.auth.dto.ResetPasswordRequest;
 import com.datn.financeapp.auth.dto.UpdateProfileRequest;
-import com.datn.financeapp.auth.dto.UserDetailDto;
-import com.datn.financeapp.auth.dto.UserStatsDto;
-import com.datn.financeapp.auth.dto.UserSummaryDto;
+import com.datn.financeapp.auth.dto.UserDetailResponse;
+import com.datn.financeapp.auth.dto.UserStatsResponse;
+import com.datn.financeapp.auth.dto.UserSummaryResponse;
 import com.datn.financeapp.auth.entity.LoginAttempt;
 import com.datn.financeapp.auth.entity.PasswordResetToken;
 import com.datn.financeapp.auth.entity.RefreshToken;
@@ -254,7 +254,7 @@ public class AuthService {
      * chưa có dữ liệu), không lỗi, không null.
      */
     @Transactional(readOnly = true)
-    public UserDetailDto getMe(UUID userId) {
+    public UserDetailResponse getMe(UUID userId) {
         User user = userRepository
                 .findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
@@ -267,11 +267,11 @@ public class AuthService {
                 "SELECT COUNT(*) FROM group_members WHERE user_id = ? AND is_active",
                 Long.class, userId);
 
-        UserStatsDto stats = new UserStatsDto(
+        UserStatsResponse stats = new UserStatsResponse(
                 walletCount, transactionCount == null ? 0 : transactionCount,
                 groupCount == null ? 0 : groupCount);
 
-        return new UserDetailDto(
+        return new UserDetailResponse(
                 user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
                 user.getPlan(), user.isConfirm(), user.getRole(),
                 user.getPasswordHash() != null, user.getGoogleId() != null,
@@ -284,7 +284,7 @@ public class AuthService {
      * nghĩa là "không đổi" (PATCH bán phần).
      */
     @Transactional
-    public UserSummaryDto updateProfile(UUID userId, UpdateProfileRequest req) {
+    public UserSummaryResponse updateProfile(UUID userId, UpdateProfileRequest req) {
         User user = userRepository
                 .findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
@@ -580,8 +580,8 @@ public class AuthService {
      * kê nguyên danh sách trường — thêm trường mới mà quên một chỗ thì hai điểm cuối trả khác
      * nhau, và app chỉ phát hiện ra khi bấm đúng luồng ít dùng hơn.
      */
-    private UserSummaryDto toSummary(User user) {
-        return new UserSummaryDto(
+    private UserSummaryResponse toSummary(User user) {
+        return new UserSummaryResponse(
                 user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
                 user.getPlan(), user.isConfirm(), user.getRole(),
                 user.getPasswordHash() != null, user.getGoogleId() != null,
@@ -592,7 +592,7 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getPlan());
         String rawRefreshToken = issueRefreshToken(user.getId());
 
-        UserSummaryDto userDto = toSummary(user);
+        UserSummaryResponse userDto = toSummary(user);
 
         return new AuthResponse(userDto, accessToken, rawRefreshToken, jwtService.getAccessTokenExpirySeconds());
     }

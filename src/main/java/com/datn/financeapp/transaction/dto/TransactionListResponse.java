@@ -14,10 +14,10 @@ public record TransactionListResponse(
         boolean success,
         List<TransactionListItemResponse> data,
         PageMeta pagination,
-        TransactionSummaryDto summary) {
+        TransactionSummaryResponse summary) {
 
     public static TransactionListResponse of(
-            List<TransactionListItemResponse> data, PageMeta pagination, TransactionSummaryDto summary) {
+            List<TransactionListItemResponse> data, PageMeta pagination, TransactionSummaryResponse summary) {
         return new TransactionListResponse(true, data, pagination, summary);
     }
 }

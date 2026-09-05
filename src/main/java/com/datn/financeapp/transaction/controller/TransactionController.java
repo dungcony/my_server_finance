@@ -12,7 +12,7 @@ import com.datn.financeapp.transaction.dto.DeleteTransactionResponse;
 import com.datn.financeapp.transaction.dto.DuplicateTransactionRequest;
 import com.datn.financeapp.transaction.dto.TransactionByDateResponse;
 import com.datn.financeapp.transaction.dto.TransactionDetailResponse;
-import com.datn.financeapp.transaction.dto.TransactionFilterParams;
+import com.datn.financeapp.transaction.dto.TransactionFilterRequest;
 import com.datn.financeapp.transaction.dto.TransactionListResponse;
 import com.datn.financeapp.transaction.dto.UpdateTransactionRequest;
 import com.datn.financeapp.transaction.service.TransactionBulkService;
@@ -70,7 +70,7 @@ public class TransactionController {
             @RequestParam(name = "sort_by", required = false) String sortBy,
             @RequestParam(name = "sort_order", required = false) String sortOrder) {
         UUID userId = SecurityContextUtil.currentUserId();
-        TransactionFilterParams filters = new TransactionFilterParams(
+        TransactionFilterRequest filters = new TransactionFilterRequest(
                 fromDate,
                 toDate,
                 period,
@@ -103,7 +103,7 @@ public class TransactionController {
             @RequestParam(name = "max_amount", required = false) Long maxAmount,
             @RequestParam(name = "include_transfers", required = false) Boolean includeTransfers) {
         UUID userId = SecurityContextUtil.currentUserId();
-        TransactionFilterParams filters = new TransactionFilterParams(
+        TransactionFilterRequest filters = new TransactionFilterRequest(
                 fromDate,
                 toDate,
                 period,

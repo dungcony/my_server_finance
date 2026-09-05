@@ -8,7 +8,7 @@ import java.util.UUID;
  * mục 1). {@code period} (week/month/quarter/year) ưu tiên hơn {@code fromDate}/{@code toDate}
  * nếu client gửi cả hai (api/00-QUY-UOC-CHUNG.md mục 7.2).
  */
-public record TransactionFilterParams(
+public record TransactionFilterRequest(
         LocalDate fromDate,
         LocalDate toDate,
         String period,

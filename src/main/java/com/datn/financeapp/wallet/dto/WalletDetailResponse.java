@@ -24,7 +24,7 @@ public record WalletDetailResponse(
         String icon,
         String color,
         Integer sortOrder,
-        WalletStatsDto stats,
+        WalletStatsResponse stats,
         Instant createdAt,
         Long projectedBalance) {
 }
