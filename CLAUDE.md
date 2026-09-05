@@ -106,6 +106,79 @@ Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gố
     - Cần câu cụ thể hơn câu mặc định: `new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.")`
     - **Tên hằng số chính là mã đi ra JSON** — đổi tên là đổi hợp đồng với app Flutter (`lib/core/network/api_error.dart`), phải sửa `api/*.md` và app trong cùng lần thay đổi.
     - **`NOT_FOUND` cố ý dùng chung cho mọi loại tài nguyên** (46 chỗ) — xem quy tắc 5: không có quyền thì trả 404 để không lộ bản ghi có tồn tại hay không. Tách thành `WALLET_NOT_FOUND`, `BUDGET_NOT_FOUND`… là làm hỏng chính điều đó. Chỉ `message` mới nói cụ thể, vì nó chỉ hiện cho người có quyền hợp lệ.
+11. **Module này cần dữ liệu module kia thì gọi qua Service của nó, không đụng `Repository`/`Entity`.** Chi tiết và hiện trạng ở mục ["Ranh giới giữa các module"](#ranh-giới-giữa-các-module) ngay dưới.
+
+## Ranh giới giữa các module
+
+Thư mục đã chia đúng package-by-feature từ đầu, nhưng **ranh giới chưa được tôn trọng ở tầng code**
+— nhiều service vẫn import thẳng `Repository`/`Entity` của module khác, biến nó thành
+package-by-layer trá hình.
+
+### Luật cho code mới — không có ngoại lệ
+
+| | Việc |
+|---|---|
+| ✅ | Cần dữ liệu module khác → gọi **Service** của module đó, nhận về **DTO** |
+| ✅ | Liên kết xuyên module dùng **ID thuần** (`UUID categoryId`), không `@ManyToOne` |
+| ❌ | `import com.datn.financeapp.<module khác>.repository.*` |
+| ❌ | `import com.datn.financeapp.<module khác>.entity.*` |
+| ❌ | Trả `Entity` ra khỏi module — kể cả cho service khác |
+
+**Vì sao không dùng `@ManyToOne` xuyên module:** tránh ghép chặt ở tầng JPA, tránh
+`LazyInitializationException` khi entity bị dùng ngoài transaction gốc, và ép mọi truy cập đi qua
+Service — nơi duy nhất kiểm được quyền.
+
+⚠️ **Bọc lại qua Service thì đừng biến 1 truy vấn thành N+1.** Nhiều chỗ hiện tại đang nạp theo lô
+hoặc join trong SQL. Đổi máy móc sang "gọi service từng bản ghi" là biến báo cáo 1 truy vấn thành
+500. Cần dữ liệu theo lô thì thêm method nhận `Collection<UUID>` trả `Map<UUID, XxxResponse>`.
+
+⚠️ **Điều kiện quyền phải đi cùng, nằm nguyên trong SQL** (quy tắc 5). Bọc lại không được biến
+thành "lấy hết rồi lọc ở Java".
+
+### Chiều phụ thuộc
+
+```
+tầng nền:     category · wallet · notification        (không phụ thuộc module nghiệp vụ nào)
+tầng giữa:    transaction                             (dùng category, wallet)
+tầng trên:    budget · debt · goal · recurring · report · scheduler
+```
+
+Tầng trên gọi xuống tầng dưới là bình thường. Ngược lại thì **dừng lại nghĩ trước** — thường là
+đặt logic sai chỗ, và cách đúng là phát sự kiện (xem `transaction/event/`) để module quan tâm tự
+lắng nghe, thay vì gọi thẳng.
+
+**Nhưng "gọi ngược" không phải lúc nào cũng sai.** `TransactionService` đọc dữ liệu `budget` để trả
+`affected_budgets` — ghi một khoản chi xong thì app cần biết ngay nó ăn vào ngân sách nào
+(`api/04` mục 4). Đây là câu trả lời **đồng bộ** trong cùng một response, sự kiện bất đồng bộ
+không thay được. Chiều ngược lại — budget cần biết có giao dịch mới để cảnh báo vượt hạn mức —
+thì đúng là dùng sự kiện (`BudgetAlertListener`).
+
+Nguyên tắc phân biệt: **người dùng cần thấy kết quả ngay trong response này** thì gọi thẳng qua
+Service; **chỉ là hệ quả phụ** (gửi thông báo, cập nhật thống kê) thì phát sự kiện.
+
+### Hiện trạng — 7 module còn nợ, đang chờ dọn
+
+Đã dọn xong: **`auth`** (nhóm G, PRD 02) · `wallet` · `category` · `notification` vốn đã sạch.
+
+Còn vi phạm — **7 module**, 41 kiểu import lậu khác nhau (57 dòng `import` nếu đếm cả lặp lại giữa các file):
+
+| Module | Đang đụng thẳng vào |
+|---|---|
+| `transaction` | `category`, `wallet`, `budget` |
+| `budget` | `category`, `wallet`, `notification` |
+| `report` | `category`, `wallet`, `transaction` |
+| `debt` | `category`, `wallet`, `notification`, `transaction` |
+| `recurring` | `category`, `wallet`, `transaction` |
+| `goal` | `category`, `wallet` |
+| `scheduler` | `report` |
+
+Dọn nốt là **nhóm H của [PRD 02](../../prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/PRD.md)**, cố ý hoãn tới
+khi app đuổi kịp nhóm API 08/09/11 — nó xuyên qua `transaction`, module rủi ro cao nhất, và test
+hiện chưa đủ dày để bảo vệ một cuộc refactor quy mô đó.
+
+> **Đang sửa code trong 7 module đó thì làm gì?** Đừng thêm import lậu mới, kể cả khi file đó đã
+> có sẵn vài cái. Cần dữ liệu module khác thì thêm method vào Service của module kia và gọi qua
+> đó — làm dần theo nhu cầu, mỗi lần một ít, thay vì chờ một đợt refactor lớn.
 
 ## Ngôn ngữ
 
