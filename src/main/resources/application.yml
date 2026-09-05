@@ -22,6 +22,31 @@ spring:
     locations: filesystem:../../db/migration
     encoding: UTF-8
     baseline-on-migrate: false
+  mail:
+    # M1: gửi mã đặt lại mật khẩu qua SMTP Gmail. Giá trị mặc định rỗng để context test
+    # (không nạp .env) vẫn khởi động được — profile test dùng LogPasswordResetNotifier,
+    # không đụng tới JavaMailSender.
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          # Không để treo vô hạn khi mạng chặn cổng 587: forgot-password sẽ trả lỗi
+          # thay vì giữ request mãi.
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+app:
+  mail:
+    # Địa chỉ hiện trên trường From. Để trống thì dùng chính spring.mail.username —
+    # Gmail luôn ghi đè From bằng tài khoản đã xác thực nên hai giá trị này phải trùng.
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
 
 jwt:
   secret: ${JWT_SECRET}

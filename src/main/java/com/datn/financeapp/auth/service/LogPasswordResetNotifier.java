@@ -1,6 +1,7 @@
 package com.datn.financeapp.auth.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,8 +10,13 @@ import org.springframework.stereotype.Component;
  *
  * <p>T-05-02 (accept): mã reset dạng plaintext ghi ra log chỉ chấp nhận được ở môi trường
  * dev/đồ án tốt nghiệp — TUYỆT ĐỐI không dùng ở production thật.
+ *
+ * <p>M2: từ khi có {@link SmtpPasswordResetNotifier}, bản này chỉ còn dùng cho profile
+ * {@code test}. ĐỪNG XOÁ — bốn file test auth đang {@code @MockitoSpyBean} lên
+ * {@link PasswordResetNotifier}, và test tuyệt đối không được gửi mail thật ra ngoài.
  */
 @Component
+@Profile("test")
 @Slf4j
 public class LogPasswordResetNotifier implements PasswordResetNotifier {
 
