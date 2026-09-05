@@ -74,11 +74,35 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
             @Param("budgetId") UUID budgetId);
 
     /**
-     * Chèn thông báo dạng chung — dùng cho JOB-02 ({@code budget_renewed}) và JOB-04
-     * ({@code debt_reminder}) ở Plan 07. Khác {@link #insertBudgetAlertIfNotExists}: không có
-     * {@code ON CONFLICT}, vì chống trùng của hai job này nằm ở tầng service (kiểm tra kỳ mới đã
-     * tồn tại hay chưa trước khi gọi tới, hoặc chỉ gọi đúng ba mốc ngày cố định) chứ không phải
-     * UNIQUE index như {@code uq_notif_budget_alert}.
+     * JOB-04 — nhắc nợ, bỏ qua nếu trong CÙNG NGÀY đã có bản ghi trùng (user, khoản nợ, loại).
+     *
+     * <p>Trước đây job này dùng {@link #insertGenericNotification} với lập luận "chỉ gọi đúng ba
+     * mốc ngày cố định nên không thể trùng". Lập luận đó sai: mốc ngày cố định chỉ đảm bảo job
+     * gọi tới một lần MỖI LẦN CHẠY, không đảm bảo job chỉ chạy một lần mỗi ngày. Deploy lại,
+     * retry sau lỗi, hay chạy hai instance đều khiến cùng một khoản nợ ở cùng một mốc sinh hai
+     * thông báo y hệt nhau trong hộp thư người dùng.
+     *
+     * <p>Không cần migration mới: {@code uq_notif_budget_alert} (V9) cố ý là UNIQUE ĐẦY ĐỦ trên
+     * mọi {@code type}, không phải partial index riêng cho {@code budget_alert} — chính V9 đã ghi
+     * rõ ràng buộc này áp dụng hợp lý cho cả {@code debt_reminder}. Ở đây chỉ là dùng tới nó.
+     */
+    @Modifying
+    @Query(
+            value = "INSERT INTO notifications (id, user_id, type, title, content, reference_id) "
+                    + "VALUES (gen_random_uuid(), :userId, 'debt_reminder', :title, :content, :debtId) "
+                    + "ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING",
+            nativeQuery = true)
+    void insertDebtReminderIfNotExists(
+            @Param("userId") UUID userId,
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("debtId") UUID debtId);
+
+    /**
+     * Chèn thông báo dạng chung — còn dùng cho JOB-02 ({@code budget_renewed}) và
+     * {@code recurring_generated}/{@code goal_completed}. Khác hai method ở trên: không có
+     * {@code ON CONFLICT}, vì chống trùng của những loại này nằm ở tầng service (kiểm tra kỳ mới
+     * đã tồn tại hay chưa trước khi gọi tới) chứ không dựa vào {@code uq_notif_budget_alert}.
      */
     @Modifying
     @Query(

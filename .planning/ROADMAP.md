@@ -13,7 +13,7 @@ Backend Spring Boot (Java 17, Maven, PostgreSQL, Flyway) hiện thực hoá đú
 - [x] **Phase 1: Nền tảng & Xác thực** - Khung project, response/error format, idempotency, rate limit, JWT auth đầy đủ vòng đời tài khoản
 - [x] **Phase 2: Ví & Danh mục** - CRUD ví/chuyển tiền/đối chiếu số dư và cây danh mục 2 cấp + kho icon
 - [x] **Phase 3: Giao dịch** - CRUD/bulk/sửa-xoá đúng 3 bước, cộng gộp danh mục con — module lõi rủi ro cao nhất
-- [ ] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
+- [x] **Phase 4: Nghiệp vụ phái sinh & Báo cáo** - Ngân sách, sổ nợ, định kỳ, mục tiêu tiết kiệm, báo cáo, và toàn bộ background jobs liên quan
 - [ ] **Phase 5: Nhóm gia đình & Trợ lý AI** - Tầng quyền chia sẻ ví/ngân sách nhóm với riêng tư tuyệt đối, và AI rule-based (parse-text/OCR mẫu) qua ai_drafts
 - [x] **Phase 6: Nối API thật với app Flutter** - Bỏ dữ liệu mẫu ở app, chạy end-to-end trên backend thật cho 7 nhóm API app đang gọi (SC#6 dời sang sau Phase 5)
 

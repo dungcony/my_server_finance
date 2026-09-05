@@ -15,6 +15,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * REPORT-05 (api/06-BAO-CAO.md mục 7, D-59) — xuất báo cáo CSV bất đồng bộ. {@code createJob}
@@ -46,7 +48,20 @@ public class ExportService {
                 .createdAt(Instant.now())
                 .build());
 
-        exportAsyncRunner.runExport(jobId, userId, req);
+        // KHÔNG gọi thẳng runExport ở đây: @Async đẩy công việc sang thread khác NGAY LẬP TỨC,
+        // trong khi bản ghi export_jobs vừa save vẫn nằm trong transaction chưa commit. Thread
+        // export có transaction riêng nên không thấy bản ghi đó — nếu nó chạy nhanh hơn (dữ liệu
+        // ít, tệp nhỏ), markCompleted khớp 0 dòng và TRÔI QUA IM LẶNG, rồi transaction này mới
+        // commit đè lại trạng thái processing. Kết quả: tệp CSV đã nằm trên đĩa nhưng CSDL nói
+        // job vẫn đang chạy, người dùng poll mãi không bao giờ nhận được link.
+        //
+        // afterCommit đảm bảo bản ghi đã hiện diện trong CSDL trước khi thread export bắt đầu.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                exportAsyncRunner.runExport(jobId, userId, req);
+            }
+        });
 
         return ExportJobResponse.created(jobId);
     }

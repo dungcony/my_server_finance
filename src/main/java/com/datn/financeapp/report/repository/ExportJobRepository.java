@@ -33,4 +33,19 @@ public interface ExportJobRepository extends JpaRepository<ExportJob, UUID> {
     /** Dùng cho job dọn quá hạn hằng ngày (D-45, Plan 07). */
     @Query(value = "SELECT * FROM export_jobs WHERE status = 'completed' AND expires_at < :now", nativeQuery = true)
     List<ExportJob> findExpired(@Param("now") Instant now);
+
+    /**
+     * Các tác vụ kẹt ở {@code processing} quá lâu — lưới an toàn cuối cùng.
+     *
+     * <p>Đường đi bình thường luôn kết thúc ở {@code completed} hoặc {@code failed} nhờ
+     * {@code ExportStatusWriter} (REQUIRES_NEW). Nhưng nếu tiến trình bị giết giữa chừng, hoặc
+     * chính lượt ghi trạng thái lỗi cũng hỏng, bản ghi sẽ nằm lại {@code processing} vĩnh viễn:
+     * người dùng poll mãi không nhận được câu trả lời nào, và {@code findExpired} không thấy nó
+     * vì chỉ quét {@code completed}. Một tác vụ xuất CSV bình thường chạy trong vài giây, nên quá
+     * một giờ chắc chắn là đã chết.
+     */
+    @Query(
+            value = "SELECT * FROM export_jobs WHERE status = 'processing' AND created_at < :threshold",
+            nativeQuery = true)
+    List<ExportJob> findStuckProcessing(@Param("threshold") Instant threshold);
 }

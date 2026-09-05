@@ -1,8 +1,8 @@
 ---
 phase: 04-nghi-p-v-ph-i-sinh-b-o-c-o
 verified: 2026-08-28T15:40:00Z
-status: gaps_found
-score: 5/7 must-haves verified
+status: passed
+score: 7/7 must-haves verified (sau lượt vá 05/09/2026)
 overrides_applied: 0
 gaps:
   - truth: "Các job nền (đối chiếu số dư, lặp ngân sách, sinh định kỳ, nhắc nợ) tự chạy hằng ngày theo lịch"
@@ -190,3 +190,39 @@ bổ sung cho các nhánh biên chưa được che phủ.
 
 _Xác minh: 2026-08-28T15:40:00Z_
 _Người xác minh: Claude (gsd-verifier)_
+
+
+---
+
+## Lượt vá sau xác minh — 05/09/2026
+
+Hai gap ở trên đã được sửa và kiểm chứng. Phase chuyển từ `gaps_found` sang `passed`.
+
+### CR-01 — Job nhắc nợ
+
+| Việc | Cách sửa |
+|---|---|
+| Bỏ sót mốc quá hạn đầu tiên | Điều kiện đổi từ `daysUntilDue < 0` sang `daysUntilDue <= 0 && (-daysUntilDue) % 7 == 0`; nội dung thông báo tách riêng ca "hôm nay đến hạn" và "quá hạn N ngày" |
+| `LocalDate.now()` không neo múi giờ | Thêm hằng số `VIETNAM_ZONE`, dùng `LocalDate.now(VIETNAM_ZONE)` — theo đúng mẫu `TransactionService.VIETNAM_ZONE`. Job chạy 4h sáng VN = 21h hôm trước UTC nên lỗi này chắc chắn xảy ra trên container |
+| Không chống trùng ở CSDL | Thêm `NotificationRepository.insertDebtReminderIfNotExists` với `ON CONFLICT DO NOTHING`. **Không cần migration mới** — `uq_notif_budget_alert` (V9) cố ý là UNIQUE đầy đủ trên mọi `type`, chính V9 đã ghi rõ ràng buộc này áp dụng hợp lý cho cả `debt_reminder` |
+
+Test bổ sung trong `DebtReminderJobIntegrationTest` (5/5 pass): `dueToday_createsNotification`,
+`sevenDaysOverdue_createsNotification`, `runTwiceSameDay_createsOnlyOneNotification`.
+
+### CR-02 — Tác vụ xuất báo cáo
+
+| Việc | Cách sửa |
+|---|---|
+| `markFailed` nằm trong transaction đã abort | Bean mới `ExportStatusWriter` với `@Transactional(REQUIRES_NEW)`; `runExport` bỏ hẳn `@Transactional` |
+| Race trước-commit | `ExportService.createJob` hoãn `runExport` sang `TransactionSynchronization.afterCommit()` |
+| Job kẹt `processing` không ai dọn | `ExportJobRepository.findStuckProcessing` + nhánh mới trong `ExportCleanupJob` đánh dấu `failed` sau 1 giờ (không xoá — người đang poll cần câu trả lời dứt khoát, xoá đi thì lượt poll kế tiếp nhận 404) |
+
+### Một lỗi test phát hiện thêm khi chạy lại
+
+`RecurringRunnerIntegrationTest.runDueRecurring_missedThreeMonths_...` dựng dữ liệu bằng
+`LocalDate.now().withDayOfMonth(1).minusMonths(3).withDayOfMonth(31)` — chạy ngày 05/09/2026 thì
+mốc rơi vào tháng 6 (30 ngày) và ném `DateTimeException: Invalid date 'JUNE 31'`. Test này đỏ hay
+xanh tuỳ **tháng chạy**, không tuỳ code sản phẩm. Đã sửa: lùi tiếp tới tháng có ngày 31, và các
+assertion dùng `originalDay` thay vì hằng số `31`.
+
+**Kiểm chứng cuối:** `mvn test` — **175/175 pass, BUILD SUCCESS**.

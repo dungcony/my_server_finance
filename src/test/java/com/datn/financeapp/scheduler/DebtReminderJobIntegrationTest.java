@@ -140,12 +140,26 @@ class DebtReminderJobIntegrationTest {
     }
 
     private String createLendingDebt(String token, String walletId, long amount, String dueDate) throws Exception {
+        return createLendingDebt(token, walletId, amount, dueDate, null);
+    }
+
+    /**
+     * {@code issuedDate} tách thành tham số riêng vì DebtService chặn {@code due_date} trước
+     * {@code issued_date} (mặc định hôm nay) — muốn dựng khoản nợ ĐÃ QUÁ HẠN thì phải lùi cả ngày
+     * phát sinh, đúng như dữ liệu thật của một khoản vay cũ.
+     */
+    private String createLendingDebt(
+            String token, String walletId, long amount, String dueDate, String issuedDate)
+            throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("type", "lending");
         body.put("counterparty_name", "Chị Lan");
         body.put("principal_amount", amount);
         body.put("wallet_id", walletId);
         body.put("due_date", dueDate);
+        if (issuedDate != null) {
+            body.put("issued_date", issuedDate);
+        }
 
         String response = mockMvc.perform(post("/debts")
                         .header("Authorization", "Bearer " + token)
@@ -199,5 +213,63 @@ class DebtReminderJobIntegrationTest {
         assertThat(countReminders(debtId))
                 .as("due_date còn 3 ngày không rơi vào mốc 7/1/quá hạn nào -> không có thông báo")
                 .isEqualTo(0);
+    }
+
+    /**
+     * due_date = ĐÚNG HÔM NAY -> phải nhắc. Điều kiện cũ {@code daysUntilDue < 0} bỏ sót ca này,
+     * khiến người vỡ hạn đúng hôm nay im lặng tới tận 7 ngày sau mới được nhắc — đúng lúc cần
+     * nhắc nhất thì không có gì.
+     */
+    @Test
+    void sendDueReminders_dueToday_createsNotification() throws Exception {
+        String token = registerAndGetAccessToken("nhac.no.hom.nay@example.com");
+        String walletId = createWallet(token, "Ví Nhắc Nợ Hôm Nay", 10_000_000);
+        String debtId =
+                createLendingDebt(token, walletId, 2_000_000, java.time.LocalDate.now().toString());
+
+        debtReminderJob.run();
+
+        assertThat(countReminders(debtId))
+                .as("đến hạn đúng hôm nay là mốc quá hạn ĐẦU TIÊN, phải có thông báo")
+                .isEqualTo(1);
+    }
+
+    /** Quá hạn đúng 7 ngày -> rơi vào chu kỳ nhắc lại mỗi 7 ngày. */
+    @Test
+    void sendDueReminders_sevenDaysOverdue_createsNotification() throws Exception {
+        String token = registerAndGetAccessToken("nhac.no.qua.han.bay@example.com");
+        String walletId = createWallet(token, "Ví Nhắc Nợ Quá Hạn", 10_000_000);
+        String debtId = createLendingDebt(
+                token,
+                walletId,
+                2_000_000,
+                java.time.LocalDate.now().minusDays(7).toString(),
+                java.time.LocalDate.now().minusDays(30).toString());
+
+        debtReminderJob.run();
+
+        assertThat(countReminders(debtId))
+                .as("quá hạn 7 ngày rơi đúng chu kỳ nhắc lại")
+                .isEqualTo(1);
+    }
+
+    /**
+     * Job chạy HAI LẦN trong cùng một ngày (deploy lại, retry sau lỗi, hoặc hai instance) chỉ được
+     * sinh MỘT thông báo. Chống trùng nằm ở {@code uq_notif_budget_alert} (V9 — UNIQUE đầy đủ trên
+     * mọi type, không riêng budget_alert) qua {@code ON CONFLICT DO NOTHING}.
+     */
+    @Test
+    void sendDueReminders_runTwiceSameDay_createsOnlyOneNotification() throws Exception {
+        String token = registerAndGetAccessToken("nhac.no.chay.hai.lan@example.com");
+        String walletId = createWallet(token, "Ví Nhắc Nợ Chạy Lại", 10_000_000);
+        String debtId = createLendingDebt(
+                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(7).toString());
+
+        debtReminderJob.run();
+        debtReminderJob.run();
+
+        assertThat(countReminders(debtId))
+                .as("chạy lại trong cùng ngày không được sinh thông báo trùng")
+                .isEqualTo(1);
     }
 }

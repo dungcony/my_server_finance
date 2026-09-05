@@ -256,32 +256,44 @@ class RecurringRunnerIntegrationTest {
         String recurringId = createRecurring(
                 token, walletId, categoryId, "Tiền thuê nhà", 4_500_000, LocalDate.now().plusDays(30), "month");
 
-        // Vắng mặt ba tháng tính lùi từ hôm nay, luôn đặt lịch vào ngày 31 để ép qua ca ngày
+        // Vắng mặt từ ba tháng trước tính lùi từ hôm nay, lịch đặt vào ngày 31 để ép qua ca ngày
         // không tồn tại. Mốc suy từ LocalDate.now() nên test không mục theo thời gian.
-        LocalDate originalStart = LocalDate.now().withDayOfMonth(1).minusMonths(3).withDayOfMonth(31);
+        //
+        // Lùi thêm cho tới khi gặp tháng CÓ ngày 31 thay vì withDayOfMonth(31) thẳng: tháng đích
+        // có thể chỉ có 30 ngày và LocalDate ném DateTimeException "Invalid date JUNE 31" ngay khi
+        // dựng dữ liệu — test đỏ hay xanh tuỳ tháng chạy chứ không tuỳ code sản phẩm (chạy ngày
+        // 05/09/2026 thì mốc rơi vào tháng 6, hỏng). Giữ đúng ngày 31 là cố ý: đó mới là ngày ép
+        // được cả tháng 30 ngày lẫn tháng 2, tức ca mà D-50 muốn kiểm chứng.
+        LocalDate anchorMonth = LocalDate.now().withDayOfMonth(1).minusMonths(3);
+        while (anchorMonth.lengthOfMonth() < 31) {
+            anchorMonth = anchorMonth.minusMonths(1);
+        }
+        LocalDate originalStart = anchorMonth.withDayOfMonth(31);
         rewindSchedule(recurringId, originalStart, originalStart);
 
         recurringRunnerService.runDueRecurring();
 
         // Dựng danh sách kỳ mong đợi bằng chính quy tắc của đặc tả, độc lập với code sản phẩm:
-        // cộng tháng rồi ép lại ngày 31 (hoặc ngày cuối tháng nếu tháng ngắn hơn).
+        // cộng tháng rồi ép lại ĐÚNG NGÀY GỐC (hoặc ngày cuối tháng nếu tháng ngắn hơn) — ngày
+        // gốc không bị ghi đè bởi lần trôi trước đó.
+        int originalDay = originalStart.getDayOfMonth();
         List<LocalDate> expected = new java.util.ArrayList<>();
         LocalDate cursor = originalStart;
         while (!cursor.isAfter(LocalDate.now())) {
             expected.add(cursor);
             LocalDate shifted = cursor.plusMonths(1);
-            cursor = shifted.withDayOfMonth(Math.min(31, shifted.lengthOfMonth()));
+            cursor = shifted.withDayOfMonth(Math.min(originalDay, shifted.lengthOfMonth()));
         }
         assertThat(expected).hasSizeGreaterThanOrEqualTo(3);
 
         assertThat(transactionDatesForRecurring(recurringId)).containsExactlyElementsOf(expected);
 
         // Điểm cốt lõi D-50: có ít nhất một kỳ bị làm tròn xuống ngày cuối tháng ngắn, và kỳ NGAY
-        // SAU nó phải quay lại ngày 31 chứ không kẹt ở ngày đã làm tròn.
+        // SAU nó phải quay lại đúng NGÀY GỐC chứ không kẹt ở ngày đã làm tròn.
         for (int i = 0; i < expected.size() - 1; i++) {
-            if (expected.get(i).getDayOfMonth() < 31) {
+            if (expected.get(i).getDayOfMonth() < originalDay) {
                 assertThat(expected.get(i + 1).getDayOfMonth())
-                        .isEqualTo(Math.min(31, expected.get(i + 1).lengthOfMonth()));
+                        .isEqualTo(Math.min(originalDay, expected.get(i + 1).lengthOfMonth()));
             }
         }
 

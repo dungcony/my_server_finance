@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 06-05-PLAN.md (Phase 6 đóng; checkpoint Task 4 chờ người dùng tự xác nhận)
-last_updated: "2026-08-29T07:46:28.739Z"
-last_activity: 2026-08-29
+stopped_at: Vá xong 2 gap của Phase 4 (CR-01 nhắc nợ, CR-02 export) — 175/175 test pass, Phase 4 đóng
+last_updated: "2026-09-05T03:30:00.000Z"
+last_activity: 2026-09-05
 progress:
   total_phases: 6
   completed_phases: 5
@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-22)
 
 **Core value:** Mọi API tuân thủ 3 nguyên tắc bất biến — ghi giao dịch nhanh, AI chỉ đề xuất qua `ai_drafts` chờ duyệt, riêng tư mặc định kiểm tra quyền ngay trong câu SQL
-**Current focus:** Phase 06 — n-i-api-th-t-v-i-app-flutter
+**Current focus:** Phase 05 (nhóm gia đình + AI) là phần backend duy nhất còn lại — nhưng hướng đã chốt 05/09/2026 là **làm app đuổi kịp 24 endpoint sổ nợ/định kỳ/mục tiêu/thông báo trước**, rồi mới quay lại Phase 5
 
 ## Current Position
 

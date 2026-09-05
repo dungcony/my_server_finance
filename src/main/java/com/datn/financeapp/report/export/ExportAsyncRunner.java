@@ -4,7 +4,6 @@ import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.report.dto.ExportRequest;
 import com.datn.financeapp.report.export.CsvReportWriter.TransactionExportRow;
-import com.datn.financeapp.report.repository.ExportJobRepository;
 import com.datn.financeapp.report.repository.ReportRepository;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.wallet.entity.Wallet;
@@ -23,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Bean {@code @Component} RIÊNG khỏi {@code ExportService} — tránh self-invocation mất proxy
@@ -35,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class ExportAsyncRunner {
 
-    private final ExportJobRepository exportJobRepository;
+    private final ExportStatusWriter exportStatusWriter;
     private final ReportRepository reportRepository;
     private final CategoryRepository categoryRepository;
     private final WalletRepository walletRepository;
@@ -48,9 +46,14 @@ public class ExportAsyncRunner {
      * CÙNG bộ lọc báo cáo với các điểm cuối đọc ({@code ReportRepository.eligibleTransactions}) —
      * export KHÔNG được xuất toàn bộ giao dịch thô, phải khớp đúng những gì người dùng thấy trên
      * báo cáo.
+     *
+     * <p><b>KHÔNG mang {@code @Transactional}:</b> việc ghi trạng thái cuối đi qua
+     * {@link ExportStatusWriter} với {@code REQUIRES_NEW}, để một lỗi CSDL giữa chừng không kéo
+     * theo mất luôn khả năng ghi lại trạng thái {@code failed} — xem javadoc của bean đó. Phần
+     * đọc dữ liệu ở đây không cần transaction bao ngoài: mỗi truy vấn tự chạy trong transaction
+     * ngầm của nó, và export là ảnh chụp một lần chứ không có ràng buộc nhất quán nhiều bước.
      */
     @Async("exportTaskExecutor")
-    @Transactional
     public void runExport(UUID jobId, UUID userId, ExportRequest req) {
         try {
             LocalDate[] range = resolveRange(req);
@@ -67,10 +70,19 @@ public class ExportAsyncRunner {
                     .toList();
 
             Path path = CsvReportWriter.write(Path.of(storageDir), jobId, rows);
-            exportJobRepository.markCompleted(jobId, path.toString(), Instant.now().plus(24, ChronoUnit.HOURS));
+            exportStatusWriter.markCompleted(
+                    jobId, path.toString(), Instant.now().plus(24, ChronoUnit.HOURS));
         } catch (Exception ex) {
             log.error("Xuất báo cáo thất bại cho job {}", jobId, ex);
-            exportJobRepository.markFailed(jobId, "Xuất báo cáo thất bại: " + ex.getMessage());
+            try {
+                exportStatusWriter.markFailed(jobId, "Xuất báo cáo thất bại: " + ex.getMessage());
+            } catch (Exception markEx) {
+                // Ghi trạng thái lỗi cũng hỏng (CSDL sập hẳn chẳng hạn) — bản ghi sẽ nằm lại ở
+                // processing. Job dọn ExportCleanupJob quét các bản ghi processing quá cũ để tự
+                // phục hồi, nên ở đây chỉ cần log, không nuốt im lặng và cũng không ném tiếp ra
+                // thread pool @Async (không ai bắt được, chỉ làm bẩn log với stack trace kép).
+                log.error("Không ghi được trạng thái thất bại cho job {}", jobId, markEx);
+            }
         }
     }
 
