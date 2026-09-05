@@ -107,6 +107,61 @@ Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gố
     - **Tên hằng số chính là mã đi ra JSON** — đổi tên là đổi hợp đồng với app Flutter (`lib/core/network/api_error.dart`), phải sửa `api/*.md` và app trong cùng lần thay đổi.
     - **`NOT_FOUND` cố ý dùng chung cho mọi loại tài nguyên** (46 chỗ) — xem quy tắc 5: không có quyền thì trả 404 để không lộ bản ghi có tồn tại hay không. Tách thành `WALLET_NOT_FOUND`, `BUDGET_NOT_FOUND`… là làm hỏng chính điều đó. Chỉ `message` mới nói cụ thể, vì nó chỉ hiện cho người có quyền hợp lệ.
 11. **Module này cần dữ liệu module kia thì gọi qua Service của nó, không đụng `Repository`/`Entity`.** Chi tiết và hiện trạng ở mục ["Ranh giới giữa các module"](#ranh-giới-giữa-các-module) ngay dưới.
+12. **Service viết thẳng thành class, KHÔNG tách interface — trừ khi đã có từ 2 implementation trở lên.** Chi tiết ở mục ["Khi nào Service cần interface"](#khi-nào-service-cần-interface).
+
+## Khi nào Service cần interface
+
+**Mặc định: viết thẳng thành class, không tách interface.** Chỉ tách khi **đã thực sự có từ hai
+implementation trở lên** — không phải khi phỏng đoán rằng sau này có thể có.
+
+### Hai interface đang có, và vì sao chúng xứng đáng
+
+| Interface | Các implementation | Tráo lúc nào |
+|---|---|---|
+| `PasswordResetNotifier` | `LogPasswordResetNotifier` · `SmtpPasswordResetNotifier` — **hai class thật**, chọn bằng `@Profile` | Test in mã ra log, chạy thật gửi Gmail |
+| `GoogleIdTokenVerifier` | `GoogleApiIdTokenVerifier` + mock do `@MockitoBean` sinh trong test | Test không gọi ra máy chủ Google |
+
+Điểm chung: **có thứ hai để tráo vào, và việc tráo xảy ra thật ở mỗi lần chạy test.** Không có
+interface thì test auth sẽ đi gửi mail thật và gọi API Google thật — chậm, phụ thuộc mạng, và
+không có cách nào sinh ra `id_token` hợp lệ để thử.
+
+Riêng `GoogleIdTokenVerifier` đáng chú ý: Mockito mock được cả class cụ thể, nên interface ở đây
+**không bắt buộc** về mặt kỹ thuật. Nó xứng đáng vì lý do khác — bản thật tải khoá công khai từ
+Google lúc khởi tạo, tách interface làm ranh giới "ra mạng ngoài" thành hiển nhiên khi đọc code.
+
+### Vì sao 15 service còn lại không tách
+
+Không cái nào có implementation thứ hai. Thêm interface cho chúng nghĩa là mỗi service có thêm
+một file chép lại y nguyên chữ ký của class ngay bên cạnh, đổi lại:
+
+- sửa một method phải sửa hai chỗ;
+- "go to definition" nhảy vào interface rỗng thay vì code thật.
+
+**Ràng buộc kỹ thuật cũ đã hết hiệu lực.** Spring đời cũ dùng JDK dynamic proxy nên `@Transactional`
+bắt buộc phải có interface mới chạy. Từ Spring Boot 2.x, mặc định là CGLIB proxy thẳng class —
+annotation hoạt động bình thường trên class không interface. Nhiều tài liệu vẫn dạy theo bản cũ,
+đó là lý do quy ước này còn phổ biến.
+
+Mock trong test cũng **không** phải lý do: test của dự án là integration test trên Testcontainers
+PostgreSQL thật, và Mockito mock được class cụ thể từ lâu.
+
+### Khi nào thì tách
+
+Khi cái thứ hai **xuất hiện thật**, không phải khi tưởng tượng nó sẽ xuất hiện. Ví dụ đủ điều kiện:
+
+- Thanh toán qua nhiều cổng (VNPay / Momo) cùng một hợp đồng gọi
+- Một bản cài đặt thật + một bản giả cho test, như hai interface ở trên
+- Cần đảo ngược phụ thuộc để cắt vòng tròn giữa hai module
+
+Lúc đó IDE trích interface ra mất khoảng 30 giây (Refactor → Extract Interface). Đây **không** phải
+quyết định phải làm sớm để tránh trả giá về sau — chi phí như nhau ở mọi thời điểm, nên cứ đợi tới
+lúc thật sự cần.
+
+> **Muốn nhìn nhanh một service có những hàm gì thì dùng IDE, đừng viết interface.** IntelliJ:
+> `Ctrl+F12` (Structure). VS Code: Outline. Cách này luôn đúng và không tốn file nào — trong khi
+> interface viết ra để "cho dễ đọc" sẽ lệch với class ngay lần sửa đầu tiên mà không ai nhận ra.
+> Muốn tách phần công khai khỏi phần nội bộ thì để method nội bộ là `private` — đó mới là công cụ
+> đúng cho việc đó.
 
 ## Ranh giới giữa các module
 
