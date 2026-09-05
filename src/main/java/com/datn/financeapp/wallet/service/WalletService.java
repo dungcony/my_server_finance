@@ -33,6 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class WalletService {
 
+    /** Tên ví cấp sẵn cho mọi tài khoản mới. Hiện ra trước mắt người dùng nên để tiếng Việt. */
+    private static final String DEFAULT_WALLET_NAME = "Tiền mặt";
+
     private final WalletRepository walletRepository;
     private final JdbcTemplate jdbcTemplate;
 
@@ -158,6 +161,48 @@ public class WalletService {
         walletRepository.save(wallet);
 
         return toResponse(wallet);
+    }
+
+    /**
+     * Ví "Tiền mặt" số dư 0 cấp cho tài khoản vừa tạo — dùng chung cho cả đăng ký bằng email lẫn
+     * bằng Google. Thiếu ví thì người dùng mở app lên thấy màn hình trống và không ghi được giao
+     * dịch nào, nên nó phải nằm trong CÙNG transaction với việc tạo tài khoản. Gọi từ
+     * {@code AuthService} vẫn giữ được điều đó vì {@code @Transactional} mặc định lan truyền kiểu
+     * {@code REQUIRED} — tham gia transaction đang mở chứ không mở transaction mới.
+     *
+     * <p><b>Không gọi {@link #create} thay cho method này.</b> {@code create} nhận
+     * {@code CreateWalletRequest} và còn kiểm trùng tên lẫn ném {@code NOT_GROUP_MEMBER} — đều
+     * vô nghĩa với một tài khoản chưa có ví nào. Tách riêng để hai luồng không ràng buộc nhau.
+     *
+     * <p>Trước đây khối dựng ví này được chép nguyên văn ở hai chỗ trong {@code AuthService}
+     * (đăng ký thường và đăng ký bằng Google). Thêm một cột vào bảng {@code wallets} mà quên một
+     * trong hai chỗ là lỗi chỉ lộ ra ở đúng một luồng đăng ký — rất khó nhận ra.
+     */
+    @Transactional
+    public void createDefaultCashWallet(UUID userId, Instant createdAt) {
+        Wallet cashWallet = Wallet.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .groupId(null)
+                .name(DEFAULT_WALLET_NAME)
+                .type("cash")
+                .initialBalance(0L)
+                .currentBalance(0L)
+                .includeInTotal(true)
+                .sortOrder(0)
+                .isDeleted(false)
+                .createdAt(createdAt)
+                .build();
+        walletRepository.save(cashWallet);
+    }
+
+    /**
+     * Số ví còn sống của một người dùng — phục vụ khối {@code stats} của {@code GET /auth/me}.
+     * Có mặt ở đây để {@code auth} không phải đụng thẳng vào {@code WalletRepository}.
+     */
+    @Transactional(readOnly = true)
+    public long countActiveWallets(UUID userId) {
+        return walletRepository.countByUserIdAndIsDeletedFalse(userId);
     }
 
     /**

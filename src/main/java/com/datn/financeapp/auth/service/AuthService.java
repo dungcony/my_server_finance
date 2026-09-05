@@ -25,8 +25,7 @@ import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.JwtService;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -62,7 +61,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptRepository loginAttemptRepository;
-    private final WalletRepository walletRepository;
+    private final WalletService walletService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -102,21 +101,7 @@ public class AuthService {
                 .createdAt(now)
                 .build();
         userRepository.save(user);
-
-        Wallet cashWallet = Wallet.builder()
-                .id(UUID.randomUUID())
-                .userId(user.getId())
-                .groupId(null)
-                .name("Tiền mặt")
-                .type("cash")
-                .initialBalance(0L)
-                .currentBalance(0L)
-                .includeInTotal(true)
-                .sortOrder(0)
-                .isDeleted(false)
-                .createdAt(now)
-                .build();
-        walletRepository.save(cashWallet);
+        walletService.createDefaultCashWallet(user.getId(), now);
 
         return buildAuthResponse(user);
     }
@@ -274,7 +259,7 @@ public class AuthService {
                 .findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
 
-        long walletCount = walletRepository.countByUserIdAndIsDeletedFalse(userId);
+        long walletCount = walletService.countActiveWallets(userId);
         Long transactionCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM transactions WHERE user_id = ? AND NOT is_deleted",
                 Long.class, userId);
@@ -556,21 +541,7 @@ public class AuthService {
                 .lastLoginAt(now)
                 .build();
         userRepository.save(user);
-
-        Wallet cashWallet = Wallet.builder()
-                .id(UUID.randomUUID())
-                .userId(user.getId())
-                .groupId(null)
-                .name("Tiền mặt")
-                .type("cash")
-                .initialBalance(0L)
-                .currentBalance(0L)
-                .includeInTotal(true)
-                .sortOrder(0)
-                .isDeleted(false)
-                .createdAt(now)
-                .build();
-        walletRepository.save(cashWallet);
+        walletService.createDefaultCashWallet(user.getId(), now);
 
         return buildAuthResponse(user);
     }
