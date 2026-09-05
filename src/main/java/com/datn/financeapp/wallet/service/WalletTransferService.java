@@ -1,6 +1,7 @@
 package com.datn.financeapp.wallet.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.transaction.service.TransactionWriteCommand;
 import com.datn.financeapp.transaction.service.TransactionWriter;
 import com.datn.financeapp.wallet.dto.AdjustBalanceRequest;
@@ -54,8 +55,7 @@ public class WalletTransferService {
         UUID destinationId = req.destinationWalletId();
 
         if (sourceId.equals(destinationId)) {
-            throw new BusinessException(
-                    "SAME_SOURCE_AND_DESTINATION", HttpStatus.BAD_REQUEST.value(), "Hai ví phải khác nhau.");
+            throw new BusinessException(ErrorCode.SAME_SOURCE_AND_DESTINATION);
         }
 
         // Khoá theo thứ tự cố định (nhỏ trước, lớn sau) bất kể vai trò nguồn/đích — chống
@@ -71,11 +71,7 @@ public class WalletTransferService {
 
         long amount = req.amount();
         if (Boolean.TRUE.equals(req.failIfInsufficient()) && sourceWallet.getCurrentBalance() < amount) {
-            throw new BusinessException(
-                    "INSUFFICIENT_BALANCE",
-                    HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                    "Số dư ví không đủ để thực hiện giao dịch này.",
-                    Map.of(
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE, "Số dư ví không đủ để thực hiện giao dịch này.", Map.of(
                             "current_balance", sourceWallet.getCurrentBalance(),
                             "requested_amount", amount));
         }
@@ -109,8 +105,7 @@ public class WalletTransferService {
         Wallet wallet = lockAndCheckOwnership(walletId, userId);
 
         if (req.actualBalance() < 0) {
-            throw new BusinessException(
-                    "INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số dư thực tế không được âm.");
+            throw new BusinessException(ErrorCode.INVALID_AMOUNT, "Số dư thực tế không được âm.");
         }
 
         long previousBalance = wallet.getCurrentBalance();
@@ -162,8 +157,7 @@ public class WalletTransferService {
     public ReconcileResponse reconcile(UUID userId, UUID walletId, boolean autoFix) {
         Wallet wallet = walletRepository
                 .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
         return doReconcile(wallet, autoFix);
     }
@@ -215,8 +209,7 @@ public class WalletTransferService {
         void reconcileOneWalletAutoFix(UUID walletId) {
             Wallet wallet = walletRepository
                     .findById(walletId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
             doReconcile(wallet, true);
         }
 
@@ -266,10 +259,9 @@ public class WalletTransferService {
     private Wallet lockAndCheckOwnership(UUID walletId, UUID userId) {
         Wallet wallet = walletRepository
                 .findByIdForUpdate(walletId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
         if (!userId.equals(wallet.getUserId())) {
-            throw new BusinessException("NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví.");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
         }
         return wallet;
     }

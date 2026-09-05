@@ -3,6 +3,7 @@ package com.datn.financeapp.goal.service;
 import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.goal.dto.CreateContributionRequest;
 import com.datn.financeapp.goal.dto.CreateContributionResponse;
 import com.datn.financeapp.goal.dto.CreateGoalRequest;
@@ -93,23 +94,20 @@ public class GoalService {
     @Transactional
     public CreateGoalResponse create(UUID userId, CreateGoalRequest req) {
         if (req.targetAmount() == null || req.targetAmount() <= 0) {
-            throw new BusinessException("INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền phải lớn hơn 0.");
+            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
         }
         if (req.targetDate() != null && !req.targetDate().isAfter(LocalDate.now())) {
-            throw new BusinessException(
-                    "INVALID_TARGET_DATE", HttpStatus.BAD_REQUEST.value(), "Ngày mục tiêu phải sau hôm nay.");
+            throw new BusinessException(ErrorCode.INVALID_TARGET_DATE);
         }
         if (req.initialAmount() != null && req.initialAmount() < 0) {
-            throw new BusinessException(
-                    "INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền đã có sẵn không được âm.");
+            throw new BusinessException(ErrorCode.INVALID_AMOUNT, "Số tiền đã có sẵn không được âm.");
         }
 
         Wallet wallet = null;
         if (req.walletId() != null) {
             wallet = walletRepository
                     .findByIdForUser(req.walletId(), userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
         }
 
         UUID goalId = UUID.randomUUID();
@@ -157,11 +155,10 @@ public class GoalService {
         SavingsGoal goal = loadOwnedGoal(userId, goalId);
 
         if (STATUS_CANCELLED.equals(goal.getStatus())) {
-            throw new BusinessException("GOAL_CANCELLED", HttpStatus.CONFLICT.value(), "Mục tiêu đã huỷ.");
+            throw new BusinessException(ErrorCode.GOAL_CANCELLED);
         }
         if (STATUS_COMPLETED.equals(goal.getStatus())) {
-            throw new BusinessException(
-                    "GOAL_ALREADY_COMPLETED", HttpStatus.CONFLICT.value(), "Mục tiêu đã đạt.");
+            throw new BusinessException(ErrorCode.GOAL_ALREADY_COMPLETED);
         }
 
         LocalDate contributedDate = req.contributedDate() != null ? req.contributedDate() : LocalDate.now();
@@ -175,19 +172,14 @@ public class GoalService {
 
         if (createTransaction) {
             if (goal.getWalletId() == null) {
-                throw new BusinessException(
-                        "GOAL_WALLET_REQUIRED",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật.");
+                throw new BusinessException(ErrorCode.GOAL_WALLET_REQUIRED);
             }
             if (req.sourceWalletId() == null) {
-                throw new BusinessException(
-                        "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value(), "Thiếu ví nguồn để chuyển tiền.");
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Thiếu ví nguồn để chuyển tiền.");
             }
             Wallet sourceWallet = walletRepository
                     .findByIdForUser(req.sourceWalletId(), userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví nguồn."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví nguồn."));
 
             // LUÔN là transfer: tiền chỉ đổi chỗ giữa hai ví của cùng người dùng, không phải thu
             // cũng không phải chi. Nhờ vậy tự động bị loại khỏi mọi báo cáo thu-chi qua điều kiện
@@ -274,8 +266,7 @@ public class GoalService {
 
         GoalContribution contribution = goalContributionRepository
                 .findByIdAndGoalId(contributionId, goalId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy lần nạp."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lần nạp."));
 
         // Bước 1 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
         if (contribution.getTransactionId() != null) {
@@ -304,15 +295,13 @@ public class GoalService {
         }
         if (req.targetAmount() != null) {
             if (req.targetAmount() <= 0) {
-                throw new BusinessException(
-                        "INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền phải lớn hơn 0.");
+                throw new BusinessException(ErrorCode.INVALID_AMOUNT);
             }
             goal.setTargetAmount(req.targetAmount());
         }
         if (req.targetDate() != null) {
             if (!req.targetDate().isAfter(LocalDate.now())) {
-                throw new BusinessException(
-                        "INVALID_TARGET_DATE", HttpStatus.BAD_REQUEST.value(), "Ngày mục tiêu phải sau hôm nay.");
+                throw new BusinessException(ErrorCode.INVALID_TARGET_DATE);
             }
             goal.setTargetDate(req.targetDate());
         }
@@ -321,10 +310,7 @@ public class GoalService {
         }
         if (req.status() != null) {
             if (!STATUS_CANCELLED.equals(req.status()) && !STATUS_IN_PROGRESS.equals(req.status())) {
-                throw new BusinessException(
-                        "VALIDATION_ERROR",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Chỉ đặt được trạng thái huỷ hoặc đang thực hiện — hoàn thành do hệ thống tự xác định.");
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chỉ đặt được trạng thái huỷ hoặc đang thực hiện — hoàn thành do hệ thống tự xác định.");
             }
             goal.setStatus(req.status());
         }
@@ -396,8 +382,7 @@ public class GoalService {
     private SavingsGoal loadOwnedGoal(UUID userId, UUID goalId) {
         return savingsGoalRepository
                 .findByIdAndUserId(goalId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy mục tiêu."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
     }
 
     private Wallet loadWalletOrNull(UUID userId, UUID walletId) {

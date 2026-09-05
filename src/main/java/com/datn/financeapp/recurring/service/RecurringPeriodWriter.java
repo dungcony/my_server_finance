@@ -1,6 +1,7 @@
 package com.datn.financeapp.recurring.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.recurring.entity.RecurringTransaction;
 import com.datn.financeapp.recurring.repository.RecurringTransactionRepository;
 import com.datn.financeapp.recurring.util.RecurringDateCalculator;
@@ -121,10 +122,7 @@ public class RecurringPeriodWriter {
         } catch (DataIntegrityViolationException duplicate) {
             // Ràng buộc CSDL là nơi phát hiện, nhưng người dùng phải nhận lỗi nghiệp vụ rõ nghĩa
             // chứ không phải 500 lộ tên constraint.
-            throw new BusinessException(
-                    "ALREADY_RUN_TODAY",
-                    HttpStatus.CONFLICT.value(),
-                    "Đã ghi giao dịch hôm nay cho khoản định kỳ này.");
+            throw new BusinessException(ErrorCode.ALREADY_RUN_TODAY);
         }
     }
 

@@ -5,6 +5,7 @@ import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.recurring.dto.CreateRecurringRequest;
 import com.datn.financeapp.recurring.dto.PauseRecurringRequest;
 import com.datn.financeapp.recurring.dto.RecurringDetailResponse;
@@ -89,12 +90,10 @@ public class RecurringService {
 
         int interval = req.interval() == null ? 1 : req.interval();
         if (interval < 1) {
-            throw new BusinessException(
-                    "INVALID_INTERVAL", HttpStatus.BAD_REQUEST.value(), "Khoảng lặp phải lớn hơn hoặc bằng 1.");
+            throw new BusinessException(ErrorCode.INVALID_INTERVAL);
         }
         if (req.endDate() != null && req.endDate().isBefore(req.startDate())) {
-            throw new BusinessException(
-                    "INVALID_END_DATE", HttpStatus.BAD_REQUEST.value(), "Ngày kết thúc phải sau ngày bắt đầu.");
+            throw new BusinessException(ErrorCode.INVALID_END_DATE);
         }
 
         requireWalletAccess(req.walletId(), userId);
@@ -160,8 +159,7 @@ public class RecurringService {
         }
         if (req.endDate() != null) {
             if (req.endDate().isBefore(rec.getStartDate())) {
-                throw new BusinessException(
-                        "INVALID_END_DATE", HttpStatus.BAD_REQUEST.value(), "Ngày kết thúc phải sau ngày bắt đầu.");
+                throw new BusinessException(ErrorCode.INVALID_END_DATE);
             }
             rec.setEndDate(req.endDate());
         }
@@ -224,15 +222,13 @@ public class RecurringService {
     private RecurringTransaction requireOwned(UUID userId, UUID id) {
         return recurringRepository
                 .findByIdAndUserId(id, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy khoản định kỳ."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy khoản định kỳ."));
     }
 
     private Wallet requireWalletAccess(UUID walletId, UUID userId) {
         return walletRepository
                 .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
     }
 
     /**
@@ -243,13 +239,9 @@ public class RecurringService {
     private Category requireCategoryOfType(UUID categoryId, UUID userId, String type) {
         Category category = categoryRepository
                 .findByIdAndVisibleToUser(categoryId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "CATEGORY_NOT_ALLOWED", HttpStatus.BAD_REQUEST.value(), "Danh mục không hợp lệ."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
         if (!category.getType().equals(type)) {
-            throw new BusinessException(
-                    "CATEGORY_TYPE_MISMATCH",
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Danh mục thu gán cho khoản chi hoặc ngược lại.");
+            throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
         }
         return category;
     }
@@ -257,17 +249,13 @@ public class RecurringService {
     private void validateType(String type) {
         if (!VALID_TYPES.contains(type)) {
             // ck_rec_type chỉ cho expense/income — khoản định kỳ không sinh chuyển tiền được.
-            throw new BusinessException(
-                    "INVALID_TYPE", HttpStatus.BAD_REQUEST.value(), "Loại khoản định kỳ phải là expense hoặc income.");
+            throw new BusinessException(ErrorCode.INVALID_TYPE);
         }
     }
 
     private void validateFrequency(String frequency) {
         if (!VALID_FREQUENCIES.contains(frequency)) {
-            throw new BusinessException(
-                    "INVALID_FREQUENCY",
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Tần suất phải là day, week, month hoặc year.");
+            throw new BusinessException(ErrorCode.INVALID_FREQUENCY);
         }
     }
 

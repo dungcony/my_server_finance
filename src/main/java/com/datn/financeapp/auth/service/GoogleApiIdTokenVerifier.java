@@ -1,6 +1,7 @@
 package com.datn.financeapp.auth.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -53,10 +54,7 @@ public class GoogleApiIdTokenVerifier implements GoogleIdTokenVerifier {
     @Override
     public GoogleUserInfo verify(String idToken) {
         if (delegate == null) {
-            throw new BusinessException(
-                    "INVALID_GOOGLE_TOKEN",
-                    HttpStatus.UNAUTHORIZED.value(),
-                    "Đăng nhập bằng Google chưa được cấu hình trên máy chủ.");
+            throw new BusinessException(ErrorCode.INVALID_GOOGLE_TOKEN, "Đăng nhập bằng Google chưa được cấu hình trên máy chủ.");
         }
 
         GoogleIdToken token;
@@ -95,9 +93,6 @@ public class GoogleApiIdTokenVerifier implements GoogleIdTokenVerifier {
     }
 
     private BusinessException invalidToken() {
-        return new BusinessException(
-                "INVALID_GOOGLE_TOKEN",
-                HttpStatus.UNAUTHORIZED.value(),
-                "Đăng nhập bằng Google thất bại. Vui lòng thử lại.");
+        return new BusinessException(ErrorCode.INVALID_GOOGLE_TOKEN);
     }
 }

@@ -3,6 +3,7 @@ package com.datn.financeapp.debt.service;
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.debt.dto.CreateDebtRequest;
 import com.datn.financeapp.debt.dto.CreateDebtResponse;
 import com.datn.financeapp.debt.dto.CreatePaymentRequest;
@@ -95,19 +96,17 @@ public class DebtService {
     @Transactional
     public CreateDebtResponse create(UUID userId, CreateDebtRequest req) {
         if (req.principalAmount() == null || req.principalAmount() <= 0) {
-            throw new BusinessException("INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền phải lớn hơn 0.");
+            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
         }
 
         LocalDate issuedDate = req.issuedDate() != null ? req.issuedDate() : LocalDate.now();
         if (req.dueDate() != null && req.dueDate().isBefore(issuedDate)) {
-            throw new BusinessException(
-                    "INVALID_DUE_DATE", HttpStatus.BAD_REQUEST.value(), "Hạn trả không được trước ngày phát sinh.");
+            throw new BusinessException(ErrorCode.INVALID_DUE_DATE);
         }
 
         Wallet wallet = walletRepository
                 .findByIdForUser(req.walletId(), userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
         // lending = đưa tiền đi -> giao dịch CHI danh mục "Cho vay".
         // borrowing = nhận tiền về -> giao dịch THU danh mục "Đi vay".
@@ -169,19 +168,15 @@ public class DebtService {
         Debt debt = loadOwnedDebt(userId, debtId);
 
         if (STATUS_WRITTEN_OFF.equals(debt.getStatus())) {
-            throw new BusinessException(
-                    "DEBT_WRITTEN_OFF", HttpStatus.CONFLICT.value(), "Khoản nợ đã đánh dấu không đòi nữa.");
+            throw new BusinessException(ErrorCode.DEBT_WRITTEN_OFF);
         }
         if (STATUS_SETTLED.equals(debt.getStatus())) {
-            throw new BusinessException("DEBT_ALREADY_SETTLED", HttpStatus.CONFLICT.value(), "Khoản nợ đã trả xong.");
+            throw new BusinessException(ErrorCode.DEBT_ALREADY_SETTLED);
         }
 
         long remaining = debt.getPrincipalAmount() - debt.getPaidAmount();
         if (req.amount() > remaining) {
-            throw new BusinessException(
-                    "EXCEEDS_REMAINING_AMOUNT",
-                    HttpStatus.BAD_REQUEST.value(),
-                    String.format(
+            throw new BusinessException(ErrorCode.EXCEEDS_REMAINING_AMOUNT, String.format(
                             "%s chỉ còn nợ %,d đ. Ghi trả %,d đ, phần dư ghi thành khoản thu riêng.",
                             debt.getCounterpartyName(), remaining, remaining));
         }
@@ -189,8 +184,7 @@ public class DebtService {
         UUID walletId = req.walletId() != null ? req.walletId() : debt.getWalletId();
         Wallet wallet = walletRepository
                 .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
         // Khoản lending ĐƯỢC trả -> tiền về ví, giao dịch THU danh mục "Thu nợ".
         // Khoản borrowing MÌNH trả -> tiền rời ví, giao dịch CHI danh mục "Trả nợ".
@@ -266,8 +260,7 @@ public class DebtService {
 
         DebtPayment payment = debtPaymentRepository
                 .findByIdAndDebtId(paymentId, debtId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy lần trả nợ."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lần trả nợ."));
 
         UUID transactionId = payment.getTransactionId();
 
@@ -290,8 +283,7 @@ public class DebtService {
         Debt debt = loadOwnedDebt(userId, debtId);
 
         if (STATUS_WRITTEN_OFF.equals(debt.getStatus())) {
-            throw new BusinessException(
-                    "DEBT_WRITTEN_OFF", HttpStatus.CONFLICT.value(), "Khoản nợ đã đánh dấu không đòi nữa.");
+            throw new BusinessException(ErrorCode.DEBT_WRITTEN_OFF);
         }
 
         debt.setStatus(STATUS_WRITTEN_OFF);
@@ -317,10 +309,7 @@ public class DebtService {
         }
         if (req.dueDate() != null) {
             if (req.dueDate().isBefore(debt.getIssuedDate())) {
-                throw new BusinessException(
-                        "INVALID_DUE_DATE",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Hạn trả không được trước ngày phát sinh.");
+                throw new BusinessException(ErrorCode.INVALID_DUE_DATE);
             }
             debt.setDueDate(req.dueDate());
         }
@@ -498,18 +487,14 @@ public class DebtService {
     private Debt loadOwnedDebt(UUID userId, UUID debtId) {
         return debtRepository
                 .findByIdAndUserId(debtId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy khoản nợ."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy khoản nợ."));
     }
 
     private UUID systemCategoryId(String name, String type) {
         return categoryRepository
                 .findSystemCategoryByName(name, type)
                 .map(Category::getId)
-                .orElseThrow(() -> new BusinessException(
-                        "CATEGORY_NOT_FOUND",
-                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                        "Thiếu danh mục hệ thống cho sổ nợ: " + name));
+                .orElseThrow(() -> new BusinessException(ErrorCode.SYSTEM_CATEGORY_MISSING, "Thiếu danh mục hệ thống cho sổ nợ: " + name));
     }
 
     private Wallet loadWalletOrNull(UUID userId, UUID walletId) {

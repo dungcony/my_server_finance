@@ -8,6 +8,7 @@ import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.transaction.dto.AffectedBudgetResponse;
@@ -80,8 +81,7 @@ public class TransactionService {
         validateShape(req.type(), req.categoryId(), req.destinationWalletId(), req.walletId());
 
         if (req.amount() == null || req.amount() <= 0) {
-            throw new BusinessException(
-                    "INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền phải lớn hơn 0.");
+            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
         }
 
         if ("transfer".equals(req.type())) {
@@ -94,13 +94,9 @@ public class TransactionService {
         if (req.categoryId() != null) {
             category = categoryRepository
                     .findByIdAndVisibleToUser(req.categoryId(), userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "CATEGORY_NOT_ALLOWED", HttpStatus.BAD_REQUEST.value(), "Danh mục không hợp lệ."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
             if (!category.getType().equals(req.type())) {
-                throw new BusinessException(
-                        "CATEGORY_TYPE_MISMATCH",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Danh mục thu gán cho khoản chi hoặc ngược lại.");
+                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
             }
         }
 
@@ -139,14 +135,12 @@ public class TransactionService {
     public CreateTransactionResponse update(UUID userId, UUID transactionId, UpdateTransactionRequest req) {
         Transaction old = transactionRepository
                 .findByIdAndUserIdAndIsDeletedFalse(transactionId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy giao dịch."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));
 
         validateShape(req.type(), req.categoryId(), req.destinationWalletId(), req.walletId());
 
         if (req.amount() == null || req.amount() <= 0) {
-            throw new BusinessException(
-                    "INVALID_AMOUNT", HttpStatus.BAD_REQUEST.value(), "Số tiền phải lớn hơn 0.");
+            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
         }
 
         Set<UUID> walletIds = new HashSet<>();
@@ -163,13 +157,9 @@ public class TransactionService {
         if (req.categoryId() != null) {
             Category category = categoryRepository
                     .findByIdAndVisibleToUser(req.categoryId(), userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "CATEGORY_NOT_ALLOWED", HttpStatus.BAD_REQUEST.value(), "Danh mục không hợp lệ."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
             if (!category.getType().equals(req.type())) {
-                throw new BusinessException(
-                        "CATEGORY_TYPE_MISMATCH",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Danh mục thu gán cho khoản chi hoặc ngược lại.");
+                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
             }
         }
 
@@ -222,8 +212,7 @@ public class TransactionService {
             // (404) — copy khuôn WalletService.delete().
             Transaction existing = transactionRepository
                     .findByIdAndUserId(transactionId, userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy giao dịch."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));
             // Đã xoá mềm từ trước — idempotent, không làm gì thêm, không ném lỗi.
             long balance = walletRepository.findCurrentBalanceNative(existing.getWalletId()).orElseThrow();
             return new DeleteTransactionResponse(
@@ -231,10 +220,7 @@ public class TransactionService {
         }
 
         if (transactionRepository.existsDebtPaymentLink(transactionId)) {
-            throw new BusinessException(
-                    "TRANSACTION_LINKED_TO_DEBT",
-                    HttpStatus.CONFLICT.value(),
-                    "Giao dịch này là một lần trả nợ — huỷ ở sổ nợ, không xoá trực tiếp.");
+            throw new BusinessException(ErrorCode.TRANSACTION_LINKED_TO_DEBT);
         }
 
         Set<UUID> walletIds = new HashSet<>();
@@ -263,8 +249,7 @@ public class TransactionService {
     public CreateTransactionResponse duplicate(UUID userId, UUID transactionId, DuplicateTransactionRequest req) {
         Transaction original = transactionRepository
                 .findByIdAndUserIdAndIsDeletedFalse(transactionId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy giao dịch."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));
 
         LocalDate date = (req != null && req.date() != null) ? req.date() : LocalDate.now();
         Long amount = (req != null && req.amount() != null) ? req.amount() : original.getAmount();
@@ -409,8 +394,7 @@ public class TransactionService {
     public TransactionDetailResponse detail(UUID userId, UUID transactionId) {
         Transaction txn = transactionRepository
                 .findByIdAndUserIdAndIsDeletedFalse(transactionId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy giao dịch."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));
 
         TransactionListItemResponse base = toListItemResponse(txn);
 
@@ -687,31 +671,20 @@ public class TransactionService {
     void validateShape(String type, UUID categoryId, UUID destinationWalletId, UUID walletId) {
         if ("transfer".equals(type)) {
             if (destinationWalletId == null) {
-                throw new BusinessException(
-                        "DESTINATION_WALLET_REQUIRED",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Giao dịch chuyển phải có ví đích.");
+                throw new BusinessException(ErrorCode.DESTINATION_WALLET_REQUIRED);
             }
             if (categoryId != null) {
-                throw new BusinessException(
-                        "CATEGORY_NOT_ALLOWED",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Giao dịch chuyển không được có danh mục.");
+                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED, "Giao dịch chuyển không được có danh mục.");
             }
             if (walletId != null && walletId.equals(destinationWalletId)) {
-                throw new BusinessException(
-                        "SAME_SOURCE_AND_DESTINATION", HttpStatus.BAD_REQUEST.value(), "Hai ví phải khác nhau.");
+                throw new BusinessException(ErrorCode.SAME_SOURCE_AND_DESTINATION);
             }
         } else {
             if (categoryId == null) {
-                throw new BusinessException(
-                        "CATEGORY_REQUIRED", HttpStatus.BAD_REQUEST.value(), "Chi/thu phải có danh mục.");
+                throw new BusinessException(ErrorCode.CATEGORY_REQUIRED);
             }
             if (destinationWalletId != null) {
-                throw new BusinessException(
-                        "DESTINATION_WALLET_NOT_ALLOWED",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Giao dịch chi/thu không được có ví đích.");
+                throw new BusinessException(ErrorCode.DESTINATION_WALLET_NOT_ALLOWED);
             }
         }
     }
@@ -729,10 +702,9 @@ public class TransactionService {
         for (UUID walletId : sortedIds) {
             Wallet wallet = walletRepository
                     .findByIdForUpdate(walletId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
             if (!userId.equals(wallet.getUserId())) {
-                throw new BusinessException("NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví.");
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
             }
             lockedWallets.put(walletId, wallet);
         }

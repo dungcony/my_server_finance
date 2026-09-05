@@ -1,6 +1,7 @@
 package com.datn.financeapp.report.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.report.dto.ExportJobResponse;
 import com.datn.financeapp.report.dto.ExportRequest;
 import com.datn.financeapp.report.entity.ExportJob;
@@ -33,10 +34,7 @@ public class ExportService {
     @Transactional
     public ExportJobResponse createJob(UUID userId, ExportRequest req) {
         if (!"csv".equals(req.format())) {
-            throw new BusinessException(
-                    "FORMAT_NOT_SUPPORTED",
-                    HttpStatus.NOT_IMPLEMENTED.value(),
-                    "Định dạng " + req.format() + " chưa hỗ trợ, chỉ hỗ trợ csv ở phiên bản này.");
+            throw new BusinessException(ErrorCode.FORMAT_NOT_SUPPORTED, "Định dạng " + req.format() + " chưa hỗ trợ, chỉ hỗ trợ csv ở phiên bản này.");
         }
 
         UUID jobId = UUID.randomUUID();
@@ -70,8 +68,7 @@ public class ExportService {
     public ExportJobResponse getStatus(UUID userId, UUID jobId) {
         ExportJob job = exportJobRepository
                 .findByIdAndUserId(jobId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tệp xuất."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tệp xuất."));
 
         String downloadUrl = "completed".equals(job.getStatus()) ? "/reports/export/" + jobId + "/download" : null;
         return new ExportJobResponse(jobId, job.getStatus(), downloadUrl, job.getExpiresAt(), job.getErrorMessage());
@@ -81,12 +78,10 @@ public class ExportService {
     public Resource download(UUID userId, UUID jobId) {
         ExportJob job = exportJobRepository
                 .findByIdAndUserId(jobId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tệp xuất."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tệp xuất."));
 
         if (job.getExpiresAt() == null || job.getExpiresAt().isBefore(Instant.now())) {
-            throw new BusinessException(
-                    "EXPORT_LINK_EXPIRED", HttpStatus.GONE.value(), "Đường dẫn tải đã hết hạn.");
+            throw new BusinessException(ErrorCode.EXPORT_LINK_EXPIRED);
         }
 
         // Đường dẫn từ CSDL, KHÔNG nối input người dùng (T-04-17) — tên tệp do ExportAsyncRunner

@@ -15,6 +15,7 @@ import com.datn.financeapp.category.entity.Icon;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.notification.repository.NotificationRepository;
 import com.datn.financeapp.report.dto.ReportHomeResponse;
 import com.datn.financeapp.wallet.entity.Wallet;
@@ -203,8 +204,7 @@ public class BudgetService {
     public BudgetSuggestionResponse suggestion(UUID userId, UUID categoryId) {
         Category category = categoryRepository
                 .findByIdAndVisibleToUser(categoryId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
 
         BudgetSuggestionResponse.CategorySummary categorySummary =
                 new BudgetSuggestionResponse.CategorySummary(category.getId(), category.getName());
@@ -261,19 +261,17 @@ public class BudgetService {
     public BudgetListItemResponse create(UUID userId, CreateBudgetRequest req) {
         Category category = categoryRepository
                 .findByIdAndVisibleToUser(req.categoryId(), userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
 
         // Trigger trg_budgets_validate cũng chặn, nhưng kiểm tra ở đây để trả đúng mã nghiệp vụ
         // CATEGORY_NOT_EXPENSE thay vì lỗi ràng buộc thô — hai tầng phòng thủ.
         if (!"expense".equals(category.getType())) {
-            throw new BusinessException(
-                    "CATEGORY_NOT_EXPENSE", HttpStatus.BAD_REQUEST.value(), "Chỉ đặt ngân sách cho danh mục chi.");
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_EXPENSE);
         }
 
         if (req.walletId() != null
                 && walletRepository.findByIdForUser(req.walletId(), userId).isEmpty()) {
-            throw new BusinessException("NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví.");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
         }
 
         LocalDate startDate = req.startDate() != null ? req.startDate() : startOfCurrentPeriod(req.periodType());
@@ -296,10 +294,7 @@ public class BudgetService {
         try {
             budgetRepository.saveAndFlush(budget);
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(
-                    "BUDGET_ALREADY_EXISTS",
-                    HttpStatus.CONFLICT.value(),
-                    "Đã có ngân sách cho danh mục này trong kỳ.");
+            throw new BusinessException(ErrorCode.BUDGET_ALREADY_EXISTS);
         }
 
         return detail(userId, budget.getId());
@@ -318,10 +313,7 @@ public class BudgetService {
         boolean changesCategory = req.categoryId() != null && !req.categoryId().equals(budget.getCategoryId());
         boolean changesPeriod = req.periodType() != null && !req.periodType().equals(budget.getPeriodType());
         if (changesCategory || changesPeriod) {
-            throw new BusinessException(
-                    "CATEGORY_NOT_EDITABLE",
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Không đổi danh mục hoặc kỳ của ngân sách — xoá và tạo lại.");
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_EDITABLE);
         }
 
         if (req.limitAmount() != null) {
@@ -335,7 +327,7 @@ public class BudgetService {
         }
         if (req.walletId() != null) {
             if (walletRepository.findByIdForUser(req.walletId(), userId).isEmpty()) {
-                throw new BusinessException("NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví.");
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
             }
             budget.setWalletId(req.walletId());
         }
@@ -344,10 +336,7 @@ public class BudgetService {
             budgetRepository.saveAndFlush(budget);
         } catch (DataIntegrityViolationException e) {
             // Bật lại is_active của một ngân sách có kỳ chồng lấn cũng đụng ex_bud_no_overlap.
-            throw new BusinessException(
-                    "BUDGET_ALREADY_EXISTS",
-                    HttpStatus.CONFLICT.value(),
-                    "Đã có ngân sách cho danh mục này trong kỳ.");
+            throw new BusinessException(ErrorCode.BUDGET_ALREADY_EXISTS);
         }
 
         return detail(userId, budget.getId());
@@ -584,8 +573,7 @@ public class BudgetService {
             case "month" -> today.withDayOfMonth(1);
             case "quarter" -> today.withDayOfMonth(1).withMonth((today.getMonthValue() - 1) / 3 * 3 + 1);
             case "year" -> today.withDayOfYear(1);
-            default -> throw new BusinessException(
-                    "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value(), "Loại kỳ ngân sách không hợp lệ.");
+            default -> throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Loại kỳ ngân sách không hợp lệ.");
         };
     }
 
@@ -601,8 +589,7 @@ public class BudgetService {
             case "month" -> startDate.plusMonths(1).minusDays(1);
             case "quarter" -> startDate.plusMonths(3).minusDays(1);
             case "year" -> startDate.plusYears(1).minusDays(1);
-            default -> throw new BusinessException(
-                    "VALIDATION_ERROR", HttpStatus.BAD_REQUEST.value(), "Loại kỳ ngân sách không hợp lệ.");
+            default -> throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Loại kỳ ngân sách không hợp lệ.");
         };
     }
 
@@ -636,6 +623,6 @@ public class BudgetService {
 
     /** Không có quyền cũng trả 404 (không phải 403) để không lộ việc bản ghi có tồn tại hay không. */
     private BusinessException notFound() {
-        return new BusinessException("NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ngân sách.");
+        return new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ngân sách.");
     }
 }

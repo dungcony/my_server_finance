@@ -1,6 +1,7 @@
 package com.datn.financeapp.wallet.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.wallet.dto.CreateWalletRequest;
 import com.datn.financeapp.wallet.dto.ReorderWalletsRequest;
 import com.datn.financeapp.wallet.dto.UpdateWalletRequest;
@@ -90,8 +91,7 @@ public class WalletService {
     public WalletDetailResponse detail(UUID userId, UUID walletId) {
         Wallet wallet = walletRepository
                 .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
         WalletStatsDto stats = loadStats(wallet.getId());
 
@@ -99,8 +99,7 @@ public class WalletService {
         // tương lai) — KHÔNG map thẳng cột wallet.getCurrentBalance() (đã gồm cả tương lai).
         long currentBalanceAsOfToday = walletRepository
                 .findBalanceAsOf(wallet.getId(), LocalDate.now())
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
         boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
         Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
 
@@ -128,18 +127,14 @@ public class WalletService {
     @Transactional
     public WalletResponse create(UUID userId, CreateWalletRequest req) {
         if (walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, req.name())) {
-            throw new BusinessException(
-                    "WALLET_NAME_EXISTS", HttpStatus.CONFLICT.value(), "Đã có ví cùng tên.");
+            throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
         }
 
         if (req.groupId() != null) {
             // Group thuộc Phase 5 — chưa tồn tại entity/nghiệp vụ kiểm tra thành viên. Ném lỗi
             // tường minh thay vì tự bịa logic kiểm tra thành viên nhóm không kiểm chứng được
             // (T-02-05).
-            throw new BusinessException(
-                    "NOT_GROUP_MEMBER",
-                    HttpStatus.FORBIDDEN.value(),
-                    "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
+            throw new BusinessException(ErrorCode.NOT_GROUP_MEMBER, "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
         }
 
         Integer maxSortOrder = walletRepository.findMaxSortOrderByUserId(userId);
@@ -175,22 +170,17 @@ public class WalletService {
         Map<String, Object> extra = req.extraFields();
         if (extra.containsKey("current_balance") || extra.containsKey("currentBalance")
                 || extra.containsKey("type")) {
-            throw new BusinessException(
-                    "BALANCE_NOT_EDITABLE",
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Không sửa được số dư và loại ví qua PATCH.");
+            throw new BusinessException(ErrorCode.BALANCE_NOT_EDITABLE);
         }
 
         Wallet wallet = walletRepository
                 .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
         if (req.name() != null) {
             if (!req.name().equalsIgnoreCase(wallet.getName())
                     && walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, req.name())) {
-                throw new BusinessException(
-                        "WALLET_NAME_EXISTS", HttpStatus.CONFLICT.value(), "Đã có ví cùng tên.");
+                throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
             }
             wallet.setName(req.name());
         }
@@ -216,8 +206,7 @@ public class WalletService {
     public void delete(UUID userId, UUID walletId, boolean deleteTransactions) {
         Wallet wallet = walletRepository
                 .findByIdForUserIncludingDeleted(walletId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
 
         if (Boolean.TRUE.equals(wallet.getIsDeleted())) {
             // Đã xoá mềm từ trước — idempotent, không làm gì thêm, không ném lỗi.
@@ -225,10 +214,7 @@ public class WalletService {
         }
 
         if (walletRepository.countByUserIdAndIsDeletedFalse(userId) <= 1) {
-            throw new BusinessException(
-                    "CANNOT_DELETE_LAST_WALLET",
-                    HttpStatus.CONFLICT.value(),
-                    "Phải còn ít nhất một ví.");
+            throw new BusinessException(ErrorCode.CANNOT_DELETE_LAST_WALLET);
         }
 
         Long transactionCount = jdbcTemplate.queryForObject(
@@ -237,10 +223,7 @@ public class WalletService {
         boolean hasTransactions = transactionCount != null && transactionCount > 0;
 
         if (hasTransactions && !deleteTransactions) {
-            throw new BusinessException(
-                    "WALLET_HAS_TRANSACTIONS",
-                    HttpStatus.CONFLICT.value(),
-                    "Ví còn giao dịch, cần xác nhận xoá kèm giao dịch.");
+            throw new BusinessException(ErrorCode.WALLET_HAS_TRANSACTIONS);
         }
 
         if (hasTransactions) {
@@ -291,8 +274,7 @@ public class WalletService {
         // đến hết hôm nay, projectedBalance chỉ khác NULL khi ví có giao dịch tương lai.
         long currentBalanceAsOfToday = walletRepository
                 .findBalanceAsOf(wallet.getId(), LocalDate.now())
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy ví."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
         boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
         Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
 

@@ -15,6 +15,7 @@ import com.datn.financeapp.category.repository.CategoryGroupRepository;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -87,8 +88,7 @@ public class CategoryService {
     public CategoryDetailResponse detail(UUID userId, UUID categoryId) {
         Category category = categoryRepository
                 .findByIdAndVisibleToUser(categoryId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
 
         Map<UUID, CategoryGroup> groupsById = loadGroupsById();
         Map<UUID, Icon> iconsById = loadIconsById();
@@ -122,20 +122,15 @@ public class CategoryService {
         if (req.parentCategoryId() != null) {
             parent = categoryRepository
                     .findByIdAndVisibleToUser(req.parentCategoryId(), userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục cha."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục cha."));
 
             // Ràng buộc 1: cha được chọn phải có parent_category_id rỗng (chỉ hai tầng).
             if (parent.getParentCategoryId() != null) {
-                throw new BusinessException(
-                        "MAX_DEPTH_EXCEEDED", HttpStatus.BAD_REQUEST.value(), "Danh mục chỉ được tối đa hai cấp.");
+                throw new BusinessException(ErrorCode.MAX_DEPTH_EXCEEDED);
             }
             // Ràng buộc 2: con phải cùng type với cha.
             if (!parent.getType().equals(req.type())) {
-                throw new BusinessException(
-                        "TYPE_MISMATCH_WITH_PARENT",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Danh mục con phải cùng loại thu/chi với cha.");
+                throw new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT);
             }
             // Con kế thừa category_group_id từ cha, dù trigger DB cũng tự làm — set tường minh
             // để response trả đúng ngay không cần load lại.
@@ -143,26 +138,21 @@ public class CategoryService {
         } else {
             // Ràng buộc 3: danh mục cha bắt buộc có category_group_id.
             if (req.categoryGroupId() == null) {
-                throw new BusinessException(
-                        "CATEGORY_GROUP_REQUIRED",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Danh mục cha bắt buộc có nhóm lớn.");
+                throw new BusinessException(ErrorCode.CATEGORY_GROUP_REQUIRED);
             }
             categoryGroupId = req.categoryGroupId();
         }
 
         // Ràng buộc 4: tên không trùng trong cùng cấp, cùng loại, cùng chủ sở hữu.
         if (categoryRepository.existsSiblingWithName(userId, req.parentCategoryId(), req.type(), req.name(), null)) {
-            throw new BusinessException(
-                    "CATEGORY_NAME_EXISTS", HttpStatus.CONFLICT.value(), "Đã có danh mục cùng tên ở cấp này.");
+            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
         // Ràng buộc 5: icon_id phải tồn tại và is_active = true.
         Icon icon = iconRepository
                 .findById(req.iconId())
                 .filter(i -> Boolean.TRUE.equals(i.getIsActive()))
-                .orElseThrow(() -> new BusinessException(
-                        "INVALID_ICON", HttpStatus.BAD_REQUEST.value(), "Biểu tượng không tồn tại hoặc đã ngừng dùng."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ICON));
 
         Integer maxSortOrder = categoryRepository.findMaxSortOrderInLevel(userId, req.parentCategoryId());
         Instant now = Instant.now();
@@ -199,53 +189,37 @@ public class CategoryService {
     @Transactional
     public CategoryResponse update(UUID userId, UUID categoryId, UpdateCategoryRequest req) {
         if (req.extraFields().containsKey("type")) {
-            throw new BusinessException(
-                    "TYPE_NOT_EDITABLE", HttpStatus.BAD_REQUEST.value(), "Không đổi được loại thu/chi.");
+            throw new BusinessException(ErrorCode.TYPE_NOT_EDITABLE);
         }
 
         Category category = categoryRepository
                 .findById(categoryId)
                 .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
 
         if (category.getUserId() == null) {
-            throw new BusinessException(
-                    "SYSTEM_CATEGORY_NOT_EDITABLE",
-                    HttpStatus.FORBIDDEN.value(),
-                    "Danh mục hệ thống không sửa được.");
+            throw new BusinessException(ErrorCode.SYSTEM_CATEGORY_NOT_EDITABLE);
         }
         if (!category.getUserId().equals(userId)) {
             // Không lộ tồn tại — trả 404 như bản ghi không có (T-02-09).
-            throw new BusinessException(
-                    "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục.");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục.");
         }
 
         if (req.isParentCategoryIdSet()) {
             UUID newParentId = req.parentCategoryId();
             // Danh mục đang có con thì không được chuyển thành con của danh mục khác.
             if (categoryRepository.existsByParentCategoryIdAndIsDeletedFalse(categoryId)) {
-                throw new BusinessException(
-                        "CATEGORY_HAS_CHILDREN",
-                        HttpStatus.CONFLICT.value(),
-                        "Danh mục đang có con, không thể chuyển thành cấp con.");
+                throw new BusinessException(ErrorCode.CATEGORY_HAS_CHILDREN);
             }
             if (newParentId != null) {
                 Category newParent = categoryRepository
                         .findByIdAndVisibleToUser(newParentId, userId)
-                        .orElseThrow(() -> new BusinessException(
-                                "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục cha."));
+                        .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục cha."));
                 if (newParent.getParentCategoryId() != null) {
-                    throw new BusinessException(
-                            "MAX_DEPTH_EXCEEDED",
-                            HttpStatus.BAD_REQUEST.value(),
-                            "Danh mục chỉ được tối đa hai cấp.");
+                    throw new BusinessException(ErrorCode.MAX_DEPTH_EXCEEDED);
                 }
                 if (!newParent.getType().equals(category.getType())) {
-                    throw new BusinessException(
-                            "TYPE_MISMATCH_WITH_PARENT",
-                            HttpStatus.BAD_REQUEST.value(),
-                            "Danh mục con phải cùng loại thu/chi với cha.");
+                    throw new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT);
                 }
                 category.setParentCategoryId(newParentId);
                 category.setCategoryGroupId(newParent.getCategoryGroupId());
@@ -254,10 +228,7 @@ public class CategoryService {
                 if (req.categoryGroupId() != null) {
                     category.setCategoryGroupId(req.categoryGroupId());
                 } else if (category.getCategoryGroupId() == null) {
-                    throw new BusinessException(
-                            "CATEGORY_GROUP_REQUIRED",
-                            HttpStatus.BAD_REQUEST.value(),
-                            "Danh mục cha bắt buộc có nhóm lớn.");
+                    throw new BusinessException(ErrorCode.CATEGORY_GROUP_REQUIRED);
                 }
             }
         } else if (req.categoryGroupId() != null && category.getParentCategoryId() == null) {
@@ -268,8 +239,7 @@ public class CategoryService {
             UUID excludeId = category.getId();
             if (categoryRepository.existsSiblingWithName(
                     userId, category.getParentCategoryId(), category.getType(), req.name(), excludeId)) {
-                throw new BusinessException(
-                        "CATEGORY_NAME_EXISTS", HttpStatus.CONFLICT.value(), "Đã có danh mục cùng tên ở cấp này.");
+                throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
             }
             category.setName(req.name());
         }
@@ -277,8 +247,7 @@ public class CategoryService {
             Icon icon = iconRepository
                     .findById(req.iconId())
                     .filter(i -> Boolean.TRUE.equals(i.getIsActive()))
-                    .orElseThrow(() -> new BusinessException(
-                            "INVALID_ICON", HttpStatus.BAD_REQUEST.value(), "Biểu tượng không tồn tại hoặc đã ngừng dùng."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ICON));
             category.setIconId(icon.getId());
         }
         if (req.color() != null) {
@@ -301,25 +270,17 @@ public class CategoryService {
         Category category = categoryRepository
                 .findById(categoryId)
                 .filter(c -> !Boolean.TRUE.equals(c.getIsDeleted()))
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
 
         if (category.getUserId() == null) {
-            throw new BusinessException(
-                    "SYSTEM_CATEGORY_NOT_DELETABLE",
-                    HttpStatus.FORBIDDEN.value(),
-                    "Danh mục hệ thống không xoá được.");
+            throw new BusinessException(ErrorCode.SYSTEM_CATEGORY_NOT_DELETABLE);
         }
         if (!category.getUserId().equals(userId)) {
-            throw new BusinessException(
-                    "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục.");
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục.");
         }
 
         if (categoryRepository.existsByParentCategoryIdAndIsDeletedFalse(categoryId)) {
-            throw new BusinessException(
-                    "CHILD_CATEGORIES_EXIST",
-                    HttpStatus.CONFLICT.value(),
-                    "Còn danh mục con, phải xoá con trước.");
+            throw new BusinessException(ErrorCode.CHILD_CATEGORIES_EXIST);
         }
 
         Long transactionCount = jdbcTemplate.queryForObject(
@@ -329,20 +290,13 @@ public class CategoryService {
 
         if (hasTransactions) {
             if (replacementCategoryId == null) {
-                throw new BusinessException(
-                        "CATEGORY_HAS_TRANSACTIONS",
-                        HttpStatus.CONFLICT.value(),
-                        "Còn giao dịch, cần chỉ định danh mục thay thế.");
+                throw new BusinessException(ErrorCode.CATEGORY_HAS_TRANSACTIONS);
             }
             Category replacement = categoryRepository
                     .findByIdAndVisibleToUser(replacementCategoryId, userId)
-                    .orElseThrow(() -> new BusinessException(
-                            "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy danh mục thay thế."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục thay thế."));
             if (!replacement.getType().equals(category.getType())) {
-                throw new BusinessException(
-                        "TYPE_MISMATCH_WITH_PARENT",
-                        HttpStatus.BAD_REQUEST.value(),
-                        "Danh mục thay thế phải cùng loại thu/chi.");
+                throw new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT, "Danh mục thay thế phải cùng loại thu/chi.");
             }
             jdbcTemplate.update(
                     "UPDATE transactions SET category_id = ? WHERE category_id = ?",
@@ -438,22 +392,14 @@ public class CategoryService {
                 .map(Throwable::getMessage)
                 .orElse("");
         if (message.contains("MAX_DEPTH_EXCEEDED")) {
-            return new BusinessException(
-                    "MAX_DEPTH_EXCEEDED", HttpStatus.BAD_REQUEST.value(), "Danh mục chỉ được tối đa hai cấp.");
+            return new BusinessException(ErrorCode.MAX_DEPTH_EXCEEDED);
         }
         if (message.contains("TYPE_MISMATCH_WITH_PARENT")) {
-            return new BusinessException(
-                    "TYPE_MISMATCH_WITH_PARENT",
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Danh mục con phải cùng loại thu/chi với cha.");
+            return new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT);
         }
         if (message.contains("CATEGORY_HAS_CHILDREN")) {
-            return new BusinessException(
-                    "CATEGORY_HAS_CHILDREN",
-                    HttpStatus.CONFLICT.value(),
-                    "Danh mục đang có con, không thể chuyển thành cấp con.");
+            return new BusinessException(ErrorCode.CATEGORY_HAS_CHILDREN);
         }
-        return new BusinessException(
-                "VALIDATION_FAILED", HttpStatus.BAD_REQUEST.value(), "Dữ liệu danh mục không hợp lệ.");
+        return new BusinessException(ErrorCode.VALIDATION_ERROR, "Dữ liệu danh mục không hợp lệ.");
     }
 }

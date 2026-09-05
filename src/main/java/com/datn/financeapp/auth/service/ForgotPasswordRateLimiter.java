@@ -1,6 +1,7 @@
 package com.datn.financeapp.auth.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bucket;
@@ -54,10 +55,7 @@ public class ForgotPasswordRateLimiter {
                         .build());
 
         if (!bucket.tryConsume(1)) {
-            throw new BusinessException(
-                    "RATE_LIMIT_EXCEEDED",
-                    429,
-                    "Bạn đã yêu cầu mã quá nhiều lần, vui lòng thử lại sau một giờ.");
+            throw new BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED, "Bạn đã yêu cầu mã quá nhiều lần, vui lòng thử lại sau một giờ.");
         }
     }
 }

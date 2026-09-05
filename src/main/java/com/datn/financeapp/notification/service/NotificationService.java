@@ -1,6 +1,7 @@
 package com.datn.financeapp.notification.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.notification.dto.NotificationListItemResponse;
@@ -48,8 +49,7 @@ public class NotificationService {
     public void markRead(UUID userId, UUID notificationId) {
         notificationRepository
                 .findByIdForUser(notificationId, userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy thông báo."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy thông báo."));
 
         notificationRepository.markRead(notificationId, userId);
     }

@@ -23,6 +23,7 @@ import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.repository.UserRepository;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.JwtService;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
@@ -80,8 +81,7 @@ public class AuthService {
     public AuthResponse register(RegisterRequest req) {
         String email = req.email().toLowerCase();
         if (userRepository.existsByEmail(email)) {
-            throw new BusinessException(
-                    "EMAIL_ALREADY_EXISTS", HttpStatus.CONFLICT.value(), "Email đã có người dùng.");
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         Instant now = Instant.now();
@@ -137,10 +137,7 @@ public class AuthService {
         String email = req.email().toLowerCase();
 
         if (isLockedOut(email)) {
-            throw new BusinessException(
-                    "ACCOUNT_LOCKED",
-                    HttpStatus.FORBIDDEN.value(),
-                    "Tài khoản tạm khoá do đăng nhập sai nhiều lần.");
+            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
         }
 
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -169,10 +166,7 @@ public class AuthService {
                 .build());
 
         if (!passwordOk) {
-            throw new BusinessException(
-                    "INVALID_CREDENTIALS",
-                    HttpStatus.UNAUTHORIZED.value(),
-                    "Email hoặc mật khẩu không đúng.");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         User user = userOpt.get();
@@ -182,10 +176,7 @@ public class AuthService {
         // mật khẩu đúng: người gõ sai mật khẩu của một tài khoản bị khoá không cần biết tài
         // khoản đó tồn tại và đang bị khoá.
         if (user.isBlocked()) {
-            throw new BusinessException(
-                    "ACCOUNT_BLOCKED",
-                    HttpStatus.FORBIDDEN.value(),
-                    "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ.");
+            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED);
         }
 
         user.setLastLoginAt(Instant.now());
@@ -215,15 +206,13 @@ public class AuthService {
             refreshTokenRepository
                     .findByTokenHash(hash)
                     .ifPresent(revoked -> refreshTokenRepository.revokeAllActiveForUser(revoked.getUserId()));
-            throw new BusinessException(
-                    "REFRESH_TOKEN_INVALID", HttpStatus.UNAUTHORIZED.value(), "Thẻ làm mới không hợp lệ.");
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         RefreshToken current = activeOpt.get();
         if (current.getExpiresAt().isBefore(Instant.now())) {
             // Hết hạn tự nhiên — không phải dấu hiệu bị đánh cắp, không cần revoke toàn bộ.
-            throw new BusinessException(
-                    "REFRESH_TOKEN_INVALID", HttpStatus.UNAUTHORIZED.value(), "Thẻ làm mới không hợp lệ.");
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
         }
 
         current.setRevokedAt(Instant.now());
@@ -236,10 +225,7 @@ public class AuthService {
         User user = userRepository
                 .findById(current.getUserId())
                 .filter(u -> !u.isBlocked() && !u.isDeleted())
-                .orElseThrow(() -> new BusinessException(
-                        "REFRESH_TOKEN_INVALID",
-                        HttpStatus.UNAUTHORIZED.value(),
-                        "Thẻ làm mới không hợp lệ."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID));
 
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getPlan());
         String newRawToken = issueRefreshToken(user.getId());
@@ -286,8 +272,7 @@ public class AuthService {
     public UserDetailDto getMe(UUID userId) {
         User user = userRepository
                 .findById(userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
 
         long walletCount = walletRepository.countByUserIdAndIsDeletedFalse(userId);
         Long transactionCount = jdbcTemplate.queryForObject(
@@ -317,8 +302,7 @@ public class AuthService {
     public UserSummaryDto updateProfile(UUID userId, UpdateProfileRequest req) {
         User user = userRepository
                 .findById(userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
 
         if (req.username() != null) {
             user.setUsername(req.username());
@@ -344,22 +328,17 @@ public class AuthService {
     public void changePassword(UUID userId, ChangePasswordRequest req) {
         User user = userRepository
                 .findById(userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
 
         // D3 — tài khoản Google thuần chưa từng đặt mật khẩu, không có "mật khẩu cũ" để nhập.
         // App đã ẩn nút Đổi mật khẩu với loại tài khoản này, nhưng backend vẫn phải tự chặn:
         // bảo vệ chỉ ở phía client thì ai gọi thẳng API cũng qua (api/01 mục 13).
         if (user.getPasswordHash() == null) {
-            throw new BusinessException(
-                    "NO_PASSWORD_SET",
-                    HttpStatus.BAD_REQUEST.value(),
-                    "Tài khoản đăng nhập bằng Google, chưa đặt mật khẩu.");
+            throw new BusinessException(ErrorCode.NO_PASSWORD_SET);
         }
 
         if (!passwordEncoder.matches(req.oldPassword(), user.getPasswordHash())) {
-            throw new BusinessException(
-                    "WRONG_OLD_PASSWORD", HttpStatus.BAD_REQUEST.value(), "Mật khẩu cũ không đúng.");
+            throw new BusinessException(ErrorCode.WRONG_OLD_PASSWORD);
         }
 
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
@@ -421,14 +400,10 @@ public class AuthService {
         String hash = sha256Hex(req.resetCode());
         PasswordResetToken token = passwordResetTokenRepository
                 .findByTokenHashAndUsedAtIsNull(hash)
-                .orElseThrow(() -> new BusinessException(
-                        "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
-                        "Mã sai, hết hạn hoặc đã dùng."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESET_CODE_INVALID));
 
         if (token.getExpiresAt().isBefore(Instant.now())) {
-            throw new BusinessException(
-                    "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
-                    "Mã sai, hết hạn hoặc đã dùng.");
+            throw new BusinessException(ErrorCode.RESET_CODE_INVALID);
         }
 
         // B3 — cửa thứ tư. Mã có thể đã phát hợp lệ TRƯỚC khi ADMIN khoá tài khoản, nên phải
@@ -437,9 +412,7 @@ public class AuthService {
         User user = userRepository
                 .findById(token.getUserId())
                 .filter(u -> !u.isBlocked() && !u.isDeleted())
-                .orElseThrow(() -> new BusinessException(
-                        "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
-                        "Mã sai, hết hạn hoặc đã dùng."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESET_CODE_INVALID));
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
         userRepository.save(user);
 
@@ -472,16 +445,14 @@ public class AuthService {
     public void deleteAccount(UUID userId, DeleteAccountRequest req) {
         User user = userRepository
                 .findById(userId)
-                .orElseThrow(() -> new BusinessException(
-                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản."));
 
         // D3 — tài khoản Google thuần VẪN xoá được, chỉ bỏ qua bước so mật khẩu vì không có
         // mật khẩu nào để so. App thay ô nhập mật khẩu bằng ô gõ chữ XOA (prd/01 mục 9.4).
         // Không nới lỏng gì về bảo mật: endpoint này đã yêu cầu access token hợp lệ.
         if (user.getPasswordHash() != null
                 && !passwordEncoder.matches(req.password(), user.getPasswordHash())) {
-            throw new BusinessException(
-                    "WRONG_PASSWORD", HttpStatus.BAD_REQUEST.value(), "Mật khẩu không đúng.");
+            throw new BusinessException(ErrorCode.WRONG_PASSWORD);
         }
 
         user.setDeleted(true);
@@ -547,16 +518,10 @@ public class AuthService {
      */
     private void checkGoogleAccountState(User user) {
         if (user.isDeleted()) {
-            throw new BusinessException(
-                    "INVALID_CREDENTIALS",
-                    HttpStatus.UNAUTHORIZED.value(),
-                    "Email hoặc mật khẩu không đúng.");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
         if (user.isBlocked()) {
-            throw new BusinessException(
-                    "ACCOUNT_BLOCKED",
-                    HttpStatus.FORBIDDEN.value(),
-                    "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ.");
+            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED);
         }
     }
 

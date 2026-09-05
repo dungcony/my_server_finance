@@ -1,6 +1,7 @@
 package com.datn.financeapp.common.idempotency;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -70,15 +71,13 @@ public class IdempotencyAspect {
         if (inserted == 0) {
             IdempotencyKeyEntity existing = repository
                     .findByIdempotencyKeyAndUserIdAndEndpoint(key, userId, endpoint)
-                    .orElseThrow(() -> new BusinessException(
-                            "INTERNAL_ERROR", 500, "Không đọc lại được bản ghi idempotency vừa xung đột."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR, "Không đọc lại được bản ghi idempotency vừa xung đột."));
 
             if (STATUS_COMPLETED.equals(existing.getStatus())) {
                 return buildResponseFromCache(existing, pjp);
             }
 
-            throw new BusinessException(
-                    "REQUEST_IN_PROGRESS", 409, "Yêu cầu trước đó đang được xử lý, vui lòng thử lại sau.");
+            throw new BusinessException(ErrorCode.REQUEST_IN_PROGRESS);
         }
 
         try {
@@ -94,8 +93,7 @@ public class IdempotencyAspect {
     private void markCompleted(String key, UUID userId, String endpoint, Object result) {
         IdempotencyKeyEntity existing = repository
                 .findByIdempotencyKeyAndUserIdAndEndpoint(key, userId, endpoint)
-                .orElseThrow(() -> new BusinessException(
-                        "INTERNAL_ERROR", 500, "Không tìm thấy bản ghi idempotency để cập nhật completed."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR, "Không tìm thấy bản ghi idempotency để cập nhật completed."));
 
         int status = HttpStatus.OK.value();
         Object body = result;
