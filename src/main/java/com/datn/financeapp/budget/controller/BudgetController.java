@@ -1,11 +1,11 @@
 package com.datn.financeapp.budget.controller;
 
-import com.datn.financeapp.budget.dto.BudgetAlertResponse;
-import com.datn.financeapp.budget.dto.BudgetListItemResponse;
-import com.datn.financeapp.budget.dto.BudgetSuggestionResponse;
-import com.datn.financeapp.budget.dto.BudgetSummaryResponse;
-import com.datn.financeapp.budget.dto.CreateBudgetRequest;
-import com.datn.financeapp.budget.dto.UpdateBudgetRequest;
+import com.datn.financeapp.budget.dto.response.BudgetAlertResponse;
+import com.datn.financeapp.budget.dto.response.BudgetListItemResponse;
+import com.datn.financeapp.budget.dto.response.BudgetSuggestionResponse;
+import com.datn.financeapp.budget.dto.response.BudgetSummaryResponse;
+import com.datn.financeapp.budget.dto.request.CreateBudgetRequest;
+import com.datn.financeapp.budget.dto.request.UpdateBudgetRequest;
 import com.datn.financeapp.budget.service.BudgetService;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;

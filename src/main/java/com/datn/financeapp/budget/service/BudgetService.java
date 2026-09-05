@@ -1,11 +1,11 @@
 package com.datn.financeapp.budget.service;
 
-import com.datn.financeapp.budget.dto.BudgetAlertResponse;
-import com.datn.financeapp.budget.dto.BudgetListItemResponse;
-import com.datn.financeapp.budget.dto.BudgetSuggestionResponse;
-import com.datn.financeapp.budget.dto.BudgetSummaryResponse;
-import com.datn.financeapp.budget.dto.CreateBudgetRequest;
-import com.datn.financeapp.budget.dto.UpdateBudgetRequest;
+import com.datn.financeapp.budget.dto.response.BudgetAlertResponse;
+import com.datn.financeapp.budget.dto.response.BudgetListItemResponse;
+import com.datn.financeapp.budget.dto.response.BudgetSuggestionResponse;
+import com.datn.financeapp.budget.dto.response.BudgetSummaryResponse;
+import com.datn.financeapp.budget.dto.request.CreateBudgetRequest;
+import com.datn.financeapp.budget.dto.request.UpdateBudgetRequest;
 import com.datn.financeapp.budget.entity.Budget;
 import com.datn.financeapp.budget.repository.BudgetProgressRepository;
 import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
@@ -17,7 +17,7 @@ import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.notification.repository.NotificationRepository;
-import com.datn.financeapp.report.dto.ReportHomeResponse;
+import com.datn.financeapp.report.dto.response.ReportHomeResponse;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.math.BigDecimal;

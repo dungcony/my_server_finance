@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.AuthResponse;
-import com.datn.financeapp.auth.dto.DeleteAccountRequest;
-import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.LoginRequest;
-import com.datn.financeapp.auth.dto.RefreshRequest;
-import com.datn.financeapp.auth.dto.RegisterRequest;
+import com.datn.financeapp.auth.dto.response.AuthResponse;
+import com.datn.financeapp.auth.dto.request.DeleteAccountRequest;
+import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
+import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.RefreshRequest;
+import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.entity.User;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;

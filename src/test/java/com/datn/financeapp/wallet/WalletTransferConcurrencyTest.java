@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.auth.entity.User;
 import com.datn.financeapp.auth.repository.UserRepository;
-import com.datn.financeapp.wallet.dto.TransferRequest;
+import com.datn.financeapp.wallet.dto.request.TransferRequest;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.datn.financeapp.wallet.service.WalletTransferService;

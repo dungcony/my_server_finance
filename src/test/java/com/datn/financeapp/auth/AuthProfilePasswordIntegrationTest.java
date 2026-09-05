@@ -3,12 +3,12 @@ package com.datn.financeapp.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.ChangePasswordRequest;
-import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.RegisterRequest;
-import com.datn.financeapp.auth.dto.ResetPasswordRequest;
-import com.datn.financeapp.auth.dto.UpdateProfileRequest;
-import com.datn.financeapp.auth.dto.UserDetailResponse;
+import com.datn.financeapp.auth.dto.request.ChangePasswordRequest;
+import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
+import com.datn.financeapp.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
+import com.datn.financeapp.auth.dto.request.UpdateProfileRequest;
+import com.datn.financeapp.auth.dto.response.UserDetailResponse;
 import com.datn.financeapp.auth.entity.PasswordResetToken;
 import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.entity.User;
@@ -123,10 +123,10 @@ class AuthProfilePasswordIntegrationTest {
 
         // Giả lập 2 phiên đăng nhập trước đó — mỗi login cấp thêm 1 refresh token active.
         authService.login(
-                new com.datn.financeapp.auth.dto.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
+                new com.datn.financeapp.auth.dto.request.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
                 "127.0.0.1", "junit");
         authService.login(
-                new com.datn.financeapp.auth.dto.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
+                new com.datn.financeapp.auth.dto.request.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
                 "127.0.0.1", "junit");
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isNotEmpty();

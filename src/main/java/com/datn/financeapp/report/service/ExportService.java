@@ -2,8 +2,8 @@ package com.datn.financeapp.report.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.report.dto.ExportJobResponse;
-import com.datn.financeapp.report.dto.ExportRequest;
+import com.datn.financeapp.report.dto.response.ExportJobResponse;
+import com.datn.financeapp.report.dto.request.ExportRequest;
 import com.datn.financeapp.report.entity.ExportJob;
 import com.datn.financeapp.report.export.ExportAsyncRunner;
 import com.datn.financeapp.report.repository.ExportJobRepository;

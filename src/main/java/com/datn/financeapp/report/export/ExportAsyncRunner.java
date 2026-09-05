@@ -2,7 +2,7 @@ package com.datn.financeapp.report.export;
 
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.report.dto.ExportRequest;
+import com.datn.financeapp.report.dto.request.ExportRequest;
 import com.datn.financeapp.report.export.CsvReportWriter.TransactionExportRow;
 import com.datn.financeapp.report.repository.ReportRepository;
 import com.datn.financeapp.transaction.entity.Transaction;
