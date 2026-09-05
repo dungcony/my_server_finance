@@ -87,6 +87,14 @@ public class AuthService {
                 .passwordHash(passwordEncoder.encode(req.password()))
                 .username(req.username())
                 .plan("free")
+                // Bốn cột V12 nêu tường minh dù entity đã có @Builder.Default — luồng đăng ký
+                // bằng email là chỗ duy nhất quyết định giá trị khởi đầu của chúng, đọc thẳng ở
+                // đây rẻ hơn phải mở entity ra tra. isConfirm = false vì luồng xác thực email
+                // chưa làm (prd/01 mục 11); tài khoản Google sau này sẽ đặt true.
+                .role("USER")
+                .isConfirm(false)
+                .isBlocked(false)
+                .isDeleted(false)
                 .createdAt(now)
                 .build();
         userRepository.save(user);
@@ -132,6 +140,13 @@ public class AuthService {
         }
 
         Optional<User> userOpt = userRepository.findByEmail(email);
+
+        // B3 — tài khoản đã xoá coi như KHÔNG TỒN TẠI với thế giới bên ngoài. Bỏ nó ra khỏi
+        // userOpt ngay tại đây để mọi nhánh phía dưới hành xử y hệt trường hợp email chưa từng
+        // đăng ký: cùng mã INVALID_CREDENTIALS, cùng bản ghi login_attempts. Báo "tài khoản đã
+        // xoá" là xác nhận email đó từng đăng ký — vẫn là rò rỉ thông tin (prd/01 mục 7.1).
+        userOpt = userOpt.filter(u -> !u.isDeleted());
+
         boolean passwordOk = userOpt.isPresent()
                 && passwordEncoder.matches(req.password(), userOpt.get().getPasswordHash());
 
@@ -152,6 +167,18 @@ public class AuthService {
         }
 
         User user = userOpt.get();
+
+        // B3 — ADMIN khoá: mã RIÊNG với ACCOUNT_LOCKED (khoá tạm 15 phút) vì hai tình huống cần
+        // hai hành động khác nhau — chờ hết giờ, hay liên hệ hỗ trợ (prd/01 mục 3). Kiểm SAU khi
+        // mật khẩu đúng: người gõ sai mật khẩu của một tài khoản bị khoá không cần biết tài
+        // khoản đó tồn tại và đang bị khoá.
+        if (user.isBlocked()) {
+            throw new BusinessException(
+                    "ACCOUNT_BLOCKED",
+                    HttpStatus.FORBIDDEN.value(),
+                    "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ.");
+        }
+
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
@@ -193,8 +220,13 @@ public class AuthService {
         current.setRevokedAt(Instant.now());
         refreshTokenRepository.save(current);
 
+        // B3 — chặn cả tài khoản bị khoá lẫn đã xoá: refresh token còn nằm trong máy người dùng
+        // và sống 30 ngày, không chặn ở đây thì họ xin access token mới mãi mãi và việc khoá tài
+        // khoản thành vô nghĩa. Trả cùng REFRESH_TOKEN_INVALID như token hỏng — app đã biết cách
+        // xử lý mã này (đá về màn đăng nhập), và ở đó mới hiện lý do thật.
         User user = userRepository
                 .findById(current.getUserId())
+                .filter(u -> !u.isBlocked() && !u.isDeleted())
                 .orElseThrow(() -> new BusinessException(
                         "REFRESH_TOKEN_INVALID",
                         HttpStatus.UNAUTHORIZED.value(),
@@ -262,7 +294,8 @@ public class AuthService {
 
         return new UserDetailDto(
                 user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
-                user.getPlan(), user.getCreatedAt(), user.getLastLoginAt(), stats);
+                user.getPlan(), user.isConfirm(), user.getRole(),
+                user.getCreatedAt(), user.getLastLoginAt(), stats);
     }
 
     /**
@@ -287,7 +320,7 @@ public class AuthService {
 
         return new UserSummaryDto(
                 user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
-                user.getPlan(), user.getCreatedAt());
+                user.getPlan(), user.isConfirm(), user.getRole(), user.getCreatedAt());
     }
 
     /**
@@ -325,7 +358,13 @@ public class AuthService {
      */
     @Transactional
     public void forgotPassword(ForgotPasswordRequest req) {
-        Optional<User> userOpt = userRepository.findByEmail(req.email().toLowerCase());
+        // B3 — LỖ HỔNG ĐÃ VÁ: trước đây chỉ findByEmail không lọc gì, nên tài khoản đã xoá vẫn
+        // nhận mã và đặt lại mật khẩu thành công — người đã rời đi vẫn quay lại được. Vẫn trả
+        // 200 âm thầm (không token, không mail) chứ không trả 403: trả lỗi ở đây cho kẻ xấu một
+        // cách dò xem email nào đã bị khoá (prd/01 mục 7.1).
+        Optional<User> userOpt = userRepository
+                .findByEmail(req.email().toLowerCase())
+                .filter(u -> !u.isBlocked() && !u.isDeleted());
         if (userOpt.isEmpty()) {
             return;
         }
@@ -365,8 +404,12 @@ public class AuthService {
                     "Mã sai, hết hạn hoặc đã dùng.");
         }
 
+        // B3 — cửa thứ tư. Mã có thể đã phát hợp lệ TRƯỚC khi ADMIN khoá tài khoản, nên phải
+        // kiểm lại tại thời điểm dùng chứ không chỉ tại thời điểm phát. Dùng chung
+        // RESET_CODE_INVALID với mọi lý do khác để không lộ trạng thái tài khoản.
         User user = userRepository
                 .findById(token.getUserId())
+                .filter(u -> !u.isBlocked() && !u.isDeleted())
                 .orElseThrow(() -> new BusinessException(
                         "RESET_CODE_INVALID", HttpStatus.BAD_REQUEST.value(),
                         "Mã sai, hết hạn hoặc đã dùng."));
@@ -404,7 +447,7 @@ public class AuthService {
 
         UserSummaryDto userDto = new UserSummaryDto(
                 user.getId(), user.getEmail(), user.getUsername(), user.getAvatarUrl(),
-                user.getPlan(), user.getCreatedAt());
+                user.getPlan(), user.isConfirm(), user.getRole(), user.getCreatedAt());
 
         return new AuthResponse(userDto, accessToken, rawRefreshToken, jwtService.getAccessTokenExpirySeconds());
     }

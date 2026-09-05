@@ -113,6 +113,12 @@ class AuthRegisterLoginIntegrationTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.user.id").exists())
+                // B4 — ba trường mới, canh đúng KHOÁ JSON chứ không chỉ giá trị: field record tên
+                // isConfirm khiến Jackson mặc định sinh khoá "confirm", phải có @JsonProperty mới
+                // ra "is_confirm" như api/01 chốt. Test ở tầng service không nhìn thấy sai lệch này.
+                .andExpect(jsonPath("$.data.user.username").value("Minh Nguyễn"))
+                .andExpect(jsonPath("$.data.user.is_confirm").value(false))
+                .andExpect(jsonPath("$.data.user.role").value("USER"))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.refresh_token").isNotEmpty())
                 .andReturn()

@@ -1,5 +1,6 @@
 package com.datn.financeapp.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -10,6 +11,9 @@ public record UserDetailDto(
         String username,
         String avatarUrl,
         String plan,
+        /** Xem ghi chú cùng tên ở {@link UserSummaryDto} về khoá JSON. */
+        @JsonProperty("is_confirm") boolean isConfirm,
+        String role,
         Instant createdAt,
         Instant lastLoginAt,
         UserStatsDto stats) {

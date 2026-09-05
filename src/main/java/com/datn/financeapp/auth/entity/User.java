@@ -52,6 +52,40 @@ public class User {
     @Column(name = "plan", nullable = false)
     private String plan;
 
+    /**
+     * Vai trò cấp hệ thống ({@code USER} / {@code ADMIN}) — thêm ở V12. Độc lập hoàn toàn với
+     * {@code group_members.role}: ADMIN hệ thống không có quyền gì trong nhóm gia đình.
+     */
+    @Builder.Default
+    @Column(name = "role", nullable = false)
+    private String role = "USER";
+
+    /**
+     * Đã xác thực email chưa. Tài khoản đăng ký bằng email nhận {@code false} (luồng xác thực
+     * chưa làm — prd/01 mục 11), tài khoản Google nhận {@code true}. Backend KHÔNG chặn đăng
+     * nhập theo cột này ở đợt này, chỉ trả ra cho app biết.
+     */
+    @Builder.Default
+    @Column(name = "is_confirm", nullable = false)
+    private boolean isConfirm = false;
+
+    /**
+     * ADMIN khoá tài khoản vĩnh viễn → đăng nhập trả {@code ACCOUNT_BLOCKED}. ĐỪNG NHẦM với
+     * khoá tạm 15 phút sau 5 lần sai mật khẩu ({@code ACCOUNT_LOCKED}, tính từ
+     * {@code login_attempts}).
+     */
+    @Builder.Default
+    @Column(name = "is_blocked", nullable = false)
+    private boolean isBlocked = false;
+
+    /**
+     * Người dùng tự xoá tài khoản — xoá MỀM. Với thế giới bên ngoài, tài khoản này coi như
+     * không tồn tại: mọi cửa vào trả đúng lỗi như thể email chưa từng đăng ký.
+     */
+    @Builder.Default
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
