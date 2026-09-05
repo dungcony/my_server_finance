@@ -75,6 +75,11 @@ Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gố
 7. **Mọi báo cáo phải loại `type='transfer'`.** Gom nhóm báo cáo theo ngày/tháng dùng thẳng cột `transactions.date` (kiểu `DATE` thuần, không có thành phần giờ) — KHÔNG chuyển đổi múi giờ dưới bất kỳ hình thức nào. Đây là thiết kế cố ý để tránh hẳn lớp bug múi giờ.
 8. **`amount` luôn kiểu `Long`**, không bao giờ `Double`/`float` ở bất kỳ tầng nào.
 9. **AI (parse-text/OCR) không bao giờ tự tạo `transactions`** — luôn qua `ai_drafts.status='pending'`, chờ duyệt; khi duyệt phải ghi `user_corrections`.
+10. **Mã lỗi chỉ khai trong `ErrorCode` enum**, không bao giờ là chuỗi rời. `BusinessException` chỉ nhận `ErrorCode` — constructor nhận `String` đã bị gỡ, và đừng thêm lại: chính nó là thứ cho phép gõ sai mã mà build vẫn qua.
+    - Ném lỗi: `throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);`
+    - Cần câu cụ thể hơn câu mặc định: `new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.")`
+    - **Tên hằng số chính là mã đi ra JSON** — đổi tên là đổi hợp đồng với app Flutter (`lib/core/network/api_error.dart`), phải sửa `api/*.md` và app trong cùng lần thay đổi.
+    - **`NOT_FOUND` cố ý dùng chung cho mọi loại tài nguyên** (46 chỗ) — xem quy tắc 5: không có quyền thì trả 404 để không lộ bản ghi có tồn tại hay không. Tách thành `WALLET_NOT_FOUND`, `BUDGET_NOT_FOUND`… là làm hỏng chính điều đó. Chỉ `message` mới nói cụ thể, vì nó chỉ hiện cho người có quyền hợp lệ.
 
 ## Ngôn ngữ
 
