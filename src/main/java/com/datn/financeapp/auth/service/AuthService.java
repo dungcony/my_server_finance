@@ -2,6 +2,7 @@ package com.datn.financeapp.auth.service;
 
 import com.datn.financeapp.auth.dto.AuthResponse;
 import com.datn.financeapp.auth.dto.ChangePasswordRequest;
+import com.datn.financeapp.auth.dto.DeleteAccountRequest;
 import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.LoginRequest;
 import com.datn.financeapp.auth.dto.RefreshRequest;
@@ -64,6 +65,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final PasswordResetNotifier passwordResetNotifier;
+    private final ForgotPasswordRateLimiter forgotPasswordRateLimiter;
     private final JdbcTemplate jdbcTemplate;
 
     private static final long RESET_CODE_TTL_MINUTES = 15;
@@ -358,6 +360,11 @@ public class AuthService {
      */
     @Transactional
     public void forgotPassword(ForgotPasswordRequest req) {
+        // C4 — tầng giới hạn theo email, tiêu lượt TRƯỚC khi tra email có tồn tại hay không
+        // (api/01 mục 11). Đây là lời gọi duy nhất có thể ném ra khỏi method, cố ý: ngoại lệ
+        // "luôn trả 200" nói ở javadoc trên chỉ áp cho việc email tồn tại hay không.
+        forgotPasswordRateLimiter.consume(req.email());
+
         // B3 — LỖ HỔNG ĐÃ VÁ: trước đây chỉ findByEmail không lọc gì, nên tài khoản đã xoá vẫn
         // nhận mã và đặt lại mật khẩu thành công — người đã rời đi vẫn quay lại được. Vẫn trả
         // 200 âm thầm (không token, không mail) chứ không trả 403: trả lỗi ở đây cho kẻ xấu một
@@ -422,6 +429,47 @@ public class AuthService {
         // api/01 mục 9: "Thành công thì thu hồi toàn bộ thẻ của tài khoản" — không có ngoại lệ
         // "trừ phiên hiện tại" ở đây, khác với change-password.
         refreshTokenRepository.revokeAllActiveForUser(user.getId());
+    }
+
+    /**
+     * C2: DELETE /auth/account — xoá MỀM, bốn bước trong cùng một transaction
+     * (api/01-XAC-THUC.md mục 10).
+     *
+     * <p>Bốn bước phải nằm trọn trong một transaction: dừng giữa chừng sẽ để lại tài khoản đã
+     * đánh dấu xoá nhưng refresh token còn sống 30 ngày — người vừa "xoá" vẫn xin được access
+     * token mới qua {@code /auth/refresh} và tiếp tục dùng app như chưa có gì xảy ra.
+     *
+     * <p><b>Không viết lại logic chặn ở đây.</b> B3 đã lọc {@code isDeleted} ở cả bốn cửa vào
+     * (login, refresh, forgot-password, reset-password), nên bật cờ là tài khoản tự động không
+     * vào lại được. Email cũng không được giải phóng: {@code register} kiểm {@code existsByEmail}
+     * không lọc {@code is_deleted} — cố ý, để người đăng ký mới không thừa hưởng lịch sử nhóm
+     * của người trước.
+     *
+     * <p><b>Dữ liệu tài chính giữ nguyên</b> — không xoá ví, giao dịch, ngân sách, sổ nợ, mục
+     * tiêu. Giao dịch ghi trên ví chung là dữ liệu của nhóm, thành viên còn lại vẫn cần thấy.
+     */
+    @Transactional
+    public void deleteAccount(UUID userId, DeleteAccountRequest req) {
+        User user = userRepository
+                .findById(userId)
+                .orElseThrow(() -> new BusinessException(
+                        "NOT_FOUND", HttpStatus.NOT_FOUND.value(), "Không tìm thấy tài khoản."));
+
+        if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {
+            throw new BusinessException(
+                    "WRONG_PASSWORD", HttpStatus.BAD_REQUEST.value(), "Mật khẩu không đúng.");
+        }
+
+        user.setDeleted(true);
+        userRepository.save(user);
+
+        refreshTokenRepository.revokeAllActiveForUser(userId);
+
+        // Chưa có module group/ (Phase 5 backend chưa làm) nên chưa có repository cho
+        // group_members — dùng native SQL lên bảng đã có sẵn từ V1. Rời nhóm chứ không xoá bản
+        // ghi: lịch sử "ai từng ở trong nhóm" vẫn cần cho các giao dịch họ để lại trên ví chung.
+        jdbcTemplate.update(
+                "UPDATE group_members SET is_active = FALSE WHERE user_id = ? AND is_active", userId);
     }
 
     // ---------------------------------------------------------------------

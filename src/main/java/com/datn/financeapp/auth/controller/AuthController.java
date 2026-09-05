@@ -2,6 +2,7 @@ package com.datn.financeapp.auth.controller;
 
 import com.datn.financeapp.auth.dto.AuthResponse;
 import com.datn.financeapp.auth.dto.ChangePasswordRequest;
+import com.datn.financeapp.auth.dto.DeleteAccountRequest;
 import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.LoginRequest;
 import com.datn.financeapp.auth.dto.LogoutRequest;
@@ -21,6 +22,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -95,6 +97,18 @@ public class AuthController {
         // AuthService.forgotPassword không throw ở bất kỳ nhánh nào — response LUÔN 200 giống
         // hệt nhau dù email tồn tại hay không (T-05-01, chống dò danh sách người dùng).
         authService.forgotPassword(req);
+        return ApiResponse.of(null);
+    }
+
+    /**
+     * C2 — xoá tài khoản (api/01-XAC-THUC.md mục 10). DELETE có body: đặc tả bắt nhập lại mật
+     * khẩu, và mật khẩu không được phép nằm trên query string (lộ trong log máy chủ, lịch sử
+     * trình duyệt). Endpoint không nằm trong permitAll của SecurityConfig nên đã bắt buộc
+     * Bearer token; danh tính lấy từ JWT, client không tự chỉ định được xoá tài khoản nào.
+     */
+    @DeleteMapping("/account")
+    public ApiResponse<Void> deleteAccount(@Valid @RequestBody DeleteAccountRequest req) {
+        authService.deleteAccount(SecurityContextUtil.currentUserId(), req);
         return ApiResponse.of(null);
     }
 
