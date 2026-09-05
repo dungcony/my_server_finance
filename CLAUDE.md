@@ -59,6 +59,32 @@ com.datn.financeapp
 
 Mỗi package nghiệp vụ tự chứa Controller/Service/Repository/dto/entity của mình. Không tạo `controller/`, `service/`, `repository/` ở cấp cao nhất.
 
+### DTO — tách hai chiều vào/ra
+
+```
+<module>/dto/
+├── request/     # dữ liệu client gửi lên
+└── response/    # dữ liệu trả về client
+```
+
+**Quy ước đặt tên — theo được thì phân loại thư mục là hiển nhiên:**
+
+| Loại | Mẫu tên | Ví dụ |
+|---|---|---|
+| Vào | `<Hành động><Domain>Request` | `CreateWalletRequest`, `UpdateBudgetRequest` |
+| Vào (lọc/tìm) | `<Domain>FilterRequest` | `TransactionFilterRequest` |
+| Ra — một bản ghi | `<Domain>Response` | `WalletResponse` |
+| Ra — bản ghi đầy đủ | `<Domain>DetailResponse` | `CategoryDetailResponse` |
+| Ra — một dòng trong danh sách | `<Domain>ListItemResponse` | `DebtListItemResponse` |
+| Ra — cả trang danh sách | `<Domain>ListResponse` | `TransactionListResponse` |
+
+**Không đặt hậu tố `Dto`** — nhìn tên phải biết ngay chiều dữ liệu. Sáu file từng đặt kiểu đó
+(`UserDetailDto`, `WalletStatsDto`…) đã đổi hết ở nhóm F của PRD 02.
+
+⚠️ **Đổi tên class KHÔNG đổi khoá JSON** — khoá đến từ `@JsonProperty` và cấu hình `snake_case`
+toàn cục, độc lập hoàn toàn với tên class Java. Nhưng phải kiểm bằng test canh `jsonPath` chứ
+đừng tin suông.
+
 ## Quy tắc bắt buộc riêng cho backend này
 
 Kế thừa toàn bộ 8 quy tắc nghiệp vụ bất biến ở CLAUDE.md gốc, cộng thêm:
