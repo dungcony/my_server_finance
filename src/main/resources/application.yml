@@ -48,6 +48,13 @@ app:
     # Gmail luôn ghi đè From bằng tài khoản đã xác thực nên hai giá trị này phải trùng.
     from: ${MAIL_FROM:${MAIL_USERNAME:}}
 
+google:
+  # D3: backend so trường `aud` của id_token với chuỗi này. Google đặt `aud` bằng
+  # WEB client id kể cả khi người dùng bấm nút trên Android — điền nhầm client
+  # Android vào đây thì mọi lần đăng nhập đều trượt (api/01 mục 13).
+  # Mặc định rỗng để context test khởi động được mà không cần .env.
+  web-client-id: ${GOOGLE_WEB_CLIENT_ID:}
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiry-seconds: 3600

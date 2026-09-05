@@ -14,7 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * SecurityFilterChain STATELESS — không session, xác thực hoàn toàn qua JWT mỗi request.
- * Endpoint /auth/register|login|refresh|forgot-password|reset-password công khai, còn lại
+ * Endpoint /auth/register|login|google|refresh|forgot-password|reset-password công khai, còn lại
  * yêu cầu Bearer token hợp lệ.
  *
  * D-18: RateLimitFilter đặt SAU JwtAuthFilter để tầng ai/default đọc được user_id từ
@@ -40,7 +40,10 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/register", "/auth/login", "/auth/refresh",
-                                "/auth/forgot-password", "/auth/reset-password").permitAll()
+                                "/auth/forgot-password", "/auth/reset-password",
+                                // D3 — người chưa đăng nhập mới bấm nút Google. Danh tính do
+                                // chữ ký id_token của Google chứng minh, không phải Bearer token.
+                                "/auth/google").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

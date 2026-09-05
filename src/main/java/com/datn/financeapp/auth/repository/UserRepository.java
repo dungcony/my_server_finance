@@ -10,4 +10,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    /** D3: tra tài khoản theo trường {@code sub} của id_token Google. */
+    Optional<User> findByGoogleId(String googleId);
 }

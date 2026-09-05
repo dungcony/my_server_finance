@@ -4,6 +4,7 @@ import com.datn.financeapp.auth.dto.AuthResponse;
 import com.datn.financeapp.auth.dto.ChangePasswordRequest;
 import com.datn.financeapp.auth.dto.DeleteAccountRequest;
 import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
+import com.datn.financeapp.auth.dto.GoogleLoginRequest;
 import com.datn.financeapp.auth.dto.LoginRequest;
 import com.datn.financeapp.auth.dto.LogoutRequest;
 import com.datn.financeapp.auth.dto.RefreshRequest;
@@ -60,6 +61,16 @@ public class AuthController {
         String ip = ClientIpResolver.resolve(httpReq);
         String userAgent = httpReq.getHeader("User-Agent");
         return ApiResponse.of(authService.login(req, ip, userAgent));
+    }
+
+    /**
+     * D3: trả 200 cho cả trường hợp tạo tài khoản mới, không phải 201 như {@code /register}.
+     * Người dùng bấm một nút và mong vào thẳng — họ không phân biệt "đăng ký" với "đăng nhập",
+     * nên API cũng không nên bắt app xử lý hai nhánh (api/01 mục 13).
+     */
+    @PostMapping("/google")
+    public ApiResponse<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest req) {
+        return ApiResponse.of(authService.loginWithGoogle(req));
     }
 
     @PostMapping("/refresh")

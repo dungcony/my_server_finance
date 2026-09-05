@@ -34,7 +34,12 @@ public class User {
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
+    /**
+     * NULL với tài khoản Google thuần — chưa từng đặt mật khẩu. V13 đã gỡ {@code NOT NULL} khỏi
+     * cột này, nên mọi chỗ so khớp mật khẩu PHẢI kiểm null trước, không thì ném 500 thay vì
+     * thông báo tử tế (api/01 mục 13).
+     */
+    @Column(name = "password_hash")
     private String passwordHash;
 
     /**
@@ -88,6 +93,14 @@ public class User {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    /**
+     * Trường {@code sub} của {@code id_token} Google — định danh KHÔNG đổi kể cả khi người dùng
+     * đổi email bên Google, nên đây mới là thứ đáng lưu chứ không phải email. NULL với tài khoản
+     * đăng ký bằng email. Thêm ở V13.
+     */
+    @Column(name = "google_id", unique = true)
+    private String googleId;
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
