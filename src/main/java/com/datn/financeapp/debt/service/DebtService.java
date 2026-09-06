@@ -1,7 +1,6 @@
 package com.datn.financeapp.debt.service;
 
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.repository.CategoryRepository;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.debt.dto.request.CreateDebtRequest;
@@ -17,12 +16,12 @@ import com.datn.financeapp.debt.entity.Debt;
 import com.datn.financeapp.debt.entity.DebtPayment;
 import com.datn.financeapp.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.debt.repository.DebtRepository;
-import com.datn.financeapp.transaction.repository.TransactionRepository;
 import com.datn.financeapp.transaction.service.TransactionService;
 import com.datn.financeapp.transaction.service.TransactionWriteCommand;
 import com.datn.financeapp.transaction.service.TransactionWriter;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.transaction.dto.response.TransactionRefResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -48,7 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>1. <b>KHÔNG viết lại logic cập nhật số dư ví.</b> Mọi giao dịch sinh ra từ sổ nợ đều đi qua
  * {@link TransactionWriter} (D-31), mọi lần hoàn tác đều đi qua {@link TransactionService#delete}
  * — nơi đã cài đúng luồng 3 bước của CLAUDE.md quy tắc 4. Lớp này không được tự gọi
- * {@code walletRepository.adjustBalance}.
+ * {@code WalletService} để tự cộng trừ số dư.
  *
  * <p>2. <b>KHÔNG ghi paid_amount / status của bảng debts.</b> Hai cột do trigger
  * {@code trg_debt_payments_sync} (V4) sở hữu. Backend chỉ chèn/xoá bản ghi {@code debt_payments};
@@ -72,9 +71,8 @@ public class DebtService {
 
     private final DebtRepository debtRepository;
     private final DebtPaymentRepository debtPaymentRepository;
-    private final CategoryRepository categoryRepository;
-    private final WalletRepository walletRepository;
-    private final TransactionRepository transactionRepository;
+    private final CategoryService categoryService;
+    private final WalletService walletService;
     private final TransactionWriter transactionWriter;
     private final TransactionService transactionService;
     private final DebtReminderWorker debtReminderWorker;
@@ -102,9 +100,10 @@ public class DebtService {
             throw new BusinessException(ErrorCode.INVALID_DUE_DATE);
         }
 
-        Wallet wallet = walletRepository
-                .findByIdForUser(req.walletId(), userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+        WalletRefResponse wallet = walletService.findRefForUser(userId, req.walletId());
+        if (wallet == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+        }
 
         // lending = đưa tiền đi -> giao dịch CHI danh mục "Cho vay".
         // borrowing = nhận tiền về -> giao dịch THU danh mục "Đi vay".
@@ -115,7 +114,7 @@ public class DebtService {
         TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
                 null,
                 userId,
-                wallet.getId(),
+                wallet.id(),
                 null,
                 categoryId,
                 txnType,
@@ -134,7 +133,7 @@ public class DebtService {
         Debt debt = Debt.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .walletId(wallet.getId())
+                .walletId(wallet.id())
                 .type(req.type())
                 .counterpartyName(req.counterpartyName())
                 .principalAmount(req.principalAmount())
@@ -153,7 +152,7 @@ public class DebtService {
         return new CreateDebtResponse(
                 toListItem(debt, wallet, 0),
                 new CreateDebtResponse.OriginTransaction(result.transactionId(), txnType, req.principalAmount()),
-                new CreateDebtResponse.NewBalance(wallet.getId(), result.walletNewBalance()));
+                new CreateDebtResponse.NewBalance(wallet.id(), result.walletNewBalance()));
     }
 
     /**
@@ -180,9 +179,10 @@ public class DebtService {
         }
 
         UUID walletId = req.walletId() != null ? req.walletId() : debt.getWalletId();
-        Wallet wallet = walletRepository
-                .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+        WalletRefResponse wallet = walletService.findRefForUser(userId, walletId);
+        if (wallet == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+        }
 
         // Khoản lending ĐƯỢC trả -> tiền về ví, giao dịch THU danh mục "Thu nợ".
         // Khoản borrowing MÌNH trả -> tiền rời ví, giao dịch CHI danh mục "Trả nợ".
@@ -195,7 +195,7 @@ public class DebtService {
         TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
                 null,
                 userId,
-                wallet.getId(),
+                wallet.id(),
                 null,
                 categoryId,
                 txnType,
@@ -236,7 +236,7 @@ public class DebtService {
                         debt.getPrincipalAmount() - refreshedPaidAmount,
                         refreshedStatus),
                 new CreatePaymentResponse.TransactionSummary(result.transactionId(), txnType, req.amount()),
-                new CreatePaymentResponse.NewBalance(wallet.getId(), result.walletNewBalance()));
+                new CreatePaymentResponse.NewBalance(wallet.id(), result.walletNewBalance()));
     }
 
     /**
@@ -355,7 +355,7 @@ public class DebtService {
     @Transactional(readOnly = true)
     public List<DebtListItemResponse> list(UUID userId, String type, String status, Boolean isOverdue) {
         List<Debt> debts = debtRepository.findAllForUser(userId, type, status);
-        Map<UUID, Wallet> wallets = loadWallets(userId, debts);
+        Map<UUID, WalletRefResponse> wallets = loadWallets(userId, debts);
 
         List<DebtListItemResponse> result = new ArrayList<>();
         for (Debt debt : debts) {
@@ -379,10 +379,10 @@ public class DebtService {
                         p.getId(), p.getAmount(), p.getPaidDate(), p.getNote(), p.getTransactionId()))
                 .toList();
 
-        DebtDetailResponse.OriginTransaction origin = transactionRepository
-                .findById(debt.getOriginTransactionId())
-                .map(t -> new DebtDetailResponse.OriginTransaction(t.getId(), t.getAmount(), t.getDate()))
-                .orElse(null);
+        TransactionRefResponse originRef = transactionService.findRefById(debt.getOriginTransactionId());
+        DebtDetailResponse.OriginTransaction origin = originRef == null
+                ? null
+                : new DebtDetailResponse.OriginTransaction(originRef.id(), originRef.amount(), originRef.date());
 
         return new DebtDetailResponse(
                 toListItem(debt, loadWalletOrNull(userId, debt.getWalletId()), payments.size()), history, origin);
@@ -489,23 +489,25 @@ public class DebtService {
     }
 
     private UUID systemCategoryId(String name, String type) {
-        return categoryRepository
-                .findSystemCategoryByName(name, type)
-                .map(Category::getId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SYSTEM_CATEGORY_MISSING, "Thiếu danh mục hệ thống cho sổ nợ: " + name));
+        return categoryService.findSystemCategoryId(name, type);
     }
 
-    private Wallet loadWalletOrNull(UUID userId, UUID walletId) {
-        return walletRepository.findByIdForUser(walletId, userId).orElse(null);
+    private WalletRefResponse loadWalletOrNull(UUID userId, UUID walletId) {
+        return walletService.findRefForUser(userId, walletId);
     }
 
-    private Map<UUID, Wallet> loadWallets(UUID userId, List<Debt> debts) {
-        Map<UUID, Wallet> wallets = new HashMap<>();
+    private Map<UUID, WalletRefResponse> loadWallets(UUID userId, List<Debt> debts) {
+        Map<UUID, WalletRefResponse> wallets = new HashMap<>();
         debts.stream()
                 .map(Debt::getWalletId)
                 .filter(Objects::nonNull)
                 .distinct()
-                .forEach(id -> walletRepository.findByIdForUser(id, userId).ifPresent(w -> wallets.put(id, w)));
+                .forEach(id -> {
+                    WalletRefResponse ref = walletService.findRefForUser(userId, id);
+                    if (ref != null) {
+                        wallets.put(id, ref);
+                    }
+                });
         return wallets;
     }
 
@@ -513,7 +515,7 @@ public class DebtService {
         return debtPaymentRepository.findByDebtId(debtId).size();
     }
 
-    private DebtListItemResponse toListItem(Debt debt, Wallet wallet, int paymentCount) {
+    private DebtListItemResponse toListItem(Debt debt, WalletRefResponse wallet, int paymentCount) {
         long remaining = debt.getPrincipalAmount() - debt.getPaidAmount();
         BigDecimal paidRatio = BigDecimal.valueOf(debt.getPaidAmount())
                 .divide(BigDecimal.valueOf(debt.getPrincipalAmount()), 4, RoundingMode.HALF_UP);
@@ -540,7 +542,7 @@ public class DebtService {
                 overdue,
                 debt.getStatus(),
                 debt.getNote(),
-                wallet == null ? null : new DebtListItemResponse.WalletSummary(wallet.getId(), wallet.getName()),
+                wallet == null ? null : new DebtListItemResponse.WalletSummary(wallet.id(), wallet.name()),
                 paymentCount);
     }
 }

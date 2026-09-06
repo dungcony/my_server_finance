@@ -21,6 +21,7 @@ import com.datn.financeapp.transaction.dto.response.TransactionDetailResponse;
 import com.datn.financeapp.transaction.dto.request.TransactionFilterRequest;
 import com.datn.financeapp.transaction.dto.response.TransactionListItemResponse;
 import com.datn.financeapp.transaction.dto.response.TransactionListResponse;
+import com.datn.financeapp.transaction.dto.response.TransactionRefResponse;
 import com.datn.financeapp.transaction.dto.response.TransactionResponse;
 import com.datn.financeapp.transaction.dto.response.TransactionSummaryResponse;
 import com.datn.financeapp.transaction.dto.request.UpdateTransactionRequest;
@@ -285,6 +286,25 @@ public class TransactionService {
      * nữa"). Chỉ tính khi type=expense và categoryId != null — cùng điều kiện BudgetAlertListener
      * áp dụng.
      */
+    /**
+     * Tham chiếu tối thiểu tới một giao dịch, hoặc {@code null} nếu không tìm thấy /
+     * {@code transactionId} rỗng.
+     *
+     * <p>Dành cho module khác cần nhắc tới giao dịch trong phản hồi của mình. KHÔNG kiểm quyền ở
+     * đây: bên gọi đã xác thực quyền trên bản ghi cha của mình (khoản nợ, khoản định kỳ) và giao
+     * dịch được trỏ tới là do chính nghiệp vụ đó sinh ra.
+     */
+    @Transactional(readOnly = true)
+    public TransactionRefResponse findRefById(UUID transactionId) {
+        if (transactionId == null) {
+            return null;
+        }
+        return transactionRepository
+                .findById(transactionId)
+                .map(t -> new TransactionRefResponse(t.getId(), t.getAmount(), t.getDate()))
+                .orElse(null);
+    }
+
     private List<AffectedBudgetResponse> computeAffectedBudgets(
             UUID userId, String type, UUID categoryId, LocalDate date) {
         if (!"expense".equals(type) || categoryId == null) {

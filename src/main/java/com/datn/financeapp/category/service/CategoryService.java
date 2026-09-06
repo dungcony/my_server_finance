@@ -328,6 +328,22 @@ public class CategoryService {
     }
 
     /**
+     * Id của một danh mục hệ thống theo tên và loại thu/chi. Ném {@code SYSTEM_CATEGORY_MISSING}
+     * (500) nếu thiếu — đây là lỗi dữ liệu nền, không phải lỗi người dùng: các danh mục này do
+     * migration V5 nạp sẵn và nghiệp vụ sổ nợ/mục tiêu phụ thuộc vào chúng.
+     *
+     * <p>Dành cho module khác cần gắn giao dịch tự sinh vào đúng danh mục hệ thống.
+     */
+    @Transactional(readOnly = true)
+    public UUID findSystemCategoryId(String name, String type) {
+        return categoryRepository
+                .findSystemCategoryByName(name, type)
+                .map(Category::getId)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.SYSTEM_CATEGORY_MISSING, "Thiếu danh mục hệ thống: " + name));
+    }
+
+    /**
      * Tham chiếu tối thiểu (mã + đường vẽ) tới một biểu tượng, hoặc {@code null} nếu không tìm
      * thấy / {@code iconId} rỗng. Kho biểu tượng là dữ liệu hệ thống dùng chung nên không có điều
      * kiện quyền.
