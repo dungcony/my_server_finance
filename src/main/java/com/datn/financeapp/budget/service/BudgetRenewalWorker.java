@@ -4,7 +4,7 @@ import com.datn.financeapp.budget.entity.Budget;
 import com.datn.financeapp.budget.repository.BudgetRepository;
 import com.datn.financeapp.category.entity.Category;
 import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.notification.repository.NotificationRepository;
+import com.datn.financeapp.notification.service.NotificationService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -24,7 +24,7 @@ class BudgetRenewalWorker {
 
     private final BudgetRepository budgetRepository;
     private final CategoryRepository categoryRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     /**
      * Tạo kỳ mới nối tiếp kỳ đã hết hạn, tắt {@code is_active} của kỳ cũ. Chống trùng khi job chạy
@@ -67,7 +67,7 @@ class BudgetRenewalWorker {
         Category category = categoryRepository.findByIdAndVisibleToUser(old.getCategoryId(), old.getUserId())
                 .orElse(null);
         String categoryName = category != null ? category.getName() : "Danh mục đã xoá";
-        notificationRepository.insertGenericNotification(
+        notificationService.createNotification(
                 old.getUserId(),
                 "budget_renewed",
                 "Ngân sách đã bắt đầu kỳ mới",

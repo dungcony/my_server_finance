@@ -16,7 +16,6 @@ import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.notification.repository.NotificationRepository;
 import com.datn.financeapp.report.dto.response.ReportHomeResponse;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
@@ -73,7 +72,6 @@ public class BudgetService {
     private final CategoryRepository categoryRepository;
     private final IconRepository iconRepository;
     private final WalletRepository walletRepository;
-    private final NotificationRepository notificationRepository;
     private final BudgetRenewalWorker budgetRenewalWorker;
 
     // ---------------------------------------------------------------------

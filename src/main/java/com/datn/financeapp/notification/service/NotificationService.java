@@ -54,6 +54,39 @@ public class NotificationService {
         notificationRepository.markRead(notificationId, userId);
     }
 
+    /**
+     * Cảnh báo ngân sách chạm/vượt ngưỡng. Chống trùng ở tầng CSDL bằng
+     * {@code ON CONFLICT DO NOTHING} trên khoá (người dùng, ngân sách, ngày, loại) — KHÔNG kiểm
+     * tra tồn tại trước ở Java: nhập hàng loạt 50 dòng bắn 50 sự kiện, kiểm ở Java sẽ có tranh
+     * chấp giữa các sự kiện xử lý sát nhau và vẫn lọt bản ghi trùng.
+     *
+     * <p>Gọi từ {@code budget/} qua service này thay vì đụng thẳng repository (quy tắc 11).
+     */
+    @Transactional
+    public void createBudgetAlert(UUID userId, String title, String content, UUID budgetId) {
+        notificationRepository.insertBudgetAlertIfNotExists(userId, title, content, budgetId);
+    }
+
+    /**
+     * Nhắc khoản nợ tới hạn. Cũng chống trùng ở tầng CSDL: mốc ngày cố định chỉ đảm bảo job gọi
+     * tới một lần MỖI LẦN CHẠY, không đảm bảo job chỉ chạy một lần mỗi ngày — deploy lại, retry
+     * sau lỗi, hay chạy hai instance đều sinh thông báo y hệt nhau.
+     */
+    @Transactional
+    public void createDebtReminder(UUID userId, String title, String content, UUID debtId) {
+        notificationRepository.insertDebtReminderIfNotExists(userId, title, content, debtId);
+    }
+
+    /**
+     * Thông báo không cần chống trùng — dùng cho các sự kiện tự nó đã chỉ xảy ra một lần, như
+     * ngân sách chuyển sang kỳ mới.
+     */
+    @Transactional
+    public void createNotification(
+            UUID userId, String type, String title, String content, UUID referenceId) {
+        notificationRepository.insertGenericNotification(userId, type, title, content, referenceId);
+    }
+
     private NotificationListItemResponse toResponse(Notification notification) {
         return new NotificationListItemResponse(
                 notification.getId(),

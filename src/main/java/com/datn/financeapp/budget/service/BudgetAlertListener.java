@@ -2,7 +2,7 @@ package com.datn.financeapp.budget.service;
 
 import com.datn.financeapp.budget.repository.BudgetProgressRepository;
 import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
-import com.datn.financeapp.notification.repository.NotificationRepository;
+import com.datn.financeapp.notification.service.NotificationService;
 import com.datn.financeapp.transaction.event.TransactionRecordedEvent;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class BudgetAlertListener {
 
     private final BudgetProgressRepository budgetProgressRepository;
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     /**
      * {@code @Transactional(REQUIRES_NEW)} là BẮT BUỘC, không phải trang trí: transaction gốc đã
@@ -74,7 +74,7 @@ public class BudgetAlertListener {
                 // ngày, loại) qua ON CONFLICT DO NOTHING — KHÔNG kiểm tra tồn tại trước ở Java.
                 // Bulk 50 dòng bắn 50 event, kiểm tra ở Java sẽ có race condition giữa các event
                 // xử lý sát nhau và lọt vài bản ghi trùng.
-                notificationRepository.insertBudgetAlertIfNotExists(
+                notificationService.createBudgetAlert(
                         event.userId(), buildTitle(budget), buildContent(budget), budget.getId());
             }
         } catch (Exception e) {

@@ -1,7 +1,7 @@
 package com.datn.financeapp.debt.service;
 
 import com.datn.financeapp.debt.entity.Debt;
-import com.datn.financeapp.notification.repository.NotificationRepository;
+import com.datn.financeapp.notification.service.NotificationService;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -29,7 +29,7 @@ class DebtReminderWorker {
      */
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     /** api/08 mục 9 — ba mốc nhắc: còn 7 ngày, còn 1 ngày, quá hạn (nhắc lại mỗi 7 ngày). */
     @Transactional
@@ -52,7 +52,7 @@ class DebtReminderWorker {
         } else {
             return; // không rơi vào mốc nhắc nào trong ba mốc trên
         }
-        notificationRepository.insertDebtReminderIfNotExists(
+        notificationService.createDebtReminder(
                 debt.getUserId(), "Nhắc nợ đến hạn", content, debt.getId());
     }
 }

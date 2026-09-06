@@ -17,7 +17,6 @@ import com.datn.financeapp.debt.entity.Debt;
 import com.datn.financeapp.debt.entity.DebtPayment;
 import com.datn.financeapp.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.debt.repository.DebtRepository;
-import com.datn.financeapp.notification.repository.NotificationRepository;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
 import com.datn.financeapp.transaction.service.TransactionService;
 import com.datn.financeapp.transaction.service.TransactionWriteCommand;
@@ -78,7 +77,6 @@ public class DebtService {
     private final TransactionRepository transactionRepository;
     private final TransactionWriter transactionWriter;
     private final TransactionService transactionService;
-    private final NotificationRepository notificationRepository;
     private final DebtReminderWorker debtReminderWorker;
 
     // ---------------------------------------------------------------------
