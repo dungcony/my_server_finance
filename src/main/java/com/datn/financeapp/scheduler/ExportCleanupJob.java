@@ -1,102 +1,29 @@
 package com.datn.financeapp.scheduler;
 
-import com.datn.financeapp.report.entity.ExportJob;
-import com.datn.financeapp.report.repository.ExportJobRepository;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
+import com.datn.financeapp.report.service.ExportCleanupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Dọn tệp/bản ghi {@code export_jobs} quá hạn hằng ngày (D-45). Chạy 4h30 sáng giờ Việt Nam.
+ * Hẹn giờ dọn tệp/bản ghi {@code export_jobs} quá hạn (D-45) — 4h30 sáng giờ Việt Nam.
  *
- * <p>Xoá FILE ĐĨA TRƯỚC rồi mới xoá bản ghi CSDL — tránh mất bản ghi mà file vẫn còn trên đĩa
- * (rác không nguy hiểm bằng bản ghi trỏ tới file không tồn tại). Mỗi job xử lý ĐỘC LẬP: một file
- * lỗi xoá không chặn file khác (T-04-20).
- *
- * <p>Việc xoá từng bản ghi được uỷ quyền cho {@link ExportCleanupWorker} — bean riêng, tránh
- * transaction self-invocation nếu gọi {@code @Transactional} method từ trong cùng class (bài học
- * {@code IdempotencyTransactionHelper}, Phase 1).
+ * <p>Class này chỉ quyết định <b>khi nào</b> chạy. Toàn bộ nghiệp vụ dọn dẹp nằm ở
+ * {@link ExportCleanupService} của module {@code report/} — nơi biết {@code export_jobs} nghĩa là
+ * gì. Đây là hình mẫu cho mọi job trong package này: {@code scheduler/} là vỏ mỏng, không chứa
+ * nghiệp vụ và không đụng {@code Repository}/{@code Entity} của module khác (quy tắc 11
+ * CLAUDE.md).
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class ExportCleanupJob {
 
-    /** Xuất CSV bình thường xong trong vài giây; quá một giờ nghĩa là tiến trình đã chết. */
-    private static final long STUCK_THRESHOLD_HOURS = 1;
-
-    private final ExportJobRepository exportJobRepository;
-    private final ExportCleanupWorker worker;
+    private final ExportCleanupService exportCleanupService;
 
     @Scheduled(cron = "0 30 4 * * *", zone = "Asia/Ho_Chi_Minh")
     public void run() {
-        try {
-            List<ExportJob> expired = exportJobRepository.findExpired(Instant.now());
-            int deleted = 0;
-            for (ExportJob job : expired) {
-                try {
-                    worker.deleteOne(job);
-                    deleted++;
-                } catch (Exception e) {
-                    log.error("Lỗi khi dọn export job {}", job.getId(), e);
-                }
-            }
-            log.info("Đã dọn {} bản ghi export_jobs quá hạn", deleted);
-        } catch (Exception e) {
-            log.error("Lỗi khi chạy tác vụ dọn export_jobs quá hạn", e);
-        }
-
-        // Lưới an toàn tách riêng khỏi try/catch trên: dọn quá hạn hỏng thì phần này vẫn chạy.
-        try {
-            List<ExportJob> stuck = exportJobRepository.findStuckProcessing(
-                    Instant.now().minus(STUCK_THRESHOLD_HOURS, ChronoUnit.HOURS));
-            for (ExportJob job : stuck) {
-                try {
-                    worker.markStuckAsFailed(job.getId());
-                } catch (Exception e) {
-                    log.error("Lỗi khi đánh dấu export job kẹt {}", job.getId(), e);
-                }
-            }
-            if (!stuck.isEmpty()) {
-                log.warn("Đã đánh dấu thất bại {} tác vụ xuất báo cáo kẹt ở processing", stuck.size());
-            }
-        } catch (Exception e) {
-            log.error("Lỗi khi quét export_jobs kẹt ở processing", e);
-        }
-    }
-
-    /** Bean riêng chỉ để method {@code deleteOne} đi qua đúng Spring AOP proxy cho {@code @Transactional}. */
-    @Component
-    @RequiredArgsConstructor
-    static class ExportCleanupWorker {
-
-        private final ExportJobRepository exportJobRepository;
-
-        @Transactional
-        void deleteOne(ExportJob job) throws IOException {
-            if (job.getFilePath() != null) {
-                Files.deleteIfExists(Path.of(job.getFilePath()));
-            }
-            exportJobRepository.delete(job);
-        }
-
-        /**
-         * Không xoá bản ghi kẹt mà chuyển sang {@code failed}: người dùng đang poll cần một câu
-         * trả lời dứt khoát, còn xoá đi thì lượt poll kế tiếp nhận 404 — trông như tác vụ chưa
-         * bao giờ tồn tại, khó hiểu hơn hẳn một thông báo thất bại rõ ràng.
-         */
-        @Transactional
-        void markStuckAsFailed(java.util.UUID jobId) {
-            exportJobRepository.markFailed(
-                    jobId, "Tác vụ xuất báo cáo bị gián đoạn, vui lòng thử lại.");
-        }
+        exportCleanupService.cleanUpExpiredAndStuck();
     }
 }
