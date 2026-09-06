@@ -24,6 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -326,6 +329,47 @@ public class CategoryService {
                 .map(g -> new CategoryGroupResponse(
                         g.getId(), g.getName(), g.getColor(), toIconSummary(iconsById.get(g.getIconId())), g.getSortOrder()))
                 .toList();
+    }
+
+    /**
+     * Nạp nhiều danh mục theo lô, có kiểm quyền từng cái. Trả map theo id để bên gọi tra cứu
+     * trong vòng lặp mà không phải gọi lại service.
+     *
+     * <p>Danh mục nào người dùng không thấy được thì vắng mặt trong map — bên gọi tự xử lý
+     * {@code null} như trước.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, CategoryRefResponse> findRefsVisibleToUser(
+            Collection<UUID> categoryIds, UUID userId) {
+        List<Category> found = categoryIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .map(id -> categoryRepository.findByIdAndVisibleToUser(id, userId).orElse(null))
+                .filter(Objects::nonNull)
+                .toList();
+
+        // Nạp biểu tượng MỘT LẦN cho cả lô thay vì gọi findIconRef từng danh mục — giữ nguyên
+        // số truy vấn như trước nhóm H (quy tắc "không biến 1 truy vấn thành N+1").
+        List<UUID> iconIds = found.stream()
+                .map(Category::getIconId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, IconRefResponse> icons = new HashMap<>();
+        iconRepository
+                .findAllById(iconIds)
+                .forEach(i -> icons.put(i.getId(), new IconRefResponse(i.getCode(), i.getPathData())));
+
+        Map<UUID, CategoryRefResponse> byId = new HashMap<>();
+        for (Category c : found) {
+            byId.put(c.getId(), new CategoryRefResponse(
+                    c.getId(),
+                    c.getName(),
+                    c.getType(),
+                    c.getColor(),
+                    c.getIconId() == null ? null : icons.get(c.getIconId())));
+        }
+        return byId;
     }
 
     /**

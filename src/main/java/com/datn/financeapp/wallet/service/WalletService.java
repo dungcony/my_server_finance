@@ -14,6 +14,9 @@ import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -214,6 +217,22 @@ public class WalletService {
                 .findByIdForUser(walletId, userId)
                 .map(w -> new WalletRefResponse(w.getId(), w.getName()))
                 .orElse(null);
+    }
+
+    /**
+     * Nạp nhiều ví theo lô, có kiểm quyền từng cái. Trả map theo id để bên gọi tra cứu trong
+     * vòng lặp mà không phải gọi lại service. Ví không có quyền thì vắng mặt trong map.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, WalletRefResponse> findRefsForUser(Collection<UUID> walletIds, UUID userId) {
+        Map<UUID, WalletRefResponse> byId = new HashMap<>();
+        for (UUID id : walletIds.stream().filter(Objects::nonNull).distinct().toList()) {
+            WalletRefResponse ref = findRefForUser(userId, id);
+            if (ref != null) {
+                byId.put(id, ref);
+            }
+        }
+        return byId;
     }
 
     /**

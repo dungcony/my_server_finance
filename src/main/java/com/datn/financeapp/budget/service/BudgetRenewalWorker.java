@@ -2,8 +2,8 @@ package com.datn.financeapp.budget.service;
 
 import com.datn.financeapp.budget.entity.Budget;
 import com.datn.financeapp.budget.repository.BudgetRepository;
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.repository.CategoryRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.notification.service.NotificationService;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 class BudgetRenewalWorker {
 
     private final BudgetRepository budgetRepository;
-    private final CategoryRepository categoryRepository;
+    private final CategoryService categoryService;
     private final NotificationService notificationService;
 
     /**
@@ -64,9 +64,9 @@ class BudgetRenewalWorker {
                 .build();
         budgetRepository.save(renewed);
 
-        Category category = categoryRepository.findByIdAndVisibleToUser(old.getCategoryId(), old.getUserId())
-                .orElse(null);
-        String categoryName = category != null ? category.getName() : "Danh mục đã xoá";
+        CategoryRefResponse category =
+                categoryService.findRefVisibleToUser(old.getCategoryId(), old.getUserId());
+        String categoryName = category != null ? category.name() : "Danh mục đã xoá";
         notificationService.createNotification(
                 old.getUserId(),
                 "budget_renewed",

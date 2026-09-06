@@ -10,15 +10,13 @@ import com.datn.financeapp.budget.entity.Budget;
 import com.datn.financeapp.budget.repository.BudgetProgressRepository;
 import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
 import com.datn.financeapp.budget.repository.BudgetRepository;
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.entity.Icon;
-import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.category.repository.IconRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.report.dto.response.ReportHomeResponse;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
@@ -69,9 +67,8 @@ public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final BudgetProgressRepository budgetProgressRepository;
-    private final CategoryRepository categoryRepository;
-    private final IconRepository iconRepository;
-    private final WalletRepository walletRepository;
+    private final CategoryService categoryService;
+    private final WalletService walletService;
     private final BudgetRenewalWorker budgetRenewalWorker;
 
     // ---------------------------------------------------------------------
@@ -135,16 +132,16 @@ public class BudgetService {
                 .filter(row -> !STATUS_NORMAL.equals(row.getStatus()))
                 .toList();
 
-        Map<UUID, Category> categories = loadCategories(userId, rows);
+        Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);
 
         List<BudgetAlertResponse> alerts = new ArrayList<>(rows.size());
         for (BudgetProgressProjection row : rows) {
-            Category category = categories.get(row.getCategoryId());
+            CategoryRefResponse category = categories.get(row.getCategoryId());
             BigDecimal ratio = nullToZero(row.getRatio());
 
             alerts.add(new BudgetAlertResponse(
                     row.getId(),
-                    category != null ? category.getName() : "Danh mục đã xoá",
+                    category != null ? category.name() : "Danh mục đã xoá",
                     STATUS_OVER_LIMIT.equals(row.getStatus()) ? "critical" : "alert",
                     ratio,
                     percentLabel(ratio) + "%",
@@ -177,14 +174,14 @@ public class BudgetService {
                 .filter(row -> !STATUS_NORMAL.equals(row.getStatus()))
                 .toList();
 
-        Map<UUID, Category> categories = loadCategories(userId, rows);
+        Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);
 
         List<ReportHomeResponse.BudgetAttentionItem> items = new ArrayList<>(rows.size());
         for (BudgetProgressProjection row : rows) {
-            Category category = categories.get(row.getCategoryId());
+            CategoryRefResponse category = categories.get(row.getCategoryId());
             items.add(new ReportHomeResponse.BudgetAttentionItem(
                     row.getId(),
-                    category != null ? category.getName() : "Danh mục đã xoá",
+                    category != null ? category.name() : "Danh mục đã xoá",
                     nullToZero(row.getRatio()),
                     row.getStatus()));
         }
@@ -200,12 +197,13 @@ public class BudgetService {
      */
     @Transactional(readOnly = true)
     public BudgetSuggestionResponse suggestion(UUID userId, UUID categoryId) {
-        Category category = categoryRepository
-                .findByIdAndVisibleToUser(categoryId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
+        CategoryRefResponse category = categoryService.findRefVisibleToUser(categoryId, userId);
+        if (category == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục.");
+        }
 
         BudgetSuggestionResponse.CategorySummary categorySummary =
-                new BudgetSuggestionResponse.CategorySummary(category.getId(), category.getName());
+                new BudgetSuggestionResponse.CategorySummary(category.id(), category.name());
 
         List<Long> spentPerPeriod = budgetRepository.findLastThreeEndedPeriods(userId, categoryId).stream()
                 .map(budget -> budgetRepository.sumExpenseInPeriod(
@@ -224,7 +222,7 @@ public class BudgetService {
                     categorySummary,
                     null,
                     new BudgetSuggestionResponse.Basis(null, null, null, 0),
-                    "Chưa đủ lịch sử chi tiêu cho " + category.getName()
+                    "Chưa đủ lịch sử chi tiêu cho " + category.name()
                             + " để gợi ý hạn mức. Hãy ghi chi tiêu thêm một thời gian rồi quay lại.");
         }
 
@@ -238,7 +236,7 @@ public class BudgetService {
                 roundUpToHundredThousand(Math.round(average * 1.05)),
                 new BudgetSuggestionResponse.Basis(average, max, min, spentPerPeriod.size()),
                 "Trung bình " + spentPerPeriod.size() + " kỳ gần nhất bạn chi " + formatAmount(average) + " đ cho "
-                        + category.getName() + ". Mức đề xuất cộng thêm 5% để có khoảng dư.");
+                        + category.name() + ". Mức đề xuất cộng thêm 5% để có khoảng dư.");
     }
 
     // ---------------------------------------------------------------------
@@ -257,18 +255,19 @@ public class BudgetService {
      */
     @Transactional
     public BudgetListItemResponse create(UUID userId, CreateBudgetRequest req) {
-        Category category = categoryRepository
-                .findByIdAndVisibleToUser(req.categoryId(), userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
+        CategoryRefResponse category = categoryService.findRefVisibleToUser(req.categoryId(), userId);
+        if (category == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục.");
+        }
 
         // Trigger trg_budgets_validate cũng chặn, nhưng kiểm tra ở đây để trả đúng mã nghiệp vụ
         // CATEGORY_NOT_EXPENSE thay vì lỗi ràng buộc thô — hai tầng phòng thủ.
-        if (!"expense".equals(category.getType())) {
+        if (!"expense".equals(category.type())) {
             throw new BusinessException(ErrorCode.CATEGORY_NOT_EXPENSE);
         }
 
         if (req.walletId() != null
-                && walletRepository.findByIdForUser(req.walletId(), userId).isEmpty()) {
+                && walletService.findRefForUser(userId, req.walletId()) == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
         }
 
@@ -324,7 +323,7 @@ public class BudgetService {
             budget.setIsActive(req.isActive());
         }
         if (req.walletId() != null) {
-            if (walletRepository.findByIdForUser(req.walletId(), userId).isEmpty()) {
+            if (walletService.findRefForUser(userId, req.walletId()) == null) {
                 throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
             }
             budget.setWalletId(req.walletId());
@@ -379,29 +378,30 @@ public class BudgetService {
     // ---------------------------------------------------------------------
 
     private List<BudgetListItemResponse> toResponses(UUID userId, List<BudgetProgressProjection> rows) {
-        Map<UUID, Category> categories = loadCategories(userId, rows);
-        Map<UUID, Icon> icons = loadIcons(categories.values());
-        Map<UUID, Wallet> wallets = loadWallets(userId, rows);
+        Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);
+        Map<UUID, WalletRefResponse> wallets = loadWallets(userId, rows);
 
         List<BudgetListItemResponse> result = new ArrayList<>(rows.size());
         for (BudgetProgressProjection row : rows) {
-            Category category = categories.get(row.getCategoryId());
-            Icon icon = category != null ? icons.get(category.getIconId()) : null;
-            Wallet wallet = row.getWalletId() != null ? wallets.get(row.getWalletId()) : null;
+            CategoryRefResponse category = categories.get(row.getCategoryId());
+            WalletRefResponse wallet = row.getWalletId() != null ? wallets.get(row.getWalletId()) : null;
             BigDecimal ratio = nullToZero(row.getRatio());
 
             BudgetListItemResponse.CategorySummary categorySummary = category == null
                     ? null
                     : new BudgetListItemResponse.CategorySummary(
-                            category.getId(),
-                            category.getName(),
-                            icon == null ? null : new BudgetListItemResponse.IconSummary(icon.getCode(), icon.getPathData()),
-                            category.getColor());
+                            category.id(),
+                            category.name(),
+                            category.icon() == null
+                                    ? null
+                                    : new BudgetListItemResponse.IconSummary(
+                                            category.icon().code(), category.icon().pathData()),
+                            category.color());
 
             result.add(new BudgetListItemResponse(
                     row.getId(),
                     categorySummary,
-                    wallet == null ? null : new BudgetListItemResponse.WalletSummary(wallet.getId(), wallet.getName()),
+                    wallet == null ? null : new BudgetListItemResponse.WalletSummary(wallet.id(), wallet.name()),
                     row.getLimitAmount(),
                     nullToZero(row.getSpentAmount()),
                     row.getRemaining(),
@@ -422,39 +422,17 @@ public class BudgetService {
         return result;
     }
 
-    private Map<UUID, Category> loadCategories(UUID userId, List<BudgetProgressProjection> rows) {
-        Map<UUID, Category> byId = new HashMap<>();
-        for (BudgetProgressProjection row : rows) {
-            if (row.getCategoryId() == null || byId.containsKey(row.getCategoryId())) {
-                continue;
-            }
-            categoryRepository
-                    .findByIdAndVisibleToUser(row.getCategoryId(), userId)
-                    .ifPresent(category -> byId.put(category.getId(), category));
-        }
-        return byId;
+    private Map<UUID, CategoryRefResponse> loadCategories(
+            UUID userId, List<BudgetProgressProjection> rows) {
+        return categoryService.findRefsVisibleToUser(
+                rows.stream().map(BudgetProgressProjection::getCategoryId).toList(), userId);
     }
 
-    private Map<UUID, Icon> loadIcons(Collection<Category> categories) {
-        List<UUID> iconIds = categories.stream()
-                .map(Category::getIconId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        Map<UUID, Icon> byId = new HashMap<>();
-        iconRepository.findAllById(iconIds).forEach(icon -> byId.put(icon.getId(), icon));
-        return byId;
-    }
 
-    private Map<UUID, Wallet> loadWallets(UUID userId, List<BudgetProgressProjection> rows) {
-        Map<UUID, Wallet> byId = new HashMap<>();
-        for (BudgetProgressProjection row : rows) {
-            if (row.getWalletId() == null || byId.containsKey(row.getWalletId())) {
-                continue;
-            }
-            walletRepository.findByIdForUser(row.getWalletId(), userId).ifPresent(wallet -> byId.put(wallet.getId(), wallet));
-        }
-        return byId;
+    private Map<UUID, WalletRefResponse> loadWallets(
+            UUID userId, List<BudgetProgressProjection> rows) {
+        return walletService.findRefsForUser(
+                rows.stream().map(BudgetProgressProjection::getWalletId).toList(), userId);
     }
 
     private String buildAlertTitle(BudgetProgressProjection row) {
