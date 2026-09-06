@@ -6,6 +6,7 @@ import com.datn.financeapp.wallet.dto.request.CreateWalletRequest;
 import com.datn.financeapp.wallet.dto.request.ReorderWalletsRequest;
 import com.datn.financeapp.wallet.dto.request.UpdateWalletRequest;
 import com.datn.financeapp.wallet.dto.response.WalletDetailResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.wallet.dto.response.WalletResponse;
 import com.datn.financeapp.wallet.dto.response.WalletStatsResponse;
 import com.datn.financeapp.wallet.dto.response.WalletSummaryResponse;
@@ -194,6 +195,25 @@ public class WalletService {
                 .createdAt(createdAt)
                 .build();
         walletRepository.save(cashWallet);
+    }
+
+    /**
+     * Tham chiếu tối thiểu (id + tên) tới một ví mà người dùng có quyền xem, hoặc {@code null}
+     * nếu không có quyền / ví không tồn tại / {@code walletId} rỗng.
+     *
+     * <p>Dành cho module khác cần nhắc tên ví trong phản hồi của mình. Điều kiện quyền nằm nguyên
+     * trong câu truy vấn ({@code findByIdForUser}) theo quy tắc bất biến số 7 — bên gọi không cần
+     * và không được tự lọc lại ở Java.
+     */
+    @Transactional(readOnly = true)
+    public WalletRefResponse findRefForUser(UUID userId, UUID walletId) {
+        if (walletId == null) {
+            return null;
+        }
+        return walletRepository
+                .findByIdForUser(walletId, userId)
+                .map(w -> new WalletRefResponse(w.getId(), w.getName()))
+                .orElse(null);
     }
 
     /**

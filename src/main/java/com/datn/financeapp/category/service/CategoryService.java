@@ -5,6 +5,7 @@ import com.datn.financeapp.category.dto.response.CategoryGroupResponse;
 import com.datn.financeapp.category.dto.response.CategoryResponse;
 import com.datn.financeapp.category.dto.request.CreateCategoryRequest;
 import com.datn.financeapp.category.dto.response.IconGroupResponse;
+import com.datn.financeapp.category.dto.response.IconRefResponse;
 import com.datn.financeapp.category.dto.response.IconResponse;
 import com.datn.financeapp.category.dto.request.ReorderCategoriesRequest;
 import com.datn.financeapp.category.dto.request.UpdateCategoryRequest;
@@ -326,7 +327,24 @@ public class CategoryService {
                 .toList();
     }
 
+    /**
+     * Tham chiếu tối thiểu (mã + đường vẽ) tới một biểu tượng, hoặc {@code null} nếu không tìm
+     * thấy / {@code iconId} rỗng. Kho biểu tượng là dữ liệu hệ thống dùng chung nên không có điều
+     * kiện quyền.
+     *
+     * <p>Dành cho module khác cần hiển thị biểu tượng kèm bản ghi của mình.
+     */
     @Transactional(readOnly = true)
+    public IconRefResponse findIconRef(UUID iconId) {
+        if (iconId == null) {
+            return null;
+        }
+        return iconRepository
+                .findById(iconId)
+                .map(i -> new IconRefResponse(i.getCode(), i.getPathData()))
+                .orElse(null);
+    }
+
     public IconGroupResponseWrapper listIcons(String iconGroup, String search) {
         String searchPattern = search == null || search.isBlank() ? null : "%" + search.toLowerCase() + "%";
         List<Icon> icons = iconRepository.search(iconGroup, searchPattern);

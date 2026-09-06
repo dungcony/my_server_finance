@@ -1,7 +1,7 @@
 package com.datn.financeapp.goal.service;
 
-import com.datn.financeapp.category.entity.Icon;
-import com.datn.financeapp.category.repository.IconRepository;
+import com.datn.financeapp.category.dto.response.IconRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.goal.dto.request.CreateContributionRequest;
@@ -18,8 +18,8 @@ import com.datn.financeapp.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.transaction.service.TransactionService;
 import com.datn.financeapp.transaction.service.TransactionWriteCommand;
 import com.datn.financeapp.transaction.service.TransactionWriter;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -64,8 +64,8 @@ public class GoalService {
 
     private final SavingsGoalRepository savingsGoalRepository;
     private final GoalContributionRepository goalContributionRepository;
-    private final WalletRepository walletRepository;
-    private final IconRepository iconRepository;
+    private final WalletService walletService;
+    private final CategoryService categoryService;
     private final TransactionWriter transactionWriter;
     private final TransactionService transactionService;
 
@@ -103,18 +103,19 @@ public class GoalService {
             throw new BusinessException(ErrorCode.INVALID_AMOUNT, "Số tiền đã có sẵn không được âm.");
         }
 
-        Wallet wallet = null;
+        WalletRefResponse wallet = null;
         if (req.walletId() != null) {
-            wallet = walletRepository
-                    .findByIdForUser(req.walletId(), userId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+            wallet = walletService.findRefForUser(userId, req.walletId());
+            if (wallet == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+            }
         }
 
         UUID goalId = UUID.randomUUID();
         SavingsGoal goal = SavingsGoal.builder()
                 .id(goalId)
                 .userId(userId)
-                .walletId(wallet == null ? null : wallet.getId())
+                .walletId(wallet == null ? null : wallet.id())
                 .name(req.name())
                 .targetAmount(req.targetAmount())
                 // Giá trị KHỞI TẠO của bản ghi mới, không phải ghi đè cột do trigger sở hữu: chưa
@@ -177,9 +178,10 @@ public class GoalService {
             if (req.sourceWalletId() == null) {
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Thiếu ví nguồn để chuyển tiền.");
             }
-            Wallet sourceWallet = walletRepository
-                    .findByIdForUser(req.sourceWalletId(), userId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví nguồn."));
+            WalletRefResponse sourceWallet = walletService.findRefForUser(userId, req.sourceWalletId());
+            if (sourceWallet == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví nguồn.");
+            }
 
             // LUÔN là transfer: tiền chỉ đổi chỗ giữa hai ví của cùng người dùng, không phải thu
             // cũng không phải chi. Nhờ vậy tự động bị loại khỏi mọi báo cáo thu-chi qua điều kiện
@@ -189,7 +191,7 @@ public class GoalService {
             TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
                     null,
                     userId,
-                    sourceWallet.getId(),
+                    sourceWallet.id(),
                     goal.getWalletId(),
                     null,
                     "transfer",
@@ -205,7 +207,7 @@ public class GoalService {
             transactionId = result.transactionId();
             transactionSummary =
                     new CreateContributionResponse.TransactionSummary(transactionId, "transfer", req.amount());
-            newBalance = new CreateContributionResponse.NewBalance(sourceWallet.getId(), result.walletNewBalance());
+            newBalance = new CreateContributionResponse.NewBalance(sourceWallet.id(), result.walletNewBalance());
         }
 
         GoalContribution contribution = GoalContribution.builder()
@@ -385,11 +387,8 @@ public class GoalService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
     }
 
-    private Wallet loadWalletOrNull(UUID userId, UUID walletId) {
-        if (walletId == null) {
-            return null;
-        }
-        return walletRepository.findByIdForUser(walletId, userId).orElse(null);
+    private WalletRefResponse loadWalletOrNull(UUID userId, UUID walletId) {
+        return walletService.findRefForUser(userId, walletId);
     }
 
     private BigDecimal progressRatio(long savedAmount, long targetAmount) {
@@ -402,7 +401,7 @@ public class GoalService {
      * <p>{@code savedAmount} LUÔN đọc lại từ CSDL bằng query scalar thay vì lấy từ entity: entity
      * có thể là instance cũ trong Hibernate identity map từ trước lúc trigger chạy.
      */
-    private GoalListItemResponse toListItem(SavingsGoal goal, Wallet wallet) {
+    private GoalListItemResponse toListItem(SavingsGoal goal, WalletRefResponse wallet) {
         long savedAmount = savingsGoalRepository
                 .findSavedAmountNative(goal.getId())
                 .orElse(0L);
@@ -418,10 +417,8 @@ public class GoalService {
 
         GoalListItemResponse.IconSummary icon = null;
         if (goal.getIconId() != null) {
-            icon = iconRepository
-                    .findById(goal.getIconId())
-                    .map(i -> new GoalListItemResponse.IconSummary(i.getCode(), i.getPathData()))
-                    .orElse(null);
+            IconRefResponse ref = categoryService.findIconRef(goal.getIconId());
+            icon = ref == null ? null : new GoalListItemResponse.IconSummary(ref.code(), ref.pathData());
         }
 
         return new GoalListItemResponse(
@@ -436,7 +433,7 @@ public class GoalService {
                 daysRemaining,
                 status,
                 icon,
-                wallet == null ? null : new GoalListItemResponse.WalletSummary(wallet.getId(), wallet.getName()),
+                wallet == null ? null : new GoalListItemResponse.WalletSummary(wallet.id(), wallet.name()),
                 buildSuggestion(goal, missingAmount, today),
                 goalContributionRepository.countByGoalId(goal.getId()));
     }
