@@ -1,10 +1,9 @@
 package com.datn.financeapp.report.service;
 
 import com.datn.financeapp.budget.service.BudgetService;
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.entity.Icon;
-import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.category.repository.IconRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.dto.response.IconRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.report.dto.response.CategoryBreakdownResponse;
 import com.datn.financeapp.report.dto.response.CategoryGroupBreakdownResponse;
 import com.datn.financeapp.report.dto.response.DailyTrendResponse;
@@ -13,8 +12,9 @@ import com.datn.financeapp.report.dto.response.ReportHomeResponse;
 import com.datn.financeapp.report.dto.response.ReportSummaryResponse;
 import com.datn.financeapp.report.repository.ReportRepository;
 import com.datn.financeapp.transaction.entity.Transaction;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.dto.response.WalletRawBalanceResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -44,9 +44,8 @@ public class ReportQueryService {
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
 
     private final ReportRepository reportRepository;
-    private final CategoryRepository categoryRepository;
-    private final IconRepository iconRepository;
-    private final WalletRepository walletRepository;
+    private final CategoryService categoryService;
+    private final WalletService walletService;
     private final BudgetService budgetService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -100,7 +99,8 @@ public class ReportQueryService {
 
     private Long currentBalanceForWallets(UUID userId, UUID walletId) {
         if (walletId != null) {
-            return walletRepository.findCurrentBalanceNative(walletId).orElse(0L);
+            Long raw = walletService.findRawBalance(walletId);
+            return raw == null ? 0L : raw;
         }
         Long total = jdbcTemplate.queryForObject(
                 "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
@@ -171,18 +171,18 @@ public class ReportQueryService {
         long days = ChronoUnit.DAYS.between(range.from(), range.to()) + 1;
         long avgPerDay = days > 0 ? Math.round((double) total / days) : 0;
 
-        Map<UUID, Icon> iconCache = new HashMap<>();
+        Map<UUID, IconRefResponse> iconCache = new HashMap<>();
         List<CategoryBreakdownResponse.Item> items = new ArrayList<>();
         for (ReportRepository.CategoryParentAmountProjection row : rows) {
             long amount = orZero(row.getAmount());
             long count = orZero(row.getTransactionCount());
-            Icon icon = row.getIconId() == null
+            IconRefResponse icon = row.getIconId() == null
                     ? null
-                    : iconCache.computeIfAbsent(row.getIconId(), id -> iconRepository.findById(id).orElse(null));
+                    : iconCache.computeIfAbsent(row.getIconId(), categoryService::findIconRef);
 
             List<CategoryBreakdownResponse.ChildDetail> childrenDetail = List.of();
             if (Boolean.TRUE.equals(row.getHasChildren()) && parentLevel) {
-                List<UUID> tree = categoryRepository.findCategoryTree(row.getCategoryId());
+                List<UUID> tree = categoryService.findCategoryTree(row.getCategoryId());
                 childrenDetail = reportRepository
                         .childrenDetail(
                                 userId,
@@ -206,7 +206,7 @@ public class ReportQueryService {
             items.add(new CategoryBreakdownResponse.Item(
                     row.getCategoryId(),
                     row.getName(),
-                    icon == null ? null : new CategoryBreakdownResponse.IconRef(icon.getCode(), icon.getPathData()),
+                    icon == null ? null : new CategoryBreakdownResponse.IconRef(icon.code(), icon.pathData()),
                     row.getColor(),
                     amount,
                     total == 0 ? 0 : (double) amount / total,
@@ -341,11 +341,11 @@ public class ReportQueryService {
                 Long.class,
                 userId);
 
-        List<Wallet> wallets = walletRepository.findAllForUser(userId, null, null, true);
+        List<WalletRawBalanceResponse> wallets = walletService.listWithRawBalance(userId, true);
         List<ReportHomeResponse.WalletItem> topWallets = wallets.stream()
                 .limit(3)
                 .map(w -> new ReportHomeResponse.WalletItem(
-                        w.getId(), w.getName(), w.getCurrentBalance(), w.getType()))
+                        w.id(), w.name(), w.currentBalance(), w.type()))
                 .toList();
 
         ReportRepository.SummaryProjection summaryRow =
@@ -388,25 +388,21 @@ public class ReportQueryService {
                 .limit(10)
                 .toList();
         List<ReportHomeResponse.RecentTransactionItem> recentTransactions = new ArrayList<>();
-        Map<UUID, Wallet> walletCache = new HashMap<>();
-        Map<UUID, Category> categoryCache = new HashMap<>();
-        Map<UUID, Icon> iconCache = new HashMap<>();
+        Map<UUID, WalletRefResponse> walletCache = new HashMap<>();
+        Map<UUID, CategoryRefResponse> categoryCache = new HashMap<>();
         for (Transaction t : recent) {
-            Wallet wallet = walletCache.computeIfAbsent(
-                    t.getWalletId(), id -> walletRepository.findById(id).orElse(null));
+            WalletRefResponse wallet =
+                    walletCache.computeIfAbsent(t.getWalletId(), walletService::findRefById);
             ReportHomeResponse.CategoryRef categoryRef = null;
             if (t.getCategoryId() != null) {
-                Category category =
-                        categoryCache.computeIfAbsent(t.getCategoryId(), id -> categoryRepository
-                                .findById(id)
-                                .orElse(null));
+                CategoryRefResponse category =
+                        categoryCache.computeIfAbsent(t.getCategoryId(), categoryService::findRefById);
                 if (category != null) {
-                    Icon icon = iconCache.computeIfAbsent(
-                            category.getIconId(), id -> iconRepository.findById(id).orElse(null));
+                    IconRefResponse icon = category.icon();
                     categoryRef = new ReportHomeResponse.CategoryRef(
-                            category.getName(),
-                            icon == null ? null : new ReportHomeResponse.IconRef(icon.getCode(), icon.getPathData()),
-                            category.getColor());
+                            category.name(),
+                            icon == null ? null : new ReportHomeResponse.IconRef(icon.code(), icon.pathData()),
+                            category.color());
                 }
             }
             recentTransactions.add(new ReportHomeResponse.RecentTransactionItem(
@@ -416,7 +412,7 @@ public class ReportQueryService {
                     t.getDate(),
                     t.getDisplayName(),
                     categoryRef,
-                    wallet == null ? null : new ReportHomeResponse.WalletRef(wallet.getName())));
+                    wallet == null ? null : new ReportHomeResponse.WalletRef(wallet.name())));
         }
 
         // Hình dạng riêng theo api/06 mục 1 — KHÔNG dùng lại budgetService.alerts() (hợp đồng

@@ -332,6 +332,18 @@ public class CategoryService {
     }
 
     /**
+     * Cây danh mục: id của chính nó cộng mọi danh mục con còn sống. Bọc hàm SQL
+     * {@code fn_category_tree}.
+     *
+     * <p>Đây là công cụ của quy tắc nghiệp vụ số 1 — mọi thống kê/lọc theo danh mục cha phải cộng
+     * gộp giao dịch của các con. Dùng lại method này thay vì tự viết điều kiện lọc ở mỗi nơi.
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> findCategoryTree(UUID categoryId) {
+        return categoryRepository.findCategoryTree(categoryId);
+    }
+
+    /**
      * Nạp nhiều danh mục theo lô, có kiểm quyền từng cái. Trả map theo id để bên gọi tra cứu
      * trong vòng lặp mà không phải gọi lại service.
      *

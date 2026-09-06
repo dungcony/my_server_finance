@@ -6,6 +6,7 @@ import com.datn.financeapp.wallet.dto.request.CreateWalletRequest;
 import com.datn.financeapp.wallet.dto.request.ReorderWalletsRequest;
 import com.datn.financeapp.wallet.dto.request.UpdateWalletRequest;
 import com.datn.financeapp.wallet.dto.response.WalletDetailResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRawBalanceResponse;
 import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.wallet.dto.response.WalletResponse;
 import com.datn.financeapp.wallet.dto.response.WalletStatsResponse;
@@ -217,6 +218,22 @@ public class WalletService {
                 .findByIdForUser(walletId, userId)
                 .map(w -> new WalletRefResponse(w.getId(), w.getName()))
                 .orElse(null);
+    }
+
+    /**
+     * Danh sách ví của người dùng kèm số dư THÔ (chưa trừ ngược giao dịch tương lai), theo đúng
+     * thứ tự {@code sort_order}.
+     *
+     * <p>⚠️ Cố ý KHÔNG dùng {@link #list} ở đây: {@code list} trả số dư đã trừ ngược, dùng nó cho
+     * màn Báo cáo sẽ làm đổi số liệu người dùng đang thấy. Xem
+     * {@link WalletRawBalanceResponse} để biết hai giá trị khác nhau chỗ nào.
+     */
+    @Transactional(readOnly = true)
+    public List<WalletRawBalanceResponse> listWithRawBalance(UUID userId, boolean includeShared) {
+        return walletRepository.findAllForUser(userId, null, null, includeShared).stream()
+                .map(w -> new WalletRawBalanceResponse(
+                        w.getId(), w.getName(), w.getType(), w.getCurrentBalance()))
+                .toList();
     }
 
     /**
