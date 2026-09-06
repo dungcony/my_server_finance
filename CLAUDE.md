@@ -213,7 +213,7 @@ Service; **chỉ là hệ quả phụ** (gửi thông báo, cập nhật thống
 
 ### Hiện trạng — đã dọn xong *(06/09/2026)*
 
-**11/11 module sạch.** Nhóm H của [PRD 02](../../prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/H-RANH-GIOI-MODULE.md)
+**11/11 module sạch.** Nhóm H của [PRD 02](../../docs/prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/H-RANH-GIOI-MODULE.md)
 đã dọn 57 import lậu xuống còn 3 — và cả 3 đều là ngoại lệ có lý do dưới đây.
 
 Từ giờ luật ở trên áp dụng **không ngoại lệ mới**: thấy mình cần `import` `Repository`/`Entity`
