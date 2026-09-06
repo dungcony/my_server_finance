@@ -165,9 +165,9 @@ lúc thật sự cần.
 
 ## Ranh giới giữa các module
 
-Thư mục đã chia đúng package-by-feature từ đầu, nhưng **ranh giới chưa được tôn trọng ở tầng code**
-— nhiều service vẫn import thẳng `Repository`/`Entity` của module khác, biến nó thành
-package-by-layer trá hình.
+Thư mục chia đúng package-by-feature, và từ 06/09/2026 **ranh giới cũng được tôn trọng ở tầng
+code** — nhóm H của PRD 02 đã dọn 57 import lậu xuống còn 3 ngoại lệ có lý do. Giữ được trạng thái
+này là việc của mọi lần sửa code sau.
 
 ### Luật cho code mới — không có ngoại lệ
 
@@ -211,29 +211,43 @@ thì đúng là dùng sự kiện (`BudgetAlertListener`).
 Nguyên tắc phân biệt: **người dùng cần thấy kết quả ngay trong response này** thì gọi thẳng qua
 Service; **chỉ là hệ quả phụ** (gửi thông báo, cập nhật thống kê) thì phát sự kiện.
 
-### Hiện trạng — 7 module còn nợ, đang chờ dọn
+### Hiện trạng — đã dọn xong *(06/09/2026)*
 
-Đã dọn xong: **`auth`** (nhóm G, PRD 02) · `wallet` · `category` · `notification` vốn đã sạch.
+**11/11 module sạch.** Nhóm H của [PRD 02](../../prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/H-RANH-GIOI-MODULE.md)
+đã dọn 57 import lậu xuống còn 3 — và cả 3 đều là ngoại lệ có lý do dưới đây.
 
-Còn vi phạm — **7 module**, 41 kiểu import lậu khác nhau (57 dòng `import` nếu đếm cả lặp lại giữa các file):
+Từ giờ luật ở trên áp dụng **không ngoại lệ mới**: thấy mình cần `import` `Repository`/`Entity`
+của module khác nghĩa là đang đặt logic sai chỗ, hoặc thiếu một method ở Service của module kia.
 
-| Module | Đang đụng thẳng vào |
+### Hai ngoại lệ được phép, và vì sao
+
+| Chỗ | Lý do |
 |---|---|
-| `transaction` | `category`, `wallet`, `budget` |
-| `budget` | `category`, `wallet`, `notification` |
-| `report` | `category`, `wallet`, `transaction` |
-| `debt` | `category`, `wallet`, `notification`, `transaction` |
-| `recurring` | `category`, `wallet`, `transaction` |
-| `goal` | `category`, `wallet` |
-| `scheduler` | `report` |
+| `report/` đọc entity `Transaction` (3 chỗ, đều qua `ReportRepository`) | `ReportRepository extends Repository<Transaction, UUID>` — nó chạy truy vấn **tổng hợp** trên nhiều bảng cho màn Báo cáo. Bọc qua `TransactionService` sẽ biến 1 truy vấn gộp thành N truy vấn lẻ, đúng thứ mục trên cấm |
+| ~~`scheduler` đọc `ExportJobRepository`~~ | **Đã dọn ở H1** — logic dọn tệp xuất chuyển hẳn vào `report/service/ExportCleanupService`, `scheduler/` giờ là vỏ mỏng chỉ quyết định khi nào chạy |
 
-Dọn nốt là **nhóm H của [PRD 02](../../prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/PRD.md)**, cố ý hoãn tới
-khi app đuổi kịp nhóm API 08/09/11 — nó xuyên qua `transaction`, module rủi ro cao nhất, và test
-hiện chưa đủ dày để bảo vệ một cuộc refactor quy mô đó.
+### Bộ DTO tham chiếu dùng chung — dùng lại, đừng tạo bản sao
 
-> **Đang sửa code trong 7 module đó thì làm gì?** Đừng thêm import lậu mới, kể cả khi file đó đã
-> có sẵn vài cái. Cần dữ liệu module khác thì thêm method vào Service của module kia và gọi qua
-> đó — làm dần theo nhu cầu, mỗi lần một ít, thay vì chờ một đợt refactor lớn.
+Nhóm H dựng sẵn các DTO này ở module sở hữu. Cần dữ liệu module khác thì tìm ở đây trước:
+
+| DTO | Module sở hữu | Mang gì |
+|---|---|---|
+| `WalletRefResponse` | `wallet` | id, tên, loại ví. **Cố ý không mang số dư** — số dư có hai nghĩa khác nhau, để lẫn vào là mời gọi dùng nhầm |
+| `WalletRawBalanceResponse` | `wallet` | Ví kèm số dư **thô** (chưa trừ ngược giao dịch tương lai) — chỉ dành cho màn Báo cáo |
+| `CategoryRefResponse` | `category` | id, tên, loại, màu, biểu tượng, id danh mục cha |
+| `IconRefResponse` | `category` | mã + đường vẽ SVG |
+| `TransactionRefResponse` | `transaction` | id, số tiền, ngày |
+| `GeneratedTransactionResponse` | `transaction` | Như trên, thêm `type` và `source` — cho lịch sử chạy định kỳ |
+| `BudgetImpactResponse` | `budget` | Ngân sách bị ảnh hưởng bởi khoản chi vừa ghi, kèm câu cảnh báo đã dựng sẵn |
+
+⚠️ **Hai bẫy đã gặp khi dựng bộ này, đừng lặp lại:**
+
+1. **`WalletService.list()` trả số dư ĐÃ TRỪ NGƯỢC giao dịch tương lai** (D-37/TXN-09), không phải
+   giá trị thô của cột `current_balance`. Dùng nhầm nó cho màn Báo cáo là âm thầm đổi số liệu
+   người dùng đang thấy. Cần số thô thì gọi `findRawBalance` / `listWithRawBalance`.
+2. **Nạp theo lô thì nạp cả biểu tượng theo lô.** `CategoryService.findRefsVisibleToUser` gom
+   `iconRepository.findAllById` một lần cho cả lô; nếu để mỗi `CategoryRefResponse` tự gọi
+   `findIconRef` thì thành N+1 mới.
 
 ## Ngôn ngữ
 
