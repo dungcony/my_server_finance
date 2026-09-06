@@ -15,6 +15,8 @@ import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Set;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Objects;
@@ -216,7 +218,7 @@ public class WalletService {
         }
         return walletRepository
                 .findByIdForUser(walletId, userId)
-                .map(w -> new WalletRefResponse(w.getId(), w.getName()))
+                .map(w -> new WalletRefResponse(w.getId(), w.getName(), w.getType()))
                 .orElse(null);
     }
 
@@ -253,6 +255,60 @@ public class WalletService {
     }
 
     /**
+     * Số dư thô BẮT BUỘC phải có — ném {@link java.util.NoSuchElementException} nếu ví không tồn
+     * tại, thay vì trả {@code null} như {@link #findRawBalance}.
+     *
+     * <p>Dùng ngay sau {@link #adjustBalance} trong cùng transaction: tới đó ví chắc chắn tồn tại
+     * (vừa UPDATE thành công), nên thiếu nó là lỗi lập trình chứ không phải tình huống nghiệp vụ
+     * — ném ngay còn hơn để {@code null} trôi xuống và hỏng ở chỗ khó lần.
+     */
+    @Transactional(readOnly = true)
+    public long requireRawBalance(UUID walletId) {
+        return walletRepository.findCurrentBalanceNative(walletId).orElseThrow();
+    }
+
+    /**
+     * Khoá bi quan (SELECT ... FOR UPDATE) tất cả ví trong danh sách, theo thứ tự
+     * {@code UUID.compareTo()} tăng dần, và kiểm quyền sở hữu ngay sau khi khoá từng ví.
+     *
+     * <p>⚠️ <b>Thứ tự khoá là thứ chống deadlock (D-33), không phải chi tiết trang trí.</b> Hai
+     * giao dịch cùng đụng ví A và B mà khoá ngược chiều nhau sẽ ôm nhau chờ vĩnh viễn. Sắp xếp
+     * theo id cho mọi luồng khoá cùng một chiều. Đây là mở rộng của thuật toán 2 ví trong
+     * {@code WalletTransferService} lên tối đa 4 ví.
+     *
+     * <p>Không có quyền thì ném {@code NOT_FOUND} chứ không phải 403 (quy tắc bất biến số 7).
+     */
+    @Transactional
+    public void lockWalletsInOrder(Set<UUID> walletIds, UUID userId) {
+        List<UUID> sortedIds = new ArrayList<>(walletIds);
+        sortedIds.sort(UUID::compareTo);
+        for (UUID walletId : sortedIds) {
+            Wallet wallet = walletRepository
+                    .findByIdForUpdate(walletId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+            if (!userId.equals(wallet.getUserId())) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+            }
+        }
+    }
+
+    /**
+     * Cộng/trừ số dư ví bằng MỘT câu {@code UPDATE ... SET current_balance = current_balance +
+     * :delta} — {@code delta} âm là trừ.
+     *
+     * <p>⚠️ <b>Quy tắc bất biến số 3 của dự án.</b> Tuyệt đối KHÔNG được cài lại thành "đọc entity
+     * lên → cộng ở Java → save": hai giao dịch chạy song song trên cùng một ví sẽ ghi đè nhau và
+     * người dùng mất tiền. Đó chính là thứ {@code WalletTransferConcurrencyTest} canh.
+     *
+     * <p>Method này chỉ uỷ quyền thẳng xuống repository, không thêm bất kỳ logic nào — nó có mặt
+     * để module khác không phải đụng {@code WalletRepository} (quy tắc 11 CLAUDE.md).
+     */
+    @Transactional
+    public void adjustBalance(UUID walletId, long delta) {
+        walletRepository.adjustBalance(walletId, delta);
+    }
+
+    /**
      * Số dư hiện tại đọc thẳng từ cột {@code current_balance} — tức đã gồm cả giao dịch tương
      * lai, KHÔNG phải "tiền thật đến hết hôm nay". Trả {@code null} nếu ví không tồn tại.
      *
@@ -279,7 +335,7 @@ public class WalletService {
         }
         return walletRepository
                 .findById(walletId)
-                .map(w -> new WalletRefResponse(w.getId(), w.getName()))
+                .map(w -> new WalletRefResponse(w.getId(), w.getName(), w.getType()))
                 .orElse(null);
     }
 

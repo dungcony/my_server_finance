@@ -379,7 +379,8 @@ public class CategoryService {
                     c.getName(),
                     c.getType(),
                     c.getColor(),
-                    c.getIconId() == null ? null : icons.get(c.getIconId())));
+                    c.getIconId() == null ? null : icons.get(c.getIconId()),
+                    c.getParentCategoryId()));
         }
         return byId;
     }
@@ -416,7 +417,8 @@ public class CategoryService {
 
     private CategoryRefResponse toRef(Category c) {
         IconRefResponse icon = c.getIconId() == null ? null : findIconRef(c.getIconId());
-        return new CategoryRefResponse(c.getId(), c.getName(), c.getType(), c.getColor(), icon);
+        return new CategoryRefResponse(
+                c.getId(), c.getName(), c.getType(), c.getColor(), icon, c.getParentCategoryId());
     }
 
     /**

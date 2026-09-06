@@ -1,7 +1,7 @@
 package com.datn.financeapp.transaction.service;
 
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.repository.CategoryRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.transaction.dto.response.BulkCreateTransactionResponse;
@@ -9,7 +9,7 @@ import com.datn.financeapp.transaction.dto.request.CreateTransactionRequest;
 import com.datn.financeapp.transaction.dto.response.TransactionListItemResponse;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.transaction.dto.request.BulkCreateTransactionRequest;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -40,8 +40,8 @@ public class TransactionBulkService {
 
     private final TransactionWriter transactionWriter;
     private final TransactionService transactionService;
-    private final CategoryRepository categoryRepository;
-    private final WalletRepository walletRepository;
+    private final CategoryService categoryService;
+    private final WalletService walletService;
 
     /**
      * Xử lý tối đa {@value #MAX_ROWS} dòng. Vượt hạn mức -> {@code TOO_MANY_ROWS} 400 NGAY ĐẦU,
@@ -108,10 +108,12 @@ public class TransactionBulkService {
         }
 
         if (item.categoryId() != null) {
-            Category category = categoryRepository
-                    .findByIdAndVisibleToUser(item.categoryId(), userId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
-            if (!category.getType().equals(item.type())) {
+            CategoryRefResponse category =
+                    categoryService.findRefVisibleToUser(item.categoryId(), userId);
+            if (category == null) {
+                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+            }
+            if (!category.type().equals(item.type())) {
                 throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
             }
         }
@@ -149,8 +151,8 @@ public class TransactionBulkService {
      * nên không cần đọc-rồi-ghi.
      */
     private void requireWalletAccess(UUID walletId, UUID userId) {
-        walletRepository
-                .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+        if (walletService.findRefForUser(userId, walletId) == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+        }
     }
 }

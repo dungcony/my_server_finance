@@ -1,12 +1,9 @@
 package com.datn.financeapp.transaction.service;
 
-import com.datn.financeapp.budget.repository.BudgetProgressRepository;
 import com.datn.financeapp.budget.service.BudgetService;
-import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.entity.Icon;
-import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.category.repository.IconRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.dto.response.IconRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
@@ -28,8 +25,8 @@ import com.datn.financeapp.transaction.dto.response.TransactionSummaryResponse;
 import com.datn.financeapp.transaction.dto.request.UpdateTransactionRequest;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -63,12 +60,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
-    private final WalletRepository walletRepository;
-    private final CategoryRepository categoryRepository;
-    private final IconRepository iconRepository;
+    private final BudgetService budgetService;
+    private final WalletService walletService;
+    private final CategoryService categoryService;
     private final TransactionWriter transactionWriter;
     private final JdbcTemplate jdbcTemplate;
-    private final BudgetProgressRepository budgetProgressRepository;
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
@@ -87,17 +83,18 @@ public class TransactionService {
         }
 
         if ("transfer".equals(req.type())) {
-            lockWalletsInOrder(Set.of(req.walletId(), req.destinationWalletId()), userId);
+            walletService.lockWalletsInOrder(Set.of(req.walletId(), req.destinationWalletId()), userId);
         } else {
-            lockWalletsInOrder(Set.of(req.walletId()), userId);
+            walletService.lockWalletsInOrder(Set.of(req.walletId()), userId);
         }
 
-        Category category = null;
         if (req.categoryId() != null) {
-            category = categoryRepository
-                    .findByIdAndVisibleToUser(req.categoryId(), userId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
-            if (!category.getType().equals(req.type())) {
+            CategoryRefResponse category =
+                    categoryService.findRefVisibleToUser(req.categoryId(), userId);
+            if (category == null) {
+                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+            }
+            if (!category.type().equals(req.type())) {
                 throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
             }
         }
@@ -154,13 +151,15 @@ public class TransactionService {
         if (req.destinationWalletId() != null) {
             walletIds.add(req.destinationWalletId());
         }
-        lockWalletsInOrder(walletIds, userId);
+        walletService.lockWalletsInOrder(walletIds, userId);
 
         if (req.categoryId() != null) {
-            Category category = categoryRepository
-                    .findByIdAndVisibleToUser(req.categoryId(), userId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
-            if (!category.getType().equals(req.type())) {
+            CategoryRefResponse category =
+                    categoryService.findRefVisibleToUser(req.categoryId(), userId);
+            if (category == null) {
+                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+            }
+            if (!category.type().equals(req.type())) {
                 throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
             }
         }
@@ -189,7 +188,7 @@ public class TransactionService {
         // Bước 3 — ÁP DỤNG ảnh hưởng MỚI lên (các) ví MỚI.
         applyEffect(req.type(), req.walletId(), req.destinationWalletId(), req.amount(), false);
 
-        long walletNewBalance = walletRepository.findCurrentBalanceNative(req.walletId()).orElseThrow();
+        long walletNewBalance = walletService.requireRawBalance(req.walletId());
 
         Transaction reloaded = transactionRepository.findById(transactionId).orElseThrow();
         return new CreateTransactionResponse(
@@ -216,7 +215,7 @@ public class TransactionService {
                     .findByIdAndUserId(transactionId, userId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));
             // Đã xoá mềm từ trước — idempotent, không làm gì thêm, không ném lỗi.
-            long balance = walletRepository.findCurrentBalanceNative(existing.getWalletId()).orElseThrow();
+            long balance = walletService.requireRawBalance(existing.getWalletId());
             return new DeleteTransactionResponse(
                     new DeleteTransactionResponse.NewBalance(existing.getWalletId(), balance));
         }
@@ -230,7 +229,7 @@ public class TransactionService {
         if (txn.getDestinationWalletId() != null) {
             walletIds.add(txn.getDestinationWalletId());
         }
-        lockWalletsInOrder(walletIds, userId);
+        walletService.lockWalletsInOrder(walletIds, userId);
 
         applyEffect(txn.getType(), txn.getWalletId(), txn.getDestinationWalletId(), txn.getAmount(), true);
 
@@ -238,7 +237,7 @@ public class TransactionService {
         txn.setUpdatedAt(Instant.now());
         transactionRepository.save(txn);
 
-        long walletNewBalance = walletRepository.findCurrentBalanceNative(txn.getWalletId()).orElseThrow();
+        long walletNewBalance = walletService.requireRawBalance(txn.getWalletId());
         return new DeleteTransactionResponse(
                 new DeleteTransactionResponse.NewBalance(txn.getWalletId(), walletNewBalance));
     }
@@ -330,41 +329,23 @@ public class TransactionService {
                 .orElse(null);
     }
 
+    /**
+     * Ánh xạ kết quả của {@code BudgetService} sang DTO của module này. Logic dựng câu cảnh báo
+     * nằm bên {@code budget/} vì nó dùng cách định dạng tiền của chính module đó.
+     */
     private List<AffectedBudgetResponse> computeAffectedBudgets(
             UUID userId, String type, UUID categoryId, LocalDate date) {
-        if (!"expense".equals(type) || categoryId == null) {
-            return List.of();
-        }
-        List<BudgetProgressProjection> affected =
-                budgetProgressRepository.findActiveByUserAndCategoryInTree(userId, categoryId, date);
-        List<AffectedBudgetResponse> result = new ArrayList<>();
-        for (BudgetProgressProjection budget : affected) {
-            if ("normal".equals(budget.getStatus())) {
-                continue;
-            }
-            Category root = categoryRepository.findById(budget.getCategoryId()).orElse(null);
-            String categoryName = root != null ? root.getName() : "";
-            long remaining = budget.getRemaining() == null ? 0L : budget.getRemaining();
-            int daysRemaining = budget.getDaysRemaining() == null ? 0 : budget.getDaysRemaining();
-            // Dùng lại BudgetService.formatAmount: api/04 mục 6 ghi "Còn 502.000 đ", có dấu
-            // chấm phân cách hàng nghìn. Nối thẳng số vào chuỗi cho ra "505000 đ" — lệch hợp
-            // đồng và lệch luôn với câu cảnh báo của chính module ngân sách.
-            String alert = "over_limit".equals(budget.getStatus())
-                    ? "Vượt " + BudgetService.formatAmount(Math.abs(remaining))
-                            + " đ khi kỳ còn " + daysRemaining + " ngày."
-                    : "Còn " + BudgetService.formatAmount(remaining)
-                            + " đ cho " + daysRemaining + " ngày còn lại của kỳ.";
-            result.add(new AffectedBudgetResponse(
-                    budget.getId(), categoryName, budget.getLimitAmount(), budget.getSpentAmount(),
-                    budget.getRatio(), budget.getStatus(), alert));
-        }
-        return result;
+        return budgetService.findImpactedBudgets(userId, type, categoryId, date).stream()
+                .map(b -> new AffectedBudgetResponse(
+                        b.id(), b.categoryName(), b.limitAmount(), b.spentAmount(),
+                        b.ratio(), b.status(), b.alert()))
+                .toList();
     }
 
     /**
      * GET /transactions (TXN-01, api/04-GIAO-DICH.md mục 1). Điểm bắt buộc TXN-08: nếu {@code
      * filters.categoryId() != null}, cộng gộp danh mục con bằng {@code
-     * categoryRepository.findCategoryTree(...)} rồi truyền mảng UUID vào query — KHÔNG tự viết
+     * categoryService.findCategoryTree(...)} rồi truyền mảng UUID vào query — KHÔNG tự viết
      * lại điều kiện lọc {@code category_id = :categoryId} đơn thuần ở đây hay bất kỳ nơi khác
      * ({@link #listByDate} tái sử dụng đúng phương thức private này).
      */
@@ -569,7 +550,7 @@ public class TransactionService {
         if (categoryId == null) {
             return null;
         }
-        return categoryRepository.findCategoryTree(categoryId).toArray(new UUID[0]);
+        return categoryService.findCategoryTree(categoryId).toArray(new UUID[0]);
     }
 
     /**
@@ -657,28 +638,25 @@ public class TransactionService {
     }
 
     private TransactionListItemResponse toListItemResponse(Transaction txn) {
-        Wallet wallet = walletRepository.findById(txn.getWalletId()).orElse(null);
-        Wallet destinationWallet = txn.getDestinationWalletId() != null
-                ? walletRepository.findById(txn.getDestinationWalletId()).orElse(null)
-                : null;
+        WalletRefResponse wallet = walletService.findRefById(txn.getWalletId());
+        WalletRefResponse destinationWallet = walletService.findRefById(txn.getDestinationWalletId());
 
         TransactionListItemResponse.CategoryRef categoryRef = null;
         if (txn.getCategoryId() != null) {
-            Category category = categoryRepository.findById(txn.getCategoryId()).orElse(null);
+            CategoryRefResponse category = categoryService.findRefById(txn.getCategoryId());
             if (category != null) {
-                Icon icon = iconRepository.findById(category.getIconId()).orElse(null);
+                IconRefResponse icon = category.icon();
                 TransactionListItemResponse.IconRef iconRef =
-                        icon != null ? new TransactionListItemResponse.IconRef(icon.getCode(), icon.getPathData()) : null;
+                        icon != null ? new TransactionListItemResponse.IconRef(icon.code(), icon.pathData()) : null;
                 TransactionListItemResponse.ParentRef parentRef = null;
-                if (category.getParentCategoryId() != null) {
-                    Category parent =
-                            categoryRepository.findById(category.getParentCategoryId()).orElse(null);
+                if (category.parentCategoryId() != null) {
+                    CategoryRefResponse parent = categoryService.findRefById(category.parentCategoryId());
                     if (parent != null) {
-                        parentRef = new TransactionListItemResponse.ParentRef(parent.getId(), parent.getName());
+                        parentRef = new TransactionListItemResponse.ParentRef(parent.id(), parent.name());
                     }
                 }
                 categoryRef = new TransactionListItemResponse.CategoryRef(
-                        category.getId(), category.getName(), category.getType(), iconRef, category.getColor(), parentRef);
+                        category.id(), category.name(), category.type(), iconRef, category.color(), parentRef);
             }
         }
 
@@ -692,11 +670,11 @@ public class TransactionService {
                 txn.getSource(),
                 txn.getCountsInReport(),
                 wallet != null
-                        ? new TransactionListItemResponse.WalletRef(wallet.getId(), wallet.getName(), wallet.getType())
+                        ? new TransactionListItemResponse.WalletRef(wallet.id(), wallet.name(), wallet.type())
                         : null,
                 destinationWallet != null
                         ? new TransactionListItemResponse.WalletRef(
-                                destinationWallet.getId(), destinationWallet.getName(), destinationWallet.getType())
+                                destinationWallet.id(), destinationWallet.name(), destinationWallet.type())
                         : null,
                 categoryRef,
                 txn.getReceiptUrl(),
@@ -735,28 +713,6 @@ public class TransactionService {
     }
 
     /**
-     * Khoá tất cả ví liên quan theo thứ tự {@code UUID.compareTo()} tăng dần (D-33, chống
-     * deadlock — mở rộng nguyên thuật toán từ {@code WalletTransferService} 2 ví lên tối đa 4
-     * ví), kiểm tra quyền sở hữu ngay sau khi khoá từng ví.
-     */
-    private Map<UUID, Wallet> lockWalletsInOrder(Set<UUID> walletIds, UUID userId) {
-        List<UUID> sortedIds = new ArrayList<>(walletIds);
-        sortedIds.sort(UUID::compareTo);
-
-        Map<UUID, Wallet> lockedWallets = new HashMap<>();
-        for (UUID walletId : sortedIds) {
-            Wallet wallet = walletRepository
-                    .findByIdForUpdate(walletId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
-            if (!userId.equals(wallet.getUserId())) {
-                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
-            }
-            lockedWallets.put(walletId, wallet);
-        }
-        return lockedWallets;
-    }
-
-    /**
      * Áp dụng (hoặc hoàn tác, nếu {@code reverse=true}) ảnh hưởng của một giao dịch lên (các) ví
      * liên quan — dùng chung cho bước 1 (hoàn tác CŨ) và bước 3 (áp dụng MỚI) của
      * {@link #update}, cũng như bước hoàn tác của {@link #delete}.
@@ -764,24 +720,20 @@ public class TransactionService {
     private void applyEffect(
             String type, UUID walletId, UUID destinationWalletId, long amount, boolean reverse) {
         switch (type) {
-            case "expense" -> walletRepository.adjustBalance(walletId, reverse ? amount : -amount);
-            case "income" -> walletRepository.adjustBalance(walletId, reverse ? -amount : amount);
+            case "expense" -> walletService.adjustBalance(walletId, reverse ? amount : -amount);
+            case "income" -> walletService.adjustBalance(walletId, reverse ? -amount : amount);
             case "transfer" -> {
-                walletRepository.adjustBalance(walletId, reverse ? amount : -amount);
-                walletRepository.adjustBalance(destinationWalletId, reverse ? -amount : amount);
+                walletService.adjustBalance(walletId, reverse ? amount : -amount);
+                walletService.adjustBalance(destinationWalletId, reverse ? -amount : amount);
             }
             default -> throw new IllegalArgumentException("Loại giao dịch không hợp lệ: " + type);
         }
     }
 
     private TransactionResponse toResponse(Transaction txn) {
-        Wallet wallet = walletRepository.findById(txn.getWalletId()).orElse(null);
-        Wallet destinationWallet = txn.getDestinationWalletId() != null
-                ? walletRepository.findById(txn.getDestinationWalletId()).orElse(null)
-                : null;
-        Category category = txn.getCategoryId() != null
-                ? categoryRepository.findById(txn.getCategoryId()).orElse(null)
-                : null;
+        WalletRefResponse wallet = walletService.findRefById(txn.getWalletId());
+        WalletRefResponse destinationWallet = walletService.findRefById(txn.getDestinationWalletId());
+        CategoryRefResponse category = categoryService.findRefById(txn.getCategoryId());
 
         return new TransactionResponse(
                 txn.getId(),
@@ -792,14 +744,14 @@ public class TransactionService {
                 txn.getNote(),
                 txn.getSource(),
                 txn.getCountsInReport(),
-                wallet != null ? new TransactionResponse.WalletRef(wallet.getId(), wallet.getName(), wallet.getType()) : null,
+                wallet != null ? new TransactionResponse.WalletRef(wallet.id(), wallet.name(), wallet.type()) : null,
                 destinationWallet != null
                         ? new TransactionResponse.WalletRef(
-                                destinationWallet.getId(), destinationWallet.getName(), destinationWallet.getType())
+                                destinationWallet.id(), destinationWallet.name(), destinationWallet.type())
                         : null,
                 category != null
                         ? new TransactionResponse.CategoryRef(
-                                category.getId(), category.getName(), category.getType(), category.getParentCategoryId())
+                                category.id(), category.name(), category.type(), category.parentCategoryId())
                         : null,
                 txn.getReceiptUrl(),
                 txn.getRecurringId(),

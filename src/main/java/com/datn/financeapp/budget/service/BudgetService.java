@@ -1,6 +1,7 @@
 package com.datn.financeapp.budget.service;
 
 import com.datn.financeapp.budget.dto.response.BudgetAlertResponse;
+import com.datn.financeapp.budget.dto.response.BudgetImpactResponse;
 import com.datn.financeapp.budget.dto.response.BudgetListItemResponse;
 import com.datn.financeapp.budget.dto.response.BudgetSuggestionResponse;
 import com.datn.financeapp.budget.dto.response.BudgetSummaryResponse;
@@ -376,6 +377,46 @@ public class BudgetService {
     // ---------------------------------------------------------------------
     // Ánh xạ và tính toán phụ trợ
     // ---------------------------------------------------------------------
+
+    /**
+     * Các ngân sách bị ảnh hưởng bởi một khoản chi vừa ghi — chỉ trả những ngân sách đã chạm
+     * ngưỡng cảnh báo, ngân sách còn "normal" thì bỏ qua vì không có gì để báo.
+     *
+     * <p>Chuyển từ {@code TransactionService} sang đây ở nhóm H: câu cảnh báo phải dùng
+     * {@link #formatAmount} của chính module này (api/04 mục 6 ghi "Còn 502.000 đ" — nối thẳng số
+     * vào chuỗi cho ra "505000 đ", lệch hợp đồng và lệch cả với câu cảnh báo của màn Ngân sách).
+     * Để bên {@code transaction/} thì nó phải đụng {@code BudgetProgressRepository}.
+     *
+     * <p>Trả rỗng nếu không phải khoản chi hoặc không có danh mục — chuyển tiền và khoản thu
+     * không ăn vào ngân sách nào.
+     */
+    @Transactional(readOnly = true)
+    public List<BudgetImpactResponse> findImpactedBudgets(
+            UUID userId, String type, UUID categoryId, LocalDate date) {
+        if (!"expense".equals(type) || categoryId == null) {
+            return List.of();
+        }
+        List<BudgetImpactResponse> result = new ArrayList<>();
+        for (BudgetProgressProjection budget :
+                budgetProgressRepository.findActiveByUserAndCategoryInTree(userId, categoryId, date)) {
+            if ("normal".equals(budget.getStatus())) {
+                continue;
+            }
+            CategoryRefResponse root = categoryService.findRefById(budget.getCategoryId());
+            String categoryName = root != null ? root.name() : "";
+            long remaining = budget.getRemaining() == null ? 0L : budget.getRemaining();
+            int daysRemaining = budget.getDaysRemaining() == null ? 0 : budget.getDaysRemaining();
+            String alert = "over_limit".equals(budget.getStatus())
+                    ? "Vượt " + formatAmount(Math.abs(remaining))
+                            + " đ khi kỳ còn " + daysRemaining + " ngày."
+                    : "Còn " + formatAmount(remaining)
+                            + " đ cho " + daysRemaining + " ngày còn lại của kỳ.";
+            result.add(new BudgetImpactResponse(
+                    budget.getId(), categoryName, budget.getLimitAmount(), budget.getSpentAmount(),
+                    budget.getRatio(), budget.getStatus(), alert));
+        }
+        return result;
+    }
 
     private List<BudgetListItemResponse> toResponses(UUID userId, List<BudgetProgressProjection> rows) {
         Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);

@@ -10,6 +10,13 @@ import java.util.UUID;
  * thuộc cấu trúc bảng {@code categories} (quy tắc 11 CLAUDE.md).
  *
  * @param icon có thể {@code null} nếu danh mục không gắn biểu tượng
+ * @param parentCategoryId {@code null} nếu đây là danh mục cấp cha. Danh mục tối đa hai cấp nên
+ *     không cần đệ quy — bên gọi cần tên cha thì tra thêm một lần bằng id này
  */
 public record CategoryRefResponse(
-        UUID id, String name, String type, String color, IconRefResponse icon) {}
+        UUID id,
+        String name,
+        String type,
+        String color,
+        IconRefResponse icon,
+        UUID parentCategoryId) {}
