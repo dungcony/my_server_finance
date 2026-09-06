@@ -125,6 +125,24 @@ public class TransactionWriter {
      * Kết quả ghi giao dịch. {@code destinationWalletNewBalance} chỉ khác NULL khi
      * {@code type = transfer}.
      */
+    /**
+     * Như {@link #write} nhưng ép Hibernate đẩy câu INSERT xuống CSDL NGAY, thay vì hoãn tới lúc
+     * commit.
+     *
+     * <p>Bắt buộc khi bên gọi cần bắt vi phạm ràng buộc duy nhất (ví dụ
+     * {@code uq_txn_recurring_date}) trong khối {@code try} của chính mình: không {@code flush()}
+     * thì lỗi nổ ra lúc commit — ngoài khối {@code try} — và không còn cơ hội đổi thành lỗi nghiệp
+     * vụ tử tế cho người dùng.
+     *
+     * <p>Có mặt ở đây để module ngoài không phải đụng {@code TransactionRepository} chỉ để gọi
+     * {@code flush()} (quy tắc 11 CLAUDE.md).
+     */
+    public WriteResult writeAndFlush(TransactionWriteCommand cmd) {
+        WriteResult result = write(cmd);
+        transactionRepository.flush();
+        return result;
+    }
+
     public record WriteResult(UUID transactionId, long walletNewBalance, Long destinationWalletNewBalance) {
     }
 }

@@ -1,7 +1,6 @@
 package com.datn.financeapp.recurring.service;
 
 import com.datn.financeapp.recurring.entity.RecurringTransaction;
-import com.datn.financeapp.transaction.repository.TransactionRepository;
 import com.datn.financeapp.transaction.service.TransactionWriter;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -32,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecurringSinglePeriodWriter {
 
     private final TransactionWriter transactionWriter;
-    private final TransactionRepository transactionRepository;
 
     /**
      * Dùng cho tác vụ nền: kỳ đã tồn tại thì BỎ QUA trong im lặng, không ném ra ngoài. Nhờ vậy chạy
@@ -71,10 +69,8 @@ public class RecurringSinglePeriodWriter {
      * {@code DebtService}/{@code GoalService}.
      */
     private UUID writeAndFlush(RecurringTransaction rec, LocalDate periodDate) {
-        UUID transactionId = transactionWriter
-                .write(RecurringPeriodWriter.buildCommand(rec, periodDate))
+        return transactionWriter
+                .writeAndFlush(RecurringPeriodWriter.buildCommand(rec, periodDate))
                 .transactionId();
-        transactionRepository.flush();
-        return transactionId;
     }
 }

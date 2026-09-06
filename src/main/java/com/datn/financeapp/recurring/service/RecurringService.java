@@ -1,9 +1,7 @@
 package com.datn.financeapp.recurring.service;
 
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.entity.Icon;
-import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.category.repository.IconRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.recurring.dto.request.CreateRecurringRequest;
@@ -14,9 +12,10 @@ import com.datn.financeapp.recurring.dto.response.RunNowResponse;
 import com.datn.financeapp.recurring.dto.request.UpdateRecurringRequest;
 import com.datn.financeapp.recurring.entity.RecurringTransaction;
 import com.datn.financeapp.recurring.repository.RecurringTransactionRepository;
-import com.datn.financeapp.transaction.repository.TransactionRepository;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.transaction.dto.response.GeneratedTransactionResponse;
+import com.datn.financeapp.transaction.service.TransactionService;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -47,10 +46,9 @@ public class RecurringService {
     private static final Set<String> VALID_TYPES = Set.of("expense", "income");
 
     private final RecurringTransactionRepository recurringRepository;
-    private final TransactionRepository transactionRepository;
-    private final WalletRepository walletRepository;
-    private final CategoryRepository categoryRepository;
-    private final IconRepository iconRepository;
+    private final TransactionService transactionService;
+    private final WalletService walletService;
+    private final CategoryService categoryService;
     private final RecurringPeriodWriter periodWriter;
 
     // ---------------------------------------------------------------------
@@ -70,9 +68,9 @@ public class RecurringService {
         RecurringTransaction rec = requireOwned(userId, id);
 
         List<RecurringDetailResponse.GeneratedTransaction> history =
-                transactionRepository.findAllByRecurringIdAndIsDeletedFalseOrderByDateDesc(id).stream()
+                transactionService.findGeneratedByRecurringId(id).stream()
                         .map(t -> new RecurringDetailResponse.GeneratedTransaction(
-                                t.getId(), t.getDate(), t.getAmount(), t.getType(), t.getSource()))
+                                t.id(), t.date(), t.amount(), t.type(), t.source()))
                         .toList();
 
         return new RecurringDetailResponse(buildListItem(rec), history);
@@ -205,7 +203,7 @@ public class RecurringService {
 
         UUID transactionId = periodWriter.runSinglePeriodNow(id);
 
-        Long balance = walletRepository.findCurrentBalanceNative(rec.getWalletId()).orElse(null);
+        Long balance = walletService.findRawBalance(rec.getWalletId());
         return new RunNowResponse(
                 new RunNowResponse.TransactionSummary(transactionId, rec.getType(), rec.getAmount(), LocalDate.now()),
                 new RunNowResponse.NewBalance(rec.getWalletId(), balance));
@@ -225,10 +223,12 @@ public class RecurringService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy khoản định kỳ."));
     }
 
-    private Wallet requireWalletAccess(UUID walletId, UUID userId) {
-        return walletRepository
-                .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+    private WalletRefResponse requireWalletAccess(UUID walletId, UUID userId) {
+        WalletRefResponse wallet = walletService.findRefForUser(userId, walletId);
+        if (wallet == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+        }
+        return wallet;
     }
 
     /**
@@ -236,11 +236,12 @@ public class RecurringService {
      * {@code trg_transactions_validate} sẽ chặn ở tầng CSDL nhưng phải đợi tới lúc tác vụ nền
      * chạy — khi đó lỗi lặp lại mỗi ngày trong log mà người dùng không hề hay biết.
      */
-    private Category requireCategoryOfType(UUID categoryId, UUID userId, String type) {
-        Category category = categoryRepository
-                .findByIdAndVisibleToUser(categoryId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED));
-        if (!category.getType().equals(type)) {
+    private CategoryRefResponse requireCategoryOfType(UUID categoryId, UUID userId, String type) {
+        CategoryRefResponse category = categoryService.findRefVisibleToUser(categoryId, userId);
+        if (category == null) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+        }
+        if (!category.type().equals(type)) {
             throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
         }
         return category;
@@ -260,29 +261,27 @@ public class RecurringService {
     }
 
     private RecurringListItemResponse buildListItem(RecurringTransaction rec) {
-        Wallet wallet = walletRepository.findById(rec.getWalletId()).orElse(null);
-        Category category = categoryRepository.findById(rec.getCategoryId()).orElse(null);
-        Icon icon = category == null || category.getIconId() == null
-                ? null
-                : iconRepository.findById(category.getIconId()).orElse(null);
+        WalletRefResponse wallet = walletService.findRefById(rec.getWalletId());
+        CategoryRefResponse category = categoryService.findRefById(rec.getCategoryId());
 
-        long runCount = transactionRepository.countByRecurringIdAndIsDeletedFalse(rec.getId());
+        long runCount = transactionService.countByRecurringId(rec.getId());
 
         return new RecurringListItemResponse(
                 rec.getId(),
                 rec.getDisplayName(),
                 rec.getType(),
                 rec.getAmount(),
-                wallet == null ? null : new RecurringListItemResponse.WalletRef(wallet.getId(), wallet.getName()),
+                wallet == null ? null : new RecurringListItemResponse.WalletRef(wallet.id(), wallet.name()),
                 category == null
                         ? null
                         : new RecurringListItemResponse.CategoryRef(
-                                category.getId(),
-                                category.getName(),
-                                icon == null
+                                category.id(),
+                                category.name(),
+                                category.icon() == null
                                         ? null
-                                        : new RecurringListItemResponse.IconRef(icon.getCode(), icon.getPathData()),
-                                category.getColor()),
+                                        : new RecurringListItemResponse.IconRef(
+                                                category.icon().code(), category.icon().pathData()),
+                                category.color()),
                 rec.getFrequency(),
                 rec.getInterval(),
                 buildScheduleLabel(rec),

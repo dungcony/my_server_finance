@@ -217,6 +217,37 @@ public class WalletService {
     }
 
     /**
+     * Số dư hiện tại đọc thẳng từ cột {@code current_balance} — tức đã gồm cả giao dịch tương
+     * lai, KHÔNG phải "tiền thật đến hết hôm nay". Trả {@code null} nếu ví không tồn tại.
+     *
+     * <p>Dùng native SQL nên cố ý bỏ qua first-level cache của Hibernate: caller trong cùng
+     * transaction có thể vừa gọi một bulk UPDATE lên cột này. Chênh nghĩa với trường
+     * {@code current_balance} của API — xem db/README.md mục "Suy ra số dư ví theo mốc thời gian".
+     */
+    @Transactional(readOnly = true)
+    public Long findRawBalance(UUID walletId) {
+        if (walletId == null) {
+            return null;
+        }
+        return walletRepository.findCurrentBalanceNative(walletId).orElse(null);
+    }
+
+    /**
+     * Như {@link #findRefForUser} nhưng KHÔNG kiểm quyền — dùng để hiển thị lại tên ví mà bên gọi
+     * đã xác thực quyền qua bản ghi cha của mình.
+     */
+    @Transactional(readOnly = true)
+    public WalletRefResponse findRefById(UUID walletId) {
+        if (walletId == null) {
+            return null;
+        }
+        return walletRepository
+                .findById(walletId)
+                .map(w -> new WalletRefResponse(w.getId(), w.getName()))
+                .orElse(null);
+    }
+
+    /**
      * Số ví còn sống của một người dùng — phục vụ khối {@code stats} của {@code GET /auth/me}.
      * Có mặt ở đây để {@code auth} không phải đụng thẳng vào {@code WalletRepository}.
      */

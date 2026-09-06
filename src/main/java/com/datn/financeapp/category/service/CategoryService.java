@@ -5,6 +5,7 @@ import com.datn.financeapp.category.dto.response.CategoryGroupResponse;
 import com.datn.financeapp.category.dto.response.CategoryResponse;
 import com.datn.financeapp.category.dto.request.CreateCategoryRequest;
 import com.datn.financeapp.category.dto.response.IconGroupResponse;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
 import com.datn.financeapp.category.dto.response.IconRefResponse;
 import com.datn.financeapp.category.dto.response.IconResponse;
 import com.datn.financeapp.category.dto.request.ReorderCategoriesRequest;
@@ -325,6 +326,41 @@ public class CategoryService {
                 .map(g -> new CategoryGroupResponse(
                         g.getId(), g.getName(), g.getColor(), toIconSummary(iconsById.get(g.getIconId())), g.getSortOrder()))
                 .toList();
+    }
+
+    /**
+     * Tham chiếu tới một danh mục kèm biểu tượng, hoặc {@code null} nếu không tìm thấy /
+     * {@code categoryId} rỗng. KHÔNG kiểm quyền — dùng để hiển thị lại danh mục mà bên gọi đã
+     * xác thực quyền qua bản ghi cha của mình (giao dịch, khoản định kỳ, ngân sách).
+     *
+     * <p>Cần kiểm quyền thì dùng {@link #findRefVisibleToUser} thay vì method này.
+     */
+    @Transactional(readOnly = true)
+    public CategoryRefResponse findRefById(UUID categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        return categoryRepository.findById(categoryId).map(this::toRef).orElse(null);
+    }
+
+    /**
+     * Như {@link #findRefById} nhưng CÓ điều kiện quyền ngay trong câu truy vấn — trả
+     * {@code null} nếu danh mục không thuộc người dùng và cũng không phải danh mục hệ thống.
+     */
+    @Transactional(readOnly = true)
+    public CategoryRefResponse findRefVisibleToUser(UUID categoryId, UUID userId) {
+        if (categoryId == null) {
+            return null;
+        }
+        return categoryRepository
+                .findByIdAndVisibleToUser(categoryId, userId)
+                .map(this::toRef)
+                .orElse(null);
+    }
+
+    private CategoryRefResponse toRef(Category c) {
+        IconRefResponse icon = c.getIconId() == null ? null : findIconRef(c.getIconId());
+        return new CategoryRefResponse(c.getId(), c.getName(), c.getType(), c.getColor(), icon);
     }
 
     /**

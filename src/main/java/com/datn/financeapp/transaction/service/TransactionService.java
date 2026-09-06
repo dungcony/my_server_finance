@@ -15,6 +15,7 @@ import com.datn.financeapp.transaction.dto.response.AffectedBudgetResponse;
 import com.datn.financeapp.transaction.dto.request.CreateTransactionRequest;
 import com.datn.financeapp.transaction.dto.response.CreateTransactionResponse;
 import com.datn.financeapp.transaction.dto.response.DeleteTransactionResponse;
+import com.datn.financeapp.transaction.dto.response.GeneratedTransactionResponse;
 import com.datn.financeapp.transaction.dto.request.DuplicateTransactionRequest;
 import com.datn.financeapp.transaction.dto.response.TransactionByDateResponse;
 import com.datn.financeapp.transaction.dto.response.TransactionDetailResponse;
@@ -286,6 +287,30 @@ public class TransactionService {
      * nữa"). Chỉ tính khi type=expense và categoryId != null — cùng điều kiện BudgetAlertListener
      * áp dụng.
      */
+    /**
+     * Số giao dịch còn sống do một khoản định kỳ sinh ra. Dành cho {@code recurring/} hiển thị
+     * "đã chạy bao nhiêu lần".
+     */
+    @Transactional(readOnly = true)
+    public long countByRecurringId(UUID recurringId) {
+        return transactionRepository.countByRecurringIdAndIsDeletedFalse(recurringId);
+    }
+
+    /**
+     * Lịch sử giao dịch do một khoản định kỳ sinh ra, mới nhất trước. Dành cho {@code recurring/}
+     * dựng phần lịch sử ở màn chi tiết — cần cả {@code type} và {@code source} nên trả
+     * {@link GeneratedTransactionResponse} chứ không phải {@link TransactionRefResponse}.
+     */
+    @Transactional(readOnly = true)
+    public List<GeneratedTransactionResponse> findGeneratedByRecurringId(UUID recurringId) {
+        return transactionRepository
+                .findAllByRecurringIdAndIsDeletedFalseOrderByDateDesc(recurringId)
+                .stream()
+                .map(t -> new GeneratedTransactionResponse(
+                        t.getId(), t.getDate(), t.getAmount(), t.getType(), t.getSource()))
+                .toList();
+    }
+
     /**
      * Tham chiếu tối thiểu tới một giao dịch, hoặc {@code null} nếu không tìm thấy /
      * {@code transactionId} rỗng.
