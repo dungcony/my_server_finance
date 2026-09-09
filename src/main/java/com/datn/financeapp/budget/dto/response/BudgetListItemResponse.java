@@ -5,7 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** Một phần tử của {@code GET /budgets} và toàn bộ body {@code GET /budgets/{id}} (api/05 mục 1). */
+// Một phần tử của {@code GET /budgets} và toàn bộ body {@code GET /budgets/{id}} (api/05 mục 1).
 public record BudgetListItemResponse(
         UUID id,
         CategorySummary category,

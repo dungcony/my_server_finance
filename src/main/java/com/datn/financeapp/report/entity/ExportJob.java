@@ -32,11 +32,11 @@ public class ExportJob {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    /** CHECK IN ('csv','pdf','excel') — Phase 4 chỉ hỗ trợ csv (D-44). */
+    // CHECK IN ('csv','pdf','excel') — Phase 4 chỉ hỗ trợ csv (D-44).
     @Column(name = "format", nullable = false)
     private String format;
 
-    /** CHECK IN ('processing','completed','failed'). */
+    // CHECK IN ('processing','completed','failed').
     @Column(name = "status", nullable = false)
     private String status;
 
@@ -46,7 +46,7 @@ public class ExportJob {
     @Column(name = "error_message")
     private String errorMessage;
 
-    /** Chỉ set khi {@code status = completed}; job dọn hằng ngày (D-45, Plan 07) quét theo cột này. */
+    // Chỉ set khi {@code status = completed}; job dọn hằng ngày (D-45, Plan 07) quét theo cột này.
     @Column(name = "expires_at")
     private Instant expiresAt;
 

@@ -88,7 +88,7 @@ public class RecurringController {
         return ApiResponse.of(recurringService.pause(userId, id, req));
     }
 
-    /** Ghi ngay không đợi tới hạn, KHÔNG làm đổi {@code next_run_date} (api/09 mục A3). */
+    // Ghi ngay không đợi tới hạn, KHÔNG làm đổi {@code next_run_date} (api/09 mục A3).
     @PostMapping("/{id}/run-now")
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)

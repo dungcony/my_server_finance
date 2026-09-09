@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -144,7 +144,7 @@ class DebtPaymentIntegrationTest {
         return (String) data.get("id");
     }
 
-    /** Tạo khoản cho vay 3.000.000 và trả về id của nó. */
+    // Tạo khoản cho vay 3.000.000 và trả về id của nó.
     private String createLendingDebt(String token, String walletId, long amount) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("type", "lending");
@@ -229,7 +229,7 @@ class DebtPaymentIntegrationTest {
         assertThat(walletBalance(walletId)).isEqualTo(9_000_000L);
     }
 
-    /** D-47 — trả vượt số còn lại bị chặn 400 với thông điệp chứa số tiền còn nợ chính xác. */
+    // D-47 — trả vượt số còn lại bị chặn 400 với thông điệp chứa số tiền còn nợ chính xác.
     @Test
     void addPayment_exceedsRemaining_returns400() throws Exception {
         String token = registerAndGetAccessToken("tra.vuot@example.com");
@@ -303,7 +303,7 @@ class DebtPaymentIntegrationTest {
         assertThat(statusFromDatabase(debtId)).isEqualTo("settled");
     }
 
-    /** DEBT-03 — khoản nợ đã trả xong không ghi thêm được (409). */
+    // DEBT-03 — khoản nợ đã trả xong không ghi thêm được (409).
     @Test
     void addPaymentToSettledDebt_returns409() throws Exception {
         String token = registerAndGetAccessToken("tra.khi.da.xong@example.com");
@@ -321,7 +321,7 @@ class DebtPaymentIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("DEBT_ALREADY_SETTLED"));
     }
 
-    /** DEBT-03 — khoản nợ đã xoá nợ không ghi trả được (409). */
+    // DEBT-03 — khoản nợ đã xoá nợ không ghi trả được (409).
     @Test
     void addPaymentToWrittenOffDebt_returns409() throws Exception {
         String token = registerAndGetAccessToken("tra.khi.da.xoa.no@example.com");

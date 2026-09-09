@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Đăng Nhập - Finance AI Server</title>
+    <!-- Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+            --danger: #dc2626;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 30px 15px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0 0 8px 0;
+            color: #0f172a;
+            font-size: 24px;
+        }
+
+        .header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .google-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .divider:not(:empty)::before {
+            margin-right: .5em;
+        }
+
+        .divider:not(:empty)::after {
+            margin-left: .5em;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+
+        input, textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        button.btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.15s;
+        }
+
+        button.btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .response-box {
+            background: #0f172a;
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 350px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status-idle { background: #e2e8f0; color: #475569; }
+        .status-success { background: #dcfce7; color: var(--success); }
+        .status-error { background: #fee2e2; color: var(--danger); }
+
+        .client-id-info {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Finance AI — Test Đăng Nhập</h1>
+        <p>Trang kiểm thử xác thực Google OAuth & Tài khoản thường</p>
+    </div>
+
+    <!-- KHỐI 1: GOOGLE SIGN-IN -->
+    <div class="card">
+        <div class="card-title">
+            <span>🔐 Đăng Nhập Với Google</span>
+        </div>
+
+        <div class="google-box">
+            <!-- Nút Google One Tap & Sign-in Button -->
+            <div id="g_id_onload"
+                 data-client_id="230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com"
+                 data-callback="handleGoogleResponse"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="filled_blue"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left">
+            </div>
+            <div class="client-id-info">
+                Client ID: <code>230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com</code>
+            </div>
+        </div>
+
+        <div class="divider">HOẶC DÁN ID_TOKEN THỦ CÔNG</div>
+
+        <div class="form-group">
+            <label for="manualToken">Google ID Token (JWT):</label>
+            <textarea id="manualToken" rows="3" placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6..."></textarea>
+        </div>
+        <button class="btn" onclick="sendManualToken()">Gửi ID Token Lên Server (POST /v1/auth/google)</button>
+    </div>
+
+    <!-- KHỐI 2: KẾT QUẢ TRẢ VỀ TỪ SERVER -->
+    <div class="card">
+        <div class="card-title">
+            <span>📡 Kết Quả Server Trả Về</span>
+        </div>
+        <div>
+            <span id="statusBadge" class="status-badge status-idle">Trạng thái: Chờ thử nghiệm</span>
+        </div>
+        <div id="responseView" class="response-box">// Kết quả phản hồi từ API sẽ hiển thị ở đây...</div>
+    </div>
+</div>
+
+<script>
+    const API_ENDPOINT = '/v1/auth/google';
+
+    // Xử lý khi đăng nhập Google thành công qua nút bấm Google
+    function handleGoogleResponse(response) {
+        console.log("Nhận được ID Token từ Google:", response.credential);
+        document.getElementById('manualToken').value = response.credential;
+        sendTokenToServer(response.credential);
+    }
+
+    // Gửi token nhập thủ công
+    function sendManualToken() {
+        const token = document.getElementById('manualToken').value.trim();
+        if (!token) {
+            alert('Vui lòng nhập hoặc dán Google ID Token!');
+            return;
+        }
+        sendTokenToServer(token);
+    }
+
+    // Gửi request POST /auth/google
+    async function sendTokenToServer(idToken) {
+        const statusBadge = document.getElementById('statusBadge');
+        const responseView = document.getElementById('responseView');
+
+        statusBadge.className = 'status-badge status-idle';
+        statusBadge.innerText = 'Đang kết nối tới server...';
+        responseView.innerText = 'Sending POST ' + API_ENDPOINT + ' ...';
+
+        try {
+            const res = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id_token: idToken })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                statusBadge.className = 'status-badge status-success';
+                statusBadge.innerText = `HTTP ${res.status} OK — Đăng nhập thành công!`;
+            } else {
+                statusBadge.className = 'status-badge status-error';
+                statusBadge.innerText = `HTTP ${res.status} Error — Thất bại!`;
+            }
+
+            responseView.innerText = JSON.stringify(data, null, 2);
+        } catch (err) {
+            statusBadge.className = 'status-badge status-error';
+            statusBadge.innerText = 'Lỗi mạng hoặc Server chưa bật!';
+            responseView.innerText = err.toString();
+        }
+    }
+</script>
+
+</body>
+</html>

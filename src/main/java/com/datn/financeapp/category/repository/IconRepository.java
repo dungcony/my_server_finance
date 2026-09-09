@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** Repository JPA cho {@link Icon} — kho biểu tượng hệ thống (api/03-DANH-MUC.md mục 8). */
+// Repository JPA cho {@link Icon} — kho biểu tượng hệ thống (api/03-DANH-MUC.md mục 8).
 public interface IconRepository extends JpaRepository<Icon, UUID> {
 
     List<Icon> findByIconGroupAndIsActiveTrueOrderBySortOrderAsc(String iconGroup);

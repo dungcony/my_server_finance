@@ -51,7 +51,7 @@ public interface DebtRepository extends JpaRepository<Debt, UUID> {
     @Query(value = "SELECT paid_amount FROM debts WHERE id = :id", nativeQuery = true)
     Optional<Long> findPaidAmountNative(@Param("id") UUID id);
 
-    /** Cặp đôi với {@link #findPaidAmountNative} — cùng lý do trả scalar. */
+    // Cặp đôi với {@link #findPaidAmountNative} — cùng lý do trả scalar.
     @Query(value = "SELECT status FROM debts WHERE id = :id", nativeQuery = true)
     Optional<String> findStatusNative(@Param("id") UUID id);
 

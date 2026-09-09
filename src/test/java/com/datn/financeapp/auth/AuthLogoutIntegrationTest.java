@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -97,7 +97,7 @@ class AuthLogoutIntegrationTest {
         userRepository.deleteAll();
     }
 
-    /** Đăng ký một tài khoản mới, trả về cặp thẻ của phiên vừa mở. */
+    // Đăng ký một tài khoản mới, trả về cặp thẻ của phiên vừa mở.
     private Map<?, ?> register(String email) throws Exception {
         Map<String, Object> body = Map.of(
                 "email", email,
@@ -115,7 +115,7 @@ class AuthLogoutIntegrationTest {
         return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
     }
 
-    /** Mở thêm một phiên nữa cho tài khoản đã có — giả lập đăng nhập trên thiết bị thứ hai. */
+    // Mở thêm một phiên nữa cho tài khoản đã có — giả lập đăng nhập trên thiết bị thứ hai.
     private Map<?, ?> login(String email) throws Exception {
         Map<String, Object> body = Map.of("email", email, "password", "matkhaudung1");
 

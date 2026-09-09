@@ -48,7 +48,7 @@ public class Debt {
     @Column(name = "wallet_id", nullable = false)
     private UUID walletId;
 
-    /** CHECK IN ('lending','borrowing') — lending = người khác nợ tôi, borrowing = tôi nợ người khác. */
+    // CHECK IN ('lending','borrowing') — lending = người khác nợ tôi, borrowing = tôi nợ người khác.
     @Column(name = "type", nullable = false)
     private String type;
 
@@ -58,7 +58,7 @@ public class Debt {
     @Column(name = "principal_amount", nullable = false)
     private Long principalAmount;
 
-    /** DO TRIGGER SỞ HỮU — chỉ đọc, không bao giờ ghi từ backend. */
+    // DO TRIGGER SỞ HỮU — chỉ đọc, không bao giờ ghi từ backend.
     @Column(name = "paid_amount", nullable = false)
     private Long paidAmount;
 
@@ -71,7 +71,7 @@ public class Debt {
     @Column(name = "note")
     private String note;
 
-    /** DO TRIGGER SỞ HỮU — ngoại lệ duy nhất được ghi là write-off (api/08 mục 7). */
+    // DO TRIGGER SỞ HỮU — ngoại lệ duy nhất được ghi là write-off (api/08 mục 7).
     @Column(name = "status", nullable = false)
     private String status;
 

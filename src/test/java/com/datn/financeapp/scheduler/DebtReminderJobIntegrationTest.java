@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -185,7 +185,7 @@ class DebtReminderJobIntegrationTest {
     // Test
     // ---------------------------------------------------------------------
 
-    /** due_date = hôm nay + 7 ngày -> đúng 1 bản ghi nhắc nợ type=debt_reminder. */
+    // due_date = hôm nay + 7 ngày -> đúng 1 bản ghi nhắc nợ type=debt_reminder.
     @Test
     void sendDueReminders_sevenDaysBeforeDue_createsNotification() throws Exception {
         String token = registerAndGetAccessToken("nhac.no.bay.ngay@example.com");
@@ -200,7 +200,7 @@ class DebtReminderJobIntegrationTest {
                 .isEqualTo(1);
     }
 
-    /** due_date = hôm nay + 3 ngày -> KHÔNG rơi vào mốc nào trong ba mốc, không có bản ghi nào. */
+    // due_date = hôm nay + 3 ngày -> KHÔNG rơi vào mốc nào trong ba mốc, không có bản ghi nào.
     @Test
     void sendDueReminders_threeDaysBeforeDue_createsNoNotification() throws Exception {
         String token = registerAndGetAccessToken("nhac.no.ba.ngay@example.com");
@@ -234,7 +234,7 @@ class DebtReminderJobIntegrationTest {
                 .isEqualTo(1);
     }
 
-    /** Quá hạn đúng 7 ngày -> rơi vào chu kỳ nhắc lại mỗi 7 ngày. */
+    // Quá hạn đúng 7 ngày -> rơi vào chu kỳ nhắc lại mỗi 7 ngày.
     @Test
     void sendDueReminders_sevenDaysOverdue_createsNotification() throws Exception {
         String token = registerAndGetAccessToken("nhac.no.qua.han.bay@example.com");

@@ -74,7 +74,7 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
             @Param("categoryId") UUID categoryId,
             @Param("transactionDate") LocalDate transactionDate);
 
-    /** Các cột của {@code v_budget_progress}; Spring Data map theo tên getter -> tên cột. */
+    // Các cột của {@code v_budget_progress}; Spring Data map theo tên getter -> tên cột.
     interface BudgetProgressProjection {
         UUID getId();
 
@@ -90,7 +90,7 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
 
         BigDecimal getRatio();
 
-        /** {@code normal} | {@code near_limit} | {@code over_limit} — ngưỡng 0.8 tính sẵn ở view. */
+        // {@code normal} | {@code near_limit} | {@code over_limit} — ngưỡng 0.8 tính sẵn ở view.
         String getStatus();
 
         Integer getDaysRemaining();

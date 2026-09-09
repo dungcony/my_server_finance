@@ -50,6 +50,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 var authentication = new UsernamePasswordAuthenticationToken(
                         userId, null, Collections.emptyList());
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_USER_ID, userId);
             } catch (ExpiredJwtException ex) {
                 request.setAttribute(ATTR_TOKEN_ERROR, "TOKEN_EXPIRED");
             } catch (JwtException | IllegalArgumentException ex) {

@@ -2,7 +2,7 @@ package com.datn.financeapp.report.dto.response;
 
 import java.util.List;
 
-/** {@code GET /reports/monthly-trend} (api/06-BAO-CAO.md mục 6). */
+// {@code GET /reports/monthly-trend} (api/06-BAO-CAO.md mục 6).
 public record MonthlyTrendResponse(
         List<MonthItem> months, Long averageExpense, MonthAmount highestMonth, MonthAmount lowestMonth) {
 

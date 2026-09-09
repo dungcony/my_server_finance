@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
  * {@code TOKEN_EXPIRED} / {@code TOKEN_INVALID} / {@code UNAUTHENTICATED} — app dựa vào
  * {@code TOKEN_EXPIRED} để quyết định gọi {@code /auth/refresh}.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -47,6 +49,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             case "TOKEN_INVALID" -> "Thẻ truy cập không hợp lệ.";
             default -> "Vui lòng đăng nhập để tiếp tục.";
         };
+
+        log.warn("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
 
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
 

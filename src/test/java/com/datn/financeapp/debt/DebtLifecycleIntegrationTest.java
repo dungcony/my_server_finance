@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -186,7 +186,7 @@ class DebtLifecycleIntegrationTest {
     // Test
     // ---------------------------------------------------------------------
 
-    /** DEBT-01 — cho vay sinh đúng MỘT giao dịch chi danh mục "Cho vay", ví giảm đúng số tiền gốc. */
+    // DEBT-01 — cho vay sinh đúng MỘT giao dịch chi danh mục "Cho vay", ví giảm đúng số tiền gốc.
     @Test
     void createLendingDebt_createsExpenseTransaction_reducesBalance() throws Exception {
         String token = registerAndGetAccessToken("tao.khoan.no@example.com");
@@ -221,7 +221,7 @@ class DebtLifecycleIntegrationTest {
         assertThat(debt.get("status")).isEqualTo("outstanding");
     }
 
-    /** DEBT-01 — chiều ngược lại: đi vay sinh giao dịch THU, ví tăng. */
+    // DEBT-01 — chiều ngược lại: đi vay sinh giao dịch THU, ví tăng.
     @Test
     void createBorrowingDebt_createsIncomeTransaction_increasesBalance() throws Exception {
         String token = registerAndGetAccessToken("di.vay@example.com");
@@ -246,7 +246,7 @@ class DebtLifecycleIntegrationTest {
         assertThat(categoryName).isEqualTo("Đi vay");
     }
 
-    /** DEBT-05 — write-off chỉ đổi trạng thái, KHÔNG sinh giao dịch mới, số dư ví không đổi. */
+    // DEBT-05 — write-off chỉ đổi trạng thái, KHÔNG sinh giao dịch mới, số dư ví không đổi.
     @Test
     void writeOffDebt_changesStatusOnly_doesNotCreateTransaction() throws Exception {
         String token = registerAndGetAccessToken("xoa.no@example.com");
@@ -276,7 +276,7 @@ class DebtLifecycleIntegrationTest {
         assertThat(status).isEqualTo("written_off");
     }
 
-    /** DEBT-05 — write-off lần hai bị chặn 409, không âm thầm thành công. */
+    // DEBT-05 — write-off lần hai bị chặn 409, không âm thầm thành công.
     @Test
     void writeOffAlreadyWrittenOffDebt_returns409() throws Exception {
         String token = registerAndGetAccessToken("xoa.no.hai.lan@example.com");
@@ -334,7 +334,7 @@ class DebtLifecycleIntegrationTest {
         assertThat(softDeletedTransactions).isEqualTo(3);
     }
 
-    /** Riêng tư (T-04-09) — khoản nợ của người khác trả 404, không phải 403. */
+    // Riêng tư (T-04-09) — khoản nợ của người khác trả 404, không phải 403.
     @Test
     void getDebtOfAnotherUser_returns404() throws Exception {
         String ownerToken = registerAndGetAccessToken("chu.so.huu@example.com");

@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Phần tử GET /categories — record đệ quy, {@code children} chỉ điền khi trả dạng cây. */
+// Phần tử GET /categories — record đệ quy, {@code children} chỉ điền khi trả dạng cây.
 public record CategoryResponse(
         UUID id,
         String name,

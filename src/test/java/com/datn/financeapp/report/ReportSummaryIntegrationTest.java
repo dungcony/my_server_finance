@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -219,7 +219,7 @@ class ReportSummaryIntegrationTest {
                 .andExpect(jsonPath("$.data.total_income").value(0));
     }
 
-    /** REPORT-01 — cộng gộp danh mục con: giao dịch gán vào con phải cộng vào cha ở by-category. */
+    // REPORT-01 — cộng gộp danh mục con: giao dịch gán vào con phải cộng vào cha ở by-category.
     @Test
     void byCategory_parentLevel_aggregatesChildTransactions() throws Exception {
         String token = registerAndGetAccessToken("bao.cao.danh.muc.con@example.com");
@@ -241,7 +241,7 @@ class ReportSummaryIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].has_children").value(true));
     }
 
-    /** REPORT-02 — home gộp đủ các khối bắt buộc trong MỘT lần gọi (api/06 mục 1). */
+    // REPORT-02 — home gộp đủ các khối bắt buộc trong MỘT lần gọi (api/06 mục 1).
     @Test
     void home_returnsAllRequiredBlocks_inOneCall() throws Exception {
         String token = registerAndGetAccessToken("bao.cao.trang.chu@example.com");
@@ -261,7 +261,7 @@ class ReportSummaryIntegrationTest {
                 .andExpect(jsonPath("$.data.budgets_needing_attention").exists());
     }
 
-    /** REPORT-04 — current_line CHỈ có điểm dữ liệu tới hôm nay, không kéo dài hết tháng. */
+    // REPORT-04 — current_line CHỈ có điểm dữ liệu tới hôm nay, không kéo dài hết tháng.
     @Test
     void dailyTrend_currentLine_stopsAtToday() throws Exception {
         String token = registerAndGetAccessToken("bao.cao.xu.huong.ngay@example.com");
@@ -334,7 +334,7 @@ class ReportSummaryIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    /** Ví của người khác thì không lọc ra được gì — quyền nằm ngay trong câu truy vấn. */
+    // Ví của người khác thì không lọc ra được gì — quyền nằm ngay trong câu truy vấn.
     @Test
     void reports_locTheoViCuaNguoiKhacTraVeRong() throws Exception {
         String ownerToken = registerAndGetAccessToken("chu.vi.bao.cao@example.com");

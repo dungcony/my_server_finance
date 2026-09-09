@@ -3,7 +3,7 @@ package com.datn.financeapp.category.dto.response;
 import java.time.Instant;
 import java.util.UUID;
 
-/** GET /categories/{id} — như CategoryResponse (không kèm children) kèm {@code stats}. */
+// GET /categories/{id} — như CategoryResponse (không kèm children) kèm {@code stats}.
 public record CategoryDetailResponse(
         UUID id,
         String name,

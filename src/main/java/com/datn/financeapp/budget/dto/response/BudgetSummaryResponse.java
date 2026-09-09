@@ -3,7 +3,7 @@ package com.datn.financeapp.budget.dto.response;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/** Body {@code GET /budgets/summary} (api/05 mục 3) — phần đầu màn Ngân sách. */
+// Body {@code GET /budgets/summary} (api/05 mục 3) — phần đầu màn Ngân sách.
 public record BudgetSummaryResponse(
         Period period,
         Long totalLimit,

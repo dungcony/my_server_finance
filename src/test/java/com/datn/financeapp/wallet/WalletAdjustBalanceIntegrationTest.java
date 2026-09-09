@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -133,7 +133,7 @@ class WalletAdjustBalanceIntegrationTest {
         return (String) data.get("id");
     }
 
-    /** Ví mới tạo bằng initial_balance=450000 nghiễm nhiên current_balance=450000 (mục 4). */
+    // Ví mới tạo bằng initial_balance=450000 nghiễm nhiên current_balance=450000 (mục 4).
     private String createWalletWithBalance450k(String token, String name) throws Exception {
         return createWallet(token, name, "bank", 450_000);
     }

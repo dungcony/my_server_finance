@@ -18,7 +18,7 @@ public record TransactionDetailResponse(
         String displayName,
         String note,
         String source,
-        /** Xem {@link TransactionListItemResponse#countsInReport()}. */
+        // Xem {@link TransactionListItemResponse#countsInReport()}.
         Boolean countsInReport,
         TransactionListItemResponse.WalletRef wallet,
         TransactionListItemResponse.WalletRef destinationWallet,

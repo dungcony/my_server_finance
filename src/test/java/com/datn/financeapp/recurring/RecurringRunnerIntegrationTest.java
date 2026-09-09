@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.recurring.service.RecurringRunnerService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
@@ -207,7 +207,7 @@ class RecurringRunnerIntegrationTest {
         return (String) data.get("id");
     }
 
-    /** Mô phỏng "người dùng vắng mặt" — kéo lịch về quá khứ mà không phải đợi thời gian thật. */
+    // Mô phỏng "người dùng vắng mặt" — kéo lịch về quá khứ mà không phải đợi thời gian thật.
     private void rewindSchedule(String recurringId, LocalDate startDate, LocalDate nextRunDate) {
         jdbcTemplate.update(
                 "UPDATE recurring_transactions SET start_date = ?, next_run_date = ? WHERE id = ?",

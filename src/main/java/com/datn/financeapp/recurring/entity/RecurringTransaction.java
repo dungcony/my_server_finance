@@ -46,11 +46,11 @@ public class RecurringTransaction {
     @Column(name = "category_id", nullable = false)
     private UUID categoryId;
 
-    /** CHECK IN ('expense', 'income') — KHÔNG có 'transfer'. */
+    // CHECK IN ('expense', 'income') — KHÔNG có 'transfer'.
     @Column(name = "type", nullable = false)
     private String type;
 
-    /** Luôn dương (ck_rec_amount), kiểu Long theo CLAUDE.md §8 — không bao giờ Double. */
+    // Luôn dương (ck_rec_amount), kiểu Long theo CLAUDE.md §8 — không bao giờ Double.
     @Column(name = "amount", nullable = false)
     private Long amount;
 
@@ -60,7 +60,7 @@ public class RecurringTransaction {
     @Column(name = "note")
     private String note;
 
-    /** CHECK IN ('day', 'week', 'month', 'year'). */
+    // CHECK IN ('day', 'week', 'month', 'year').
     @Column(name = "frequency", nullable = false)
     private String frequency;
 
@@ -79,7 +79,7 @@ public class RecurringTransaction {
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    /** NULL = lặp vô hạn. */
+    // NULL = lặp vô hạn.
     @Column(name = "end_date")
     private LocalDate endDate;
 

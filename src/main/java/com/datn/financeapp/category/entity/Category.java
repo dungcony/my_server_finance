@@ -30,11 +30,11 @@ public class Category {
     @Id
     private UUID id;
 
-    /** NULL = danh mục mặc định của hệ thống, dùng chung cho mọi người. */
+    // NULL = danh mục mặc định của hệ thống, dùng chung cho mọi người.
     @Column(name = "user_id")
     private UUID userId;
 
-    /** NULL = danh mục cấp cha. Có giá trị = danh mục con. */
+    // NULL = danh mục cấp cha. Có giá trị = danh mục con.
     @Column(name = "parent_category_id")
     private UUID parentCategoryId;
 
@@ -44,7 +44,7 @@ public class Category {
     @Column(name = "name", nullable = false)
     private String name;
 
-    /** CHECK IN ('expense','income'). */
+    // CHECK IN ('expense','income').
     @Column(name = "type", nullable = false)
     private String type;
 

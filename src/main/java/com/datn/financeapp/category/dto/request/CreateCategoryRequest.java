@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
-/** Body của POST /categories (api/03-DANH-MUC.md mục 3). */
+// Body của POST /categories (api/03-DANH-MUC.md mục 3).
 public record CreateCategoryRequest(
         @NotBlank @Size(min = 1, max = 50) String name,
         @NotBlank @Pattern(regexp = "^(expense|income)$") String type,

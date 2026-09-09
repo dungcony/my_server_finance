@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
-/** Body của POST /wallets (api/02-VI.md mục 4). */
+// Body của POST /wallets (api/02-VI.md mục 4).
 public record CreateWalletRequest(
         @NotBlank @Size(min = 1, max = 50) String name,
         @NotBlank(message = "Vui lòng chọn loại ví.")

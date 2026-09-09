@@ -38,10 +38,11 @@ import java.util.List;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<ErrorResponse.FieldError> fields = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> new ErrorResponse.FieldError(toSnakeCase(fe.getField()), fe.getDefaultMessage()))
                 .toList();
+        log.warn("Validation thất bại tại {} {}: {}", request.getMethod(), request.getRequestURI(), fields);
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("VALIDATION_ERROR", "Dữ liệu gửi lên không hợp lệ.", fields, null));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
@@ -61,13 +62,14 @@ public class GlobalExceptionHandler {
         MethodArgumentTypeMismatchException.class,
         HttpMessageNotReadableException.class
     })
-    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex) {
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
         String field = null;
         if (ex instanceof MissingServletRequestParameterException e) {
             field = e.getParameterName();
         } else if (ex instanceof MethodArgumentTypeMismatchException e) {
             field = e.getName();
         }
+        log.warn("Yêu cầu không hợp lệ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         List<ErrorResponse.FieldError> fields = field == null
                 ? null
                 : List.of(new ErrorResponse.FieldError(field, "Thiếu hoặc sai định dạng."));
@@ -76,24 +78,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    /** Đường dẫn không tồn tại → 404 NOT_FOUND, không phải 500. */
+    // Đường dẫn không tồn tại → 404 NOT_FOUND, không phải 500.
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
-    public ResponseEntity<ErrorResponse> handleNotFound(Exception ex) {
+    public ResponseEntity<ErrorResponse> handleNotFound(Exception ex, HttpServletRequest request) {
+        log.warn("Không tìm thấy tài nguyên tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("NOT_FOUND", "Không tìm thấy tài nguyên."));
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
-    /** Sai phương thức HTTP → 405, không phải 500. */
+    // Sai phương thức HTTP → 405, không phải 500.
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        log.warn("Phương thức không được hỗ trợ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("METHOD_NOT_ALLOWED", "Phương thức không được hỗ trợ."));
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex) {
+    public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
+        log.warn("Nghiệp vụ từ chối tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), ex.getCode(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody(ex.getCode(), ex.getMessage(), ex.getDetail()));
         return ResponseEntity.status(ex.getHttpStatus()).body(body);
@@ -108,12 +113,14 @@ public class GlobalExceptionHandler {
                 : "TOKEN_INVALID".equals(code)
                         ? "Thẻ truy cập không hợp lệ."
                         : "Vui lòng đăng nhập để tiếp tục.";
+        log.warn("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        log.warn("Từ chối quyền truy cập tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("FORBIDDEN", "Bạn không có quyền truy cập tài nguyên này."));
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);

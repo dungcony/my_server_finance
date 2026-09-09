@@ -17,7 +17,7 @@ import org.springframework.data.repository.query.Param;
  */
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
-    /** Quyền D-27: transaction chỉ thuộc về đúng một user, không có nhánh nhóm. */
+    // Quyền D-27: transaction chỉ thuộc về đúng một user, không có nhánh nhóm.
     Optional<Transaction> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
 
     /**
@@ -36,8 +36,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
      */
     List<Transaction> findAllByRecurringIdAndIsDeletedFalseOrderByDateDesc(UUID recurringId);
 
-    /** {@code run_count} của api/09 mục A1 — số giao dịch còn sống đã sinh từ khoản định kỳ này. */
+    // {@code run_count} của api/09 mục A1 — số giao dịch còn sống đã sinh từ khoản định kỳ này.
     long countByRecurringIdAndIsDeletedFalse(UUID recurringId);
+
+    // Số giao dịch còn sống của một người dùng.
+    long countByUserIdAndIsDeletedFalse(UUID userId);
 
     /**
      * Dùng cho D-32 (plan sau): chặn xoá giao dịch đang gắn với một khoản trả nợ
@@ -102,7 +105,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("limit") int limit,
             @Param("offset") int offset);
 
-    /** Cùng điều kiện WHERE với {@link #search}, không phân trang — phục vụ {@code total_items}. */
+    // Cùng điều kiện WHERE với {@link #search}, không phân trang — phục vụ {@code total_items}.
     @Query(
             value = "SELECT COUNT(*) FROM transactions t "
                     + "WHERE t.user_id = :userId AND NOT t.is_deleted "
@@ -167,7 +170,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("minAmount") Long minAmount,
             @Param("maxAmount") Long maxAmount);
 
-    /** Projection cho {@link #summary} — Spring Data JPA tự map cột theo tên getter. */
+    // Projection cho {@link #summary} — Spring Data JPA tự map cột theo tên getter.
     interface SummaryProjection {
         Long getTotalIncome();
 

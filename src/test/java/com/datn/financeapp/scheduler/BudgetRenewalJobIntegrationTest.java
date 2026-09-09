@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -163,7 +163,7 @@ class BudgetRenewalJobIntegrationTest {
         return (String) data.get("id");
     }
 
-    /** Đẩy end_date của ngân sách về hôm qua để mô phỏng kỳ đã hết hạn, đúng điều kiện JOB-02. */
+    // Đẩy end_date của ngân sách về hôm qua để mô phỏng kỳ đã hết hạn, đúng điều kiện JOB-02.
     private void expireYesterday(String budgetId) {
         jdbcTemplate.update(
                 "UPDATE budgets SET start_date = start_date - INTERVAL '1 month', "

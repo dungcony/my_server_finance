@@ -17,7 +17,7 @@ public class BusinessException extends RuntimeException {
     private final int httpStatus;
     private final Object detail;
 
-    /** Cách dùng thường gặp nhất: mã lỗi kèm câu thông báo mặc định của nó. */
+    // Cách dùng thường gặp nhất: mã lỗi kèm câu thông báo mặc định của nó.
     public BusinessException(ErrorCode errorCode) {
         this(errorCode, errorCode.getDefaultMessage(), null);
     }
@@ -33,7 +33,7 @@ public class BusinessException extends RuntimeException {
         this(errorCode, message, null);
     }
 
-    /** Thêm {@code detail} có cấu trúc — ví dụ danh sách lỗi theo từng trường. */
+    // Thêm {@code detail} có cấu trúc — ví dụ danh sách lỗi theo từng trường.
     public BusinessException(ErrorCode errorCode, String message, Object detail) {
         super(message);
         this.code = errorCode.getCode();

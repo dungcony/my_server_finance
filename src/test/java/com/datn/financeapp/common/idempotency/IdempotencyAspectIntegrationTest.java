@@ -79,13 +79,15 @@ class IdempotencyAspectIntegrationTest {
         // chưa tồn tại tới Plan 04, và đây chỉ là dữ liệu setup, không phải nghiệp vụ.
         jdbcTemplate.update("DELETE FROM users WHERE id = ?", FIXED_USER_ID);
         jdbcTemplate.update(
-                "INSERT INTO users (id, email, password_hash, username, plan, created_at) "
-                        + "VALUES (?, ?, ?, ?, ?, now())",
+                "INSERT INTO users (id, email, password_hash, first_name, last_name, plan, status, created_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, now())",
                 FIXED_USER_ID,
                 "idempotency-test@example.com",
                 "$2a$12$placeholderplaceholderplaceholderplacehold",
-                "Idempotency Test User",
-                "free");
+                "User",
+                "Idempotency Test",
+                "free",
+                "active");
     }
 
     @TestConfiguration

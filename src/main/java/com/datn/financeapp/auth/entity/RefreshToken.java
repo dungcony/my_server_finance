@@ -32,14 +32,14 @@ public class RefreshToken {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    /** SHA-256 hex (64 ký tự) của token gốc — UNIQUE (uq_rt_hash). */
+    // SHA-256 hex (64 ký tự) của token gốc — UNIQUE (uq_rt_hash).
     @Column(name = "token_hash", nullable = false, unique = true)
     private String tokenHash;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    /** Khác NULL = đã thu hồi. Không xoá bản ghi để phát hiện tái sử dụng. */
+    // Khác NULL = đã thu hồi. Không xoá bản ghi để phát hiện tái sử dụng.
     @Column(name = "revoked_at")
     private Instant revokedAt;
 

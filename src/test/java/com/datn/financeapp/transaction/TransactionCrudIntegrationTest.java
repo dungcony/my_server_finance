@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,9 +38,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-/**
- * Test tích hợp cho POST /transactions (TXN-03, api/04-GIAO-DICH.md mục 4) — Task 1 plan 03-02.
- */
+// Test tích hợp cho POST /transactions (TXN-03, api/04-GIAO-DICH.md mục 4) — Task 1 plan 03-02.
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc

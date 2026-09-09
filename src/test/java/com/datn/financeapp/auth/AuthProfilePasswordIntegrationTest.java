@@ -3,25 +3,27 @@ package com.datn.financeapp.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.request.ChangePasswordRequest;
+import com.datn.financeapp.user.dto.request.ChangePasswordRequest;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
-import com.datn.financeapp.auth.dto.request.UpdateProfileRequest;
-import com.datn.financeapp.auth.dto.response.UserDetailResponse;
+import com.datn.financeapp.user.dto.request.UpdateMeRequest;
+import com.datn.financeapp.user.dto.response.UserDetailResponse;
 import com.datn.financeapp.auth.entity.PasswordResetToken;
-import com.datn.financeapp.auth.entity.RefreshToken;
-import com.datn.financeapp.auth.entity.User;
+import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
-import com.datn.financeapp.auth.service.PasswordResetNotifier;
+import com.datn.financeapp.user.service.UserProfileService;
+import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +63,12 @@ class AuthProfilePasswordIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private com.datn.financeapp.user.service.UserProfileService userProfileService;
+
+    @Autowired
+    private com.datn.financeapp.user.service.UserAccountService userAccountService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -76,7 +84,7 @@ class AuthProfilePasswordIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @MockitoSpyBean
-    private PasswordResetNotifier passwordResetNotifier;
+    private EmailService emailService;
 
     @BeforeEach
     void cleanTables() {
@@ -95,7 +103,7 @@ class AuthProfilePasswordIntegrationTest {
     void patchMe_UpdatesUsername_Succeeds() {
         User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
-        var result = authService.updateProfile(user.getId(), new UpdateProfileRequest("Tên Mới", null));
+        var result = userProfileService.updateMe(user.getId(), new UpdateMeRequest("Tên Mới", null));
 
         assertThat(result.username()).isEqualTo("Tên Mới");
         User reload = userRepository.findById(user.getId()).orElseThrow();
@@ -103,14 +111,14 @@ class AuthProfilePasswordIntegrationTest {
         // UpdateProfileRequest không có field email/plan -> record chỉ 2 tham số, không có cách
         // nào gọi truyền email/plan qua đây (verify bằng compile-time, xem field list ở class).
         assertThat(reload.getEmail()).isEqualTo("cap.nhat@example.com");
-        assertThat(reload.getPlan()).isEqualTo("free");
+        assertThat(reload.getPlan()).isEqualTo(com.datn.financeapp.user.enums.UserPlan.FREE);
     }
 
     @Test
     void getMe_NoTransactionsOrGroupsYet_returnsStatsDefaultingToZero() {
         User user = registerUser("xem.ho.so@example.com", "matkhaudung1", "Xem Hồ Sơ");
 
-        UserDetailResponse detail = authService.getMe(user.getId());
+        UserDetailResponse detail = userProfileService.getMe(user.getId());
 
         assertThat(detail.stats().walletCount()).isEqualTo(1L); // ví Tiền mặt tạo lúc đăng ký
         assertThat(detail.stats().transactionCount()).isEqualTo(0L);
@@ -131,7 +139,7 @@ class AuthProfilePasswordIntegrationTest {
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isNotEmpty();
 
-        authService.changePassword(user.getId(), new ChangePasswordRequest("matkhaucu123", "matkhaumoi456"));
+        userAccountService.changePassword(user.getId(), new ChangePasswordRequest("matkhaucu123", "matkhaumoi456"));
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isEmpty();
 
@@ -143,8 +151,8 @@ class AuthProfilePasswordIntegrationTest {
     void changePassword_wrongOldPassword_throwsWrongOldPassword() {
         User user = registerUser("sai.matkhau.cu@example.com", "matkhaudung1", "Sai Mật Khẩu Cũ");
 
-        assertThatThrownBy(() -> authService.changePassword(
-                        user.getId(), new ChangePasswordRequest("matkhausai999", "matkhaumoi456")))
+        assertThatThrownBy(() -> userAccountService.changePassword(
+                user.getId(), new ChangePasswordRequest("matkhausai999", "matkhaumoi456")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("WRONG_OLD_PASSWORD"));
     }
@@ -172,8 +180,8 @@ class AuthProfilePasswordIntegrationTest {
         authService.forgotPassword(new ForgotPasswordRequest("sau.chu.so@example.com"));
 
         ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(passwordResetNotifier)
-                .sendResetCode(Mockito.eq("sau.chu.so@example.com"), code.capture());
+        Mockito.verify(emailService)
+                .sendPasswordResetCode(Mockito.eq("sau.chu.so@example.com"), code.capture());
         assertThat(code.getValue()).matches("\\d{6}");
     }
 

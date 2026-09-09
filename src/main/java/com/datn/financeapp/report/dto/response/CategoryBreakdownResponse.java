@@ -3,7 +3,7 @@ package com.datn.financeapp.report.dto.response;
 import java.util.List;
 import java.util.UUID;
 
-/** {@code GET /reports/by-category} (api/06-BAO-CAO.md mục 4). */
+// {@code GET /reports/by-category} (api/06-BAO-CAO.md mục 4).
 public record CategoryBreakdownResponse(Long total, Long avgPerDay, List<Item> items) {
 
     public record Item(

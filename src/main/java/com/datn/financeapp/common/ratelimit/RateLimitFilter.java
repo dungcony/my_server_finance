@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -28,6 +29,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * GlobalExceptionHandler vì Filter chạy TRƯỚC DispatcherServlet, không thể ném exception để
  * Controller Advice bắt) nhưng vẫn khớp đúng khung {success,error} chuẩn toàn hệ thống.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -64,6 +66,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         .getEpochSecond()));
 
         if (!probe.isConsumed()) {
+            log.warn("Rate limit vượt ngưỡng tại {} {}: bucketKey={}", req.getMethod(), req.getRequestURI(), bucketKey);
             res.setStatus(429);
             res.setContentType("application/json");
             res.getWriter()

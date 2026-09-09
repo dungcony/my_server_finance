@@ -3,7 +3,7 @@ package com.datn.financeapp.wallet.dto.response;
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** Phản hồi 201 của POST /wallets/transfer (api/02-VI.md mục 8). */
+// Phản hồi 201 của POST /wallets/transfer (api/02-VI.md mục 8).
 public record TransferResponse(TransactionInfo transaction, NewBalance newBalance) {
 
     public record TransactionInfo(

@@ -76,7 +76,7 @@ public class UpdateCategoryRequest {
         this.parentCategoryIdSet = true;
     }
 
-    /** true khi client thực sự gửi field {@code parent_category_id} trong JSON (kể cả null). */
+    // true khi client thực sự gửi field {@code parent_category_id} trong JSON (kể cả null).
     public boolean isParentCategoryIdSet() {
         return parentCategoryIdSet;
     }

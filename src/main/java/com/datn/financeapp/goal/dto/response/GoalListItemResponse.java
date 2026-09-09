@@ -30,6 +30,6 @@ public record GoalListItemResponse(
 
     public record WalletSummary(UUID id, String name) {}
 
-    /** api/09 mục B1 "Cách tính gợi ý" — null khi mục tiêu không đặt {@code target_date}. */
+    // api/09 mục B1 "Cách tính gợi ý" — null khi mục tiêu không đặt {@code target_date}.
     public record Suggestion(Long monthlyRequired, String content, String assessment) {}
 }

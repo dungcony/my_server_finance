@@ -21,7 +21,7 @@ import org.springframework.data.repository.query.Param;
  */
 public interface ReportRepository extends Repository<Transaction, UUID> {
 
-    /** REPORT-summary (api/06 mục 2) — tổng thu/chi/số giao dịch trong kỳ, lọc thêm theo ví. */
+    // REPORT-summary (api/06 mục 2) — tổng thu/chi/số giao dịch trong kỳ, lọc thêm theo ví.
     @Query(
             value = "SELECT "
                     + "COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income, "
@@ -190,7 +190,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
             @Param("categoryTree") UUID[] categoryTree,
             @Param("walletId") UUID walletId);
 
-    /** REPORT-by-category, {@code level=child} (api/06 mục 4) — tách riêng từng danh mục con, KHÔNG cộng gộp. */
+    // REPORT-by-category, {@code level=child} (api/06 mục 4) — tách riêng từng danh mục con, KHÔNG cộng gộp.
     @Query(
             value = "SELECT c.id AS category_id, c.name AS name, c.icon_id AS icon_id, "
                     + "c.color AS color, SUM(t.amount) AS amount, COUNT(*) AS transaction_count, "
@@ -239,7 +239,7 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
         Long getAmount();
     }
 
-    /** REPORT-monthly-trend (api/06 mục 6) — tổng thu/chi từng tháng, tối đa 24 tháng gần nhất. */
+    // REPORT-monthly-trend (api/06 mục 6) — tổng thu/chi từng tháng, tối đa 24 tháng gần nhất.
     @Query(
             value = "SELECT date_trunc('month', t.date)::date AS month, "
                     + "COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income, "

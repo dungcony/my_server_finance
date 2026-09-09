@@ -139,7 +139,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
             nativeQuery = true)
     boolean hasFutureTransactions(@Param("walletId") UUID walletId);
 
-    /** JOB-01 (D-57, api/02 mục 10) — quét TOÀN BỘ ví còn hoạt động cho tác vụ đối chiếu hằng ngày. */
+    // JOB-01 (D-57, api/02 mục 10) — quét TOÀN BỘ ví còn hoạt động cho tác vụ đối chiếu hằng ngày.
     @Query(value = "SELECT id FROM wallets WHERE NOT is_deleted", nativeQuery = true)
     List<UUID> findAllActiveWalletIds();
 }

@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -143,7 +143,7 @@ class GoalContributionIntegrationTest {
         return (String) data.get("id");
     }
 
-    /** Tạo mục tiêu; {@code walletId} và {@code initialAmount} cho phép null để bỏ qua. */
+    // Tạo mục tiêu; {@code walletId} và {@code initialAmount} cho phép null để bỏ qua.
     private String createGoal(String token, String name, long targetAmount, String walletId, Long initialAmount)
             throws Exception {
         Map<String, Object> body = new HashMap<>();

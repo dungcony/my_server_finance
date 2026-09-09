@@ -38,16 +38,16 @@ public enum ErrorCode {
      */
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu gửi lên không hợp lệ."),
 
-    /** Thiếu thẻ truy cập. Do {@code GlobalExceptionHandler} phát, không ném từ service. */
+    // Thiếu thẻ truy cập. Do {@code GlobalExceptionHandler} phát, không ném từ service.
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để tiếp tục."),
 
-    /** Thẻ truy cập đã hết hạn. Do {@code GlobalExceptionHandler} phát. */
+    // Thẻ truy cập đã hết hạn. Do {@code GlobalExceptionHandler} phát.
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Phiên đăng nhập đã hết hạn."),
 
-    /** Thẻ sai hoặc đã bị thu hồi. Do {@code GlobalExceptionHandler} phát. */
+    // Thẻ sai hoặc đã bị thu hồi. Do {@code GlobalExceptionHandler} phát.
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Thẻ truy cập không hợp lệ."),
 
-    /** Không được phép truy cập tài nguyên này. Do {@code GlobalExceptionHandler} phát. */
+    // Không được phép truy cập tài nguyên này. Do {@code GlobalExceptionHandler} phát.
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này."),
 
     /**
@@ -62,16 +62,16 @@ public enum ErrorCode {
      */
     NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bản ghi."),
 
-    /** Vi phạm ràng buộc duy nhất. */
+    // Vi phạm ràng buộc duy nhất.
     DUPLICATE(HttpStatus.CONFLICT, "Bản ghi đã tồn tại."),
 
-    /** Gọi quá nhiều lần. */
+    // Gọi quá nhiều lần.
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau."),
 
-    /** Phương thức HTTP không được hỗ trợ ở điểm cuối này. Do {@code GlobalExceptionHandler} phát. */
+    // Phương thức HTTP không được hỗ trợ ở điểm cuối này. Do {@code GlobalExceptionHandler} phát.
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức không được hỗ trợ."),
 
-    /** Lỗi ngoài dự kiến. Không bao giờ đưa message gốc ra response (T-02-02). */
+    // Lỗi ngoài dự kiến. Không bao giờ đưa message gốc ra response (T-02-02).
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra, vui lòng thử lại."),
 
     /**
@@ -84,10 +84,10 @@ public enum ErrorCode {
     // Xác thực & tài khoản — api/01-XAC-THUC.md
     // ---------------------------------------------------------------------
 
-    /** Đăng ký với email đã có người dùng. */
+    // Đăng ký với email đã có người dùng.
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "Email đã có người dùng."),
 
-    /** Sai email hoặc mật khẩu khi đăng nhập. Cố ý không nói sai cái nào. */
+    // Sai email hoặc mật khẩu khi đăng nhập. Cố ý không nói sai cái nào.
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không đúng."),
 
     /**
@@ -95,6 +95,9 @@ public enum ErrorCode {
      * Khác hẳn {@link #ACCOUNT_BLOCKED}; app hiện hai câu khác nhau (PRD 01 nhóm B5).
      */
     ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản tạm khoá do đăng nhập sai nhiều lần."),
+    
+    // tài khoản chưa được xác thực
+    ACCOUNT_NOT_VERIFIED(HttpStatus.FORBIDDEN, "Tài khoản chưa được xác thực email."),
 
     /**
      * Khoá VĨNH VIỄN do quản trị viên đặt cờ {@code is_blocked} — không tự mở.
@@ -102,84 +105,90 @@ public enum ErrorCode {
      */
     ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN, "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ."),
 
-    /** Thẻ làm mới sai, hết hạn, hoặc đã bị thu hồi (kể cả do phát hiện dùng lại). */
+    // Thẻ làm mới sai, hết hạn, hoặc đã bị thu hồi (kể cả do phát hiện dùng lại).
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Thẻ làm mới không hợp lệ."),
 
-    /** Mã đặt lại mật khẩu 6 chữ số sai, hết hạn hoặc đã dùng. */
+    // Mã đặt lại mật khẩu 6 chữ số sai, hết hạn hoặc đã dùng.
     RESET_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã sai, hết hạn hoặc đã dùng."),
 
-    /** Đổi mật khẩu nhưng gõ sai mật khẩu hiện tại. Nhãn theo đúng ô nhập trên app (PRD 01 mục 6.5). */
+    // Mã xác thực email 6 chữ số sai hoặc đã hết hạn.
+    VERIFICATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã xác thực không hợp lệ hoặc đã hết hạn."),
+
+    // Tài khoản đã được kích hoạt trước đó.
+    ACCOUNT_ALREADY_VERIFIED(HttpStatus.BAD_REQUEST, "Tài khoản đã được xác thực."),
+
+    // Đổi mật khẩu nhưng gõ sai mật khẩu hiện tại. Nhãn theo đúng ô nhập trên app (PRD 01 mục 6.5).
     WRONG_OLD_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu cũ không đúng."),
 
-    /** Xoá tài khoản nhưng gõ sai mật khẩu xác nhận. */
+    // Xoá tài khoản nhưng gõ sai mật khẩu xác nhận.
     WRONG_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu không đúng."),
 
-    /** Tài khoản Google thuần chưa từng đặt mật khẩu — không đổi/không xác nhận bằng mật khẩu được. */
+    // Tài khoản Google thuần chưa từng đặt mật khẩu — không đổi/không xác nhận bằng mật khẩu được.
     NO_PASSWORD_SET(HttpStatus.BAD_REQUEST, "Tài khoản đăng nhập bằng Google, chưa đặt mật khẩu."),
 
-    /** {@code id_token} của Google không kiểm chứng được, hoặc máy chủ chưa cấu hình client id. */
+    // {@code id_token} của Google không kiểm chứng được, hoặc máy chủ chưa cấu hình client id.
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Đăng nhập bằng Google thất bại. Vui lòng thử lại."),
 
     // ---------------------------------------------------------------------
     // Ví — api/02-VI.md
     // ---------------------------------------------------------------------
 
-    /** Trùng tên ví trong cùng một chủ sở hữu. */
+    // Trùng tên ví trong cùng một chủ sở hữu.
     WALLET_NAME_EXISTS(HttpStatus.CONFLICT, "Đã có ví cùng tên."),
 
-    /** Xoá ví cuối cùng — người dùng phải luôn còn ít nhất một ví. */
+    // Xoá ví cuối cùng — người dùng phải luôn còn ít nhất một ví.
     CANNOT_DELETE_LAST_WALLET(HttpStatus.CONFLICT, "Phải còn ít nhất một ví."),
 
-    /** Xoá ví còn giao dịch mà chưa xác nhận xoá kèm. */
+    // Xoá ví còn giao dịch mà chưa xác nhận xoá kèm.
     WALLET_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Ví còn giao dịch, cần xác nhận xoá kèm giao dịch."),
 
-    /** Sửa số dư hoặc loại ví qua PATCH — hai trường này cố ý không cho sửa trực tiếp. */
+    // Sửa số dư hoặc loại ví qua PATCH — hai trường này cố ý không cho sửa trực tiếp.
     BALANCE_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "Không sửa được số dư và loại ví qua PATCH."),
 
-    /** Chuyển tiền giữa hai ví trùng nhau. */
+    // Chuyển tiền giữa hai ví trùng nhau.
     SAME_SOURCE_AND_DESTINATION(HttpStatus.BAD_REQUEST, "Hai ví phải khác nhau."),
 
-    /** Số dư ví không đủ cho giao dịch. */
+    // Số dư ví không đủ cho giao dịch.
     INSUFFICIENT_BALANCE(HttpStatus.UNPROCESSABLE_ENTITY, "Số dư ví không đủ để thực hiện giao dịch này."),
 
-    /** Thao tác trên ví chung nhưng người dùng không phải thành viên nhóm (Phase 5). */
+    // Thao tác trên ví chung nhưng người dùng không phải thành viên nhóm (Phase 5).
     NOT_GROUP_MEMBER(HttpStatus.FORBIDDEN, "Bạn không phải thành viên của nhóm này."),
 
     // ---------------------------------------------------------------------
     // Danh mục — api/03-DANH-MUC.md
     // ---------------------------------------------------------------------
 
-    /** Trùng tên danh mục ở cùng một cấp. */
+    // Trùng tên danh mục ở cùng một cấp.
     CATEGORY_NAME_EXISTS(HttpStatus.CONFLICT, "Đã có danh mục cùng tên ở cấp này."),
 
-    /** Danh mục chỉ được tối đa hai cấp — quy tắc nghiệp vụ số 1. */
+    // Danh mục chỉ được tối đa hai cấp — quy tắc nghiệp vụ số 1.
     MAX_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "Danh mục chỉ được tối đa hai cấp."),
 
-    /** Danh mục cha bắt buộc thuộc một nhóm lớn. */
+    // Danh mục cha bắt buộc thuộc một nhóm lớn.
     CATEGORY_GROUP_REQUIRED(HttpStatus.BAD_REQUEST, "Danh mục cha bắt buộc có nhóm lớn."),
 
-    /** Chuyển danh mục thành cấp con trong khi nó đang có con. Khác {@link #CHILD_CATEGORIES_EXIST}. */
+    // Chuyển danh mục thành cấp con trong khi nó đang có con. Khác {@link #CHILD_CATEGORIES_EXIST}.
     CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "Danh mục đang có con, không thể chuyển thành cấp con."),
 
-    /** Xoá danh mục khi còn danh mục con. Khác {@link #CATEGORY_HAS_CHILDREN}. */
+    // Xoá danh mục khi còn danh mục con. Khác {@link #CATEGORY_HAS_CHILDREN}.
     CHILD_CATEGORIES_EXIST(HttpStatus.CONFLICT, "Còn danh mục con, phải xoá con trước."),
 
-    /** Xoá danh mục còn giao dịch mà chưa chỉ định danh mục thay thế. */
+    // Xoá danh mục còn giao dịch mà chưa chỉ định danh mục thay thế.
     CATEGORY_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Còn giao dịch, cần chỉ định danh mục thay thế."),
 
-    /** Danh mục con phải cùng loại thu/chi với cha. */
+    // Danh mục con phải cùng loại thu/chi với cha.
     TYPE_MISMATCH_WITH_PARENT(HttpStatus.BAD_REQUEST, "Danh mục con phải cùng loại thu/chi với cha."),
 
-    /** Đổi loại thu/chi của danh mục đã có — không cho sửa. */
+    // Đổi loại thu/chi của danh mục đã có — không cho sửa.
     TYPE_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "Không đổi được loại thu/chi."),
 
-    /** Sửa danh mục do hệ thống tạo sẵn. */
+    // Sửa danh mục do hệ thống tạo sẵn.
     SYSTEM_CATEGORY_NOT_EDITABLE(HttpStatus.FORBIDDEN, "Danh mục hệ thống không sửa được."),
 
-    /** Xoá danh mục do hệ thống tạo sẵn. */
+    // Xoá danh mục do hệ thống tạo sẵn.
     SYSTEM_CATEGORY_NOT_DELETABLE(HttpStatus.FORBIDDEN, "Danh mục hệ thống không xoá được."),
 
-    /** Biểu tượng không tồn tại trong kho {@code icons} hoặc đã ngừng dùng. */
+    // Biểu tượng không tồn tại trong kho {@code icons} hoặc đã ngừng dùng.
     INVALID_ICON(HttpStatus.BAD_REQUEST, "Biểu tượng không tồn tại hoặc đã ngừng dùng."),
 
     /**
@@ -193,42 +202,42 @@ public enum ErrorCode {
     // Giao dịch — api/04-GIAO-DICH.md
     // ---------------------------------------------------------------------
 
-    /** Số tiền phải là số dương — quy tắc nghiệp vụ số 3, không bao giờ dùng số âm để biểu diễn chi. */
+    // Số tiền phải là số dương — quy tắc nghiệp vụ số 3, không bao giờ dùng số âm để biểu diễn chi.
     INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "Số tiền phải lớn hơn 0."),
 
-    /** Giao dịch chi/thu bắt buộc có danh mục. */
+    // Giao dịch chi/thu bắt buộc có danh mục.
     CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Chi/thu phải có danh mục."),
 
-    /** Danh mục không hợp lệ với loại giao dịch, hoặc giao dịch chuyển tiền lại kèm danh mục. */
+    // Danh mục không hợp lệ với loại giao dịch, hoặc giao dịch chuyển tiền lại kèm danh mục.
     CATEGORY_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Danh mục không hợp lệ."),
 
-    /** Gán danh mục thu cho khoản chi hoặc ngược lại. */
+    // Gán danh mục thu cho khoản chi hoặc ngược lại.
     CATEGORY_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "Danh mục thu gán cho khoản chi hoặc ngược lại."),
 
-    /** Giao dịch chuyển tiền bắt buộc có ví đích. */
+    // Giao dịch chuyển tiền bắt buộc có ví đích.
     DESTINATION_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch chuyển phải có ví đích."),
 
-    /** Giao dịch chi/thu không được có ví đích. */
+    // Giao dịch chi/thu không được có ví đích.
     DESTINATION_WALLET_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Giao dịch chi/thu không được có ví đích."),
 
-    /** Xoá thẳng giao dịch sinh ra từ một lần trả nợ — phải huỷ ở sổ nợ. */
+    // Xoá thẳng giao dịch sinh ra từ một lần trả nợ — phải huỷ ở sổ nợ.
     TRANSACTION_LINKED_TO_DEBT(HttpStatus.CONFLICT,
             "Giao dịch này là một lần trả nợ — huỷ ở sổ nợ, không xoá trực tiếp."),
 
-    /** Nhập hàng loạt vượt quá số dòng cho phép. */
+    // Nhập hàng loạt vượt quá số dòng cho phép.
     TOO_MANY_ROWS(HttpStatus.BAD_REQUEST, "Vượt quá số dòng cho phép."),
 
     // ---------------------------------------------------------------------
     // Ngân sách — api/05-NGAN-SACH.md
     // ---------------------------------------------------------------------
 
-    /** Đã có ngân sách cho danh mục này trong cùng kỳ. */
+    // Đã có ngân sách cho danh mục này trong cùng kỳ.
     BUDGET_ALREADY_EXISTS(HttpStatus.CONFLICT, "Đã có ngân sách cho danh mục này trong kỳ."),
 
-    /** Chỉ đặt được ngân sách cho danh mục chi. */
+    // Chỉ đặt được ngân sách cho danh mục chi.
     CATEGORY_NOT_EXPENSE(HttpStatus.BAD_REQUEST, "Chỉ đặt ngân sách cho danh mục chi."),
 
-    /** Đổi danh mục hoặc kỳ của ngân sách đã tạo — phải xoá và tạo lại. */
+    // Đổi danh mục hoặc kỳ của ngân sách đã tạo — phải xoá và tạo lại.
     CATEGORY_NOT_EDITABLE(HttpStatus.BAD_REQUEST,
             "Không đổi danh mục hoặc kỳ của ngân sách — xoá và tạo lại."),
 
@@ -236,57 +245,57 @@ public enum ErrorCode {
     // Báo cáo & xuất tệp — api/06-BAO-CAO.md
     // ---------------------------------------------------------------------
 
-    /** Đường dẫn tải tệp xuất đã hết hạn. */
+    // Đường dẫn tải tệp xuất đã hết hạn.
     EXPORT_LINK_EXPIRED(HttpStatus.GONE, "Đường dẫn tải đã hết hạn."),
 
-    /** Định dạng xuất chưa được hỗ trợ. */
+    // Định dạng xuất chưa được hỗ trợ.
     FORMAT_NOT_SUPPORTED(HttpStatus.NOT_IMPLEMENTED, "Định dạng chưa được hỗ trợ."),
 
     // ---------------------------------------------------------------------
     // Sổ nợ — api/08-SO-NO.md
     // ---------------------------------------------------------------------
 
-    /** Trả thêm cho khoản nợ đã tất toán. */
+    // Trả thêm cho khoản nợ đã tất toán.
     DEBT_ALREADY_SETTLED(HttpStatus.CONFLICT, "Khoản nợ đã trả xong."),
 
-    /** Thao tác trên khoản nợ đã đánh dấu không đòi nữa. */
+    // Thao tác trên khoản nợ đã đánh dấu không đòi nữa.
     DEBT_WRITTEN_OFF(HttpStatus.CONFLICT, "Khoản nợ đã đánh dấu không đòi nữa."),
 
-    /** Số tiền trả vượt quá phần còn lại của khoản nợ. */
+    // Số tiền trả vượt quá phần còn lại của khoản nợ.
     EXCEEDS_REMAINING_AMOUNT(HttpStatus.BAD_REQUEST, "Số tiền trả vượt quá phần còn lại."),
 
-    /** Hạn trả không được trước ngày phát sinh khoản nợ. */
+    // Hạn trả không được trước ngày phát sinh khoản nợ.
     INVALID_DUE_DATE(HttpStatus.BAD_REQUEST, "Hạn trả không được trước ngày phát sinh."),
 
     // ---------------------------------------------------------------------
     // Định kỳ & mục tiêu — api/09-DINH-KY-MUC-TIEU.md
     // ---------------------------------------------------------------------
 
-    /** Tần suất lặp không nằm trong tập cho phép. */
+    // Tần suất lặp không nằm trong tập cho phép.
     INVALID_FREQUENCY(HttpStatus.BAD_REQUEST, "Tần suất phải là day, week, month hoặc year."),
 
-    /** Khoảng lặp phải từ 1 trở lên. */
+    // Khoảng lặp phải từ 1 trở lên.
     INVALID_INTERVAL(HttpStatus.BAD_REQUEST, "Khoảng lặp phải lớn hơn hoặc bằng 1."),
 
-    /** Loại khoản định kỳ không hợp lệ. */
+    // Loại khoản định kỳ không hợp lệ.
     INVALID_TYPE(HttpStatus.BAD_REQUEST, "Loại khoản định kỳ phải là expense hoặc income."),
 
-    /** Ngày kết thúc phải sau ngày bắt đầu. */
+    // Ngày kết thúc phải sau ngày bắt đầu.
     INVALID_END_DATE(HttpStatus.BAD_REQUEST, "Ngày kết thúc phải sau ngày bắt đầu."),
 
-    /** Khoản định kỳ đã sinh giao dịch trong hôm nay rồi. */
+    // Khoản định kỳ đã sinh giao dịch trong hôm nay rồi.
     ALREADY_RUN_TODAY(HttpStatus.CONFLICT, "Đã ghi giao dịch hôm nay cho khoản định kỳ này."),
 
-    /** Ngày mục tiêu phải nằm ở tương lai. */
+    // Ngày mục tiêu phải nằm ở tương lai.
     INVALID_TARGET_DATE(HttpStatus.BAD_REQUEST, "Ngày mục tiêu phải sau hôm nay."),
 
-    /** Mục tiêu đã đạt, không nạp thêm được. */
+    // Mục tiêu đã đạt, không nạp thêm được.
     GOAL_ALREADY_COMPLETED(HttpStatus.CONFLICT, "Mục tiêu đã đạt."),
 
-    /** Mục tiêu đã huỷ. */
+    // Mục tiêu đã huỷ.
     GOAL_CANCELLED(HttpStatus.CONFLICT, "Mục tiêu đã huỷ."),
 
-    /** Nạp tiền thật vào mục tiêu chưa gắn ví. */
+    // Nạp tiền thật vào mục tiêu chưa gắn ví.
     GOAL_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật.");
 
     private final HttpStatus status;
@@ -297,14 +306,12 @@ public enum ErrorCode {
         this.defaultMessage = defaultMessage;
     }
 
-    /**
-     * Mã lỗi đi ra JSON — chính là tên hằng số. Giữ nguyên tên là giữ nguyên hợp đồng với app.
-     */
+    // Mã lỗi đi ra JSON — chính là tên hằng số. Giữ nguyên tên là giữ nguyên hợp đồng với app.
     public String getCode() {
         return name();
     }
 
-    /** HTTP status dạng số, tiện cho {@code ResponseEntity.status(...)}. */
+    // HTTP status dạng số, tiện cho {@code ResponseEntity.status(...)}.
     public int getHttpStatus() {
         return status.value();
     }

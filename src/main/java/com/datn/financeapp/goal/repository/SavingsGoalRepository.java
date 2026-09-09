@@ -50,7 +50,7 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID> 
     @Query(value = "SELECT saved_amount FROM savings_goals WHERE id = :id", nativeQuery = true)
     Optional<Long> findSavedAmountNative(@Param("id") UUID id);
 
-    /** Cặp đôi với {@link #findSavedAmountNative} — cùng lý do trả scalar. */
+    // Cặp đôi với {@link #findSavedAmountNative} — cùng lý do trả scalar.
     @Query(value = "SELECT status FROM savings_goals WHERE id = :id", nativeQuery = true)
     Optional<String> findStatusNative(@Param("id") UUID id);
 }

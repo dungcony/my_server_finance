@@ -11,13 +11,13 @@ import com.datn.financeapp.auth.dto.request.RefreshRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
 import com.datn.financeapp.auth.entity.PasswordResetToken;
-import com.datn.financeapp.auth.entity.User;
+import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
-import com.datn.financeapp.auth.service.PasswordResetNotifier;
+import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.nio.charset.StandardCharsets;
@@ -72,6 +72,9 @@ class AuthBlockedDeletedAccountIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private com.datn.financeapp.user.service.UserProfileService userProfileService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -90,7 +93,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @MockitoSpyBean
-    private PasswordResetNotifier passwordResetNotifier;
+    private EmailService emailService;
 
     @BeforeEach
     void cleanTables() {
@@ -194,11 +197,11 @@ class AuthBlockedDeletedAccountIntegrationTest {
                 .doesNotThrowAnyException();
 
         assertThat(passwordResetTokenRepository.findAll()).isEmpty();
-        Mockito.verify(passwordResetNotifier, Mockito.never())
-                .sendResetCode(Mockito.anyString(), Mockito.anyString());
+        Mockito.verify(emailService, Mockito.never())
+                .sendPasswordResetCode(Mockito.anyString(), Mockito.anyString());
     }
 
-    /** Chính là lỗ hổng đã vá: tài khoản đã xoá từng nhận được mã và đặt lại mật khẩu thành công. */
+    // Chính là lỗ hổng đã vá: tài khoản đã xoá từng nhận được mã và đặt lại mật khẩu thành công.
     @Test
     void forgotPassword_deletedAccount_silentlyDoesNothing() {
         register("quen.mk.da.xoa@example.com");
@@ -208,8 +211,8 @@ class AuthBlockedDeletedAccountIntegrationTest {
                 .doesNotThrowAnyException();
 
         assertThat(passwordResetTokenRepository.findAll()).isEmpty();
-        Mockito.verify(passwordResetNotifier, Mockito.never())
-                .sendResetCode(Mockito.anyString(), Mockito.anyString());
+        Mockito.verify(emailService, Mockito.never())
+                .sendPasswordResetCode(Mockito.anyString(), Mockito.anyString());
     }
 
     // -----------------------------------------------------------------
@@ -266,14 +269,14 @@ class AuthBlockedDeletedAccountIntegrationTest {
     void getMe_returnsUsernameIsConfirmAndRole() {
         User user = registerAndReload("me.day.du@example.com");
 
-        var me = authService.getMe(user.getId());
+        var me = userProfileService.getMe(user.getId());
 
         assertThat(me.username()).isEqualTo("Người Kiểm Thử");
         assertThat(me.isConfirm()).isFalse();
         assertThat(me.role()).isEqualTo("USER");
     }
 
-    /** Tài khoản backfill {@code is_confirm = TRUE} (V12) phải đi thẳng qua chứ không bị chặn. */
+    // Tài khoản backfill {@code is_confirm = TRUE} (V12) phải đi thẳng qua chứ không bị chặn.
     @Test
     void login_confirmedAccount_succeedsAndCarriesIsConfirmTrue() {
         register("da.xac.thuc@example.com");
@@ -290,7 +293,8 @@ class AuthBlockedDeletedAccountIntegrationTest {
     // -----------------------------------------------------------------
 
     private AuthResponse register(String email) {
-        return authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        return login(email, PASSWORD);
     }
 
     private User registerAndReload(String email) {
@@ -302,7 +306,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
         return authService.login(new LoginRequest(email, password), "127.0.0.1", "junit");
     }
 
-    /** Đặt cờ trạng thái tay, đúng như ADMIN (hoặc luồng xoá tài khoản nhóm C) sẽ làm sau này. */
+    // Đặt cờ trạng thái tay, đúng như ADMIN (hoặc luồng xoá tài khoản nhóm C) sẽ làm sau này.
     private void markUser(String email, Consumer<User> mutation) {
         User user = userRepository.findByEmail(email).orElseThrow();
         mutation.accept(user);

@@ -18,6 +18,11 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
   flyway:
     locations: filesystem:../../db/migration
     encoding: UTF-8
@@ -59,3 +64,7 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiry-seconds: 3600
   refresh-token-expiry-days: 30
+
+rate-limit:
+  max-request-email-forgot-password: 5
+  reset-request-email-forgot-password: 1h

@@ -6,25 +6,27 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import com.datn.financeapp.auth.dto.response.AuthResponse;
-import com.datn.financeapp.auth.dto.request.ChangePasswordRequest;
-import com.datn.financeapp.auth.dto.request.DeleteAccountRequest;
+import com.datn.financeapp.user.dto.request.ChangePasswordRequest;
+import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
 import com.datn.financeapp.auth.dto.request.LoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
-import com.datn.financeapp.auth.entity.User;
+import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
-import com.datn.financeapp.auth.service.GoogleIdTokenVerifier;
-import com.datn.financeapp.auth.service.PasswordResetNotifier;
+import com.datn.financeapp.auth.service.GoogleService;
+import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+
 import java.util.List;
 import java.util.function.Consumer;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -69,6 +71,9 @@ class AuthGoogleLoginIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private com.datn.financeapp.user.service.UserAccountService userAccountService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -84,10 +89,10 @@ class AuthGoogleLoginIntegrationTest {
     private LoginAttemptRepository loginAttemptRepository;
 
     @MockitoBean
-    private GoogleIdTokenVerifier googleIdTokenVerifier;
+    private GoogleService googleIdTokenVerifier;
 
     @MockitoSpyBean
-    private PasswordResetNotifier passwordResetNotifier;
+    private EmailService emailService;
 
     @BeforeEach
     void cleanTables() {
@@ -278,8 +283,8 @@ class AuthGoogleLoginIntegrationTest {
 
         // Trước khi vá, passwordEncoder.matches(x, null) ném NullPointerException -> 500
         assertThatThrownBy(() -> authService.login(
-                        new LoginRequest("khong.mat.khau@example.com", "thu.doan.mat.khau"),
-                        "127.0.0.1", "test"))
+                new LoginRequest("khong.mat.khau@example.com", "thu.doan.mat.khau"),
+                "127.0.0.1", "test"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "INVALID_CREDENTIALS");
     }
@@ -291,8 +296,8 @@ class AuthGoogleLoginIntegrationTest {
 
         // App đã ẩn nút Đổi mật khẩu, nhưng backend vẫn phải tự chặn: bảo vệ chỉ ở phía client
         // thì ai gọi thẳng API cũng qua
-        assertThatThrownBy(() -> authService.changePassword(
-                        res.user().id(), new ChangePasswordRequest("bat.ky", "matkhaumoi123")))
+        assertThatThrownBy(() -> userAccountService.changePassword(
+                res.user().id(), new ChangePasswordRequest("bat.ky", "matkhaumoi123")))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "NO_PASSWORD_SET");
     }
@@ -303,7 +308,7 @@ class AuthGoogleLoginIntegrationTest {
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
         // Không có mật khẩu nào để so, nhưng vẫn phải xoá được (prd/01 mục 9.4 — app gửi chữ XOA)
-        authService.deleteAccount(res.user().id(), new DeleteAccountRequest("XOA"));
+        userAccountService.deleteAccount(res.user().id(), new DeleteAccountRequest("XOA"));
 
         User deleted = userRepository.findById(res.user().id()).orElseThrow();
         assertThat(deleted.isDeleted()).isTrue();
@@ -313,13 +318,13 @@ class AuthGoogleLoginIntegrationTest {
     void forgotPassword_GoogleOnlyAccount_ReturnsSilentlyWithoutSendingCode() {
         stubGoogle("sub-quen-mk", "quen.mk@example.com", "Quên Mật Khẩu");
         authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
-        Mockito.reset(passwordResetNotifier);
+        Mockito.reset(emailService);
 
         authService.forgotPassword(new ForgotPasswordRequest("quen.mk@example.com"));
 
         // Trả 200 âm thầm chứ không báo lỗi: báo lỗi cho kẻ xấu một cách dò xem email nào dùng
         // Google. Nhưng cũng không gửi mã — tài khoản chưa từng có mật khẩu để đặt lại.
-        Mockito.verify(passwordResetNotifier, Mockito.never()).sendResetCode(anyString(), anyString());
+        Mockito.verify(emailService, Mockito.never()).sendPasswordResetCode(anyString(), anyString());
         assertThat(passwordResetTokenRepository.findAll()).isEmpty();
     }
 
@@ -330,8 +335,8 @@ class AuthGoogleLoginIntegrationTest {
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
         // Tài khoản ĐÃ LIÊN KẾT vẫn có mật khẩu, nên không được nới lỏng bước so mật khẩu
-        assertThatThrownBy(() -> authService.deleteAccount(
-                        res.user().id(), new DeleteAccountRequest("mat.khau.sai")))
+        assertThatThrownBy(() -> userAccountService.deleteAccount(
+                res.user().id(), new DeleteAccountRequest("mat.khau.sai")))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "WRONG_PASSWORD");
     }
@@ -380,7 +385,7 @@ class AuthGoogleLoginIntegrationTest {
 
     private void stubGoogle(String sub, String email, String name) {
         when(googleIdTokenVerifier.verify(anyString()))
-                .thenReturn(new GoogleIdTokenVerifier.GoogleUserInfo(sub, email, name));
+                .thenReturn(new GoogleService.GoogleUserInfo(sub, email, name));
     }
 
     private void setFlag(String email, Consumer<User> mutator) {

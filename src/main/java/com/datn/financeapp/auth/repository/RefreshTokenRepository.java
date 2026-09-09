@@ -25,7 +25,7 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     @Query("SELECT rt FROM RefreshToken rt WHERE rt.tokenHash = :hash AND rt.revokedAt IS NULL")
     Optional<RefreshToken> findActiveByTokenHashForUpdate(@Param("hash") String hash);
 
-    /** Không lock — chỉ dùng khi đã biết token inactive, để tra userId cho reuse detection. */
+    // Không lock — chỉ dùng khi đã biết token inactive, để tra userId cho reuse detection.
     Optional<RefreshToken> findByTokenHash(String hash);
 
     @Modifying

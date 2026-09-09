@@ -2,7 +2,7 @@ package com.datn.financeapp.wallet.dto.response;
 
 import java.util.UUID;
 
-/** Phản hồi 200 của POST /wallets/{id}/reconcile (api/02-VI.md mục 10). */
+// Phản hồi 200 của POST /wallets/{id}/reconcile (api/02-VI.md mục 10).
 public record ReconcileResponse(
         UUID walletId,
         Long storedBalance,

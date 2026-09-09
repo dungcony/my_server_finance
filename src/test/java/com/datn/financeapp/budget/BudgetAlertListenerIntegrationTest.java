@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -219,7 +219,7 @@ class BudgetAlertListenerIntegrationTest {
 
     // ------------------------------------------------------------------ tests
 
-    /** Ghi một khoản chi vượt hạn mức phải sinh đúng một bản ghi cảnh báo SAU KHI transaction commit. */
+    // Ghi một khoản chi vượt hạn mức phải sinh đúng một bản ghi cảnh báo SAU KHI transaction commit.
     @Test
     void expenseExceedsBudget_createsNotificationAfterCommit() throws Exception {
         String token = registerAndGetAccessToken("canh.bao.vuot@example.com");
