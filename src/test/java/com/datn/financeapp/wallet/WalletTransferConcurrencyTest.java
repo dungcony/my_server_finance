@@ -72,8 +72,8 @@ class WalletTransferConcurrencyTest {
         User user = User.builder()
                 .id(userId)
                 .email("concurrency-" + userId + "@example.com")
-                .passwordHash("hash")
-                .username("Người Kiểm Thử Đồng Thời")
+                .password("hash")
+                .firstName("Người Kiểm Thử Đồng Thời")
                 .plan(com.datn.financeapp.user.enums.UserPlan.FREE)
                 .createdAt(Instant.now())
                 .build();

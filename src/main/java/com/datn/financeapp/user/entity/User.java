@@ -4,10 +4,14 @@ import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -72,89 +76,24 @@ public class User {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    public String getRole() {
-        return "USER";
+    @Builder.Default
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private Set<UserRole> userRoles = new HashSet<>();
+
+    public boolean isBlocked() {
+        return this.status == UserStatus.BLOCKED;
     }
 
-    public String getUsername() {
-        if (firstName == null && lastName == null) {
-            return email != null ? email.substring(0, email.indexOf('@')) : null;
-        }
-        if (lastName == null) return firstName;
-        if (firstName == null) return lastName;
-        return (lastName + " " + firstName).trim();
-    }
-
-    public void setUsername(String username) {
-        if (username == null || username.isBlank()) {
-            this.firstName = null;
-            this.lastName = null;
-            return;
-        }
-        String trimmed = username.trim();
-        int idx = trimmed.lastIndexOf(' ');
-        if (idx > 0) {
-            this.lastName = trimmed.substring(0, idx).trim();
-            this.firstName = trimmed.substring(idx + 1).trim();
-        } else {
-            this.firstName = trimmed;
-            this.lastName = null;
-        }
-    }
-
-    public String getPasswordHash() {
-        return password;
-    }
-
-    public void setPasswordHash(String passwordHash) {
-        this.password = passwordHash;
-    }
-
-    public static class UserBuilder {
-        public UserBuilder passwordHash(String passwordHash) {
-            this.password = passwordHash;
-            return this;
-        }
-
-        public UserBuilder username(String username) {
-            if (username == null || username.isBlank()) {
-                this.firstName = null;
-                this.lastName = null;
-                return this;
-            }
-            String trimmed = username.trim();
-            int idx = trimmed.lastIndexOf(' ');
-            if (idx > 0) {
-                this.lastName = trimmed.substring(0, idx).trim();
-                this.firstName = trimmed.substring(idx + 1).trim();
-            } else {
-                this.firstName = trimmed;
-                this.lastName = null;
-            }
-            return this;
-        }
+    public void setBlocked(boolean blocked) {
+        this.status = blocked ? UserStatus.BLOCKED : UserStatus.ACTIVE;
     }
 
     public boolean isConfirm() {
-        return status == UserStatus.ACTIVE;
+        return this.status == UserStatus.ACTIVE;
     }
 
     public void setConfirm(boolean confirm) {
         if (confirm) {
-            this.status = UserStatus.ACTIVE;
-        } else if (this.status == UserStatus.ACTIVE) {
-            this.status = UserStatus.PENDING_VERIFY;
-        }
-    }
-
-    public boolean isBlocked() {
-        return status == UserStatus.BLOCKED;
-    }
-
-    public void setBlocked(boolean blocked) {
-        if (blocked) {
-            this.status = UserStatus.BLOCKED;
-        } else if (this.status == UserStatus.BLOCKED) {
             this.status = UserStatus.ACTIVE;
         }
     }

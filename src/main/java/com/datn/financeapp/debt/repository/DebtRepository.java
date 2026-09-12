@@ -23,10 +23,12 @@ public interface DebtRepository extends JpaRepository<Debt, UUID> {
     Optional<Debt> findByIdAndUserId(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM debts WHERE user_id = :currentUser "
-                    + "AND (CAST(:type AS text) IS NULL OR type = :type) "
-                    + "AND (CAST(:status AS text) IS NULL OR status = :status) "
-                    + "ORDER BY issued_date DESC, created_at DESC",
+            value = """
+                    SELECT * FROM debts WHERE user_id = :currentUser
+                    AND (CAST(:type AS text) IS NULL OR type = :type)
+                    AND (CAST(:status AS text) IS NULL OR status = :status)
+                    ORDER BY issued_date DESC, created_at DESC
+                    """,
             nativeQuery = true)
     List<Debt> findAllForUser(
             @Param("currentUser") UUID currentUser, @Param("type") String type, @Param("status") String status);
@@ -60,8 +62,10 @@ public interface DebtRepository extends JpaRepository<Debt, UUID> {
      * cấp phần TRUY VẤN; job {@code @Scheduled} thật gộp chung ở Plan 07 theo D-57.
      */
     @Query(
-            value = "SELECT * FROM debts WHERE user_id = :currentUser AND status = 'outstanding' "
-                    + "AND due_date IS NOT NULL ORDER BY due_date",
+            value = """
+                    SELECT * FROM debts WHERE user_id = :currentUser AND status = 'outstanding'
+                    AND due_date IS NOT NULL ORDER BY due_date
+                    """,
             nativeQuery = true)
     List<Debt> findOutstandingWithDueDate(@Param("currentUser") UUID currentUser);
 

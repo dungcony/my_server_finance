@@ -21,8 +21,10 @@ public interface ExportJobRepository extends JpaRepository<ExportJob, UUID> {
     Optional<ExportJob> findByIdAndUserId(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Modifying
-    @Query("UPDATE ExportJob e SET e.status = 'completed', e.filePath = :filePath, e.expiresAt = :expiresAt "
-            + "WHERE e.id = :id")
+    @Query("""
+            UPDATE ExportJob e SET e.status = 'completed', e.filePath = :filePath, e.expiresAt = :expiresAt
+            WHERE e.id = :id
+            """)
     void markCompleted(
             @Param("id") UUID id, @Param("filePath") String filePath, @Param("expiresAt") Instant expiresAt);
 

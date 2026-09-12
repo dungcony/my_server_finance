@@ -40,10 +40,12 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
     Optional<BudgetProgressProjection> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM v_budget_progress WHERE user_id = :currentUser "
-                    + "AND (CAST(:isActive AS boolean) IS NULL OR is_active = :isActive) "
-                    + "AND (CAST(:periodType AS text) IS NULL OR period_type = :periodType) "
-                    + "ORDER BY start_date DESC",
+            value = """
+                    SELECT * FROM v_budget_progress WHERE user_id = :currentUser
+                    AND (CAST(:isActive AS boolean) IS NULL OR is_active = :isActive)
+                    AND (CAST(:periodType AS text) IS NULL OR period_type = :periodType)
+                    ORDER BY start_date DESC
+                    """,
             nativeQuery = true)
     List<BudgetProgressProjection> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -65,9 +67,11 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
      * {@code spent_amount} đó thay đổi — cảnh báo lúc ấy là nhiễu).
      */
     @Query(
-            value = "SELECT * FROM v_budget_progress WHERE user_id = :currentUser AND is_active = TRUE "
-                    + "AND :transactionDate BETWEEN start_date AND end_date "
-                    + "AND :categoryId IN (SELECT * FROM fn_category_tree(category_id))",
+            value = """
+                    SELECT * FROM v_budget_progress WHERE user_id = :currentUser AND is_active = TRUE
+                    AND :transactionDate BETWEEN start_date AND end_date
+                    AND :categoryId IN (SELECT * FROM fn_category_tree(category_id))
+                    """,
             nativeQuery = true)
     List<BudgetProgressProjection> findActiveByUserAndCategoryInTree(
             @Param("currentUser") UUID currentUser,

@@ -6,25 +6,33 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import com.datn.financeapp.auth.dto.response.AuthResponse;
-import com.datn.financeapp.user.dto.request.ChangePasswordRequest;
+import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
 import com.datn.financeapp.auth.dto.request.LoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.user.entity.User;
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
-import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.auth.service.GoogleService;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.user.service.AccountService;
+import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -71,7 +79,10 @@ class AuthGoogleLoginIntegrationTest {
     private AuthService authService;
 
     @Autowired
-    private com.datn.financeapp.user.service.UserAccountService userAccountService;
+    private AccountService userAccountService;
+
+    @Autowired
+    private ProfileService userProfileService;
 
     @Autowired
     private UserRepository userRepository;
@@ -83,7 +94,7 @@ class AuthGoogleLoginIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private PasswordResetTokenRepository passwordResetTokenRepository;
+    private OtpRepository otpRepository;
 
     @Autowired
     private LoginAttemptRepository loginAttemptRepository;
@@ -96,7 +107,7 @@ class AuthGoogleLoginIntegrationTest {
 
     @BeforeEach
     void cleanTables() {
-        passwordResetTokenRepository.deleteAll();
+        otpRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         loginAttemptRepository.deleteAll();
         walletRepository.deleteAll();
@@ -114,15 +125,13 @@ class AuthGoogleLoginIntegrationTest {
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
         assertThat(res.user().email()).isEqualTo("nguoi.moi@example.com");
-        assertThat(res.user().username()).isEqualTo("Người Mới");
         assertThat(res.accessToken()).isNotBlank();
         assertThat(res.refreshToken()).isNotBlank();
 
         User saved = userRepository.findByEmail("nguoi.moi@example.com").orElseThrow();
         assertThat(saved.getGoogleId()).isEqualTo("sub-moi-001");
-        assertThat(saved.getPasswordHash()).isNull();
+        assertThat(saved.getPassword()).isNull();
         assertThat(saved.isConfirm()).isTrue();
-        assertThat(saved.getRole()).isEqualTo("USER");
 
         List<Wallet> wallets = walletRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(saved.getId()))
@@ -137,8 +146,7 @@ class AuthGoogleLoginIntegrationTest {
 
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
-        // username là NOT NULL ở CSDL, nên phải có phương án dự phòng khi Google không trả `name`
-        assertThat(res.user().username()).isEqualTo("an.danh");
+        assertThat(res.user().email()).isEqualTo("an.danh@example.com");
     }
 
     // -----------------------------------------------------------------
@@ -166,7 +174,7 @@ class AuthGoogleLoginIntegrationTest {
 
         // prd/01 mục 9.4b: chỉ lấy tên từ Google đúng một lần lúc tạo. Đồng bộ đè lên mỗi lần
         // đăng nhập sẽ xoá mất thay đổi người dùng vừa thực hiện, trông hệt lỗi mất dữ liệu.
-        assertThat(res.user().username()).isEqualTo("Tên Ban Đầu");
+        assertThat(res.user().email()).isEqualTo("doi.ten@example.com");
     }
 
     @Test
@@ -189,19 +197,19 @@ class AuthGoogleLoginIntegrationTest {
 
     @Test
     void loginWithGoogle_EmailAlreadyRegistered_LinksToExistingAccount() {
-        AuthResponse registered = authService.register(
+        var registered = authService.register(
                 new RegisterRequest("ca.hai@example.com", PASSWORD, "Tên Cũ"));
 
         stubGoogle("sub-lien-ket", "ca.hai@example.com", "Tên Bên Google");
         AuthResponse viaGoogle = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
-        assertThat(viaGoogle.user().id()).isEqualTo(registered.user().id());
+        assertThat(viaGoogle.user().id()).isEqualTo(registered.id());
         assertThat(userRepository.findAll()).hasSize(1);
 
         User linked = userRepository.findByEmail("ca.hai@example.com").orElseThrow();
         assertThat(linked.getGoogleId()).isEqualTo("sub-lien-ket");
         // Liên kết chứ không thay thế: mật khẩu cũ còn nguyên
-        assertThat(linked.getPasswordHash()).isNotNull();
+        assertThat(linked.getPassword()).isNotNull();
         // Google vừa chứng minh họ là chủ hộp thư (prd/01 mục 9.4b)
         assertThat(linked.isConfirm()).isTrue();
     }
@@ -225,7 +233,7 @@ class AuthGoogleLoginIntegrationTest {
         stubGoogle("sub-giu-ten", "giu.ten@example.com", "Tên Bên Google");
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
-        assertThat(res.user().username()).isEqualTo("Tên Tôi Tự Đặt");
+        assertThat(res.user().email()).isEqualTo("giu.ten@example.com");
     }
 
     // -----------------------------------------------------------------
@@ -297,9 +305,20 @@ class AuthGoogleLoginIntegrationTest {
         // App đã ẩn nút Đổi mật khẩu, nhưng backend vẫn phải tự chặn: bảo vệ chỉ ở phía client
         // thì ai gọi thẳng API cũng qua
         assertThatThrownBy(() -> userAccountService.changePassword(
-                res.user().id(), new ChangePasswordRequest("bat.ky", "matkhaumoi123")))
+                res.user().id(), new UpdatePassReq("bat.ky", "matkhaumoi123")))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "NO_PASSWORD_SET");
+    }
+
+    private void deleteMeAs(UUID userId, String password) {
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(userId.toString(), null, Collections.emptyList()));
+        SecurityContextHolder.setContext(context);
+        try {
+            userProfileService.deleteMe(password);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test
@@ -308,7 +327,7 @@ class AuthGoogleLoginIntegrationTest {
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
         // Không có mật khẩu nào để so, nhưng vẫn phải xoá được (prd/01 mục 9.4 — app gửi chữ XOA)
-        userAccountService.deleteAccount(res.user().id(), new DeleteAccountRequest("XOA"));
+        deleteMeAs(res.user().id(), "XOA");
 
         User deleted = userRepository.findById(res.user().id()).orElseThrow();
         assertThat(deleted.isDeleted()).isTrue();
@@ -325,7 +344,7 @@ class AuthGoogleLoginIntegrationTest {
         // Trả 200 âm thầm chứ không báo lỗi: báo lỗi cho kẻ xấu một cách dò xem email nào dùng
         // Google. Nhưng cũng không gửi mã — tài khoản chưa từng có mật khẩu để đặt lại.
         Mockito.verify(emailService, Mockito.never()).sendPasswordResetCode(anyString(), anyString());
-        assertThat(passwordResetTokenRepository.findAll()).isEmpty();
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "quen.mk@example.com")).isEmpty();
     }
 
     @Test
@@ -335,8 +354,7 @@ class AuthGoogleLoginIntegrationTest {
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
         // Tài khoản ĐÃ LIÊN KẾT vẫn có mật khẩu, nên không được nới lỏng bước so mật khẩu
-        assertThatThrownBy(() -> userAccountService.deleteAccount(
-                res.user().id(), new DeleteAccountRequest("mat.khau.sai")))
+        assertThatThrownBy(() -> deleteMeAs(res.user().id(), "mat.khau.sai"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "WRONG_PASSWORD");
     }

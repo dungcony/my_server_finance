@@ -29,17 +29,21 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      * mục riêng chỉ hiển thị cho đúng chủ sở hữu — không có 403, không có quyền thì 404.
      */
     @Query(
-            value = "SELECT * FROM categories c WHERE c.id = :id AND NOT c.is_deleted "
-                    + "AND (c.user_id IS NULL OR c.user_id = :currentUser)",
+            value = """
+                    SELECT * FROM categories c WHERE c.id = :id AND NOT c.is_deleted
+                    AND (c.user_id IS NULL OR c.user_id = :currentUser)
+                    """,
             nativeQuery = true)
     Optional<Category> findByIdAndVisibleToUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM categories c WHERE NOT c.is_deleted "
-                    + "AND (c.user_id IS NULL OR c.user_id = :currentUser) "
-                    + "AND (CAST(:type AS text) IS NULL OR c.type = CAST(:type AS text)) "
-                    + "AND (:rootsOnly = FALSE OR c.parent_category_id IS NULL) "
-                    + "ORDER BY c.sort_order",
+            value = """
+                    SELECT * FROM categories c WHERE NOT c.is_deleted
+                    AND (c.user_id IS NULL OR c.user_id = :currentUser)
+                    AND (CAST(:type AS text) IS NULL OR c.type = CAST(:type AS text))
+                    AND (:rootsOnly = FALSE OR c.parent_category_id IS NULL)
+                    ORDER BY c.sort_order
+                    """,
             nativeQuery = true)
     List<Category> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -57,30 +61,36 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      * bắt nhầm một danh mục con trùng tên do người dùng tự tạo.
      */
     @Query(
-            value = "SELECT * FROM categories c WHERE c.name = :name AND c.type = :type "
-                    + "AND c.user_id IS NULL AND c.parent_category_id IS NULL AND NOT c.is_deleted",
+            value = """
+                    SELECT * FROM categories c WHERE c.name = :name AND c.type = :type
+                    AND c.user_id IS NULL AND c.parent_category_id IS NULL AND NOT c.is_deleted
+                    """,
             nativeQuery = true)
     Optional<Category> findSystemCategoryByName(@Param("name") String name, @Param("type") String type);
 
     boolean existsByParentCategoryIdAndIsDeletedFalse(UUID parentId);
 
     @Query(
-            value = "SELECT COALESCE(MAX(sort_order), -1) FROM categories "
-                    + "WHERE NOT is_deleted "
-                    + "AND (:parentCategoryId IS NULL AND parent_category_id IS NULL "
-                    + "     AND (user_id = :currentUser OR user_id IS NULL) "
-                    + "     OR parent_category_id = :parentCategoryId)",
+            value = """
+                    SELECT COALESCE(MAX(sort_order), -1) FROM categories
+                    WHERE NOT is_deleted
+                    AND (:parentCategoryId IS NULL AND parent_category_id IS NULL
+                         AND (user_id = :currentUser OR user_id IS NULL)
+                         OR parent_category_id = :parentCategoryId)
+                    """,
             nativeQuery = true)
     Integer findMaxSortOrderInLevel(
             @Param("currentUser") UUID currentUser, @Param("parentCategoryId") UUID parentCategoryId);
 
     @Query(
-            value = "SELECT EXISTS(SELECT 1 FROM categories WHERE NOT is_deleted AND type = :type "
-                    + "AND lower(name) = lower(:name) AND id <> COALESCE(:excludeId, '00000000-0000-0000-0000-000000000000'::uuid) "
-                    + "AND ((:parentCategoryId IS NULL AND parent_category_id IS NULL "
-                    + "        AND COALESCE(user_id, '00000000-0000-0000-0000-000000000000'::uuid) "
-                    + "            = COALESCE(:currentUser, '00000000-0000-0000-0000-000000000000'::uuid)) "
-                    + "     OR (parent_category_id = :parentCategoryId)))",
+            value = """
+                    SELECT EXISTS(SELECT 1 FROM categories WHERE NOT is_deleted AND type = :type
+                    AND lower(name) = lower(:name) AND id <> COALESCE(:excludeId, '00000000-0000-0000-0000-000000000000'::uuid)
+                    AND ((:parentCategoryId IS NULL AND parent_category_id IS NULL
+                            AND COALESCE(user_id, '00000000-0000-0000-0000-000000000000'::uuid)
+                                = COALESCE(:currentUser, '00000000-0000-0000-0000-000000000000'::uuid))
+                         OR (parent_category_id = :parentCategoryId)))
+                    """,
             nativeQuery = true)
     boolean existsSiblingWithName(
             @Param("currentUser") UUID currentUser,
@@ -90,8 +100,10 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
             @Param("excludeId") UUID excludeId);
 
     @org.springframework.data.jpa.repository.Modifying
-    @Query("UPDATE Category c SET c.sortOrder = :order WHERE c.id = :id AND c.userId = :currentUser "
-            + "AND ((:parentCategoryId IS NULL AND c.parentCategoryId IS NULL) OR c.parentCategoryId = :parentCategoryId)")
+    @Query("""
+            UPDATE Category c SET c.sortOrder = :order WHERE c.id = :id AND c.userId = :currentUser
+            AND ((:parentCategoryId IS NULL AND c.parentCategoryId IS NULL) OR c.parentCategoryId = :parentCategoryId)
+            """)
     int updateSortOrder(
             @Param("id") UUID id,
             @Param("order") int order,

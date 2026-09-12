@@ -23,9 +23,11 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID> 
     Optional<SavingsGoal> findByIdAndUserId(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM savings_goals WHERE user_id = :currentUser "
-                    + "AND (CAST(:status AS text) IS NULL OR status = :status) "
-                    + "ORDER BY created_at DESC",
+            value = """
+                    SELECT * FROM savings_goals WHERE user_id = :currentUser
+                    AND (CAST(:status AS text) IS NULL OR status = :status)
+                    ORDER BY created_at DESC
+                    """,
             nativeQuery = true)
     List<SavingsGoal> findAllForUser(@Param("currentUser") UUID currentUser, @Param("status") String status);
 

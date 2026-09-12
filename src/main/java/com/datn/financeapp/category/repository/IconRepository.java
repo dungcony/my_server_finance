@@ -15,10 +15,12 @@ public interface IconRepository extends JpaRepository<Icon, UUID> {
     List<Icon> findByIsActiveTrueOrderByIconGroupAscSortOrderAsc();
 
     @Query(
-            value = "SELECT * FROM icons WHERE is_active "
-                    + "AND (CAST(:iconGroup AS text) IS NULL OR icon_group = CAST(:iconGroup AS text)) "
-                    + "AND (CAST(:search AS text) IS NULL OR lower(display_name) LIKE CAST(:search AS text) OR lower(search_keywords) LIKE CAST(:search AS text)) "
-                    + "ORDER BY icon_group, sort_order",
+            value = """
+                    SELECT * FROM icons WHERE is_active
+                    AND (CAST(:iconGroup AS text) IS NULL OR icon_group = CAST(:iconGroup AS text))
+                    AND (CAST(:search AS text) IS NULL OR lower(display_name) LIKE CAST(:search AS text) OR lower(search_keywords) LIKE CAST(:search AS text))
+                    ORDER BY icon_group, sort_order
+                    """,
             nativeQuery = true)
     List<Icon> search(@Param("iconGroup") String iconGroup, @Param("search") String searchPattern);
 }

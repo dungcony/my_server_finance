@@ -2,13 +2,12 @@ package com.datn.financeapp.user.controller;
 
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.user.dto.request.ChangePasswordRequest;
+import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.user.dto.request.UpdateMeRequest;
-import com.datn.financeapp.user.dto.response.UserDetailResponse;
-import com.datn.financeapp.user.dto.response.UserSummaryResponse;
-import com.datn.financeapp.user.service.UserAccountService;
-import com.datn.financeapp.user.service.UserProfileService;
+import com.datn.financeapp.user.dto.response.UserProfileResponse;
+import com.datn.financeapp.user.service.AccountService;
+import com.datn.financeapp.user.service.ProfileService;
 import jakarta.validation.Valid;
 
 import java.util.UUID;
@@ -31,32 +30,31 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserProfileService userProfileService;
-    private final UserAccountService userAccountService;
+    private final ProfileService userProfileService;
+    private final AccountService userAccountService;
 
     @GetMapping("/me")
-    public ApiResponse<UserDetailResponse> me() {
+    public ApiResponse<?> me() {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(userProfileService.getMe(userId));
     }
 
     @PatchMapping("/me")
-    public ApiResponse<UserSummaryResponse> updateProfile(@Valid @RequestBody UpdateMeRequest req) {
+    public ApiResponse<UserProfileResponse> updateProfile(@Valid @RequestBody UpdateMeRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(userProfileService.updateMe(userId, req));
     }
 
     @PutMapping("/me/password")
-    public ApiResponse<Void> changePassword(@Valid @RequestBody ChangePasswordRequest req) {
+    public ApiResponse<Void> changePassword(@Valid @RequestBody UpdatePassReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
         userAccountService.changePassword(userId, req);
         return ApiResponse.of(null);
     }
 
     @DeleteMapping("/me")
-    public ApiResponse<Void> deleteAccount(@Valid @RequestBody DeleteAccountRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        userAccountService.deleteAccount(userId, req);
+    public ApiResponse<Void> deleteAccount(@Valid @RequestBody(required = false) DeleteAccountRequest req) {
+        userProfileService.deleteMe(req != null ? req.password() : null);
         return ApiResponse.of(null);
     }
 }

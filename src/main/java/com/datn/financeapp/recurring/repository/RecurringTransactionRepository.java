@@ -32,10 +32,12 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
             @Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM recurring_transactions WHERE user_id = :currentUser "
-                    + "AND (CAST(:isEnabled AS boolean) IS NULL OR is_enabled = CAST(:isEnabled AS boolean)) "
-                    + "AND (CAST(:type AS text) IS NULL OR type = CAST(:type AS text)) "
-                    + "ORDER BY next_run_date",
+            value = """
+                    SELECT * FROM recurring_transactions WHERE user_id = :currentUser
+                    AND (CAST(:isEnabled AS boolean) IS NULL OR is_enabled = CAST(:isEnabled AS boolean))
+                    AND (CAST(:type AS text) IS NULL OR type = CAST(:type AS text))
+                    ORDER BY next_run_date
+                    """,
             nativeQuery = true)
     List<RecurringTransaction> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -57,8 +59,10 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
      * người dùng đặt.
      */
     @Query(
-            value = "SELECT * FROM recurring_transactions WHERE is_enabled = TRUE "
-                    + "AND next_run_date <= :today AND (end_date IS NULL OR end_date >= next_run_date)",
+            value = """
+                    SELECT * FROM recurring_transactions WHERE is_enabled = TRUE
+                    AND next_run_date <= :today AND (end_date IS NULL OR end_date >= next_run_date)
+                    """,
             nativeQuery = true)
     List<RecurringTransaction> findDue(@Param("today") LocalDate today);
 }

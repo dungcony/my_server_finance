@@ -59,33 +59,30 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
      * {@code search} bind qua {@code @Param}, không nối chuỗi Java (T-03-08, chống SQL injection).
      */
     @Query(
-            value = "SELECT t.* FROM transactions t "
-                    + "WHERE t.user_id = :userId AND NOT t.is_deleted "
-                    + "AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date)) "
-                    + "AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date)) "
-                    + "AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text)) "
-                    + "AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid)) "
-                    + "AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[]))) "
-                    + "AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text)) "
-                    + "AND (CAST(:countsInReport AS boolean) IS NULL OR t.counts_in_report = CAST(:countsInReport AS boolean)) "
-                    + "AND (CAST(:search AS text) IS NULL OR t.display_name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%')) "
-                    + "AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint)) "
-                    + "AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint)) "
-                    + "AND (:includeTransfers = TRUE OR t.type <> 'transfer') "
-                    + "ORDER BY "
-                    + "CASE WHEN CAST(:sortBy AS text) = 'amount' AND CAST(:sortOrder AS text) = 'asc' THEN t.amount END ASC, "
-                    + "CASE WHEN CAST(:sortBy AS text) = 'amount' AND CAST(:sortOrder AS text) = 'desc' THEN t.amount END DESC, "
-                    + "CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'asc' THEN t.created_at END ASC, "
-                    + "CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'desc' THEN t.created_at END DESC, "
-                    + "CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'asc' THEN t.date END ASC, "
-                    + "CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'desc' THEN t.date END DESC, "
-                    // Tiêu chí phụ cho MỌI kiểu sắp xếp. Không có nó thì các bản ghi bằng nhau ở
-                    // tiêu chí chính rơi vào thứ tự tuỳ ý của PostgreSQL — rõ nhất khi sắp theo
-                    // `date`, vì cột đó kiểu DATE không mang giờ nên mọi giao dịch cùng ngày đều
-                    // bằng nhau và xáo trộn sau mỗi lần gọi (FIX-05, đợt test 02/09/2026).
-                    // Mới ghi nằm trên: đó là thứ người dùng vừa nhập và đang muốn nhìn lại.
-                    + "t.created_at DESC "
-                    + "LIMIT :limit OFFSET :offset",
+            value = """
+                    SELECT t.* FROM transactions t
+                    WHERE t.user_id = :userId AND NOT t.is_deleted
+                    AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date))
+                    AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date))
+                    AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text))
+                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid))
+                    AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[])))
+                    AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text))
+                    AND (CAST(:countsInReport AS boolean) IS NULL OR t.counts_in_report = CAST(:countsInReport AS boolean))
+                    AND (CAST(:search AS text) IS NULL OR t.display_name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%'))
+                    AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint))
+                    AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))
+                    AND (:includeTransfers = TRUE OR t.type <> 'transfer')
+                    ORDER BY
+                    CASE WHEN CAST(:sortBy AS text) = 'amount' AND CAST(:sortOrder AS text) = 'asc' THEN t.amount END ASC,
+                    CASE WHEN CAST(:sortBy AS text) = 'amount' AND CAST(:sortOrder AS text) = 'desc' THEN t.amount END DESC,
+                    CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'asc' THEN t.created_at END ASC,
+                    CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'desc' THEN t.created_at END DESC,
+                    CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'asc' THEN t.date END ASC,
+                    CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'desc' THEN t.date END DESC,
+                    t.created_at DESC
+                    LIMIT :limit OFFSET :offset
+                    """,
             nativeQuery = true)
     List<Transaction> search(
             @Param("userId") UUID userId,
@@ -107,19 +104,21 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     // Cùng điều kiện WHERE với {@link #search}, không phân trang — phục vụ {@code total_items}.
     @Query(
-            value = "SELECT COUNT(*) FROM transactions t "
-                    + "WHERE t.user_id = :userId AND NOT t.is_deleted "
-                    + "AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date)) "
-                    + "AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date)) "
-                    + "AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text)) "
-                    + "AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid)) "
-                    + "AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[]))) "
-                    + "AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text)) "
-                    + "AND (CAST(:countsInReport AS boolean) IS NULL OR t.counts_in_report = CAST(:countsInReport AS boolean)) "
-                    + "AND (CAST(:search AS text) IS NULL OR t.display_name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%')) "
-                    + "AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint)) "
-                    + "AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint)) "
-                    + "AND (:includeTransfers = TRUE OR t.type <> 'transfer')",
+            value = """
+                    SELECT COUNT(*) FROM transactions t
+                    WHERE t.user_id = :userId AND NOT t.is_deleted
+                    AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date))
+                    AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date))
+                    AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text))
+                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid))
+                    AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[])))
+                    AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text))
+                    AND (CAST(:countsInReport AS boolean) IS NULL OR t.counts_in_report = CAST(:countsInReport AS boolean))
+                    AND (CAST(:search AS text) IS NULL OR t.display_name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%'))
+                    AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint))
+                    AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))
+                    AND (:includeTransfers = TRUE OR t.type <> 'transfer')
+                    """,
             nativeQuery = true)
     long countSearch(
             @Param("userId") UUID userId,
@@ -141,21 +140,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
      * thu, không phải chi, dù nó vẫn xuất hiện trong danh sách {@link #search}).
      */
     @Query(
-            value = "SELECT "
-                    + "COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income, "
-                    + "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount END), 0) AS total_expense "
-                    + "FROM transactions t "
-                    + "WHERE t.user_id = :userId AND NOT t.is_deleted AND t.type <> 'transfer' "
-                    + "AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date)) "
-                    + "AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date)) "
-                    + "AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text)) "
-                    + "AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid)) "
-                    + "AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[]))) "
-                    + "AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text)) "
-                    + "AND (CAST(:countsInReport AS boolean) IS NULL OR t.counts_in_report = CAST(:countsInReport AS boolean)) "
-                    + "AND (CAST(:search AS text) IS NULL OR t.display_name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%')) "
-                    + "AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint)) "
-                    + "AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))",
+            value = """
+                    SELECT
+                    COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income,
+                    COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount END), 0) AS total_expense
+                    FROM transactions t
+                    WHERE t.user_id = :userId AND NOT t.is_deleted AND t.type <> 'transfer'
+                    AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date))
+                    AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date))
+                    AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text))
+                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid))
+                    AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[])))
+                    AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text))
+                    AND (CAST(:countsInReport AS boolean) IS NULL OR t.counts_in_report = CAST(:countsInReport AS boolean))
+                    AND (CAST(:search AS text) IS NULL OR t.display_name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%'))
+                    AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint))
+                    AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))
+                    """,
             nativeQuery = true)
     SummaryProjection summary(
             @Param("userId") UUID userId,

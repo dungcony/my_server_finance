@@ -6,7 +6,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 public class UserNotFoundException extends BusinessException {
 
     public UserNotFoundException() {
-        super(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản.");
+        super(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng.");
     }
 
     public UserNotFoundException(String message) {

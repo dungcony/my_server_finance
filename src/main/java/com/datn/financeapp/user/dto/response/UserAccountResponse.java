@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.dto.response;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.datn.financeapp.user.enums.UserPlan;
@@ -16,6 +17,7 @@ public record UserAccountResponse(
         @JsonIgnore String password,
         UserPlan plan,
         UserStatus status,
+        List<RoleResponse> roles,
         @JsonIgnore boolean isDeleted,
         @JsonIgnore String googleId) {
 
@@ -25,12 +27,23 @@ public record UserAccountResponse(
     }
 
     @JsonIgnore
+    public boolean notConfirm() {
+        return status == UserStatus.PENDING_VERIFY;
+    }
+
+
+    @JsonIgnore
     public boolean isConfirm() {
         return status == UserStatus.ACTIVE;
     }
 
-    public String role() {
-        return "USER";
+    @JsonIgnore
+    public boolean hasPassword() {
+        return password != null;
+    }
+
+    @JsonIgnore
+    public boolean googleLinked() {
+        return googleId != null;
     }
 }
-

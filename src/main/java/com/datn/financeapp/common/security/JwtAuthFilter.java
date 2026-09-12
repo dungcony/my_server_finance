@@ -33,6 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     public static final String ATTR_TOKEN_ERROR = "jwt.tokenError";
 
     private final JwtService jwtService;
+    private final BlacklistedUserRepository blacklistedUserRepository;
 
     @Override
     protected void doFilterInternal(
@@ -47,8 +48,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 Claims claims = jwtService.parseAndValidate(token);
                 String userId = claims.getSubject();
 
+                if (blacklistedUserRepository.isBlacklisted(userId)) {
+                    request.setAttribute(ATTR_TOKEN_ERROR, "ACCOUNT_BLOCKED");
+                    chain.doFilter(request, response);
+                    return;
+                }
+
+                java.util.List<org.springframework.security.core.GrantedAuthority> grantedAuthorities = Collections.emptyList();
+                Object authoritiesClaim = claims.get("authorities");
+                if (authoritiesClaim instanceof java.util.List<?> list) {
+                    grantedAuthorities = list.stream()
+                            .filter(item -> item instanceof String)
+                            .map(item -> new org.springframework.security.core.authority.SimpleGrantedAuthority((String) item))
+                            .collect(java.util.stream.Collectors.toList());
+                }
+
+                Integer topRoleLevel = claims.get("roles_level_top", Integer.class);
+
                 var authentication = new UsernamePasswordAuthenticationToken(
-                        userId, null, Collections.emptyList());
+                        userId, null, grantedAuthorities);
+                authentication.setDetails(topRoleLevel);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_USER_ID, userId);
             } catch (ExpiredJwtException ex) {

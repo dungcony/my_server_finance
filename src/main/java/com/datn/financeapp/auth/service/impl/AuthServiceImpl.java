@@ -13,13 +13,13 @@ import com.datn.financeapp.auth.dto.response.RefreshResponse;
 import com.datn.financeapp.auth.dto.response.RegisterResponse;
 import com.datn.financeapp.auth.entity.LoginAttempt;
 import com.datn.financeapp.auth.entity.OtpModel;
-import com.datn.financeapp.auth.entity.PasswordResetToken;
 import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.events.LoginSuccessEvent;
+import com.datn.financeapp.auth.events.VerifyEmailEvent;
 import com.datn.financeapp.auth.exception.*;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.OtpRepository;
-import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.auth.service.ForgotPasswordRateLimiter;
@@ -29,9 +29,8 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.JwtService;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
-import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
-import com.datn.financeapp.user.service.UserAccountService;
+import com.datn.financeapp.user.service.AccountService;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -47,10 +46,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -61,16 +63,17 @@ public class AuthServiceImpl implements AuthService {
     private static final long RESET_CODE_TTL_MINUTES = 15;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    private final UserAccountService userAccountService;
+    private final AccountService userAccountService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptRepository loginAttemptRepository;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
     private final ForgotPasswordRateLimiter forgotPasswordRateLimiter;
     private final GoogleService googleIdTokenVerifier;
     private final OtpRepository otpRepository;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @Override
@@ -112,18 +115,15 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthVerificationCodeInvalidException();
         }
 
-        userAccountService.confirmUserEmail(email);
+        eventPublisher.publishEvent(new VerifyEmailEvent(email));
+
+
+//        userAccountService.confirmUserEmail(email);
         otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, email);
 
-        UserAccountResponse user = userAccountService.findForAuthByEmail(email)
-                .filter(u -> !u.isDeleted())
-                .orElseThrow(UserNotFoundException::new);
+        var user = userAccountService.findByEmail(email);
 
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-
-        userAccountService.recordLoginSuccess(user.id(), Instant.now());
+        eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), Instant.now()));
         return buildAuthResponse(user);
     }
 
@@ -131,22 +131,17 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resendVerification(ResendVerificationRequest req) {
         String email = req.email().toLowerCase().trim();
+        Instant now = Instant.now();
 
-        Optional<UserAccountResponse> userOpt = userAccountService.findForAuthByEmail(email)
-                .filter(u -> !u.isDeleted());
-        if (userOpt.isEmpty()) {
+        var u = userAccountService.findByEmail(email);
+        if (u == null) {
             return;
         }
-
-        UserAccountResponse user = userOpt.get();
-        if (user.isConfirm()) {
+        if (u.isConfirm()) {
             throw new BusinessException(ErrorCode.ACCOUNT_ALREADY_VERIFIED);
         }
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
 
-        Instant now = Instant.now();
+
         Optional<OtpModel> existingOtp = otpRepository.findById(email);
         if (existingOtp.isPresent() && existingOtp.get().getCreatedAt() != null) {
             long secondsSinceLast = Duration.between(existingOtp.get().getCreatedAt(), now).getSeconds();
@@ -154,6 +149,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED, "Vui lòng chờ 60 giây trước khi yêu cầu gửi lại mã.");
             }
         }
+
 
         String otp = generateNumericOtp();
         otpRepository.save(OtpModel.builder()
@@ -170,18 +166,18 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(noRollbackFor = BusinessException.class)
     @Override
     public AuthResponse login(LoginRequest req, String ipAddress, String userAgent) {
-        String email = req.email().toLowerCase();
+        String email = req.email().toLowerCase().trim();
 
         if (isLockedOut(email))
             throw new AuthAccountLockedException();
 
 
-        Optional<UserAccountResponse> userOpt = userAccountService.findForAuthByEmail(email)
-                .filter(u -> !u.isDeleted());
+        var user = userAccountService.findByEmail(email);
 
-        boolean passwordOk = userOpt.isPresent()
-                && userOpt.get().password() != null
-                && passwordEncoder.matches(req.password(), userOpt.get().password());
+        boolean passwordOk = user != null
+                && !user.isDeleted()
+                && user.password() != null
+                && passwordEncoder.matches(req.password(), user.password());
 
         loginAttemptRepository.save(LoginAttempt.builder()
                 .id(UUID.randomUUID())
@@ -196,17 +192,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthInvalidCredentialsException();
         }
 
-        UserAccountResponse user = userOpt.get();
-
-        if (!user.isConfirm()) { // hoặc user.status() == UserStatus.PENDING_VERIFY
+        if (user.notConfirm()) { // hoặc user.status() == UserStatus.PENDING_VERIFY
             throw new AuthAccountNotVerifiedException();
         }
 
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-
-        userAccountService.recordLoginSuccess(user.id(), Instant.now());
+        eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), Instant.now()));
         return buildAuthResponse(user);
     }
 
@@ -214,34 +204,34 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse loginWithGoogle(GoogleLoginRequest req) {
         GoogleService.GoogleUserInfo info = googleIdTokenVerifier.verify(req.idToken());
-        String email = info.email().toLowerCase();
+        String email = info.email().toLowerCase().trim();
         Instant now = Instant.now();
 
-        Optional<UserAccountResponse> byGoogleId = userAccountService.findForAuthByGoogleId(info.googleId());
-        if (byGoogleId.isPresent()) {
-            UserAccountResponse user = byGoogleId.get();
-            validateGoogleAccountState(user);
-            userAccountService.recordLoginSuccess(user.id(), now);
-            return buildAuthResponse(user);
+        // 1. Tìm hoặc tạo user
+        var user = userAccountService.findByGoogleId(info.googleId());
+
+        if (user == null) {
+            var byEmail = userAccountService.findByEmail(email);
+            if (byEmail != null) {
+                // Đã có tài khoản bằng email -> liên kết với Google ID
+                user = userAccountService.linkGoogleAccount(byEmail.id(), info.googleId(), now);
+            } else {
+                // Chưa từng có tài khoản -> tạo mới
+                user = userAccountService.createGoogleUser(email, info.googleId(), now);
+            }
         }
 
-        Optional<UserAccountResponse> byEmail = userAccountService.findForAuthByEmail(email);
-        if (byEmail.isPresent()) {
-            UserAccountResponse user = byEmail.get();
-            validateGoogleAccountState(user);
-            return buildAuthResponse(userAccountService
-                    .linkGoogleAccount(
-                            user.id(),
-                            info.googleId(),
-                            now)
-            );
-        }
-        return buildAuthResponse(userAccountService.createGoogleUser(email, info.googleId(), now));
+        // 2. Bắn event đăng nhập thành công (đồng bộ với hàm login thường)
+        eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), now));
+
+        // 3. Trả về response
+        return buildAuthResponse(user);
     }
 
     @Transactional(noRollbackFor = BusinessException.class)
     @Override
     public RefreshResponse refresh(RefreshRequest req) {
+        log.info(req.refreshToken());
         String hash = sha256Hex(req.refreshToken());
         Optional<RefreshToken> activeOpt = refreshTokenRepository.findActiveByTokenHashForUpdate(hash);
 
@@ -263,7 +253,9 @@ public class AuthServiceImpl implements AuthService {
         UserAccountResponse user = userAccountService.findActiveSummaryById(current.getUserId())
                 .orElseThrow(AuthRefreshTokenInvalidException::new);
 
-        String accessToken = jwtService.generateAccessToken(user.id(), user.plan().name());
+        var authorities = userAccountService.findAuthoritiesByUserId(user.id());
+        int topRoleLevel = userAccountService.findTopRoleLevel(user.id());
+        String accessToken = jwtService.generateAccessToken(user.id(), user.plan().name(), authorities, topRoleLevel);
         String newRawToken = issueRefreshToken(user.id());
 
         return new RefreshResponse(accessToken, newRawToken, jwtService.getAccessTokenExpirySeconds());
@@ -287,65 +279,58 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     @Override
     public void forgotPassword(ForgotPasswordRequest req) {
-        forgotPasswordRateLimiter.consume(req.email());
+        String email = req.email().toLowerCase().trim();
+        forgotPasswordRateLimiter.consume(email);
 
-        Optional<UUID> userIdOpt = userAccountService.findUserIdForPasswordReset(req.email());
+        Optional<UUID> userIdOpt = userAccountService.findUserIdForPasswordReset(email);
         if (userIdOpt.isEmpty()) {
             return;
         }
 
-        UUID userId = userIdOpt.get();
         String rawResetCode = generateNumericOtp();
-        PasswordResetToken token = PasswordResetToken.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .tokenHash(sha256Hex(rawResetCode))
-                .expiresAt(Instant.now().plus(RESET_CODE_TTL_MINUTES, ChronoUnit.MINUTES))
-                .createdAt(Instant.now())
-                .build();
-        passwordResetTokenRepository.save(token);
+        Instant now = Instant.now();
+        otpRepository.save(OtpModel.builder()
+                .email(email)
+                .type(OtpType.PASSWORD_RESET_OTP)
+                .code(rawResetCode)
+                .ttl(RESET_CODE_TTL_MINUTES)
+                .createdAt(now)
+                .build());
 
-        emailService.sendPasswordResetCode(req.email(), rawResetCode);
+        emailService.sendPasswordResetCode(email, rawResetCode);
     }
 
     @Transactional
     @Override
     public void resetPassword(ResetPasswordRequest req) {
-        String hash = sha256Hex(req.resetCode());
-        PasswordResetToken token = passwordResetTokenRepository
-                .findByTokenHashAndUsedAtIsNull(hash)
+        String email = req.email().toLowerCase().trim();
+        OtpModel otp = otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)
                 .orElseThrow(AuthResetCodeInvalidException::new);
 
-        if (token.getExpiresAt().isBefore(Instant.now())) {
+        if (!otp.getCode().equals(req.resetCode().trim())) {
+            throw new AuthResetCodeInvalidException();
+        }
+
+        var user = userAccountService.findByEmail(email);
+
+        if (user.isBlocked()) {
             throw new AuthResetCodeInvalidException();
         }
 
         try {
-            userAccountService.resetPasswordWithCode(token.getUserId(), req.newPassword());
+            userAccountService.resetPasswordWithCode(user.id(), req.newPassword());
         } catch (UserNotFoundException e) {
             throw new AuthResetCodeInvalidException();
         }
 
-        token.setUsedAt(Instant.now());
-        passwordResetTokenRepository.save(token);
-
-        refreshTokenRepository.revokeAllActiveForUser(token.getUserId());
+        otpRepository.deleteByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email);
+        refreshTokenRepository.revokeAllActiveForUser(user.id());
     }
 
     @Transactional
     @Override
     public void revokeAllTokensForUser(UUID userId) {
         refreshTokenRepository.revokeAllActiveForUser(userId);
-    }
-
-    // Kiểm tra trạng thái tài khoản khi đăng nhập bằng Google (chặn tài khoản đã bị xoá hoặc bị khoá)
-    private void validateGoogleAccountState(UserAccountResponse user) {
-        if (user.isDeleted()) {
-            throw new AuthInvalidCredentialsException();
-        }
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
     }
 
     // Kiểm tra tài khoản có đang bị tạm khoá đăng nhập (5 lần thất bại liên tiếp trong vòng 15 phút)
@@ -364,7 +349,9 @@ public class AuthServiceImpl implements AuthService {
 
     // Tạo AuthResponse kèm cặp Access Token (JWT) và Refresh Token mới
     private AuthResponse buildAuthResponse(UserAccountResponse user) {
-        String accessToken = jwtService.generateAccessToken(user.id(), user.plan().name());
+        var authorities = userAccountService.findAuthoritiesByUserId(user.id());
+        int topRoleLevel = userAccountService.findTopRoleLevel(user.id());
+        String accessToken = jwtService.generateAccessToken(user.id(), user.plan().name(), authorities, topRoleLevel);
         String rawRefreshToken = issueRefreshToken(user.id());
         return new AuthResponse(user, accessToken, rawRefreshToken, jwtService.getAccessTokenExpirySeconds());
     }

@@ -17,14 +17,25 @@ import java.util.UUID;
  * Sinh/verify JWT access token bằng API jjwt 0.13.x (Jwts.parser()/.verifyWith(key) —
  * KHÔNG dùng parserBuilder()/setSigningKey() đã lỗi thời của 0.11.x).
  *
- * AUTH-08: access token chỉ chứa sub (user id), claim plan, và exp — không có trường
- * nhạy cảm khác. generateAccessToken chỉ nhận đúng 2 tham số (userId, plan) để buộc mọi
- * thay đổi sau này phải sửa method signature, dễ review (T-02-04).
+ * AUTH-08: access token chỉ chứa sub (user id), claim plan, authorities, roles_level_top
+ * và exp — không có trường nhạy cảm khác (password, email...). Mọi claim mới phải thêm qua
+ * tham số riêng của generateAccessToken (không nhét tuỳ tiện vào Map) để buộc thay đổi sau
+ * này phải sửa method signature, dễ review (T-02-04).
+ *
+ * roles_level_top = level của role MẠNH NHẤT user đang giữ (quy ước số nhỏ = quyền cao,
+ * nên "mạnh nhất" = số NHỎ nhất — xem NO_ROLE_LEVEL bên dưới cho trường hợp không có role).
+ * Chỉ dùng cho việc ĐỌC/LỌC (vd quản lý chỉ thấy user cấp thấp hơn) — KHÔNG dùng để chặn
+ * hành động GHI (vd gán role) vì giá trị này "đông cứng" tới khi token hết hạn, có thể lệch
+ * nếu role của user bị đổi giữa phiên. Hành động ghi nhạy cảm phải query lại level mới nhất
+ * từ DB (xem AdminUserServiceImpl.addRoleToUser).
  */
 @Service
 public class JwtService {
 
     private static final MacAlgorithm ALG = Jwts.SIG.HS256;
+
+    // Quy ước "số nhỏ = quyền cao" — user không có role nào phải là YẾU NHẤT, tức số cực lớn.
+    private static final int NO_ROLE_LEVEL = Integer.MAX_VALUE;
 
     private final SecretKey key;
     private final long accessTokenExpirySeconds;
@@ -41,10 +52,23 @@ public class JwtService {
     }
 
     public String generateAccessToken(UUID userId, String plan) {
+        return generateAccessToken(userId, plan, java.util.Collections.emptyList(), NO_ROLE_LEVEL);
+    }
+
+    public String generateAccessToken(UUID userId, String plan, java.util.Collection<String> authorities) {
+        return generateAccessToken(userId, plan, authorities, NO_ROLE_LEVEL);
+    }
+
+    public String generateAccessToken(UUID userId, String plan, java.util.Collection<String> authorities, int topRoleLevel) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(userId.toString())
-                .claim("plan", plan)
+                .claim("plan", plan);
+        if (authorities != null && !authorities.isEmpty()) {
+            builder.claim("authorities", authorities);
+        }
+        builder.claim("roles_level_top", topRoleLevel);
+        return builder
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(accessTokenExpirySeconds)))
                 .signWith(key, ALG)
