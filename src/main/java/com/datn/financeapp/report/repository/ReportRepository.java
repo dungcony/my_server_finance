@@ -116,6 +116,12 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
         String getName();
 
         Long getAmount();
+
+        /**
+         * Chỉ {@link #childrenDetail} chọn cột này; {@link #byCategoryInGroup} không, nên getter
+         * trả {@code null} ở đó — gọi bên ngoài childrenDetail phải tự phòng null.
+         */
+        Long getTransactionCount();
     }
 
     /**

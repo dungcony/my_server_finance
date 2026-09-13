@@ -197,11 +197,12 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                         .stream()
                         .map(c -> new CategoryBreakdownResponse.ChildDetail(
                                 c.getCategoryId(),
-                                c.getCategoryId() == null
-                                        ? "Không phân loại " + txnType + " tiết"
-                                        : c.getName(),
+                                // Giao dịch ghi THẲNG vào cha gom thành một dòng mang chính tên
+                                // cha, đứng ngang hàng với các con — tên luôn có nghĩa và dùng
+                                // chung được cho cả thu lẫn chi.
+                                c.getCategoryId() == null ? row.getName() : c.getName(),
                                 orZero(c.getAmount()),
-                                0L))
+                                orZero(c.getTransactionCount())))
                         .toList();
             }
 

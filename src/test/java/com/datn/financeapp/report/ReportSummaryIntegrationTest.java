@@ -352,4 +352,110 @@ class ReportSummaryIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.period_summary.total_expense").value(0));
     }
+
+    // ------------------------------------------- children_detail (api/06 mục 4)
+
+    /**
+     * Số giao dịch của từng danh mục con phải là số ĐẾM THẬT, không phải 0.
+     *
+     * <p>Câu SQL đã tính {@code COUNT(*)} nhưng projection bỏ sót getter nên giá trị bị vứt đi và
+     * service điền cứng {@code 0L}. Loại lỗi âm thầm: màn hình vẫn hiện số, vẫn trông hợp lý, chỉ
+     * là luôn bằng 0.
+     */
+    @Test
+    void childrenDetail_traVeSoGiaoDichThat_khongPhaiKhong() throws Exception {
+        String token = registerAndGetAccessToken("chi.tiet.con.dem@example.com");
+        String walletId = createWallet(token, "Ví đếm con", 5_000_000);
+        String parentId = createCategory(token, "Ăn uống đếm", "expense", null);
+        String childId = createCategory(token, "Cà phê đếm", "expense", parentId);
+
+        // Ba giao dịch vào con, hai vào cha.
+        createExpenseTransaction(token, walletId, childId, 30_000);
+        createExpenseTransaction(token, walletId, childId, 20_000);
+        createExpenseTransaction(token, walletId, childId, 18_000);
+        createExpenseTransaction(token, walletId, parentId, 100_000);
+        createExpenseTransaction(token, walletId, parentId, 42_000);
+
+        mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                // Con "Cà phê đếm": 68.000 từ 3 giao dịch.
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 68000)].transaction_count")
+                        .value(3))
+                // Dòng gán thẳng vào cha: 142.000 từ 2 giao dịch.
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 142000)].transaction_count")
+                        .value(2));
+    }
+
+    /**
+     * Giao dịch ghi THẲNG vào danh mục cha gom thành một dòng mang chính TÊN CỦA CHA, đứng ngang
+     * hàng với các con.
+     *
+     * <p>Trước đây dòng này ghép chuỗi {@code "Không phân loại " + txnType + " tiết"} → ra
+     * "Không phân loại expense tiết": lẫn tiếng Anh, vô nghĩa với người dùng. Tên cha vừa luôn có
+     * nghĩa vừa dùng chung được cho cả thu lẫn chi.
+     */
+    @Test
+    void childrenDetail_dongGanThangVaoCha_mangTenCuaCha() throws Exception {
+        String token = registerAndGetAccessToken("chi.tiet.con.ten@example.com");
+        String walletId = createWallet(token, "Ví tên con", 5_000_000);
+        String parentId = createCategory(token, "Ăn uống tên", "expense", null);
+        String childId = createCategory(token, "Cà phê tên", "expense", parentId);
+
+        createExpenseTransaction(token, walletId, childId, 68_000);
+        createExpenseTransaction(token, walletId, parentId, 142_000);
+
+        mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 142000)].name")
+                        .value("Ăn uống tên"))
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 142000)].category_id")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())));
+    }
+
+    /**
+     * Tổng các dòng {@code children_detail} phải bằng đúng {@code amount} của cha.
+     *
+     * <p>Đây là lý do dòng "gán thẳng vào cha" tồn tại: bỏ nó đi thì cộng các con lại sẽ nhỏ hơn
+     * tổng của cha, người dùng cộng tay rồi hỏi tiền đi đâu.
+     */
+    @Test
+    void childrenDetail_tongCacDongBangDungTongCuaCha() throws Exception {
+        String token = registerAndGetAccessToken("chi.tiet.con.tong@example.com");
+        String walletId = createWallet(token, "Ví tổng con", 5_000_000);
+        String parentId = createCategory(token, "Ăn uống tổng", "expense", null);
+        String childA = createCategory(token, "Ăn sáng tổng", "expense", parentId);
+        String childB = createCategory(token, "Ăn trưa tổng", "expense", parentId);
+
+        createExpenseTransaction(token, walletId, childA, 379_000);
+        createExpenseTransaction(token, walletId, childB, 397_000);
+        createExpenseTransaction(token, walletId, parentId, 320_000);
+
+        String response = mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        Map<?, ?> parent = (Map<?, ?>) ((java.util.List<?>) data.get("items")).get(0);
+        long parentAmount = ((Number) parent.get("amount")).longValue();
+        long childrenSum = ((java.util.List<?>) parent.get("children_detail"))
+                .stream()
+                        .mapToLong(c -> ((Number) ((Map<?, ?>) c).get("amount")).longValue())
+                        .sum();
+
+        org.assertj.core.api.Assertions.assertThat(childrenSum).isEqualTo(parentAmount);
+    }
 }
