@@ -5,6 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.repository.OtpRepository;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
@@ -55,6 +58,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthRefreshRotationIntegrationTest {
 
     @Container
@@ -98,23 +102,41 @@ class AuthRefreshRotationIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        otpRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 
+    /**
+     * Thẻ làm mới đến từ {@code /auth/verify-email} chứ không phải {@code /auth/register}: từ
+     * 13/09/2026 register chỉ tạo tài khoản {@code PENDING_VERIFY} và không cấp thẻ nào.
+     */
     private String registerAndGetRefreshToken(String email) throws Exception {
         Map<String, Object> body = Map.of(
                 "email", email,
                 "password", "matkhaudung1",
                 "username", "Người Test Refresh");
 
-        String response = mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
+                .andExpect(status().isCreated());
+
+        String code = otpRepository
+                .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy mã OTP đăng ký cho " + email))
+                .getCode();
+
+        String response = mockMvc.perform(post("/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "code", code))))
+                .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

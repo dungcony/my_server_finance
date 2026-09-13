@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -51,6 +53,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
 class BudgetPrivacyIntegrationTest {
 
     @Container
@@ -92,8 +95,16 @@ class BudgetPrivacyIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM notifications");
         jdbcTemplate.update("DELETE FROM budgets");
         jdbcTemplate.update("DELETE FROM transactions");
@@ -104,19 +115,7 @@ class BudgetPrivacyIntegrationTest {
     }
 
     private String registerAndGetAccessToken(String email) throws Exception {
-        Map<String, Object> body = Map.of(
-                "email", email,
-                "password", "matkhau123",
-                "username", "Người Kiểm Thử Riêng Tư");
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        return (String) data.get("access_token");
+        return authSupport.registerAndGetAccessToken(email);
     }
 
     // Danh mục CHI hệ thống ({@code user_id IS NULL}) — cả A và B đều nhìn thấy và dùng chung.
@@ -128,13 +127,7 @@ class BudgetPrivacyIntegrationTest {
     }
 
     private String firstWalletId(String token) throws Exception {
-        String response = mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
-        List<?> wallets = (List<?>) parsed.get("data");
-        return (String) ((Map<?, ?>) wallets.get(0)).get("id");
+        return authSupport.firstWalletId(token);
     }
 
     private String createBudget(String token, String categoryId, long limitAmount) throws Exception {

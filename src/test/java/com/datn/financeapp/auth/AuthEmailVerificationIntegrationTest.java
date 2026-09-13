@@ -1,5 +1,7 @@
 package com.datn.financeapp.auth;
 
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.ResendVerificationRequest;
 import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
@@ -49,6 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthEmailVerificationIntegrationTest {
 
     @Container
@@ -116,7 +119,7 @@ class AuthEmailVerificationIntegrationTest {
         assertThat(user.isConfirm()).isFalse();
 
         // Kiểm tra OTP đã được lưu vào Redis
-        Optional<OtpModel> otpOpt = otpRepository.findById(email);
+        Optional<OtpModel> otpOpt = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email);
         assertThat(otpOpt).isPresent();
         String savedCode = otpOpt.get().getCode();
         assertThat(savedCode).matches("^\\d{6}$");
@@ -128,7 +131,8 @@ class AuthEmailVerificationIntegrationTest {
                         .content(objectMapper.writeValueAsString(verifyReq)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.user.email").value(email))
-                .andExpect(jsonPath("$.data.user.is_confirm").value(true))
+                // `status` thay cho cờ `is_confirm` cũ (hợp đồng mới 13/09/2026, app đã theo).
+                .andExpect(jsonPath("$.data.user.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.data.access_token").isNotEmpty())
                 .andExpect(jsonPath("$.data.refresh_token").isNotEmpty());
 
@@ -136,7 +140,7 @@ class AuthEmailVerificationIntegrationTest {
         User updated = userRepository.findByEmail(email).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(updated.isConfirm()).isTrue();
-        assertThat(otpRepository.findById(email)).isEmpty();
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email)).isEmpty();
     }
 
     @Test
@@ -185,7 +189,7 @@ class AuthEmailVerificationIntegrationTest {
         authService.register(new RegisterRequest(email, "matkhau123", "Người Dùng"));
 
         // Giả lập OTP cũ đã tạo từ 70 giây trước
-        OtpModel oldOtp = otpRepository.findById(email).orElseThrow();
+        OtpModel oldOtp = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email).orElseThrow();
         oldOtp.setCreatedAt(java.time.Instant.now().minusSeconds(70));
         otpRepository.save(oldOtp);
 
@@ -196,7 +200,7 @@ class AuthEmailVerificationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.message").isNotEmpty());
 
-        Optional<OtpModel> newOtpOpt = otpRepository.findById(email);
+        Optional<OtpModel> newOtpOpt = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email);
         assertThat(newOtpOpt).isPresent();
         assertThat(newOtpOpt.get().getCode()).matches("^\\d{6}$");
     }

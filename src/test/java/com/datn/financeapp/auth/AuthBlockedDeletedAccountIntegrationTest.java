@@ -9,7 +9,9 @@ import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.LoginRequest;
 import com.datn.financeapp.auth.dto.request.RefreshRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
+import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
 import com.datn.financeapp.auth.enums.OtpType;
 import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.user.entity.User;
@@ -58,6 +60,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthBlockedDeletedAccountIntegrationTest {
 
     @Container
@@ -259,11 +262,12 @@ class AuthBlockedDeletedAccountIntegrationTest {
     // -----------------------------------------------------------------
 
     @Test
-    void register_returnsUsernameIsConfirmFalseAndRoleUser() {
+    void verifiedAccount_returnsIsConfirmTrueAndRoleUser() {
         AuthResponse response = register("truong.moi@example.com");
 
-        // Luồng xác thực email chưa làm (prd/01 mục 11) nên đăng ký bằng email luôn ra false.
-        assertThat(response.user().isConfirm()).isFalse();
+        // Luồng xác thực email đã làm (13/09/2026): helper register() đi qua /auth/verify-email
+        // nên tài khoản đã ACTIVE. Trước đó test này kỳ vọng false vì luồng chưa tồn tại.
+        assertThat(response.user().isConfirm()).isTrue();
         assertThat(response.user().roles()).extracting(r -> r.name()).contains(RoleName.ROLE_USER);
     }
 
@@ -293,8 +297,20 @@ class AuthBlockedDeletedAccountIntegrationTest {
     // Helpers
     // -----------------------------------------------------------------
 
+    /**
+     * Đăng ký rồi xác thực email, trả phiên đăng nhập.
+     *
+     * <p>Bước xác thực là bắt buộc từ 13/09/2026: {@code register} chỉ tạo tài khoản
+     * {@code PENDING_VERIFY}, {@code login} trên tài khoản đó ném
+     * {@code AuthAccountNotVerifiedException}. Mã OTP đọc thẳng từ Redis vì test không có hộp thư.
+     */
     private AuthResponse register(String email) {
         authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        String code = otpRepository
+                .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy mã OTP đăng ký cho " + email))
+                .getCode();
+        authService.verifyEmail(new VerifyEmailRequest(email, code));
         return login(email, PASSWORD);
     }
 

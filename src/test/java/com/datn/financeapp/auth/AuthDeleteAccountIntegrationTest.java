@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.LoginRequest;
 import com.datn.financeapp.auth.dto.request.RefreshRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
@@ -51,6 +55,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthDeleteAccountIntegrationTest {
 
     @Container
@@ -88,8 +93,13 @@ class AuthDeleteAccountIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
         // groups.created_by_id là ON DELETE RESTRICT — không dọn hai bảng nhóm trước thì
         // userRepository.deleteAll() ném lỗi ràng buộc khoá ngoại.
         jdbcTemplate.update("DELETE FROM group_members");
@@ -150,6 +160,9 @@ class AuthDeleteAccountIntegrationTest {
     @Test
     void deleteAccount_keepsWalletsAndFinancialData() {
         User user = registerAndReload("xoa.giu.vi@example.com");
+        // Tự tạo ví: máy chủ không tạo ví mặc định khi đăng ký nữa (api/01 mục 1, bỏ 13/09/2026).
+        // Không có ví thì phép khẳng định bên dưới thành 0 == 0 và không chứng minh được gì.
+        insertWalletOwnedBy(user.getId());
 
         deleteAccountAs(user, PASSWORD);
 
@@ -252,14 +265,33 @@ class AuthDeleteAccountIntegrationTest {
     // Helpers
     // -----------------------------------------------------------------
 
+    /**
+     * Đăng ký rồi xác thực email, trả phiên đăng nhập — {@code register} chỉ tạo tài khoản
+     * {@code PENDING_VERIFY} từ 13/09/2026, đăng nhập thẳng sẽ bị từ chối.
+     */
     private AuthResponse register(String email) {
         authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        String code = otpRepository
+                .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy mã OTP đăng ký cho " + email))
+                .getCode();
+        authService.verifyEmail(new VerifyEmailRequest(email, code));
         return authService.login(new LoginRequest(email, PASSWORD), "127.0.0.1", "junit");
     }
 
     private User registerAndReload(String email) {
         register(email);
         return userRepository.findByEmail(email).orElseThrow();
+    }
+
+    /** Ví của người dùng — dữ liệu tài chính phải còn nguyên sau khi xoá tài khoản. */
+    private UUID insertWalletOwnedBy(UUID userId) {
+        UUID walletId = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO wallets (id, user_id, name, type, initial_balance, current_balance) "
+                        + "VALUES (?, ?, ?, 'cash', 0, 0)",
+                walletId, userId, "Ví Kiểm Thử");
+        return walletId;
     }
 
     // Chưa có module group/ (Phase 5 backend) nên dựng dữ liệu nhóm bằng SQL thô.

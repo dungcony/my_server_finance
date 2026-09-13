@@ -158,8 +158,8 @@ class AdminBlockUserIntegrationTest {
 
         BlockUserRequest req = new BlockUserRequest(target.getId(), "Vi phạm điều khoản sử dụng");
 
-        // When: Admin gọi PATCH /admin/user/{userId}/block
-        mockMvc.perform(patch("/admin/user/" + target.getId() + "/block")
+        // When: Admin gọi PATCH /admin/user/block (userId nằm trong body, không phải trên đường dẫn)
+        mockMvc.perform(patch("/admin/user/block")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -195,7 +195,7 @@ class AdminBlockUserIntegrationTest {
         User target = createAndVerifyUser("target2@example.com");
         BlockUserRequest req = new BlockUserRequest(target.getId(), "Cố tình phá hoại");
 
-        mockMvc.perform(patch("/admin/user/" + target.getId() + "/block")
+        mockMvc.perform(patch("/admin/user/block")
                         .header("Authorization", "Bearer " + normalUserToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -214,7 +214,7 @@ class AdminBlockUserIntegrationTest {
         UUID nonExistentId = UUID.randomUUID();
         BlockUserRequest req = new BlockUserRequest(nonExistentId, "Test 404");
 
-        mockMvc.perform(patch("/admin/user/" + nonExistentId + "/block")
+        mockMvc.perform(patch("/admin/user/block")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -232,7 +232,7 @@ class AdminBlockUserIntegrationTest {
 
         BlockUserRequest req = new BlockUserRequest(admin.getId(), "Tự khóa mình");
 
-        mockMvc.perform(patch("/admin/user/" + admin.getId() + "/block")
+        mockMvc.perform(patch("/admin/user/block")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -242,8 +242,8 @@ class AdminBlockUserIntegrationTest {
     }
 
     @Test
-    @DisplayName("TC_USR_05: Bỏ trống lý do khóa -> 400 Bad Request (VALIDATION_ERROR)")
-    void admin_blockUser_blankReason_badRequest() throws Exception {
+    @DisplayName("TC_USR_05: Bỏ trống lý do khóa vẫn khóa được — lý do là tuỳ chọn")
+    void admin_blockUser_blankReason_succeeds() throws Exception {
         User admin = createAndVerifyUser("admin4@example.com");
         assignAdminRole(admin.getId());
         String adminToken = loginAndGetToken("admin4@example.com");
@@ -251,12 +251,16 @@ class AdminBlockUserIntegrationTest {
         User target = createAndVerifyUser("target4@example.com");
         BlockUserRequest req = new BlockUserRequest(target.getId(), "");
 
-        mockMvc.perform(patch("/admin/user/" + target.getId() + "/block")
+        // `reason` chỉ có @Size(max = 500), không bắt buộc: admin được khoá nhanh mà không phải
+        // giải trình. Lý do (nếu có) đi vào blacklist Redis và log để tra ngược về sau.
+        mockMvc.perform(patch("/admin/user/block")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        User updated = userRepository.findById(target.getId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(UserStatus.BLOCKED);
     }
 }

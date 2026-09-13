@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
@@ -61,6 +62,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthGoogleLoginIntegrationTest {
 
     @Container
@@ -119,7 +121,7 @@ class AuthGoogleLoginIntegrationTest {
     // -----------------------------------------------------------------
 
     @Test
-    void loginWithGoogle_NewUser_CreatesAccountWithCashWalletAndConfirmedFlag() {
+    void loginWithGoogle_NewUser_CreatesConfirmedAccountWithoutWallet() {
         stubGoogle("sub-moi-001", "nguoi.moi@example.com", "Người Mới");
 
         AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
@@ -133,11 +135,12 @@ class AuthGoogleLoginIntegrationTest {
         assertThat(saved.getPassword()).isNull();
         assertThat(saved.isConfirm()).isTrue();
 
+        // Không tạo ví mặc định (api/01 mục 1, bỏ 13/09/2026) — kể cả đăng nhập Google. Ứng dụng
+        // bắt người dùng tự tạo ví đầu tiên ở màn chặn riêng.
         List<Wallet> wallets = walletRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(saved.getId()))
                 .toList();
-        assertThat(wallets).hasSize(1);
-        assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
+        assertThat(wallets).isEmpty();
     }
 
     @Test
@@ -375,7 +378,7 @@ class AuthGoogleLoginIntegrationTest {
 
     @Test
     void login_EmailOnlyAccount_ReportsHasPasswordAndNotLinked() {
-        authService.register(new RegisterRequest("chi.email@example.com", PASSWORD, "Chỉ Email"));
+        registerAndVerify("chi.email@example.com", "Chỉ Email");
 
         AuthResponse res = authService.login(
                 new LoginRequest("chi.email@example.com", PASSWORD), "127.0.0.1", "test");
@@ -400,6 +403,19 @@ class AuthGoogleLoginIntegrationTest {
     // -----------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------
+
+    /**
+     * Đăng ký bằng email rồi xác thực — {@code register} chỉ tạo tài khoản {@code PENDING_VERIFY}
+     * từ 13/09/2026, đăng nhập thẳng sẽ nhận {@code ACCOUNT_NOT_VERIFIED}.
+     */
+    private void registerAndVerify(String email, String username) {
+        authService.register(new RegisterRequest(email, PASSWORD, username));
+        String code = otpRepository
+                .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy mã OTP đăng ký cho " + email))
+                .getCode();
+        authService.verifyEmail(new com.datn.financeapp.auth.dto.request.VerifyEmailRequest(email, code));
+    }
 
     private void stubGoogle(String sub, String email, String name) {
         when(googleIdTokenVerifier.verify(anyString()))

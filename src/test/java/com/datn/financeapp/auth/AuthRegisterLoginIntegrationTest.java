@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -15,7 +16,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,21 +30,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.wallet.service.WalletService;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-
 /**
  * Test tích hợp qua HTTP thật (MockMvc + AuthController + AuthService + Testcontainers
- * PostgreSQL) cho AUTH-01 (register + ví Tiền mặt trong 1 transaction) và AUTH-02 (login,
+ * PostgreSQL) cho AUTH-01 (register tạo tài khoản chờ xác thực, không kèm ví) và AUTH-02 (login,
  * sai email/sai password cùng mã lỗi INVALID_CREDENTIALS).
  *
  * RateLimitFilter thật (5/phút/IP trên /auth/**, đã verify riêng ở RateLimitFilterTest của
@@ -56,6 +49,7 @@ import static org.mockito.Mockito.doThrow;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthRegisterLoginIntegrationTest {
 
     @Container
@@ -101,9 +95,6 @@ class AuthRegisterLoginIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
-    @MockitoSpyBean
-    private WalletService walletService;
-
     @BeforeEach
     void cleanTables() {
         refreshTokenRepository.deleteAll();
@@ -111,8 +102,20 @@ class AuthRegisterLoginIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Đăng ký tạo tài khoản chờ xác thực và KHÔNG tạo ví nào.
+     *
+     * <p>Hai thay đổi so với bản trước:
+     *
+     * <ul>
+     *   <li>Response không còn {@code access_token}/{@code refresh_token} — tài khoản ở trạng thái
+     *       {@code PENDING_VERIFY}, thẻ chỉ được cấp sau {@code POST /auth/verify-email}.
+     *   <li>Không còn ví "Tiền mặt" mặc định (api/01 mục 1, bỏ 13/09/2026) — ứng dụng bắt người
+     *       dùng tự tạo ví đầu tiên ở màn chặn riêng, để họ đặt tên và số dư theo ý mình.
+     * </ul>
+     */
     @Test
-    void register_succeeds_createsUserAndCashWalletWithZeroBalanceInSameTransaction() throws Exception {
+    void register_createsPendingAccountWithoutTokensAndWithoutDefaultWallet() throws Exception {
         Map<String, Object> body = Map.of(
                 "email", "minh.nguyen@example.com",
                 "password", "matkhau123",
@@ -122,63 +125,24 @@ class AuthRegisterLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.user.id").exists())
-                // B4 — ba trường mới, canh đúng KHOÁ JSON chứ không chỉ giá trị: field record tên
-                // isConfirm khiến Jackson mặc định sinh khoá "confirm", phải có @JsonProperty mới
-                // ra "is_confirm" như api/01 chốt. Test ở tầng service không nhìn thấy sai lệch này.
-                .andExpect(jsonPath("$.data.user.username").value("Minh Nguyễn"))
-                .andExpect(jsonPath("$.data.user.is_confirm").value(false))
-                .andExpect(jsonPath("$.data.user.role").value("USER"))
-                .andExpect(jsonPath("$.data.access_token").isNotEmpty())
-                .andExpect(jsonPath("$.data.refresh_token").isNotEmpty())
+                .andExpect(jsonPath("$.data.id").exists())
+                .andExpect(jsonPath("$.data.email").value("minh.nguyen@example.com"))
+                // Chưa xác thực email thì chưa có thẻ — đây là cửa chặn giữa đăng ký và vào app.
+                .andExpect(jsonPath("$.data.access_token").doesNotExist())
+                .andExpect(jsonPath("$.data.refresh_token").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        Map<?, ?> user = (Map<?, ?>) data.get("user");
-        String userId = (String) user.get("id");
+        String userId = (String) data.get("id");
 
         var wallets = walletRepository.findAll().stream()
                 .filter(w -> w.getUserId() != null && w.getUserId().toString().equals(userId))
                 .toList();
 
-        assertThat(wallets).hasSize(1);
-        assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
-        assertThat(wallets.get(0).getCurrentBalance()).isEqualTo(0L);
-    }
-
-    /**
-     * Chứng minh user + ví thật sự nằm trong CÙNG một transaction, chứ không chỉ "cả hai cùng có
-     * mặt khi mọi thứ suôn sẻ" như test ở trên.
-     *
-     * <p>Từ nhóm G của PRD 02, việc tạo ví chuyển từ khối {@code Wallet.builder()} viết thẳng
-     * trong {@code AuthService} sang lời gọi {@code walletService.createDefaultCashWallet()}.
-     * Gọi sang bean khác vẫn giữ nguyên tính nguyên tử vì {@code @Transactional} mặc định lan
-     * truyền kiểu {@code REQUIRED} — nhưng đó là thứ phải chứng minh, không phải thứ để tin.
-     * Nếu một ngày ai đó đặt {@code REQUIRES_NEW} lên method kia, test này sẽ đỏ.
-     */
-    @Test
-    void register_whenWalletCreationFails_rollsBackUserToo() throws Exception {
-        doThrow(new BusinessException(ErrorCode.INTERNAL_ERROR, "Ép hỏng để kiểm rollback."))
-                .when(walletService)
-                .createDefaultCashWallet(any(), any());
-
-        Map<String, Object> body = Map.of(
-                "email", "rollback@datn.local",
-                "password", "matkhau123",
-                "username", "Người Dùng Rollback");
-
-        mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().is5xxServerError());
-
-        // Ví hỏng thì tài khoản cũng không được phép còn lại — nếu không, người dùng có tài khoản
-        // đăng nhập được nhưng mở app lên thấy trống trơn và không ghi được giao dịch nào.
-        assertThat(userRepository.findByEmail("rollback@datn.local")).isEmpty();
-        assertThat(walletRepository.findAll()).isEmpty();
+        assertThat(wallets).isEmpty();
     }
 
     @Test

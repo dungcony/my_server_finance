@@ -4,6 +4,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.repository.OtpRepository;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.entity.LoginAttempt;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
@@ -51,6 +54,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthLoginLockoutIntegrationTest {
 
     @Container
@@ -96,20 +100,38 @@ class AuthLoginLockoutIntegrationTest {
     @Autowired
     private LoginAttemptRepository loginAttemptRepository;
 
+    @Autowired
+    private OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        otpRepository.deleteAll();
         loginAttemptRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 
+    /**
+     * Đăng ký và xác thực email — bộ test này đo cơ chế khoá sau nhiều lần sai mật khẩu, nên tài
+     * khoản phải ở trạng thái đăng nhập được. Bỏ bước xác thực thì mọi lần login đều dừng ở
+     * {@code ACCOUNT_NOT_VERIFIED} và không còn đo được thứ định đo.
+     */
     private void register(String email, String password, String username) throws Exception {
         Map<String, Object> body = Map.of("email", email, "password", password, "username", username);
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated());
+
+        String code = otpRepository
+                .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy mã OTP đăng ký cho " + email))
+                .getCode();
+        mockMvc.perform(post("/auth/verify-email")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "code", code))))
+                .andExpect(status().isOk());
     }
 
     private void loginWithWrongPassword(String email, String wrongPassword) throws Exception {

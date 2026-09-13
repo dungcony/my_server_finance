@@ -3,10 +3,12 @@ package com.datn.financeapp.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
+import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
 import com.datn.financeapp.user.dto.request.UpdateMeRequest;
 import com.datn.financeapp.user.dto.response.UserProfileResponse;
 import com.datn.financeapp.auth.entity.OtpModel;
@@ -46,6 +48,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import(TestRedisConfig.class)
 class AuthProfilePasswordIntegrationTest {
 
     @Container
@@ -92,8 +95,17 @@ class AuthProfilePasswordIntegrationTest {
         userRepository.deleteAll();
     }
 
+    /**
+     * Đăng ký rồi xác thực email — {@code register} chỉ tạo tài khoản {@code PENDING_VERIFY} từ
+     * 13/09/2026, nên phải qua bước xác thực mới dùng được như tài khoản bình thường.
+     */
     private User registerUser(String email, String password, String username) {
         authService.register(new RegisterRequest(email, password, username));
+        String code = otpRepository
+                .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
+                .orElseThrow(() -> new IllegalStateException("Không tìm thấy mã OTP đăng ký cho " + email))
+                .getCode();
+        authService.verifyEmail(new VerifyEmailRequest(email, code));
         return userRepository.findByEmail(email).orElseThrow();
     }
 

@@ -11,7 +11,6 @@ import com.datn.financeapp.user.event.UserCreateEvent;
 import com.datn.financeapp.user.event.UserDeletedEvent;
 import com.datn.financeapp.user.event.UserPasswordChangedEvent;
 import com.datn.financeapp.user.exception.NoPasswordSetException;
-import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.exception.WrongPasswordException;
 import com.datn.financeapp.user.mapper.UserMapper;
@@ -146,42 +145,42 @@ public class AccountServiceImpl implements AccountService {
         userRepository.save(user);
     }
 
+    /**
+     * Tra tài khoản theo email — <b>chỉ trả dữ liệu, không phán xét trạng thái</b>.
+     *
+     * <p>Trước đây method này ném {@code UserBlockedException}/{@code UserNotFoundException} ngay
+     * khi thấy tài khoản bị khoá hoặc đã xoá. Việc đó hỏng theo hai cách:
+     *
+     * <ol>
+     *   <li><b>Mất bản ghi {@code login_attempts}.</b> {@code AuthService.login} khai báo
+     *       {@code noRollbackFor = BusinessException.class} để giữ lại lần đăng nhập hỏng, nhưng
+     *       exception ném từ transaction LỒNG ở đây đánh dấu rollback-only — vòng ngoài không gỡ
+     *       được, commit nổ {@code UnexpectedRollbackException} và bản ghi biến mất. Hệ quả: cơ
+     *       chế khoá tài khoản sau 5 lần sai mật khẩu không đếm được gì.
+     *   <li><b>Caller không quyết được thứ tự kiểm tra.</b> Đăng nhập sai mật khẩu vào một tài
+     *       khoản bị khoá phải trả {@code INVALID_CREDENTIALS} (không xác nhận tài khoản có tồn
+     *       tại); đăng nhập đúng mật khẩu mới được trả {@code ACCOUNT_BLOCKED}. Ném sẵn ở đây thì
+     *       caller không còn cơ hội phân biệt.
+     * </ol>
+     *
+     * <p>Trạng thái vẫn đọc được qua {@code UserAccountResponse.isBlocked()}/{@code isDeleted()} —
+     * mỗi caller tự kiểm đúng lúc nó cần.
+     */
     @Transactional(readOnly = true)
     @Override
     public UserAccountResponse findByEmail(String email) {
-        User user = userRepository.findByEmail(email)
+        return userRepository.findByEmail(email)
+                .map(userMapper::toAccountResponse)
                 .orElse(null);
-
-        if (user == null)
-            return null;
-
-        if (user.isDeleted())
-            throw new UserNotFoundException();
-
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-
-        return userMapper.toAccountResponse(user);
     }
 
+    /** Xem {@link #findByEmail(String)} — cùng lý do chỉ trả dữ liệu, không ném theo trạng thái. */
     @Transactional(readOnly = true)
     @Override
     public UserAccountResponse findByGoogleId(String googleId) {
-        User user = userRepository.findByGoogleId(googleId)
+        return userRepository.findByGoogleId(googleId)
+                .map(userMapper::toAccountResponse)
                 .orElse(null);
-
-        if (user == null)
-            return null;
-
-        if (user.isDeleted())
-            throw new UserNotFoundException();
-
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-
-        return userMapper.toAccountResponse(user);
     }
 
     @Transactional(readOnly = true)

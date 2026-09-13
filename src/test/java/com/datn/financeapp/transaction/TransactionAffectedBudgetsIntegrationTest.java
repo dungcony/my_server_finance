@@ -4,6 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -46,6 +48,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
 class TransactionAffectedBudgetsIntegrationTest {
 
     @Container
@@ -91,8 +94,16 @@ class TransactionAffectedBudgetsIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM notifications");
         jdbcTemplate.update("DELETE FROM transactions");
         jdbcTemplate.update("DELETE FROM budgets");
@@ -102,25 +113,15 @@ class TransactionAffectedBudgetsIntegrationTest {
     }
 
     private String registerAndGetAccessToken(String email) throws Exception {
-        Map<String, Object> body = Map.of(
-                "email", email,
-                "password", "matkhau123",
-                "username", "Người Kiểm Thử Ngân Sách");
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
-        Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        return authSupport.registerAndGetAccessToken(email);
     }
 
-    private UUID firstWalletId(UUID userId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT id FROM wallets WHERE user_id = ? AND NOT is_deleted LIMIT 1", UUID.class, userId);
+    /**
+     * Ví của tài khoản, tạo mới nếu chưa có — máy chủ không tạo ví mặc định khi đăng ký nữa
+     * (api/01 mục 1, đổi 13/09/2026) nên query thẳng bảng sẽ không ra dòng nào.
+     */
+    private UUID firstWalletId(String token) throws Exception {
+        return UUID.fromString(authSupport.firstWalletId(token));
     }
 
     private UUID userIdOf(String email) {
@@ -159,7 +160,7 @@ class TransactionAffectedBudgetsIntegrationTest {
     void expenseIntoChildCategory_budgetOverLimit_returnsAffectedBudgetWithRootCategoryName() throws Exception {
         String token = registerAndGetAccessToken("affected.budget.1@example.com");
         UUID userId = userIdOf("affected.budget.1@example.com");
-        UUID walletId = firstWalletId(userId);
+        UUID walletId = firstWalletId(token);
         UUID anUongId = systemCategoryId("Ăn uống", "expense");
         UUID caPheId = systemCategoryId("Cà phê", "expense");
 
@@ -185,7 +186,7 @@ class TransactionAffectedBudgetsIntegrationTest {
     void incomeTransaction_alwaysReturnsEmptyAffectedBudgets() throws Exception {
         String token = registerAndGetAccessToken("affected.budget.2@example.com");
         UUID userId = userIdOf("affected.budget.2@example.com");
-        UUID walletId = firstWalletId(userId);
+        UUID walletId = firstWalletId(token);
         UUID anUongId = systemCategoryId("Ăn uống", "expense");
         UUID thuNhapId = systemCategoryId("Lương", "income");
 
@@ -207,7 +208,7 @@ class TransactionAffectedBudgetsIntegrationTest {
     void expenseWithinNormalBudget_notReturnedInAffectedBudgets() throws Exception {
         String token = registerAndGetAccessToken("affected.budget.3@example.com");
         UUID userId = userIdOf("affected.budget.3@example.com");
-        UUID walletId = firstWalletId(userId);
+        UUID walletId = firstWalletId(token);
         UUID anUongId = systemCategoryId("Ăn uống", "expense");
         UUID caPheId = systemCategoryId("Cà phê", "expense");
 

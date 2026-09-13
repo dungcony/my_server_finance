@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -47,6 +49,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
 class TransactionDeleteDebtLinkIntegrationTest {
 
     @Container
@@ -92,8 +95,16 @@ class TransactionDeleteDebtLinkIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
         // debt_payments tham chiếu transactions (ON DELETE RESTRICT) và debts (ON DELETE CASCADE)
         // — xoá theo đúng thứ tự FK: debt_payments -> debts -> transactions -> wallets -> users.
         jdbcTemplate.update("DELETE FROM debt_payments");
@@ -105,20 +116,7 @@ class TransactionDeleteDebtLinkIntegrationTest {
     }
 
     private String registerAndGetAccessToken(String email) throws Exception {
-        Map<String, Object> body = Map.of(
-                "email", email,
-                "password", "matkhau123",
-                "username", "Người Kiểm Thử");
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
-        Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        return authSupport.registerAndGetAccessToken(email);
     }
 
     private UUID currentUserId(String token) throws Exception {

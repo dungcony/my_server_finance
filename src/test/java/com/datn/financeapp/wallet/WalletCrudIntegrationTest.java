@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -45,6 +47,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
 class WalletCrudIntegrationTest {
 
     @Container
@@ -90,8 +93,17 @@ class WalletCrudIntegrationTest {
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ — sót lại thì lần đăng ký
+        // sau của cùng email sẽ đọc nhầm mã cũ.
+        otpRepository.deleteAll();
         // transactions tham chiếu wallets qua fk_txn_wallet/fk_txn_dest — phải xoá trước wallets,
         // nếu không mọi test có insertFakeTransaction() sẽ làm cleanTables() của lần chạy sau vỡ
         // vì còn bản ghi transactions treo lơ lửng tham chiếu ví đã bị walletRepository.deleteAll().
@@ -102,20 +114,7 @@ class WalletCrudIntegrationTest {
     }
 
     private String registerAndGetAccessToken(String email) throws Exception {
-        Map<String, Object> body = Map.of(
-                "email", email,
-                "password", "matkhau123",
-                "username", "Người Kiểm Thử");
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
-        Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        return authSupport.registerAndGetAccessToken(email);
     }
 
     private String createWallet(String token, String name, String type, long initialBalance) throws Exception {
@@ -153,12 +152,11 @@ class WalletCrudIntegrationTest {
                 .andExpect(jsonPath("$.data.current_balance").value(5_000_000))
                 .andExpect(jsonPath("$.data.name").value("Vietcombank"));
 
-        // register() đã tạo sẵn ví "Tiền mặt" — tổng phải là 2, không có giao dịch nào phát sinh
-        // từ việc tạo ví (đọc lại qua GET /wallets/summary để không tự ý query bảng transactions
-        // trực tiếp trong test, giữ test ở tầng HTTP).
+        // Máy chủ KHÔNG tạo ví mặc định khi đăng ký (api/01 mục 1, đổi 13/09/2026) — ví vừa tạo
+        // là ví duy nhất. Đọc lại qua GET /wallets để giữ test ở tầng HTTP, không query thẳng bảng.
         mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(2));
+                .andExpect(jsonPath("$.data.length()").value(1));
     }
 
     @Test
@@ -213,6 +211,9 @@ class WalletCrudIntegrationTest {
     void deleteWallet_hasTransactionsWithoutFlag_returns409WalletHasTransactions() throws Exception {
         String token = registerAndGetAccessToken("xoa.co.gd@example.com");
         String walletId = createWallet(token, "Ví Có Giao Dịch", "bank", 1_000_000);
+        // Ví thứ hai để ví đang xoá KHÔNG phải ví cuối cùng — nếu không, luật
+        // CANNOT_DELETE_LAST_WALLET chặn trước và test này không còn kiểm được điều nó định kiểm.
+        createWallet(token, "Ví Dự Phòng", "cash", 0);
 
         Map<?, ?> parsed = objectMapper.readValue(
                 mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + token))
@@ -233,15 +234,9 @@ class WalletCrudIntegrationTest {
     void deleteWallet_lastWallet_returns409CannotDeleteLastWallet() throws Exception {
         String token = registerAndGetAccessToken("vi.cuoi.cung@example.com");
 
-        // register() đã tạo sẵn ví "Tiền mặt" — đây chính là ví cuối cùng, xoá phải bị chặn.
-        Map<?, ?> parsed = objectMapper.readValue(
-                mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
-                        .andReturn()
-                        .getResponse()
-                        .getContentAsString(),
-                Map.class);
-        var wallets = (java.util.List<?>) parsed.get("data");
-        String walletId = (String) ((Map<?, ?>) wallets.get(0)).get("id");
+        // Máy chủ không tạo ví mặc định nữa (api/01 mục 1, đổi 13/09/2026), nên phải tự tạo đúng
+        // một ví — đó chính là ví cuối cùng, xoá phải bị chặn.
+        String walletId = createWallet(token, "Ví Duy Nhất", "cash", 0);
 
         mockMvc.perform(delete("/wallets/" + walletId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())

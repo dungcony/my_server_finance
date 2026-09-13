@@ -29,6 +29,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.JwtService;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
+import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.service.AccountService;
 
@@ -122,6 +123,7 @@ public class AuthServiceImpl implements AuthService {
         otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, email);
 
         var user = userAccountService.findByEmail(email);
+        assertUsable(user);
 
         eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), Instant.now()));
         return buildAuthResponse(user);
@@ -133,8 +135,10 @@ public class AuthServiceImpl implements AuthService {
         String email = req.email().toLowerCase().trim();
         Instant now = Instant.now();
 
+        // Tài khoản đã xoá hoặc bị khoá im lặng như email chưa đăng ký — không gửi mã, không báo
+        // lỗi, để người gửi không suy ra được trạng thái tài khoản.
         var u = userAccountService.findByEmail(email);
-        if (u == null) {
+        if (u == null || u.isDeleted() || u.isBlocked()) {
             return;
         }
         if (u.isConfirm()) {
@@ -142,7 +146,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
 
-        Optional<OtpModel> existingOtp = otpRepository.findById(email);
+        // Phải tra bằng findByTypeAndEmail: khoá Redis thật là "register_otp:<email>"
+        // (OtpModel.buildId), nên findById(email) luôn trả rỗng và cơ chế chờ 60 giây bên dưới
+        // không bao giờ chạy — gửi lại mã bao nhiêu lần cũng được.
+        Optional<OtpModel> existingOtp = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email);
         if (existingOtp.isPresent() && existingOtp.get().getCreatedAt() != null) {
             long secondsSinceLast = Duration.between(existingOtp.get().getCreatedAt(), now).getSeconds();
             if (secondsSinceLast < 60) {
@@ -192,6 +199,13 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthInvalidCredentialsException();
         }
 
+        // Chỉ người gõ ĐÚNG mật khẩu mới đáng được biết tài khoản đang bị khoá — sai mật khẩu thì
+        // đã trả INVALID_CREDENTIALS ở trên, không xác nhận email đó có tồn tại hay không.
+        // Kiểm ở đây chứ không ở findByEmail: xem Javadoc AccountServiceImpl.findByEmail.
+        if (user.isBlocked()) {
+            throw new UserBlockedException();
+        }
+
         if (user.notConfirm()) { // hoặc user.status() == UserStatus.PENDING_VERIFY
             throw new AuthAccountNotVerifiedException();
         }
@@ -214,11 +228,14 @@ public class AuthServiceImpl implements AuthService {
             var byEmail = userAccountService.findByEmail(email);
             if (byEmail != null) {
                 // Đã có tài khoản bằng email -> liên kết với Google ID
+                assertUsable(byEmail);
                 user = userAccountService.linkGoogleAccount(byEmail.id(), info.googleId(), now);
             } else {
                 // Chưa từng có tài khoản -> tạo mới
                 user = userAccountService.createGoogleUser(email, info.googleId(), now);
             }
+        } else {
+            assertUsable(user);
         }
 
         // 2. Bắn event đăng nhập thành công (đồng bộ với hàm login thường)
@@ -313,7 +330,9 @@ public class AuthServiceImpl implements AuthService {
 
         var user = userAccountService.findByEmail(email);
 
-        if (user.isBlocked()) {
+        // Tài khoản bị khoá HOẶC đã xoá đều trả RESET_CODE_INVALID như mã sai thường — mã lỗi
+        // riêng sẽ xác nhận email đó có đăng ký và đang ở trạng thái nào.
+        if (user == null || user.isDeleted() || user.isBlocked()) {
             throw new AuthResetCodeInvalidException();
         }
 
@@ -334,6 +353,23 @@ public class AuthServiceImpl implements AuthService {
     }
 
     // Kiểm tra tài khoản có đang bị tạm khoá đăng nhập (5 lần thất bại liên tiếp trong vòng 15 phút)
+    /**
+     * Chặn tài khoản đã xoá hoặc bị khoá ở những luồng mà danh tính đã được chứng minh sẵn
+     * (đăng nhập Google, xác thực email) — khác {@code login} bằng mật khẩu, nơi phải trả
+     * {@code INVALID_CREDENTIALS} trước để không xác nhận email có tồn tại.
+     *
+     * <p>Tài khoản đã xoá cố tình trả {@code INVALID_CREDENTIALS} chứ không phải mã riêng: với
+     * thế giới bên ngoài nó phải giống hệt một email chưa từng đăng ký.
+     */
+    private void assertUsable(UserAccountResponse user) {
+        if (user.isDeleted()) {
+            throw new AuthInvalidCredentialsException();
+        }
+        if (user.isBlocked()) {
+            throw new UserBlockedException();
+        }
+    }
+
     private boolean isLockedOut(String email) {
         List<LoginAttempt> recent = loginAttemptRepository.findTop5ByEmailOrderByAttemptedAtDesc(email);
         if (recent.size() < MAX_CONSECUTIVE_FAILURES) {
