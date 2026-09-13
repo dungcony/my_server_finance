@@ -3,25 +3,25 @@ package com.datn.financeapp.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.ChangePasswordRequest;
-import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.RegisterRequest;
-import com.datn.financeapp.auth.dto.ResetPasswordRequest;
-import com.datn.financeapp.auth.dto.UpdateProfileRequest;
-import com.datn.financeapp.auth.dto.UserDetailDto;
-import com.datn.financeapp.auth.entity.PasswordResetToken;
-import com.datn.financeapp.auth.entity.RefreshToken;
-import com.datn.financeapp.auth.entity.User;
-import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
+import com.datn.financeapp.user.dto.request.UpdatePassReq;
+import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
+import com.datn.financeapp.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
+import com.datn.financeapp.user.dto.request.UpdateMeRequest;
+import com.datn.financeapp.user.dto.response.UserProfileResponse;
+import com.datn.financeapp.auth.entity.OtpModel;
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.repository.OtpRepository;
+import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
-import com.datn.financeapp.auth.service.PasswordResetNotifier;
+import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.user.service.AccountService;
+import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +61,12 @@ class AuthProfilePasswordIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private ProfileService userProfileService;
+
+    @Autowired
+    private AccountService userAccountService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -70,17 +76,17 @@ class AuthProfilePasswordIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private PasswordResetTokenRepository passwordResetTokenRepository;
+    private OtpRepository otpRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @MockitoSpyBean
-    private PasswordResetNotifier passwordResetNotifier;
+    private EmailService emailService;
 
     @BeforeEach
     void cleanTables() {
-        passwordResetTokenRepository.deleteAll();
+        otpRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         walletRepository.deleteAll();
         userRepository.deleteAll();
@@ -95,26 +101,28 @@ class AuthProfilePasswordIntegrationTest {
     void patchMe_UpdatesUsername_Succeeds() {
         User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
-        var result = authService.updateProfile(user.getId(), new UpdateProfileRequest("Tên Mới", null));
+        var result = userProfileService.updateMe(user.getId(), new UpdateMeRequest("Minh", "Nguyễn", null));
 
-        assertThat(result.username()).isEqualTo("Tên Mới");
+        assertThat(result.firstName()).isEqualTo("Minh");
+        assertThat(result.lastName()).isEqualTo("Nguyễn");
         User reload = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(reload.getUsername()).isEqualTo("Tên Mới");
+        assertThat(reload.getFirstName()).isEqualTo("Minh");
+        assertThat(reload.getLastName()).isEqualTo("Nguyễn");
         // UpdateProfileRequest không có field email/plan -> record chỉ 2 tham số, không có cách
         // nào gọi truyền email/plan qua đây (verify bằng compile-time, xem field list ở class).
         assertThat(reload.getEmail()).isEqualTo("cap.nhat@example.com");
-        assertThat(reload.getPlan()).isEqualTo("free");
+        assertThat(reload.getPlan()).isEqualTo(com.datn.financeapp.user.enums.UserPlan.FREE);
     }
 
     @Test
-    void getMe_NoTransactionsOrGroupsYet_returnsStatsDefaultingToZero() {
+    void getMe_existingUser_returnsProfile() {
         User user = registerUser("xem.ho.so@example.com", "matkhaudung1", "Xem Hồ Sơ");
 
-        UserDetailDto detail = authService.getMe(user.getId());
+        UserProfileResponse detail = userProfileService.getMe(user.getId());
 
-        assertThat(detail.stats().walletCount()).isEqualTo(1L); // ví Tiền mặt tạo lúc đăng ký
-        assertThat(detail.stats().transactionCount()).isEqualTo(0L);
-        assertThat(detail.stats().groupCount()).isEqualTo(0L);
+        assertThat(detail.id()).isEqualTo(user.getId());
+        assertThat(detail.email()).isEqualTo("xem.ho.so@example.com");
+        assertThat(detail.plan()).isEqualTo(com.datn.financeapp.user.enums.UserPlan.FREE);
     }
 
     @Test
@@ -123,28 +131,28 @@ class AuthProfilePasswordIntegrationTest {
 
         // Giả lập 2 phiên đăng nhập trước đó — mỗi login cấp thêm 1 refresh token active.
         authService.login(
-                new com.datn.financeapp.auth.dto.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
+                new com.datn.financeapp.auth.dto.request.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
                 "127.0.0.1", "junit");
         authService.login(
-                new com.datn.financeapp.auth.dto.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
+                new com.datn.financeapp.auth.dto.request.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
                 "127.0.0.1", "junit");
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isNotEmpty();
 
-        authService.changePassword(user.getId(), new ChangePasswordRequest("matkhaucu123", "matkhaumoi456"));
+        userAccountService.changePassword(user.getId(), new UpdatePassReq("matkhaucu123", "matkhaumoi456"));
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isEmpty();
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(passwordEncoder.matches("matkhaumoi456", reload.getPasswordHash())).isTrue();
+        assertThat(passwordEncoder.matches("matkhaumoi456", reload.getPassword())).isTrue();
     }
 
     @Test
     void changePassword_wrongOldPassword_throwsWrongOldPassword() {
         User user = registerUser("sai.matkhau.cu@example.com", "matkhaudung1", "Sai Mật Khẩu Cũ");
 
-        assertThatThrownBy(() -> authService.changePassword(
-                        user.getId(), new ChangePasswordRequest("matkhausai999", "matkhaumoi456")))
+        assertThatThrownBy(() -> userAccountService.changePassword(
+                user.getId(), new UpdatePassReq("matkhausai999", "matkhaumoi456")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("WRONG_OLD_PASSWORD"));
     }
@@ -157,7 +165,8 @@ class AuthProfilePasswordIntegrationTest {
         authService.forgotPassword(new ForgotPasswordRequest("ton.tai@example.com"));
         authService.forgotPassword(new ForgotPasswordRequest("khong.ton.tai@example.com"));
 
-        assertThat(passwordResetTokenRepository.findAll()).hasSize(1);
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "ton.tai@example.com")).isPresent();
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "khong.ton.tai@example.com")).isEmpty();
     }
 
     /**
@@ -172,8 +181,8 @@ class AuthProfilePasswordIntegrationTest {
         authService.forgotPassword(new ForgotPasswordRequest("sau.chu.so@example.com"));
 
         ArgumentCaptor<String> code = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(passwordResetNotifier)
-                .sendResetCode(Mockito.eq("sau.chu.so@example.com"), code.capture());
+        Mockito.verify(emailService)
+                .sendPasswordResetCode(Mockito.eq("sau.chu.so@example.com"), code.capture());
         assertThat(code.getValue()).matches("\\d{6}");
     }
 
@@ -182,18 +191,17 @@ class AuthProfilePasswordIntegrationTest {
         User user = registerUser("dat.lai@example.com", "matkhaucu123", "Đặt Lại Mật Khẩu");
         authService.forgotPassword(new ForgotPasswordRequest("dat.lai@example.com"));
 
-        PasswordResetToken savedToken = passwordResetTokenRepository.findAll().get(0);
-        String rawResetCode = extractRawResetCodeFromLog(savedToken);
+        OtpModel otp = otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "dat.lai@example.com").orElseThrow();
+        String rawResetCode = otp.getCode();
 
-        authService.resetPassword(new ResetPasswordRequest(rawResetCode, "matkhaumoi789"));
+        authService.resetPassword(new ResetPasswordRequest("dat.lai@example.com", rawResetCode, "matkhaumoi789"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(passwordEncoder.matches("matkhaumoi789", reload.getPasswordHash())).isTrue();
+        assertThat(passwordEncoder.matches("matkhaumoi789", reload.getPassword())).isTrue();
 
-        PasswordResetToken reloadToken = passwordResetTokenRepository.findById(savedToken.getId()).orElseThrow();
-        assertThat(reloadToken.getUsedAt()).isNotNull();
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "dat.lai@example.com")).isEmpty();
 
-        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(rawResetCode, "khac123456")))
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai@example.com", rawResetCode, "khac123456")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
     }
@@ -203,37 +211,11 @@ class AuthProfilePasswordIntegrationTest {
         registerUser("het.han@example.com", "matkhaucu123", "Hết Hạn");
         authService.forgotPassword(new ForgotPasswordRequest("het.han@example.com"));
 
-        PasswordResetToken savedToken = passwordResetTokenRepository.findAll().get(0);
-        String rawResetCode = extractRawResetCodeFromLog(savedToken);
+        // Khi token hết hạn hoặc bị xóa trong Redis:
+        otpRepository.deleteByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "het.han@example.com");
 
-        // Giả lập hết hạn: ghi thẳng expiresAt trong quá khứ qua repository trước khi gọi API.
-        savedToken.setExpiresAt(Instant.now().minus(1, ChronoUnit.MINUTES));
-        passwordResetTokenRepository.save(savedToken);
-
-        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(rawResetCode, "matkhaumoi789")))
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("het.han@example.com", "123456", "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
-    }
-
-    /**
-     * Test không có quyền truy cập log — thay vào đó tự sinh lại đúng thuật toán sha256Hex như
-     * AuthService, ghi thẳng token_hash mới khớp raw code test tự chọn để verify hành vi
-     * reset-password mà không phụ thuộc bắt log output.
-     */
-    private String extractRawResetCodeFromLog(PasswordResetToken savedToken) {
-        String rawResetCode = "test-raw-reset-code-" + UUID.randomUUID();
-        savedToken.setTokenHash(sha256Hex(rawResetCode));
-        passwordResetTokenRepository.save(savedToken);
-        return rawResetCode;
-    }
-
-    private static String sha256Hex(String raw) {
-        try {
-            var digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return java.util.HexFormat.of().formatHex(hash);
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
     }
 }

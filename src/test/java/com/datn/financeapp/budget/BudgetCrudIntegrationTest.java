@@ -8,7 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -189,7 +189,7 @@ class BudgetCrudIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("BUDGET_ALREADY_EXISTS"));
     }
 
-    /** api/05 mục 5 — đổi danh mục thực chất là một ngân sách khác, phải xoá và tạo lại (T-04-06). */
+    // api/05 mục 5 — đổi danh mục thực chất là một ngân sách khác, phải xoá và tạo lại (T-04-06).
     @Test
     void updateBudget_changeCategoryId_returns400CategoryNotEditable() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.doi.danh.muc@example.com");

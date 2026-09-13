@@ -1,5 +1,7 @@
 package com.datn.financeapp.common.exception;
 
+import com.datn.financeapp.user.controller.ManagerRoleController;
+import com.datn.financeapp.user.controller.ManagerUserController;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -53,7 +55,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                         // Phase 4 plan 04-05: RecurringController mới thêm — cùng lý do loại trừ.
                         com.datn.financeapp.recurring.controller.RecurringController.class,
                         // Phase 4 plan 04-06: ReportController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.report.controller.ReportController.class
+                        com.datn.financeapp.report.controller.ReportController.class,
+                        com.datn.financeapp.user.controller.UserController.class,
+                        ManagerUserController.class,
+                        ManagerRoleController.class
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
@@ -103,7 +108,7 @@ public class GlobalExceptionHandlerTest {
 
         @PostMapping("/test/business")
         public void business() {
-            throw new BusinessException("EMAIL_ALREADY_EXISTS", 409, "Email đã có người dùng.");
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         @PostMapping("/test/runtime")
@@ -114,5 +119,6 @@ public class GlobalExceptionHandlerTest {
 
     public record TestDto(
             @JsonProperty("field_one") @NotBlank String fieldOne,
-            @JsonProperty("field_two") @NotBlank String fieldTwo) {}
+            @JsonProperty("field_two") @NotBlank String fieldTwo) {
+    }
 }

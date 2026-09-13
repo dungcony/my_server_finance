@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,10 +30,17 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.wallet.service.WalletService;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 
 /**
  * Test tích hợp qua HTTP thật (MockMvc + AuthController + AuthService + Testcontainers
@@ -94,6 +101,9 @@ class AuthRegisterLoginIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @MockitoSpyBean
+    private WalletService walletService;
+
     @BeforeEach
     void cleanTables() {
         refreshTokenRepository.deleteAll();
@@ -137,6 +147,38 @@ class AuthRegisterLoginIntegrationTest {
         assertThat(wallets).hasSize(1);
         assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
         assertThat(wallets.get(0).getCurrentBalance()).isEqualTo(0L);
+    }
+
+    /**
+     * Chứng minh user + ví thật sự nằm trong CÙNG một transaction, chứ không chỉ "cả hai cùng có
+     * mặt khi mọi thứ suôn sẻ" như test ở trên.
+     *
+     * <p>Từ nhóm G của PRD 02, việc tạo ví chuyển từ khối {@code Wallet.builder()} viết thẳng
+     * trong {@code AuthService} sang lời gọi {@code walletService.createDefaultCashWallet()}.
+     * Gọi sang bean khác vẫn giữ nguyên tính nguyên tử vì {@code @Transactional} mặc định lan
+     * truyền kiểu {@code REQUIRED} — nhưng đó là thứ phải chứng minh, không phải thứ để tin.
+     * Nếu một ngày ai đó đặt {@code REQUIRES_NEW} lên method kia, test này sẽ đỏ.
+     */
+    @Test
+    void register_whenWalletCreationFails_rollsBackUserToo() throws Exception {
+        doThrow(new BusinessException(ErrorCode.INTERNAL_ERROR, "Ép hỏng để kiểm rollback."))
+                .when(walletService)
+                .createDefaultCashWallet(any(), any());
+
+        Map<String, Object> body = Map.of(
+                "email", "rollback@datn.local",
+                "password", "matkhau123",
+                "username", "Người Dùng Rollback");
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().is5xxServerError());
+
+        // Ví hỏng thì tài khoản cũng không được phép còn lại — nếu không, người dùng có tài khoản
+        // đăng nhập được nhưng mở app lên thấy trống trơn và không ghi được giao dịch nào.
+        assertThat(userRepository.findByEmail("rollback@datn.local")).isEmpty();
+        assertThat(walletRepository.findAll()).isEmpty();
     }
 
     @Test

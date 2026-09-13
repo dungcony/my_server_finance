@@ -1,11 +1,11 @@
 package com.datn.financeapp.category.controller;
 
-import com.datn.financeapp.category.dto.CategoryDetailResponse;
-import com.datn.financeapp.category.dto.CategoryGroupResponse;
-import com.datn.financeapp.category.dto.CategoryResponse;
-import com.datn.financeapp.category.dto.CreateCategoryRequest;
-import com.datn.financeapp.category.dto.ReorderCategoriesRequest;
-import com.datn.financeapp.category.dto.UpdateCategoryRequest;
+import com.datn.financeapp.category.dto.response.CategoryDetailResponse;
+import com.datn.financeapp.category.dto.response.CategoryGroupResponse;
+import com.datn.financeapp.category.dto.response.CategoryResponse;
+import com.datn.financeapp.category.dto.request.CreateCategoryRequest;
+import com.datn.financeapp.category.dto.request.ReorderCategoriesRequest;
+import com.datn.financeapp.category.dto.request.UpdateCategoryRequest;
 import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;

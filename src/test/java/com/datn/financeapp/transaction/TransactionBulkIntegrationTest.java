@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -235,7 +235,7 @@ class TransactionBulkIntegrationTest {
         assertThat(walletBalance(walletId)).isEqualTo(balanceBefore - 30_000 - 20_000);
     }
 
-    /** T-03-11 — vượt 50 dòng bị chặn NGAY ĐẦU, không dòng nào được xử lý. */
+    // T-03-11 — vượt 50 dòng bị chặn NGAY ĐẦU, không dòng nào được xử lý.
     @Test
     void bulkCreate_exceeding50Rows_returns400TooManyRows() throws Exception {
         String token = registerAndGetAccessToken("bulk.qua.nhieu.dong@example.com");
@@ -257,7 +257,7 @@ class TransactionBulkIntegrationTest {
         assertThat(transactionCount()).isZero();
     }
 
-    /** D-35 — một Idempotency-Key bảo vệ cả lô; gửi lại không ghi thêm bản ghi nào. */
+    // D-35 — một Idempotency-Key bảo vệ cả lô; gửi lại không ghi thêm bản ghi nào.
     @Test
     void bulkCreate_replayWithSameIdempotencyKey_doesNotDuplicateRows() throws Exception {
         String token = registerAndGetAccessToken("bulk.idempotency@example.com");
@@ -293,7 +293,7 @@ class TransactionBulkIntegrationTest {
         assertThat(walletBalance(walletId)).isEqualTo(balanceAfterFirstCall);
     }
 
-    /** T-03-12 — không có đường tắt bỏ qua kiểm quyền ví chỉ vì đang ở trong lô. */
+    // T-03-12 — không có đường tắt bỏ qua kiểm quyền ví chỉ vì đang ở trong lô.
     @Test
     void bulkCreate_withWalletOfAnotherUser_rejectsThatRowOnly() throws Exception {
         String victimToken = registerAndGetAccessToken("bulk.nan.nhan@example.com");

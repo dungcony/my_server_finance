@@ -49,7 +49,7 @@ public class GoalContribution {
     @Column(name = "goal_id", nullable = false)
     private UUID goalId;
 
-    /** NULL khi chỉ ghi nhận tiến độ mà không chuyển tiền thật — CỐ Ý không có nullable = false. */
+    // NULL khi chỉ ghi nhận tiến độ mà không chuyển tiền thật — CỐ Ý không có nullable = false.
     @Column(name = "transaction_id")
     private UUID transactionId;
 

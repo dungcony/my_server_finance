@@ -39,7 +39,7 @@ public class Budget {
     @Id
     private UUID id;
 
-    /** Ngân sách cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_bud_owner). */
+    // Ngân sách cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_bud_owner).
     @Column(name = "user_id")
     private UUID userId;
 
@@ -49,14 +49,14 @@ public class Budget {
     @Column(name = "category_id", nullable = false)
     private UUID categoryId;
 
-    /** NULL = áp dụng cho mọi ví. */
+    // NULL = áp dụng cho mọi ví.
     @Column(name = "wallet_id")
     private UUID walletId;
 
     @Column(name = "limit_amount", nullable = false)
     private Long limitAmount;
 
-    /** CHECK IN ('week','month','quarter','year') — ck_bud_period. */
+    // CHECK IN ('week','month','quarter','year') — ck_bud_period.
     @Column(name = "period_type", nullable = false)
     private String periodType;
 

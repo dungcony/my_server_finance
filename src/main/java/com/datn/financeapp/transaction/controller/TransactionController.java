@@ -4,17 +4,17 @@ import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.transaction.dto.BulkCreateTransactionRequest;
-import com.datn.financeapp.transaction.dto.BulkCreateTransactionResponse;
-import com.datn.financeapp.transaction.dto.CreateTransactionRequest;
-import com.datn.financeapp.transaction.dto.CreateTransactionResponse;
-import com.datn.financeapp.transaction.dto.DeleteTransactionResponse;
-import com.datn.financeapp.transaction.dto.DuplicateTransactionRequest;
-import com.datn.financeapp.transaction.dto.TransactionByDateResponse;
-import com.datn.financeapp.transaction.dto.TransactionDetailResponse;
-import com.datn.financeapp.transaction.dto.TransactionFilterParams;
-import com.datn.financeapp.transaction.dto.TransactionListResponse;
-import com.datn.financeapp.transaction.dto.UpdateTransactionRequest;
+import com.datn.financeapp.transaction.dto.request.BulkCreateTransactionRequest;
+import com.datn.financeapp.transaction.dto.response.BulkCreateTransactionResponse;
+import com.datn.financeapp.transaction.dto.request.CreateTransactionRequest;
+import com.datn.financeapp.transaction.dto.response.CreateTransactionResponse;
+import com.datn.financeapp.transaction.dto.response.DeleteTransactionResponse;
+import com.datn.financeapp.transaction.dto.request.DuplicateTransactionRequest;
+import com.datn.financeapp.transaction.dto.response.TransactionByDateResponse;
+import com.datn.financeapp.transaction.dto.response.TransactionDetailResponse;
+import com.datn.financeapp.transaction.dto.request.TransactionFilterRequest;
+import com.datn.financeapp.transaction.dto.response.TransactionListResponse;
+import com.datn.financeapp.transaction.dto.request.UpdateTransactionRequest;
 import com.datn.financeapp.transaction.service.TransactionBulkService;
 import com.datn.financeapp.transaction.service.TransactionService;
 import jakarta.validation.Valid;
@@ -70,7 +70,7 @@ public class TransactionController {
             @RequestParam(name = "sort_by", required = false) String sortBy,
             @RequestParam(name = "sort_order", required = false) String sortOrder) {
         UUID userId = SecurityContextUtil.currentUserId();
-        TransactionFilterParams filters = new TransactionFilterParams(
+        TransactionFilterRequest filters = new TransactionFilterRequest(
                 fromDate,
                 toDate,
                 period,
@@ -103,7 +103,7 @@ public class TransactionController {
             @RequestParam(name = "max_amount", required = false) Long maxAmount,
             @RequestParam(name = "include_transfers", required = false) Boolean includeTransfers) {
         UUID userId = SecurityContextUtil.currentUserId();
-        TransactionFilterParams filters = new TransactionFilterParams(
+        TransactionFilterRequest filters = new TransactionFilterRequest(
                 fromDate,
                 toDate,
                 period,

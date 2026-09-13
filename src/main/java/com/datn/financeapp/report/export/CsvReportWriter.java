@@ -59,7 +59,7 @@ public final class CsvReportWriter {
         return needsQuoting ? "\"" + escaped + "\"" : escaped;
     }
 
-    /** Một dòng dữ liệu xuất — cột theo đúng thứ tự {@link #HEADER}. */
+    // Một dòng dữ liệu xuất — cột theo đúng thứ tự {@link #HEADER}.
     public record TransactionExportRow(
             String date, String type, long amount, String categoryName, String walletName, String note) {}
 }

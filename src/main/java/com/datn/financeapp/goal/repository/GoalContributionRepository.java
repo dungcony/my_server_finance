@@ -19,7 +19,7 @@ public interface GoalContributionRepository extends JpaRepository<GoalContributi
 
     Optional<GoalContribution> findByIdAndGoalId(UUID id, UUID goalId);
 
-    /** Dùng khi xoá mục tiêu — phải lấy danh sách TRƯỚC khi ON DELETE CASCADE cuốn đi. */
+    // Dùng khi xoá mục tiêu — phải lấy danh sách TRƯỚC khi ON DELETE CASCADE cuốn đi.
     List<GoalContribution> findByGoalId(UUID goalId);
 
     int countByGoalId(UUID goalId);

@@ -3,12 +3,12 @@ package com.datn.financeapp.recurring.controller;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.recurring.dto.CreateRecurringRequest;
-import com.datn.financeapp.recurring.dto.PauseRecurringRequest;
-import com.datn.financeapp.recurring.dto.RecurringDetailResponse;
-import com.datn.financeapp.recurring.dto.RecurringListItemResponse;
-import com.datn.financeapp.recurring.dto.RunNowResponse;
-import com.datn.financeapp.recurring.dto.UpdateRecurringRequest;
+import com.datn.financeapp.recurring.dto.request.CreateRecurringRequest;
+import com.datn.financeapp.recurring.dto.request.PauseRecurringRequest;
+import com.datn.financeapp.recurring.dto.response.RecurringDetailResponse;
+import com.datn.financeapp.recurring.dto.response.RecurringListItemResponse;
+import com.datn.financeapp.recurring.dto.response.RunNowResponse;
+import com.datn.financeapp.recurring.dto.request.UpdateRecurringRequest;
 import com.datn.financeapp.recurring.service.RecurringService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -88,7 +88,7 @@ public class RecurringController {
         return ApiResponse.of(recurringService.pause(userId, id, req));
     }
 
-    /** Ghi ngay không đợi tới hạn, KHÔNG làm đổi {@code next_run_date} (api/09 mục A3). */
+    // Ghi ngay không đợi tới hạn, KHÔNG làm đổi {@code next_run_date} (api/09 mục A3).
     @PostMapping("/{id}/run-now")
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)

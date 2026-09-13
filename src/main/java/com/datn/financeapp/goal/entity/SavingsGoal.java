@@ -44,7 +44,7 @@ public class SavingsGoal {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    /** Ví dành riêng cho mục tiêu. Nullable — không có ví thì không nạp bằng giao dịch thật được. */
+    // Ví dành riêng cho mục tiêu. Nullable — không có ví thì không nạp bằng giao dịch thật được.
     @Column(name = "wallet_id")
     private UUID walletId;
 
@@ -67,7 +67,7 @@ public class SavingsGoal {
     @Column(name = "icon_id")
     private UUID iconId;
 
-    /** DO TRIGGER SỞ HỮU — CHECK IN ('in_progress','completed','cancelled'). */
+    // DO TRIGGER SỞ HỮU — CHECK IN ('in_progress','completed','cancelled').
     @Column(name = "status", nullable = false)
     private String status;
 

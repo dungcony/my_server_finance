@@ -1,13 +1,13 @@
 package com.datn.financeapp.report.export;
 
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.repository.CategoryRepository;
-import com.datn.financeapp.report.dto.ExportRequest;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
+import com.datn.financeapp.report.dto.request.ExportRequest;
 import com.datn.financeapp.report.export.CsvReportWriter.TransactionExportRow;
 import com.datn.financeapp.report.repository.ReportRepository;
 import com.datn.financeapp.transaction.entity.Transaction;
-import com.datn.financeapp.wallet.entity.Wallet;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,8 +35,8 @@ public class ExportAsyncRunner {
 
     private final ExportStatusWriter exportStatusWriter;
     private final ReportRepository reportRepository;
-    private final CategoryRepository categoryRepository;
-    private final WalletRepository walletRepository;
+    private final CategoryService categoryService;
+    private final WalletService walletService;
 
     @Value("${app.export.storage-dir:${java.io.tmpdir}/finance-exports}")
     private String storageDir;
@@ -63,8 +63,8 @@ public class ExportAsyncRunner {
                     // trữ chứ không phải một lát cắt đang xem trên màn hình.
                     reportRepository.eligibleTransactions(userId, range[0], range[1], null);
 
-            Map<UUID, Category> categoryCache = new HashMap<>();
-            Map<UUID, Wallet> walletCache = new HashMap<>();
+            Map<UUID, CategoryRefResponse> categoryCache = new HashMap<>();
+            Map<UUID, WalletRefResponse> walletCache = new HashMap<>();
             List<TransactionExportRow> rows = transactions.stream()
                     .map(t -> toRow(t, categoryCache, walletCache))
                     .toList();
@@ -87,16 +87,18 @@ public class ExportAsyncRunner {
     }
 
     private TransactionExportRow toRow(
-            Transaction t, Map<UUID, Category> categoryCache, Map<UUID, Wallet> walletCache) {
+            Transaction t,
+            Map<UUID, CategoryRefResponse> categoryCache,
+            Map<UUID, WalletRefResponse> walletCache) {
         String categoryName = "";
         if (t.getCategoryId() != null) {
-            Category category = categoryCache.computeIfAbsent(
-                    t.getCategoryId(), id -> categoryRepository.findById(id).orElse(null));
-            categoryName = category == null ? "" : category.getName();
+            CategoryRefResponse category =
+                    categoryCache.computeIfAbsent(t.getCategoryId(), categoryService::findRefById);
+            categoryName = category == null ? "" : category.name();
         }
-        Wallet wallet =
-                walletCache.computeIfAbsent(t.getWalletId(), id -> walletRepository.findById(id).orElse(null));
-        String walletName = wallet == null ? "" : wallet.getName();
+        WalletRefResponse wallet =
+                walletCache.computeIfAbsent(t.getWalletId(), walletService::findRefById);
+        String walletName = wallet == null ? "" : wallet.name();
         return new TransactionExportRow(
                 t.getDate().toString(), t.getType(), t.getAmount(), categoryName, walletName, t.getNote());
     }

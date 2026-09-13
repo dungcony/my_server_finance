@@ -41,12 +41,12 @@ public class DevDataSeeder implements CommandLineRunner {
                 userId, walletA, walletB, anUongCategoryId);
     }
 
-    /** users.email có UNIQUE (uq_users_email, V1) — ON CONFLICT DO NOTHING an toàn. */
+    // users.email có UNIQUE (uq_users_email, V1) — ON CONFLICT DO NOTHING an toàn.
     private UUID ensureUser() {
         jdbcTemplate.update(
-                "INSERT INTO users (email, password_hash, username, plan) VALUES (?, ?, ?, 'free') "
+                "INSERT INTO users (email, password_hash, first_name, last_name, plan, status) VALUES (?, ?, ?, ?, 'free', 'active') "
                         + "ON CONFLICT (email) DO NOTHING",
-                SEED_EMAIL, passwordEncoder.encode(SEED_PASSWORD), "Người dùng thử Phase 6");
+                SEED_EMAIL, passwordEncoder.encode(SEED_PASSWORD), "Thử Phase 6", "Người dùng");
         return jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = ?", UUID.class, SEED_EMAIL);
     }
 
@@ -65,7 +65,7 @@ public class DevDataSeeder implements CommandLineRunner {
                 UUID.class, userId, name);
     }
 
-    /** Danh mục hệ thống "Ăn uống"/"Cà phê" đã có sẵn từ V5 (user_id IS NULL) — chỉ đọc, không tạo. */
+    // Danh mục hệ thống "Ăn uống"/"Cà phê" đã có sẵn từ V5 (user_id IS NULL) — chỉ đọc, không tạo.
     private UUID findSystemCategoryId(String name, String type) {
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM categories WHERE user_id IS NULL AND parent_category_id IS NULL "

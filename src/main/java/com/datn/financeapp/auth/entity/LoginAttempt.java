@@ -33,7 +33,7 @@ public class LoginAttempt {
     @Column(name = "email", nullable = false)
     private String email;
 
-    /** Cột Postgres kiểu INET — map bằng SqlTypes.INET (Hibernate 6.2+). */
+    // Cột Postgres kiểu INET — map bằng SqlTypes.INET (Hibernate 6.2+).
     @JdbcTypeCode(SqlTypes.INET)
     @Column(name = "ip_address")
     private String ipAddress;

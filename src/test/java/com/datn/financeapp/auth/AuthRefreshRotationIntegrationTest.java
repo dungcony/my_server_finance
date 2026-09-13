@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.datn.financeapp.auth.entity.RefreshToken;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;

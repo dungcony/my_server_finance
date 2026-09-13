@@ -4,28 +4,31 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.AuthResponse;
-import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.LoginRequest;
-import com.datn.financeapp.auth.dto.RefreshRequest;
-import com.datn.financeapp.auth.dto.RegisterRequest;
-import com.datn.financeapp.auth.dto.ResetPasswordRequest;
-import com.datn.financeapp.auth.entity.PasswordResetToken;
-import com.datn.financeapp.auth.entity.User;
+import com.datn.financeapp.auth.dto.response.AuthResponse;
+import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
+import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.RefreshRequest;
+import com.datn.financeapp.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
+import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.repository.OtpRepository;
+import com.datn.financeapp.user.entity.User;
+import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
-import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
-import com.datn.financeapp.auth.service.PasswordResetNotifier;
+import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.UUID;
 import java.util.function.Consumer;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -72,6 +75,9 @@ class AuthBlockedDeletedAccountIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private ProfileService userProfileService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -81,7 +87,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    private PasswordResetTokenRepository passwordResetTokenRepository;
+    private OtpRepository otpRepository;
 
     @Autowired
     private LoginAttemptRepository loginAttemptRepository;
@@ -90,11 +96,11 @@ class AuthBlockedDeletedAccountIntegrationTest {
     private PasswordEncoder passwordEncoder;
 
     @MockitoSpyBean
-    private PasswordResetNotifier passwordResetNotifier;
+    private EmailService emailService;
 
     @BeforeEach
     void cleanTables() {
-        passwordResetTokenRepository.deleteAll();
+        otpRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         loginAttemptRepository.deleteAll();
         walletRepository.deleteAll();
@@ -193,12 +199,12 @@ class AuthBlockedDeletedAccountIntegrationTest {
         assertThatCode(() -> authService.forgotPassword(new ForgotPasswordRequest("quen.mk.bi.khoa@example.com")))
                 .doesNotThrowAnyException();
 
-        assertThat(passwordResetTokenRepository.findAll()).isEmpty();
-        Mockito.verify(passwordResetNotifier, Mockito.never())
-                .sendResetCode(Mockito.anyString(), Mockito.anyString());
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "quen.mk.bi.khoa@example.com")).isEmpty();
+        Mockito.verify(emailService, Mockito.never())
+                .sendPasswordResetCode(Mockito.anyString(), Mockito.anyString());
     }
 
-    /** Chính là lỗ hổng đã vá: tài khoản đã xoá từng nhận được mã và đặt lại mật khẩu thành công. */
+    // Chính là lỗ hổng đã vá: tài khoản đã xoá từng nhận được mã và đặt lại mật khẩu thành công.
     @Test
     void forgotPassword_deletedAccount_silentlyDoesNothing() {
         register("quen.mk.da.xoa@example.com");
@@ -207,9 +213,9 @@ class AuthBlockedDeletedAccountIntegrationTest {
         assertThatCode(() -> authService.forgotPassword(new ForgotPasswordRequest("quen.mk.da.xoa@example.com")))
                 .doesNotThrowAnyException();
 
-        assertThat(passwordResetTokenRepository.findAll()).isEmpty();
-        Mockito.verify(passwordResetNotifier, Mockito.never())
-                .sendResetCode(Mockito.anyString(), Mockito.anyString());
+        assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "quen.mk.da.xoa@example.com")).isEmpty();
+        Mockito.verify(emailService, Mockito.never())
+                .sendPasswordResetCode(Mockito.anyString(), Mockito.anyString());
     }
 
     // -----------------------------------------------------------------
@@ -226,12 +232,12 @@ class AuthBlockedDeletedAccountIntegrationTest {
         String rawCode = issueResetCodeFor("dat.lai.bi.khoa@example.com");
         markUser("dat.lai.bi.khoa@example.com", u -> u.setBlocked(true));
 
-        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(rawCode, "matkhaumoi789")))
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai.bi.khoa@example.com", rawCode, "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(passwordEncoder.matches(PASSWORD, reload.getPasswordHash())).isTrue();
+        assertThat(passwordEncoder.matches(PASSWORD, reload.getPassword())).isTrue();
     }
 
     @Test
@@ -240,12 +246,12 @@ class AuthBlockedDeletedAccountIntegrationTest {
         String rawCode = issueResetCodeFor("dat.lai.da.xoa@example.com");
         markUser("dat.lai.da.xoa@example.com", u -> u.setDeleted(true));
 
-        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(rawCode, "matkhaumoi789")))
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai.da.xoa@example.com", rawCode, "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(passwordEncoder.matches(PASSWORD, reload.getPasswordHash())).isTrue();
+        assertThat(passwordEncoder.matches(PASSWORD, reload.getPassword())).isTrue();
     }
 
     // -----------------------------------------------------------------
@@ -256,24 +262,22 @@ class AuthBlockedDeletedAccountIntegrationTest {
     void register_returnsUsernameIsConfirmFalseAndRoleUser() {
         AuthResponse response = register("truong.moi@example.com");
 
-        assertThat(response.user().username()).isEqualTo("Người Kiểm Thử");
         // Luồng xác thực email chưa làm (prd/01 mục 11) nên đăng ký bằng email luôn ra false.
         assertThat(response.user().isConfirm()).isFalse();
-        assertThat(response.user().role()).isEqualTo("USER");
+        assertThat(response.user().roles()).extracting(r -> r.name()).contains(RoleName.ROLE_USER);
     }
 
     @Test
-    void getMe_returnsUsernameIsConfirmAndRole() {
+    void getMe_returnsProfileDetails() {
         User user = registerAndReload("me.day.du@example.com");
 
-        var me = authService.getMe(user.getId());
+        var me = userProfileService.getMe(user.getId());
 
-        assertThat(me.username()).isEqualTo("Người Kiểm Thử");
-        assertThat(me.isConfirm()).isFalse();
-        assertThat(me.role()).isEqualTo("USER");
+        assertThat(me.email()).isEqualTo("me.day.du@example.com");
+        assertThat(me.plan()).isEqualTo(com.datn.financeapp.user.enums.UserPlan.FREE);
     }
 
-    /** Tài khoản backfill {@code is_confirm = TRUE} (V12) phải đi thẳng qua chứ không bị chặn. */
+    // Tài khoản backfill {@code is_confirm = TRUE} (V12) phải đi thẳng qua chứ không bị chặn.
     @Test
     void login_confirmedAccount_succeedsAndCarriesIsConfirmTrue() {
         register("da.xac.thuc@example.com");
@@ -282,7 +286,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
         AuthResponse response = login("da.xac.thuc@example.com", PASSWORD);
 
         assertThat(response.user().isConfirm()).isTrue();
-        assertThat(response.user().role()).isEqualTo("USER");
+        assertThat(response.user().roles()).extracting(r -> r.name()).contains(RoleName.ROLE_USER);
     }
 
     // -----------------------------------------------------------------
@@ -290,7 +294,8 @@ class AuthBlockedDeletedAccountIntegrationTest {
     // -----------------------------------------------------------------
 
     private AuthResponse register(String email) {
-        return authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        return login(email, PASSWORD);
     }
 
     private User registerAndReload(String email) {
@@ -302,7 +307,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
         return authService.login(new LoginRequest(email, password), "127.0.0.1", "junit");
     }
 
-    /** Đặt cờ trạng thái tay, đúng như ADMIN (hoặc luồng xoá tài khoản nhóm C) sẽ làm sau này. */
+    // Đặt cờ trạng thái tay, đúng như ADMIN (hoặc luồng xoá tài khoản nhóm C) sẽ làm sau này.
     private void markUser(String email, Consumer<User> mutation) {
         User user = userRepository.findByEmail(email).orElseThrow();
         mutation.accept(user);
@@ -316,11 +321,9 @@ class AuthBlockedDeletedAccountIntegrationTest {
      */
     private String issueResetCodeFor(String email) {
         authService.forgotPassword(new ForgotPasswordRequest(email));
-        PasswordResetToken token = passwordResetTokenRepository.findAll().get(0);
-        String rawCode = "test-raw-reset-code-" + UUID.randomUUID();
-        token.setTokenHash(sha256Hex(rawCode));
-        passwordResetTokenRepository.save(token);
-        return rawCode;
+        return otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email.toLowerCase().trim())
+                .orElseThrow()
+                .getCode();
     }
 
     private static String sha256Hex(String raw) {

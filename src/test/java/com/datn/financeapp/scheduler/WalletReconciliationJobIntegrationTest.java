@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -141,7 +141,7 @@ class WalletReconciliationJobIntegrationTest {
                 "SELECT current_balance FROM wallets WHERE id = ?", Long.class, UUID.fromString(walletId));
     }
 
-    /** Mô phỏng lệch dữ liệu — chỉnh current_balance sai lệch thủ công qua JdbcTemplate. */
+    // Mô phỏng lệch dữ liệu — chỉnh current_balance sai lệch thủ công qua JdbcTemplate.
     private void corruptBalance(String walletId, long wrongBalance) {
         jdbcTemplate.update(
                 "UPDATE wallets SET current_balance = ? WHERE id = ?", wrongBalance, UUID.fromString(walletId));

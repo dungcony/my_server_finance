@@ -1,0 +1,501 @@
+package com.datn.financeapp.budget.service.impl;
+
+import com.datn.financeapp.budget.service.BudgetService;
+
+import com.datn.financeapp.budget.dto.response.BudgetAlertResponse;
+import com.datn.financeapp.budget.dto.response.BudgetImpactResponse;
+import com.datn.financeapp.budget.dto.response.BudgetListItemResponse;
+import com.datn.financeapp.budget.dto.response.BudgetSuggestionResponse;
+import com.datn.financeapp.budget.dto.response.BudgetSummaryResponse;
+import com.datn.financeapp.budget.dto.request.CreateBudgetRequest;
+import com.datn.financeapp.budget.dto.request.UpdateBudgetRequest;
+import com.datn.financeapp.budget.entity.Budget;
+import com.datn.financeapp.budget.mapper.BudgetMapper;
+import com.datn.financeapp.budget.repository.BudgetProgressRepository;
+import com.datn.financeapp.budget.repository.BudgetProgressRepository.BudgetProgressProjection;
+import com.datn.financeapp.budget.repository.BudgetRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.report.dto.response.ReportHomeResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.service.WalletService;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Business logic ngân sách (BUDGET-01..06, api/05-NGAN-SACH.md).
+ *
+ * <p><b>Nguyên tắc số một của module này:</b> KHÔNG tính {@code spent_amount} ở tầng Java. Mọi
+ * con số tiến độ đọc từ {@code v_budget_progress} qua {@link BudgetProgressRepository} — view đã
+ * gói sẵn cộng gộp danh mục con, loại {@code transfer} và điều kiện phạm vi quyền. Viết lại một
+ * trong ba quy tắc đó ở đây là cách chắc chắn nhất để chúng lệch nhau về sau.
+ *
+ * <p>Ngoại lệ DUY NHẤT có tính tổng là {@code suggestion()} (BUDGET-05) — nó cần số chi của các
+ * kỳ ngân sách ĐÃ KẾT THÚC, tức dữ liệu nằm ngoài phạm vi view (view chỉ tính kỳ của chính bản
+ * ghi ngân sách hiện tại). Phép tính đó vẫn đi qua {@code BudgetRepository.sumExpenseInPeriod} —
+ * SQL có {@code fn_category_tree}, không tự viết điều kiện lọc cây mới ở Java.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class BudgetServiceImpl implements BudgetService {
+
+    private static final String STATUS_NORMAL = "normal";
+    private static final String STATUS_NEAR_LIMIT = "near_limit";
+    private static final String STATUS_OVER_LIMIT = "over_limit";
+
+    private final BudgetRepository budgetRepository;
+    private final BudgetProgressRepository budgetProgressRepository;
+    private final CategoryService categoryService;
+    private final WalletService walletService;
+    private final BudgetRenewalWorker budgetRenewalWorker;
+    private final BudgetMapper budgetMapper;
+
+    // ---------------------------------------------------------------------
+    // Đọc
+    // ---------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List<BudgetListItemResponse> list(UUID userId, Boolean isActive, String periodType) {
+        return toResponses(userId, budgetProgressRepository.findAllForUser(userId, isActive, periodType));
+    }
+
+    @Transactional(readOnly = true)
+    public BudgetListItemResponse detail(UUID userId, UUID budgetId) {
+        BudgetProgressProjection row =
+                budgetProgressRepository.findByIdForUser(budgetId, userId).orElseThrow(this::notFound);
+        return toResponses(userId, List.of(row)).get(0);
+    }
+
+    /**
+     * api/05 mục 3. Tổng hợp trên các ngân sách ĐANG HIỆU LỰC. {@code period} lấy từ ngân sách mới
+     * nhất làm đại diện — người dùng thường đặt cùng một loại kỳ cho tất cả.
+     */
+    @Transactional(readOnly = true)
+    public BudgetSummaryResponse summary(UUID userId) {
+        List<BudgetProgressProjection> rows = budgetProgressRepository.findAllForUser(userId, true, null);
+
+        long totalLimit = rows.stream().mapToLong(BudgetProgressProjection::getLimitAmount).sum();
+        long totalSpent = rows.stream().mapToLong(row -> nullToZero(row.getSpentAmount())).sum();
+
+        BigDecimal ratio = totalLimit == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(totalSpent).divide(BigDecimal.valueOf(totalLimit), 4, RoundingMode.HALF_UP);
+
+        int overLimitCount = (int) rows.stream()
+                .filter(row -> STATUS_OVER_LIMIT.equals(row.getStatus()))
+                .count();
+        int nearLimitCount = (int) rows.stream()
+                .filter(row -> STATUS_NEAR_LIMIT.equals(row.getStatus()))
+                .count();
+
+        BudgetSummaryResponse.Period period = rows.isEmpty()
+                ? budgetMapper.currentMonthPeriod(
+                        startOfCurrentPeriod("month"), endOfPeriod("month", startOfCurrentPeriod("month")))
+                : budgetMapper.toPeriod(rows.get(0));
+
+        return budgetMapper.toSummaryResponse(
+                period,
+                totalLimit,
+                totalSpent,
+                ratio,
+                statusOfRatio(ratio),
+                rows.size(),
+                overLimitCount,
+                nearLimitCount);
+    }
+
+    /**
+     * BUDGET-06, api/05 mục 7 — cảnh báo tính TẠI CHỖ, là nguồn sự thật cho trạng thái hiện tại.
+     * Khác hẳn bảng {@code notifications} (lịch sử tại thời điểm vượt ngưỡng, không tự sửa lại khi
+     * người dùng xoá giao dịch sau đó). Hai nguồn cố ý khác nhau, đừng cố đồng bộ (D-41).
+     */
+    @Transactional(readOnly = true)
+    public List<BudgetAlertResponse> alerts(UUID userId) {
+        List<BudgetProgressProjection> rows = budgetProgressRepository.findAllForUser(userId, true, null).stream()
+                .filter(row -> !STATUS_NORMAL.equals(row.getStatus()))
+                .toList();
+
+        Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);
+
+        List<BudgetAlertResponse> alerts = new ArrayList<>(rows.size());
+        for (BudgetProgressProjection row : rows) {
+            CategoryRefResponse category = categories.get(row.getCategoryId());
+            alerts.add(budgetMapper.toAlertResponse(row, category));
+        }
+        return alerts;
+    }
+
+    /**
+     * Khối "ngân sách cần chú ý" của {@code GET /reports/home} (api/06 mục 1).
+     *
+     * <p>Cùng nguồn dữ liệu với {@link #alerts(UUID)} nhưng KHÁC hình dạng response — api/06 quy
+     * định {@code id}/{@code category}/{@code ratio}/{@code status}, còn api/05 mục 7 quy định
+     * {@code budget_id}/{@code severity} kèm câu chữ soạn sẵn. Trước đây {@code /reports/home}
+     * dùng lại thẳng {@link BudgetAlertResponse}, khiến response lệch api/06: client đọc khoá
+     * {@code id} nhận về null và sập màn Tổng quan ngay khi có ngân sách đầu tiên vượt hạn mức
+     * (FIX-06, đợt test 02/09/2026). Tách method riêng để hai hợp đồng không kéo nhau nữa.
+     *
+     * <p>{@code status} giữ NGUYÊN giá trị gốc của {@code v_budget_progress}, không quy đổi sang
+     * {@code alert}/{@code critical}.
+     */
+    @Transactional(readOnly = true)
+    public List<ReportHomeResponse.BudgetAttentionItem> attentionItems(UUID userId) {
+        List<BudgetProgressProjection> rows = budgetProgressRepository.findAllForUser(userId, true, null).stream()
+                .filter(row -> !STATUS_NORMAL.equals(row.getStatus()))
+                .toList();
+
+        Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);
+
+        List<ReportHomeResponse.BudgetAttentionItem> items = new ArrayList<>(rows.size());
+        for (BudgetProgressProjection row : rows) {
+            CategoryRefResponse category = categories.get(row.getCategoryId());
+            items.add(new ReportHomeResponse.BudgetAttentionItem(
+                    row.getId(),
+                    category != null ? category.name() : "Danh mục đã xoá",
+                    nullToZero(row.getRatio()),
+                    row.getStatus()));
+        }
+        return items;
+    }
+
+    /**
+     * BUDGET-05, api/05 mục 6 — gợi ý hạn mức = trung bình chi của 3 kỳ ngân sách gần nhất ĐÃ KẾT
+     * THÚC × 1.05, làm tròn LÊN hàng trăm nghìn.
+     *
+     * <p>Nhân 1.05 để chừa khoảng dư: đặt hạn mức đúng bằng mức trung bình thì kỳ nào cũng gần
+     * vượt, cảnh báo kêu liên tục và người dùng sẽ học cách bỏ qua chúng.
+     */
+    @Transactional(readOnly = true)
+    public BudgetSuggestionResponse suggestion(UUID userId, UUID categoryId) {
+        CategoryRefResponse category = categoryService.findRefVisibleToUser(categoryId, userId);
+        if (category == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục.");
+        }
+
+        BudgetSuggestionResponse.CategorySummary categorySummary =
+                new BudgetSuggestionResponse.CategorySummary(category.id(), category.name());
+
+        List<Long> spentPerPeriod = budgetRepository.findLastThreeEndedPeriods(userId, categoryId).stream()
+                .map(budget -> budgetRepository.sumExpenseInPeriod(
+                        userId,
+                        budget.getCategoryId(),
+                        budget.getWalletId(),
+                        budget.getStartDate(),
+                        budget.getEndDate()))
+                .filter(spent -> spent > 0)
+                .toList();
+
+        // api/05 mục 6: dưới 1 kỳ có dữ liệu thì trả null + giải thích, để app ẩn hẳn khối gợi ý
+        // thay vì hiện một con số bịa từ mẫu quá nhỏ.
+        if (spentPerPeriod.isEmpty()) {
+            return new BudgetSuggestionResponse(
+                    categorySummary,
+                    null,
+                    new BudgetSuggestionResponse.Basis(null, null, null, 0),
+                    "Chưa đủ lịch sử chi tiêu cho " + category.name()
+                            + " để gợi ý hạn mức. Hãy ghi chi tiêu thêm một thời gian rồi quay lại.");
+        }
+
+        long average = Math.round(
+                spentPerPeriod.stream().mapToLong(Long::longValue).average().orElse(0));
+        long max = spentPerPeriod.stream().mapToLong(Long::longValue).max().orElse(0);
+        long min = spentPerPeriod.stream().mapToLong(Long::longValue).min().orElse(0);
+
+        return new BudgetSuggestionResponse(
+                categorySummary,
+                roundUpToHundredThousand(Math.round(average * 1.05)),
+                new BudgetSuggestionResponse.Basis(average, max, min, spentPerPeriod.size()),
+                "Trung bình " + spentPerPeriod.size() + " kỳ gần nhất bạn chi " + formatAmount(average) + " đ cho "
+                        + category.name() + ". Mức đề xuất cộng thêm 5% để có khoảng dư.");
+    }
+
+    // ---------------------------------------------------------------------
+    // Ghi
+    // ---------------------------------------------------------------------
+
+    /**
+     * api/05 mục 4. Chặn ngân sách trùng KHÔNG bằng cách SELECT kiểm tra trước mà để ràng buộc
+     * {@code ex_bud_no_overlap} (EXCLUDE gist, V3) tự chặn rồi bắt {@link
+     * DataIntegrityViolationException}: kiểm tra trước có khe hở race condition giữa hai request
+     * song song, ràng buộc CSDL thì không.
+     *
+     * <p>Phải {@code saveAndFlush} chứ không {@code save}: {@code save} chỉ đưa entity vào
+     * persistence context, INSERT thật chạy lúc flush cuối transaction — khi đó exception ném ra
+     * NGOÀI phạm vi khối try này và trả về 500 thay vì 409.
+     */
+    @Transactional
+    public BudgetListItemResponse create(UUID userId, CreateBudgetRequest req) {
+        CategoryRefResponse category = categoryService.findRefVisibleToUser(req.categoryId(), userId);
+        if (category == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục.");
+        }
+
+        // Trigger trg_budgets_validate cũng chặn, nhưng kiểm tra ở đây để trả đúng mã nghiệp vụ
+        // CATEGORY_NOT_EXPENSE thay vì lỗi ràng buộc thô — hai tầng phòng thủ.
+        if (!"expense".equals(category.type())) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_EXPENSE);
+        }
+
+        if (req.walletId() != null
+                && walletService.findRefForUser(userId, req.walletId()) == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+        }
+
+        LocalDate startDate = req.startDate() != null ? req.startDate() : startOfCurrentPeriod(req.periodType());
+
+        Budget budget = Budget.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .groupId(null)
+                .categoryId(req.categoryId())
+                .walletId(req.walletId())
+                .limitAmount(req.limitAmount())
+                .periodType(req.periodType())
+                .startDate(startDate)
+                .endDate(endOfPeriod(req.periodType(), startDate))
+                .autoRenew(req.autoRenew() == null || req.autoRenew())
+                .isActive(true)
+                .createdAt(Instant.now())
+                .build();
+
+        try {
+            budgetRepository.saveAndFlush(budget);
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.BUDGET_ALREADY_EXISTS);
+        }
+
+        return detail(userId, budget.getId());
+    }
+
+    /**
+     * api/05 mục 5. {@code category_id} và {@code period_type} KHÔNG sửa được — đổi hai trường đó
+     * thực chất là một ngân sách khác, cho sửa sẽ làm mọi con số của kỳ đang chạy vô nghĩa. Từ
+     * chối tường minh bằng {@code CATEGORY_NOT_EDITABLE} rõ ràng hơn im lặng bỏ qua trường client
+     * gửi lên (T-04-06).
+     */
+    @Transactional
+    public BudgetListItemResponse update(UUID userId, UUID budgetId, UpdateBudgetRequest req) {
+        Budget budget = budgetRepository.findByIdForUser(budgetId, userId).orElseThrow(this::notFound);
+
+        boolean changesCategory = req.categoryId() != null && !req.categoryId().equals(budget.getCategoryId());
+        boolean changesPeriod = req.periodType() != null && !req.periodType().equals(budget.getPeriodType());
+        if (changesCategory || changesPeriod) {
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_EDITABLE);
+        }
+
+        if (req.limitAmount() != null) {
+            budget.setLimitAmount(req.limitAmount());
+        }
+        if (req.autoRenew() != null) {
+            budget.setAutoRenew(req.autoRenew());
+        }
+        if (req.isActive() != null) {
+            budget.setIsActive(req.isActive());
+        }
+        if (req.walletId() != null) {
+            if (walletService.findRefForUser(userId, req.walletId()) == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+            }
+            budget.setWalletId(req.walletId());
+        }
+
+        try {
+            budgetRepository.saveAndFlush(budget);
+        } catch (DataIntegrityViolationException e) {
+            // Bật lại is_active của một ngân sách có kỳ chồng lấn cũng đụng ex_bud_no_overlap.
+            throw new BusinessException(ErrorCode.BUDGET_ALREADY_EXISTS);
+        }
+
+        return detail(userId, budget.getId());
+    }
+
+    /**
+     * api/05 mục 5 "Xoá là xoá mềm". Bảng {@code budgets} KHÔNG có cột {@code is_deleted} (đối
+     * chiếu schema V3 thật — CORE-11), nên xoá mềm ở đây nghĩa là tắt {@code is_active}: bản ghi
+     * còn nguyên trong CSDL (giữ lịch sử, và BUDGET-05 vẫn dùng được kỳ cũ để gợi ý), chỉ biến
+     * mất khỏi danh sách đang hiệu lực và thôi chiếm chỗ trong {@code ex_bud_no_overlap}.
+     */
+    @Transactional
+    public void delete(UUID userId, UUID budgetId) {
+        Budget budget = budgetRepository.findByIdForUser(budgetId, userId).orElseThrow(this::notFound);
+        budget.setIsActive(false);
+        budgetRepository.save(budget);
+    }
+
+    // ---------------------------------------------------------------------
+    // Tác vụ nền JOB-02 (D-57, api/05 mục 8)
+    // ---------------------------------------------------------------------
+
+    /**
+     * Quét mọi ngân sách {@code auto_renew=true} đã hết kỳ và tự tạo kỳ mới. KHÔNG {@code
+     * @Transactional} ở method top-level: mỗi ngân sách xử lý ĐỘC LẬP trong transaction riêng của
+     * {@link BudgetRenewalWorker#renewOneBudget} (cùng tinh thần D-51/D-52) — một ngân sách lỗi
+     * không được cuốn theo những ngân sách đã lặp thành công trước đó trong cùng lần chạy job.
+     */
+    public void renewExpiredBudgets() {
+        List<Budget> toRenew = budgetRepository.findAutoRenewExpired(LocalDate.now());
+        for (Budget old : toRenew) {
+            try {
+                budgetRenewalWorker.renewOneBudget(old.getId());
+            } catch (Exception e) {
+                log.error("Lỗi khi tự động lặp kỳ ngân sách {}", old.getId(), e);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // Ánh xạ và tính toán phụ trợ
+    // ---------------------------------------------------------------------
+
+    /**
+     * Các ngân sách bị ảnh hưởng bởi một khoản chi vừa ghi — chỉ trả những ngân sách đã chạm
+     * ngưỡng cảnh báo, ngân sách còn "normal" thì bỏ qua vì không có gì để báo.
+     *
+     * <p>Chuyển từ {@code TransactionService} sang đây ở nhóm H: câu cảnh báo phải dùng
+     * {@link #formatAmount} của chính module này (api/04 mục 6 ghi "Còn 502.000 đ" — nối thẳng số
+     * vào chuỗi cho ra "505000 đ", lệch hợp đồng và lệch cả với câu cảnh báo của màn Ngân sách).
+     * Để bên {@code transaction/} thì nó phải đụng {@code BudgetProgressRepository}.
+     *
+     * <p>Trả rỗng nếu không phải khoản chi hoặc không có danh mục — chuyển tiền và khoản thu
+     * không ăn vào ngân sách nào.
+     */
+    @Transactional(readOnly = true)
+    public List<BudgetImpactResponse> findImpactedBudgets(
+            UUID userId, String type, UUID categoryId, LocalDate date) {
+        if (!"expense".equals(type) || categoryId == null) {
+            return List.of();
+        }
+        List<BudgetImpactResponse> result = new ArrayList<>();
+        for (BudgetProgressProjection budget :
+                budgetProgressRepository.findActiveByUserAndCategoryInTree(userId, categoryId, date)) {
+            if ("normal".equals(budget.getStatus())) {
+                continue;
+            }
+            CategoryRefResponse root = categoryService.findRefById(budget.getCategoryId());
+            String categoryName = root != null ? root.name() : "";
+            long remaining = budget.getRemaining() == null ? 0L : budget.getRemaining();
+            int daysRemaining = budget.getDaysRemaining() == null ? 0 : budget.getDaysRemaining();
+            String alert = "over_limit".equals(budget.getStatus())
+                    ? "Vượt " + formatAmount(Math.abs(remaining))
+                            + " đ khi kỳ còn " + daysRemaining + " ngày."
+                    : "Còn " + formatAmount(remaining)
+                            + " đ cho " + daysRemaining + " ngày còn lại của kỳ.";
+            result.add(budgetMapper.toImpactResponse(budget, categoryName, alert));
+        }
+        return result;
+    }
+
+    private List<BudgetListItemResponse> toResponses(UUID userId, List<BudgetProgressProjection> rows) {
+        Map<UUID, CategoryRefResponse> categories = loadCategories(userId, rows);
+        Map<UUID, WalletRefResponse> wallets = loadWallets(userId, rows);
+
+        List<BudgetListItemResponse> result = new ArrayList<>(rows.size());
+        for (BudgetProgressProjection row : rows) {
+            CategoryRefResponse category = categories.get(row.getCategoryId());
+            WalletRefResponse wallet = row.getWalletId() != null ? wallets.get(row.getWalletId()) : null;
+            result.add(budgetMapper.toListItemResponse(row, category, wallet));
+        }
+        return result;
+    }
+
+    private Map<UUID, CategoryRefResponse> loadCategories(
+            UUID userId, List<BudgetProgressProjection> rows) {
+        return categoryService.findRefsVisibleToUser(
+                rows.stream().map(BudgetProgressProjection::getCategoryId).toList(), userId);
+    }
+
+    private Map<UUID, WalletRefResponse> loadWallets(
+            UUID userId, List<BudgetProgressProjection> rows) {
+        return walletService.findRefsForUser(
+                rows.stream().map(BudgetProgressProjection::getWalletId).toList(), userId);
+    }
+
+    // Ngưỡng 0.8/1.0 giống hệt view {@code v_budget_progress} — dùng cho con số TỔNG HỢP.
+    private String statusOfRatio(BigDecimal ratio) {
+        if (ratio.compareTo(BigDecimal.ONE) >= 0) {
+            return STATUS_OVER_LIMIT;
+        }
+        if (ratio.compareTo(new BigDecimal("0.8")) >= 0) {
+            return STATUS_NEAR_LIMIT;
+        }
+        return STATUS_NORMAL;
+    }
+
+    // Đầu kỳ hiện tại theo {@code period_type} (api/05 mục 4 — mặc định khi client không gửi).
+    private LocalDate startOfCurrentPeriod(String periodType) {
+        LocalDate today = LocalDate.now();
+        return switch (periodType) {
+            case "week" -> today.with(DayOfWeek.MONDAY);
+            case "month" -> today.withDayOfMonth(1);
+            case "quarter" -> today.withDayOfMonth(1).withMonth((today.getMonthValue() - 1) / 3 * 3 + 1);
+            case "year" -> today.withDayOfYear(1);
+            default -> throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Loại kỳ ngân sách không hợp lệ.");
+        };
+    }
+
+    /**
+     * Ngày cuối kỳ tính từ {@code start_date}. Dùng {@code plusMonths().minusDays(1)} thay vì "ngày
+     * cuối tháng" cứng để kỳ bắt đầu giữa tháng (client tự chọn {@code start_date}) vẫn ra một kỳ
+     * dài đúng một tháng, không bị cụt. Với {@code start_date} là mặc định (ngày 1) thì hai cách
+     * cho kết quả giống hệt nhau.
+     */
+    static LocalDate endOfPeriod(String periodType, LocalDate startDate) {
+        return switch (periodType) {
+            case "week" -> startDate.plusDays(6);
+            case "month" -> startDate.plusMonths(1).minusDays(1);
+            case "quarter" -> startDate.plusMonths(3).minusDays(1);
+            case "year" -> startDate.plusYears(1).minusDays(1);
+            default -> throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Loại kỳ ngân sách không hợp lệ.");
+        };
+    }
+
+    // Làm tròn LÊN hàng trăm nghìn (api/05 mục 6): 3.980.000 × 1.05 = 4.179.000 -> 4.200.000.
+    private long roundUpToHundredThousand(long amount) {
+        return (long) (Math.ceil(amount / 100_000.0) * 100_000);
+    }
+
+    /**
+     * Định dạng số tiền VND kiểu Việt Nam: dấu chấm phân cách hàng nghìn.
+     *
+     * <p>{@code public} vì {@code TransactionService} (package khác) cũng dựng câu cảnh báo ngân
+     * sách cho {@code affected_budgets} — dùng chung một chỗ định dạng để hai đường không trôi
+     * dạt về câu chữ.
+     */
+    public static String formatAmount(long amount) {
+        return String.format("%,d", amount).replace(",", ".");
+    }
+
+
+    private long nullToZero(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    private BigDecimal nullToZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    // Không có quyền cũng trả 404 (không phải 403) để không lộ việc bản ghi có tồn tại hay không.
+    private BusinessException notFound() {
+        return new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ngân sách.");
+    }
+}

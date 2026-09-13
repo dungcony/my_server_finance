@@ -27,6 +27,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -35,12 +36,24 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
+    public org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer webSecurityCustomizer() {
+        return web -> web.ignoring()
+                .requestMatchers(
+                        org.springframework.boot.autoconfigure.security.servlet.PathRequest.toStaticResources().atCommonLocations()
+                )
+                .requestMatchers("/", "/login-test.html", "/*.html", "/static/**");
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/register", "/auth/login", "/auth/refresh",
+                        .requestMatchers(
+                                "/", "/login-test.html", "/*.html", "/static/**",
+                                "/auth/register", "/auth/login", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/reset-password",
+                                "/auth/verify-email", "/auth/resend-verification",
                                 // D3 — người chưa đăng nhập mới bấm nút Google. Danh tính do
                                 // chữ ký id_token của Google chứng minh, không phải Bearer token.
                                 "/auth/google").permitAll()
@@ -51,9 +64,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * D-01 / api/01 "Ghi chú triển khai": bcrypt cost factor >= 12.
-     */
+    // D-01 / api/01 "Ghi chú triển khai": bcrypt cost factor >= 12.
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);

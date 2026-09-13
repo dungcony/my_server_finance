@@ -41,7 +41,7 @@ public class IdempotencyKeyEntity {
     @Column(name = "endpoint", nullable = false)
     private String endpoint;
 
-    /** CHECK IN ('processing','completed'). */
+    // CHECK IN ('processing','completed').
     @Column(name = "status", nullable = false)
     private String status;
 

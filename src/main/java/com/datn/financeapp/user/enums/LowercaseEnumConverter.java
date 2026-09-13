@@ -1,0 +1,26 @@
+package com.datn.financeapp.user.enums;
+
+import jakarta.persistence.AttributeConverter;
+
+/**
+ * Base converter cho các enum có DB value = enum name viết thường.
+ * Subclass chỉ cần gọi super(enumClass).
+ */
+public abstract class LowercaseEnumConverter<E extends Enum<E>> implements AttributeConverter<E, String> {
+
+    private final Class<E> enumClass;
+
+    protected LowercaseEnumConverter(Class<E> enumClass) {
+        this.enumClass = enumClass;
+    }
+
+    @Override
+    public String convertToDatabaseColumn(E attribute) {
+        return attribute != null ? attribute.name().toLowerCase() : null;
+    }
+
+    @Override
+    public E convertToEntityAttribute(String dbData) {
+        return dbData != null ? Enum.valueOf(enumClass, dbData.toUpperCase()) : null;
+    }
+}

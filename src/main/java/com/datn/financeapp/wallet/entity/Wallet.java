@@ -29,7 +29,7 @@ public class Wallet {
     @Id
     private UUID id;
 
-    /** Ví cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_wallets_owner). */
+    // Ví cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_wallets_owner).
     @Column(name = "user_id")
     private UUID userId;
 
@@ -39,7 +39,7 @@ public class Wallet {
     @Column(name = "name", nullable = false)
     private String name;
 
-    /** CHECK IN ('cash','bank','e_wallet','credit_card'). */
+    // CHECK IN ('cash','bank','e_wallet','credit_card').
     @Column(name = "type", nullable = false)
     private String type;
 

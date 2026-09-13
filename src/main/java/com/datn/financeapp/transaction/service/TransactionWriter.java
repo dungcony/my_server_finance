@@ -3,7 +3,7 @@ package com.datn.financeapp.transaction.service;
 import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.transaction.event.TransactionRecordedEvent;
 import com.datn.financeapp.transaction.repository.TransactionRepository;
-import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.datn.financeapp.wallet.service.WalletService;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionWriter {
 
     private final TransactionRepository transactionRepository;
-    private final WalletRepository walletRepository;
+    private final WalletService walletService;
 
     /**
      * D-41 — bắn {@link TransactionRecordedEvent} sau khi ghi xong. {@code TransactionWriter}
@@ -44,7 +44,7 @@ public class TransactionWriter {
      *   <li>{@code income} → cộng ví nguồn</li>
      *   <li>{@code transfer} → trừ ví nguồn, cộng ví đích</li>
      * </ul>
-     * Đọc lại số dư mới bằng {@code walletRepository.findCurrentBalanceNative(...)} SAU khi
+     * Đọc lại số dư mới bằng {@code walletService.requireRawBalance(...)} SAU khi
      * {@code adjustBalance} — vì {@code adjustBalance} là {@code @Modifying} UPDATE trực tiếp,
      * không tự đồng bộ persistence context, nên phải query lại thay vì cộng tay trong Java.
      * Dùng bản native (không qua entity manager) thay vì {@code findByIdForUpdate}: nếu caller
@@ -86,26 +86,18 @@ public class TransactionWriter {
 
         switch (cmd.type()) {
             case "expense" -> {
-                walletRepository.adjustBalance(cmd.walletId(), -cmd.amount());
-                walletNewBalance = walletRepository
-                        .findCurrentBalanceNative(cmd.walletId())
-                        .orElseThrow();
+                walletService.adjustBalance(cmd.walletId(), -cmd.amount());
+                walletNewBalance = walletService.requireRawBalance(cmd.walletId());
             }
             case "income" -> {
-                walletRepository.adjustBalance(cmd.walletId(), cmd.amount());
-                walletNewBalance = walletRepository
-                        .findCurrentBalanceNative(cmd.walletId())
-                        .orElseThrow();
+                walletService.adjustBalance(cmd.walletId(), cmd.amount());
+                walletNewBalance = walletService.requireRawBalance(cmd.walletId());
             }
             case "transfer" -> {
-                walletRepository.adjustBalance(cmd.walletId(), -cmd.amount());
-                walletRepository.adjustBalance(cmd.destinationWalletId(), cmd.amount());
-                walletNewBalance = walletRepository
-                        .findCurrentBalanceNative(cmd.walletId())
-                        .orElseThrow();
-                destinationWalletNewBalance = walletRepository
-                        .findCurrentBalanceNative(cmd.destinationWalletId())
-                        .orElseThrow();
+                walletService.adjustBalance(cmd.walletId(), -cmd.amount());
+                walletService.adjustBalance(cmd.destinationWalletId(), cmd.amount());
+                walletNewBalance = walletService.requireRawBalance(cmd.walletId());
+                destinationWalletNewBalance = walletService.requireRawBalance(cmd.destinationWalletId());
             }
             default -> throw new IllegalArgumentException("Loại giao dịch không hợp lệ: " + cmd.type());
         }
@@ -125,6 +117,24 @@ public class TransactionWriter {
      * Kết quả ghi giao dịch. {@code destinationWalletNewBalance} chỉ khác NULL khi
      * {@code type = transfer}.
      */
+    /**
+     * Như {@link #write} nhưng ép Hibernate đẩy câu INSERT xuống CSDL NGAY, thay vì hoãn tới lúc
+     * commit.
+     *
+     * <p>Bắt buộc khi bên gọi cần bắt vi phạm ràng buộc duy nhất (ví dụ
+     * {@code uq_txn_recurring_date}) trong khối {@code try} của chính mình: không {@code flush()}
+     * thì lỗi nổ ra lúc commit — ngoài khối {@code try} — và không còn cơ hội đổi thành lỗi nghiệp
+     * vụ tử tế cho người dùng.
+     *
+     * <p>Có mặt ở đây để module ngoài không phải đụng {@code TransactionRepository} chỉ để gọi
+     * {@code flush()} (quy tắc 11 CLAUDE.md).
+     */
+    public WriteResult writeAndFlush(TransactionWriteCommand cmd) {
+        WriteResult result = write(cmd);
+        transactionRepository.flush();
+        return result;
+    }
+
     public record WriteResult(UUID transactionId, long walletNewBalance, Long destinationWalletNewBalance) {
     }
 }

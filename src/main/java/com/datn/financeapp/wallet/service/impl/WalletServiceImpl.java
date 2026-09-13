@@ -1,0 +1,475 @@
+package com.datn.financeapp.wallet.service.impl;
+
+import com.datn.financeapp.wallet.service.WalletService;
+
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.wallet.dto.request.CreateWalletRequest;
+import com.datn.financeapp.wallet.dto.request.ReorderWalletsRequest;
+import com.datn.financeapp.wallet.dto.request.UpdateWalletRequest;
+import com.datn.financeapp.wallet.dto.response.WalletDetailResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRawBalanceResponse;
+import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.wallet.dto.response.WalletResponse;
+import com.datn.financeapp.wallet.dto.response.WalletStatsResponse;
+import com.datn.financeapp.wallet.dto.response.WalletSummaryResponse;
+import com.datn.financeapp.wallet.entity.Wallet;
+import com.datn.financeapp.wallet.mapper.WalletMapper;
+import com.datn.financeapp.wallet.repository.WalletRepository;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Business logic CRUD ví (WALLET-01..05, api/02-VI.md mục 1-7). Mọi truy vấn chọn/sửa/xoá MỘT
+ * ví theo id đi qua {@link WalletRepository} với điều kiện quyền D-27 sẵn có trong query —
+ * không có quyền trả {@code NOT_FOUND} (404), không phải 403 (T-02-03).
+ *
+ * {@code @Transactional} đặt TRÊN TỪNG PUBLIC METHOD theo mẫu {@code AuthService}.
+ */
+@Service
+@RequiredArgsConstructor
+public class WalletServiceImpl implements WalletService {
+
+    // Tên ví cấp sẵn cho mọi tài khoản mới. Hiện ra trước mắt người dùng nên để tiếng Việt.
+    private static final String DEFAULT_WALLET_NAME = "Tiền mặt";
+
+    private final WalletRepository walletRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final WalletMapper walletMapper;
+
+    @Transactional(readOnly = true)
+    public List<WalletResponse> list(UUID userId, String type, Boolean onlyInTotal, boolean includeShared) {
+        return walletRepository.findAllForUser(userId, type, onlyInTotal, includeShared).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * api/02-VI.md mục 2: {@code personal_total} và {@code shared_total} tính RIÊNG, KHÔNG
+     * cộng đôi — nếu cộng gộp thì hai thành viên cùng nhóm sẽ cùng thấy ví chung trong tổng
+     * tài sản cá nhân của mỗi người, thổi phồng tổng tài sản gia đình.
+     */
+    @Transactional(readOnly = true)
+    public WalletSummaryResponse summary(UUID userId) {
+        Long personalTotal = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
+                        + "WHERE user_id = ? AND include_in_total AND NOT is_deleted",
+                Long.class, userId);
+        Long personalWalletCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM wallets WHERE user_id = ? AND include_in_total AND NOT is_deleted",
+                Long.class, userId);
+
+        // Ví chung: user phải là thành viên active của nhóm sở hữu ví. Phase 2 chưa ai INSERT
+        // vào group_members nên hai giá trị này luôn 0 — vẫn viết đúng logic để Phase 5 không
+        // phải sửa lại (D-27).
+        Long sharedTotal = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
+                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
+                        + "AND include_in_total AND NOT is_deleted",
+                Long.class, userId);
+        Long sharedWalletCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM wallets "
+                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
+                        + "AND include_in_total AND NOT is_deleted",
+                Long.class, userId);
+
+        List<WalletSummaryResponse.ByTypeItem> byType = jdbcTemplate.query(
+                "SELECT type, COALESCE(SUM(current_balance), 0) AS total, COUNT(*) AS wallet_count "
+                        + "FROM wallets WHERE user_id = ? AND NOT is_deleted GROUP BY type",
+                (rs, rowNum) -> new WalletSummaryResponse.ByTypeItem(
+                        rs.getString("type"), rs.getLong("total"), rs.getLong("wallet_count")),
+                userId);
+
+        return new WalletSummaryResponse(
+                personalTotal == null ? 0 : personalTotal,
+                personalWalletCount == null ? 0 : personalWalletCount,
+                sharedTotal == null ? 0 : sharedTotal,
+                sharedWalletCount == null ? 0 : sharedWalletCount,
+                byType);
+    }
+
+    @Transactional(readOnly = true)
+    public WalletDetailResponse detail(UUID userId, UUID walletId) {
+        Wallet wallet = walletRepository
+                .findByIdForUser(walletId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+
+        WalletStatsResponse stats = loadStats(wallet.getId());
+
+        // D-37/TXN-09: currentBalance API = tiền thật đến hết hôm nay (trừ ngược giao dịch
+        // tương lai) — KHÔNG map thẳng cột wallet.getCurrentBalance() (đã gồm cả tương lai).
+        long currentBalanceAsOfToday = walletRepository
+                .findBalanceAsOf(wallet.getId(), LocalDate.now())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+        boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
+        Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
+
+        return new WalletDetailResponse(
+                wallet.getId(),
+                wallet.getName(),
+                wallet.getType(),
+                wallet.getInitialBalance(),
+                currentBalanceAsOfToday,
+                wallet.getIncludeInTotal(),
+                wallet.getGroupId() != null,
+                wallet.getGroupId(),
+                wallet.getIcon(),
+                wallet.getColor(),
+                wallet.getSortOrder(),
+                stats,
+                wallet.getCreatedAt(),
+                projectedBalance);
+    }
+
+    /**
+     * api/02-VI.md mục 4. Ví mới KHÔNG sinh giao dịch nào — {@code current_balance} =
+     * {@code initial_balance} là điểm xuất phát, không phải một khoản thu.
+     */
+    @Transactional
+    public WalletResponse create(UUID userId, CreateWalletRequest req) {
+        if (walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, req.name())) {
+            throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
+        }
+
+        if (req.groupId() != null) {
+            // Group thuộc Phase 5 — chưa tồn tại entity/nghiệp vụ kiểm tra thành viên. Ném lỗi
+            // tường minh thay vì tự bịa logic kiểm tra thành viên nhóm không kiểm chứng được
+            // (T-02-05).
+            throw new BusinessException(ErrorCode.NOT_GROUP_MEMBER, "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
+        }
+
+        Integer maxSortOrder = walletRepository.findMaxSortOrderByUserId(userId);
+        Instant now = Instant.now();
+
+        Wallet wallet = Wallet.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .groupId(null)
+                .name(req.name())
+                .type(req.type())
+                .initialBalance(req.initialBalance())
+                .currentBalance(req.initialBalance())
+                .includeInTotal(req.includeInTotal() == null ? true : req.includeInTotal())
+                .icon(req.icon())
+                .color(req.color())
+                .sortOrder((maxSortOrder == null ? -1 : maxSortOrder) + 1)
+                .isDeleted(false)
+                .createdAt(now)
+                .build();
+        walletRepository.save(wallet);
+
+        return toResponse(wallet);
+    }
+
+    /**
+     * Ví "Tiền mặt" số dư 0 cấp cho tài khoản vừa tạo — dùng chung cho cả đăng ký bằng email lẫn
+     * bằng Google. Thiếu ví thì người dùng mở app lên thấy màn hình trống và không ghi được giao
+     * dịch nào, nên nó phải nằm trong CÙNG transaction với việc tạo tài khoản. Gọi từ
+     * {@code AuthService} vẫn giữ được điều đó vì {@code @Transactional} mặc định lan truyền kiểu
+     * {@code REQUIRED} — tham gia transaction đang mở chứ không mở transaction mới.
+     *
+     * <p><b>Không gọi {@link #create} thay cho method này.</b> {@code create} nhận
+     * {@code CreateWalletRequest} và còn kiểm trùng tên lẫn ném {@code NOT_GROUP_MEMBER} — đều
+     * vô nghĩa với một tài khoản chưa có ví nào. Tách riêng để hai luồng không ràng buộc nhau.
+     *
+     * <p>Trước đây khối dựng ví này được chép nguyên văn ở hai chỗ trong {@code AuthService}
+     * (đăng ký thường và đăng ký bằng Google). Thêm một cột vào bảng {@code wallets} mà quên một
+     * trong hai chỗ là lỗi chỉ lộ ra ở đúng một luồng đăng ký — rất khó nhận ra.
+     */
+    @Transactional
+    public void createDefaultCashWallet(UUID userId, Instant createdAt) {
+        Wallet cashWallet = Wallet.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .groupId(null)
+                .name(DEFAULT_WALLET_NAME)
+                .type("cash")
+                .initialBalance(0L)
+                .currentBalance(0L)
+                .includeInTotal(true)
+                .sortOrder(0)
+                .isDeleted(false)
+                .createdAt(createdAt)
+                .build();
+        walletRepository.save(cashWallet);
+    }
+
+    /**
+     * Tham chiếu tối thiểu (id + tên) tới một ví mà người dùng có quyền xem, hoặc {@code null}
+     * nếu không có quyền / ví không tồn tại / {@code walletId} rỗng.
+     *
+     * <p>Dành cho module khác cần nhắc tên ví trong phản hồi của mình. Điều kiện quyền nằm nguyên
+     * trong câu truy vấn ({@code findByIdForUser}) theo quy tắc bất biến số 7 — bên gọi không cần
+     * và không được tự lọc lại ở Java.
+     */
+    @Transactional(readOnly = true)
+    public WalletRefResponse findRefForUser(UUID userId, UUID walletId) {
+        if (walletId == null) {
+            return null;
+        }
+        return walletRepository
+                .findByIdForUser(walletId, userId)
+                .map(walletMapper::toRef)
+                .orElse(null);
+    }
+
+    /**
+     * Danh sách ví của người dùng kèm số dư THÔ (chưa trừ ngược giao dịch tương lai), theo đúng
+     * thứ tự {@code sort_order}.
+     *
+     * <p>⚠️ Cố ý KHÔNG dùng {@link #list} ở đây: {@code list} trả số dư đã trừ ngược, dùng nó cho
+     * màn Báo cáo sẽ làm đổi số liệu người dùng đang thấy. Xem
+     * {@link WalletRawBalanceResponse} để biết hai giá trị khác nhau chỗ nào.
+     */
+    @Transactional(readOnly = true)
+    public List<WalletRawBalanceResponse> listWithRawBalance(UUID userId, boolean includeShared) {
+        return walletRepository.findAllForUser(userId, null, null, includeShared).stream()
+                .map(w -> new WalletRawBalanceResponse(
+                        w.getId(), w.getName(), w.getType(), w.getCurrentBalance()))
+                .toList();
+    }
+
+    /**
+     * Nạp nhiều ví theo lô, có kiểm quyền từng cái. Trả map theo id để bên gọi tra cứu trong
+     * vòng lặp mà không phải gọi lại service. Ví không có quyền thì vắng mặt trong map.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, WalletRefResponse> findRefsForUser(Collection<UUID> walletIds, UUID userId) {
+        Map<UUID, WalletRefResponse> byId = new HashMap<>();
+        for (UUID id : walletIds.stream().filter(Objects::nonNull).distinct().toList()) {
+            WalletRefResponse ref = findRefForUser(userId, id);
+            if (ref != null) {
+                byId.put(id, ref);
+            }
+        }
+        return byId;
+    }
+
+    /**
+     * Số dư thô BẮT BUỘC phải có — ném {@link java.util.NoSuchElementException} nếu ví không tồn
+     * tại, thay vì trả {@code null} như {@link #findRawBalance}.
+     *
+     * <p>Dùng ngay sau {@link #adjustBalance} trong cùng transaction: tới đó ví chắc chắn tồn tại
+     * (vừa UPDATE thành công), nên thiếu nó là lỗi lập trình chứ không phải tình huống nghiệp vụ
+     * — ném ngay còn hơn để {@code null} trôi xuống và hỏng ở chỗ khó lần.
+     */
+    @Transactional(readOnly = true)
+    public long requireRawBalance(UUID walletId) {
+        return walletRepository.findCurrentBalanceNative(walletId).orElseThrow();
+    }
+
+    /**
+     * Khoá bi quan (SELECT ... FOR UPDATE) tất cả ví trong danh sách, theo thứ tự
+     * {@code UUID.compareTo()} tăng dần, và kiểm quyền sở hữu ngay sau khi khoá từng ví.
+     *
+     * <p>⚠️ <b>Thứ tự khoá là thứ chống deadlock (D-33), không phải chi tiết trang trí.</b> Hai
+     * giao dịch cùng đụng ví A và B mà khoá ngược chiều nhau sẽ ôm nhau chờ vĩnh viễn. Sắp xếp
+     * theo id cho mọi luồng khoá cùng một chiều. Đây là mở rộng của thuật toán 2 ví trong
+     * {@code WalletTransferService} lên tối đa 4 ví.
+     *
+     * <p>Không có quyền thì ném {@code NOT_FOUND} chứ không phải 403 (quy tắc bất biến số 7).
+     */
+    @Transactional
+    public void lockWalletsInOrder(Set<UUID> walletIds, UUID userId) {
+        List<UUID> sortedIds = new ArrayList<>(walletIds);
+        sortedIds.sort(UUID::compareTo);
+        for (UUID walletId : sortedIds) {
+            Wallet wallet = walletRepository
+                    .findByIdForUpdate(walletId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+            if (!userId.equals(wallet.getUserId())) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+            }
+        }
+    }
+
+    /**
+     * Cộng/trừ số dư ví bằng MỘT câu {@code UPDATE ... SET current_balance = current_balance +
+     * :delta} — {@code delta} âm là trừ.
+     *
+     * <p>⚠️ <b>Quy tắc bất biến số 3 của dự án.</b> Tuyệt đối KHÔNG được cài lại thành "đọc entity
+     * lên → cộng ở Java → save": hai giao dịch chạy song song trên cùng một ví sẽ ghi đè nhau và
+     * người dùng mất tiền. Đó chính là thứ {@code WalletTransferConcurrencyTest} canh.
+     *
+     * <p>Method này chỉ uỷ quyền thẳng xuống repository, không thêm bất kỳ logic nào — nó có mặt
+     * để module khác không phải đụng {@code WalletRepository} (quy tắc 11 CLAUDE.md).
+     */
+    @Transactional
+    public void adjustBalance(UUID walletId, long delta) {
+        walletRepository.adjustBalance(walletId, delta);
+    }
+
+    /**
+     * Số dư hiện tại đọc thẳng từ cột {@code current_balance} — tức đã gồm cả giao dịch tương
+     * lai, KHÔNG phải "tiền thật đến hết hôm nay". Trả {@code null} nếu ví không tồn tại.
+     *
+     * <p>Dùng native SQL nên cố ý bỏ qua first-level cache của Hibernate: caller trong cùng
+     * transaction có thể vừa gọi một bulk UPDATE lên cột này. Chênh nghĩa với trường
+     * {@code current_balance} của API — xem db/README.md mục "Suy ra số dư ví theo mốc thời gian".
+     */
+    @Transactional(readOnly = true)
+    public Long findRawBalance(UUID walletId) {
+        if (walletId == null) {
+            return null;
+        }
+        return walletRepository.findCurrentBalanceNative(walletId).orElse(null);
+    }
+
+    /**
+     * Như {@link #findRefForUser} nhưng KHÔNG kiểm quyền — dùng để hiển thị lại tên ví mà bên gọi
+     * đã xác thực quyền qua bản ghi cha của mình.
+     */
+    @Transactional(readOnly = true)
+    public WalletRefResponse findRefById(UUID walletId) {
+        if (walletId == null) {
+            return null;
+        }
+        return walletRepository
+                .findById(walletId)
+                .map(walletMapper::toRef)
+                .orElse(null);
+    }
+
+    /**
+     * Số ví còn sống của một người dùng — phục vụ khối {@code stats} của {@code GET /auth/me}.
+     * Có mặt ở đây để {@code auth} không phải đụng thẳng vào {@code WalletRepository}.
+     */
+    @Transactional(readOnly = true)
+    public long countActiveWallets(UUID userId) {
+        return walletRepository.countByUserIdAndIsDeletedFalse(userId);
+    }
+
+    /**
+     * api/02-VI.md mục 5. {@code UpdateWalletRequest} không có field {@code currentBalance}/
+     * {@code type} — nếu client vẫn cố gửi (bắt qua {@code extraFields}), trả
+     * {@code BALANCE_NOT_EDITABLE} tường minh thay vì Jackson âm thầm bỏ qua (T-02-04).
+     */
+    @Transactional
+    public WalletResponse update(UUID userId, UUID walletId, UpdateWalletRequest req) {
+        Map<String, Object> extra = req.extraFields();
+        if (extra.containsKey("current_balance") || extra.containsKey("currentBalance")
+                || extra.containsKey("type")) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_EDITABLE);
+        }
+
+        Wallet wallet = walletRepository
+                .findByIdForUser(walletId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+
+        if (req.name() != null) {
+            if (!req.name().equalsIgnoreCase(wallet.getName())
+                    && walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, req.name())) {
+                throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
+            }
+            wallet.setName(req.name());
+        }
+        if (req.includeInTotal() != null) {
+            wallet.setIncludeInTotal(req.includeInTotal());
+        }
+        if (req.icon() != null) {
+            wallet.setIcon(req.icon());
+        }
+        if (req.color() != null) {
+            wallet.setColor(req.color());
+        }
+        walletRepository.save(wallet);
+
+        return toResponse(wallet);
+    }
+
+    /**
+     * api/02-VI.md mục 6. Idempotent theo CORE-06: gọi lần 2 trên ví đã {@code is_deleted=true}
+     * vẫn trả về bình thường (không 404) — chỉ 404 khi bản ghi không tồn tại/không thuộc quyền.
+     */
+    @Transactional
+    public void delete(UUID userId, UUID walletId, boolean deleteTransactions) {
+        Wallet wallet = walletRepository
+                .findByIdForUserIncludingDeleted(walletId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+
+        if (Boolean.TRUE.equals(wallet.getIsDeleted())) {
+            // Đã xoá mềm từ trước — idempotent, không làm gì thêm, không ném lỗi.
+            return;
+        }
+
+        if (walletRepository.countByUserIdAndIsDeletedFalse(userId) <= 1) {
+            throw new BusinessException(ErrorCode.CANNOT_DELETE_LAST_WALLET);
+        }
+
+        Long transactionCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
+                Long.class, walletId, walletId);
+        boolean hasTransactions = transactionCount != null && transactionCount > 0;
+
+        if (hasTransactions && !deleteTransactions) {
+            throw new BusinessException(ErrorCode.WALLET_HAS_TRANSACTIONS);
+        }
+
+        if (hasTransactions) {
+            jdbcTemplate.update(
+                    "UPDATE transactions SET is_deleted = TRUE WHERE wallet_id = ? OR destination_wallet_id = ?",
+                    walletId, walletId);
+        }
+
+        wallet.setIsDeleted(true);
+        walletRepository.save(wallet);
+    }
+
+    // api/02-VI.md mục 7 — gán sort_order theo vị trí trong mảng, chỉ update ví thuộc quyền user.
+    @Transactional
+    public void reorder(UUID userId, ReorderWalletsRequest req) {
+        List<UUID> ids = req.sortOrder();
+        for (int i = 0; i < ids.size(); i++) {
+            walletRepository.updateSortOrder(ids.get(i), i, userId);
+        }
+    }
+
+    private WalletStatsResponse loadStats(UUID walletId) {
+        Long transactionCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
+                Long.class, walletId, walletId);
+        Long incomeThisMonth = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE wallet_id = ? AND type = 'income' "
+                        + "AND NOT is_deleted AND date_trunc('month', date) = date_trunc('month', CURRENT_DATE)",
+                Long.class, walletId);
+        Long expenseThisMonth = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE wallet_id = ? AND type = 'expense' "
+                        + "AND NOT is_deleted AND date_trunc('month', date) = date_trunc('month', CURRENT_DATE)",
+                Long.class, walletId);
+        LocalDate lastTransactionDate = jdbcTemplate.query(
+                        "SELECT MAX(date) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
+                        rs -> rs.next() ? rs.getObject(1, LocalDate.class) : null,
+                        walletId, walletId);
+
+        return new WalletStatsResponse(
+                transactionCount == null ? 0 : transactionCount,
+                incomeThisMonth == null ? 0 : incomeThisMonth,
+                expenseThisMonth == null ? 0 : expenseThisMonth,
+                lastTransactionDate);
+    }
+
+    private WalletResponse toResponse(Wallet wallet) {
+        // D-37/TXN-09: cùng logic trừ ngược như detail() — currentBalance API luôn là tiền thật
+        // đến hết hôm nay, projectedBalance chỉ khác NULL khi ví có giao dịch tương lai.
+        long currentBalanceAsOfToday = walletRepository
+                .findBalanceAsOf(wallet.getId(), LocalDate.now())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
+        boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
+        Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
+
+        return walletMapper.toResponse(wallet, currentBalanceAsOfToday, projectedBalance);
+    }
+}

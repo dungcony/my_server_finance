@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
  * {@code TOKEN_EXPIRED} / {@code TOKEN_INVALID} / {@code UNAUTHENTICATED} — app dựa vào
  * {@code TOKEN_EXPIRED} để quyết định gọi {@code /auth/refresh}.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -45,12 +47,16 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         String message = switch (code) {
             case "TOKEN_EXPIRED" -> "Thẻ truy cập đã hết hạn.";
             case "TOKEN_INVALID" -> "Thẻ truy cập không hợp lệ.";
+            case "ACCOUNT_BLOCKED" -> "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ.";
             default -> "Vui lòng đăng nhập để tiếp tục.";
         };
 
+        log.warn("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
+
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
 
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        int status = "ACCOUNT_BLOCKED".equals(code) ? HttpStatus.FORBIDDEN.value() : HttpStatus.UNAUTHORIZED.value();
+        response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getWriter(), body);

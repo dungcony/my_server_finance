@@ -34,9 +34,11 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     Integer findMaxSortOrderByUserId(@Param("userId") UUID userId);
 
     @Query(
-            value = "SELECT * FROM wallets w WHERE w.id = :id AND NOT w.is_deleted "
-                    + "AND (w.user_id = :currentUser OR w.group_id IN "
-                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))",
+            value = """
+                    SELECT * FROM wallets w WHERE w.id = :id AND NOT w.is_deleted
+                    AND (w.user_id = :currentUser OR w.group_id IN
+                    (SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))
+                    """,
             nativeQuery = true)
     Optional<Wallet> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
@@ -46,19 +48,23 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
      * "đã xoá mềm rồi, gọi lại vẫn 200" (không phải lỗi).
      */
     @Query(
-            value = "SELECT * FROM wallets w WHERE w.id = :id "
-                    + "AND (w.user_id = :currentUser OR w.group_id IN "
-                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))",
+            value = """
+                    SELECT * FROM wallets w WHERE w.id = :id
+                    AND (w.user_id = :currentUser OR w.group_id IN
+                    (SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))
+                    """,
             nativeQuery = true)
     Optional<Wallet> findByIdForUserIncludingDeleted(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM wallets w WHERE NOT w.is_deleted "
-                    + "AND (w.user_id = :currentUser OR (:includeShared = TRUE AND w.group_id IN "
-                    + "(SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))) "
-                    + "AND (CAST(:type AS text) IS NULL OR w.type = CAST(:type AS text)) "
-                    + "AND (CAST(:onlyInTotal AS boolean) IS NULL OR w.include_in_total = CAST(:onlyInTotal AS boolean)) "
-                    + "ORDER BY w.sort_order",
+            value = """
+                    SELECT * FROM wallets w WHERE NOT w.is_deleted
+                    AND (w.user_id = :currentUser OR (:includeShared = TRUE AND w.group_id IN
+                    (SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active)))
+                    AND (CAST(:type AS text) IS NULL OR w.type = CAST(:type AS text))
+                    AND (CAST(:onlyInTotal AS boolean) IS NULL OR w.include_in_total = CAST(:onlyInTotal AS boolean))
+                    ORDER BY w.sort_order
+                    """,
             nativeQuery = true)
     List<Wallet> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -115,17 +121,19 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
      * dòng) — caller phải coi là lỗi NOT_FOUND, không catch âm thầm.
      */
     @Query(
-            value = "SELECT w.current_balance "
-                    + "- COALESCE(SUM(CASE "
-                    + "WHEN t.type = 'income' THEN t.amount "
-                    + "WHEN t.type = 'expense' THEN -t.amount "
-                    + "WHEN t.type = 'transfer' AND t.wallet_id = w.id THEN -t.amount END), 0) "
-                    + "- COALESCE((SELECT SUM(amount) FROM transactions "
-                    + "WHERE destination_wallet_id = w.id AND date > :asOf AND NOT is_deleted), 0) AS balance_as_of "
-                    + "FROM wallets w "
-                    + "LEFT JOIN transactions t ON t.wallet_id = w.id AND t.date > :asOf AND NOT t.is_deleted "
-                    + "WHERE w.id = :walletId "
-                    + "GROUP BY w.id, w.current_balance",
+            value = """
+                    SELECT w.current_balance
+                    - COALESCE(SUM(CASE
+                    WHEN t.type = 'income' THEN t.amount
+                    WHEN t.type = 'expense' THEN -t.amount
+                    WHEN t.type = 'transfer' AND t.wallet_id = w.id THEN -t.amount END), 0)
+                    - COALESCE((SELECT SUM(amount) FROM transactions
+                    WHERE destination_wallet_id = w.id AND date > :asOf AND NOT is_deleted), 0) AS balance_as_of
+                    FROM wallets w
+                    LEFT JOIN transactions t ON t.wallet_id = w.id AND t.date > :asOf AND NOT t.is_deleted
+                    WHERE w.id = :walletId
+                    GROUP BY w.id, w.current_balance
+                    """,
             nativeQuery = true)
     Optional<Long> findBalanceAsOf(@Param("walletId") UUID walletId, @Param("asOf") LocalDate asOf);
 
@@ -134,12 +142,14 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
      * CÓ giao dịch tương lai (date > hôm nay), không có thì bỏ hẳn trường.
      */
     @Query(
-            value = "SELECT EXISTS(SELECT 1 FROM transactions "
-                    + "WHERE wallet_id = :walletId AND date > CURRENT_DATE AND NOT is_deleted)",
+            value = """
+                    SELECT EXISTS(SELECT 1 FROM transactions
+                    WHERE wallet_id = :walletId AND date > CURRENT_DATE AND NOT is_deleted)
+                    """,
             nativeQuery = true)
     boolean hasFutureTransactions(@Param("walletId") UUID walletId);
 
-    /** JOB-01 (D-57, api/02 mục 10) — quét TOÀN BỘ ví còn hoạt động cho tác vụ đối chiếu hằng ngày. */
+    // JOB-01 (D-57, api/02 mục 10) — quét TOÀN BỘ ví còn hoạt động cho tác vụ đối chiếu hằng ngày.
     @Query(value = "SELECT id FROM wallets WHERE NOT is_deleted", nativeQuery = true)
     List<UUID> findAllActiveWalletIds();
 }

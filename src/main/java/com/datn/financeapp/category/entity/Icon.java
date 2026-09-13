@@ -36,7 +36,7 @@ public class Icon {
     @Column(name = "path_data", nullable = false)
     private String pathData;
 
-    /** CHECK IN ('an_uong','di_lai','mua_sam','giai_tri','suc_khoe','hoc_tap','tai_chinh','khac'). */
+    // CHECK IN ('an_uong','di_lai','mua_sam','giai_tri','suc_khoe','hoc_tap','tai_chinh','khac').
     @Column(name = "icon_group", nullable = false)
     private String iconGroup;
 

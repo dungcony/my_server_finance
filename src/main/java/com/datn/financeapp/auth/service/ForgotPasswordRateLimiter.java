@@ -1,10 +1,14 @@
 package com.datn.financeapp.auth.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bucket;
+
 import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,17 +30,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class ForgotPasswordRateLimiter {
 
-    private static final int MAX_REQUESTS_PER_EMAIL = 5;
-    private static final Duration WINDOW = Duration.ofHours(1);
+    private final int maxRequestsPerEmail;
+    private final Duration window;
 
     /**
      * {@code expireAfterAccess} phải DÀI HƠN cửa sổ đếm: hết hạn sớm là xoá bucket còn dở lượt,
      * lần gọi kế tiếp dựng bucket mới đầy 5 lượt và hạn mức thành vô nghĩa.
      */
-    private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
-            .expireAfterAccess(WINDOW.plusMinutes(5))
-            .maximumSize(100_000)
-            .build();
+    private final Cache<String, Bucket> buckets;
+
+    public ForgotPasswordRateLimiter(
+            @Value("${rate-limit.max-request-email-forgot-password:5}") int maxRequestsPerEmail,
+            @Value("${rate-limit.reset-request-email-forgot-password:1h}") Duration window) {
+        this.maxRequestsPerEmail = maxRequestsPerEmail;
+        this.window = window;
+        this.buckets = Caffeine.newBuilder()
+                .expireAfterAccess(window.plusMinutes(5))
+                .maximumSize(100_000)
+                .build();
+    }
 
     /**
      * Tiêu một lượt của {@code email}, ném {@code 429} khi hết lượt.
@@ -49,15 +61,12 @@ public class ForgotPasswordRateLimiter {
         Bucket bucket = buckets.get(
                 email.toLowerCase(),
                 k -> Bucket.builder()
-                        .addLimit(l -> l.capacity(MAX_REQUESTS_PER_EMAIL)
-                                .refillGreedy(MAX_REQUESTS_PER_EMAIL, WINDOW))
+                        .addLimit(l -> l.capacity(maxRequestsPerEmail)
+                                .refillGreedy(maxRequestsPerEmail, window))
                         .build());
 
         if (!bucket.tryConsume(1)) {
-            throw new BusinessException(
-                    "RATE_LIMIT_EXCEEDED",
-                    429,
-                    "Bạn đã yêu cầu mã quá nhiều lần, vui lòng thử lại sau một giờ.");
+            throw new BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED, "Bạn đã yêu cầu mã quá nhiều lần, vui lòng thử lại sau một giờ.");
         }
     }
 }

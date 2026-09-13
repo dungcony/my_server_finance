@@ -3,7 +3,7 @@ package com.datn.financeapp.notification.controller;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.notification.dto.NotificationListResponse;
+import com.datn.financeapp.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.notification.service.NotificationService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

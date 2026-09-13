@@ -40,10 +40,12 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
     Optional<BudgetProgressProjection> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM v_budget_progress WHERE user_id = :currentUser "
-                    + "AND (CAST(:isActive AS boolean) IS NULL OR is_active = :isActive) "
-                    + "AND (CAST(:periodType AS text) IS NULL OR period_type = :periodType) "
-                    + "ORDER BY start_date DESC",
+            value = """
+                    SELECT * FROM v_budget_progress WHERE user_id = :currentUser
+                    AND (CAST(:isActive AS boolean) IS NULL OR is_active = :isActive)
+                    AND (CAST(:periodType AS text) IS NULL OR period_type = :periodType)
+                    ORDER BY start_date DESC
+                    """,
             nativeQuery = true)
     List<BudgetProgressProjection> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -65,16 +67,18 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
      * {@code spent_amount} đó thay đổi — cảnh báo lúc ấy là nhiễu).
      */
     @Query(
-            value = "SELECT * FROM v_budget_progress WHERE user_id = :currentUser AND is_active = TRUE "
-                    + "AND :transactionDate BETWEEN start_date AND end_date "
-                    + "AND :categoryId IN (SELECT * FROM fn_category_tree(category_id))",
+            value = """
+                    SELECT * FROM v_budget_progress WHERE user_id = :currentUser AND is_active = TRUE
+                    AND :transactionDate BETWEEN start_date AND end_date
+                    AND :categoryId IN (SELECT * FROM fn_category_tree(category_id))
+                    """,
             nativeQuery = true)
     List<BudgetProgressProjection> findActiveByUserAndCategoryInTree(
             @Param("currentUser") UUID currentUser,
             @Param("categoryId") UUID categoryId,
             @Param("transactionDate") LocalDate transactionDate);
 
-    /** Các cột của {@code v_budget_progress}; Spring Data map theo tên getter -> tên cột. */
+    // Các cột của {@code v_budget_progress}; Spring Data map theo tên getter -> tên cột.
     interface BudgetProgressProjection {
         UUID getId();
 
@@ -90,7 +94,7 @@ public interface BudgetProgressRepository extends Repository<Budget, UUID> {
 
         BigDecimal getRatio();
 
-        /** {@code normal} | {@code near_limit} | {@code over_limit} — ngưỡng 0.8 tính sẵn ở view. */
+        // {@code normal} | {@code near_limit} | {@code over_limit} — ngưỡng 0.8 tính sẵn ở view.
         String getStatus();
 
         Integer getDaysRemaining();

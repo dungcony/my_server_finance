@@ -32,7 +32,7 @@ public class Notification {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    /** CHECK IN ('budget_alert','debt_reminder','recurring_generated','budget_renewed','goal_completed'). */
+    // CHECK IN ('budget_alert','debt_reminder','recurring_generated','budget_renewed','goal_completed').
     @Column(name = "type", nullable = false)
     private String type;
 
@@ -42,7 +42,7 @@ public class Notification {
     @Column(name = "content", nullable = false)
     private String content;
 
-    /** budget_id hoặc debt_id tuỳ type — không có FK cứng vì trỏ nhiều bảng khác nhau. */
+    // budget_id hoặc debt_id tuỳ type — không có FK cứng vì trỏ nhiều bảng khác nhau.
     @Column(name = "reference_id")
     private UUID referenceId;
 

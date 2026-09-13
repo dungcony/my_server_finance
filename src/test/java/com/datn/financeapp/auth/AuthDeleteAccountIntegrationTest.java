@@ -4,21 +4,28 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.AuthResponse;
-import com.datn.financeapp.auth.dto.DeleteAccountRequest;
-import com.datn.financeapp.auth.dto.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.LoginRequest;
-import com.datn.financeapp.auth.dto.RefreshRequest;
-import com.datn.financeapp.auth.dto.RegisterRequest;
-import com.datn.financeapp.auth.entity.User;
+import com.datn.financeapp.auth.dto.response.AuthResponse;
+import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
+import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.RefreshRequest;
+import com.datn.financeapp.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
+import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
-import com.datn.financeapp.auth.repository.PasswordResetTokenRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.user.service.AccountService;
+import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Collections;
 import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +68,12 @@ class AuthDeleteAccountIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private AccountService userAccountService;
+
+    @Autowired
+    private ProfileService userProfileService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -68,9 +81,6 @@ class AuthDeleteAccountIntegrationTest {
 
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
-
-    @Autowired
-    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
     private LoginAttemptRepository loginAttemptRepository;
@@ -84,22 +94,32 @@ class AuthDeleteAccountIntegrationTest {
         // userRepository.deleteAll() ném lỗi ràng buộc khoá ngoại.
         jdbcTemplate.update("DELETE FROM group_members");
         jdbcTemplate.update("DELETE FROM groups");
-        passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         loginAttemptRepository.deleteAll();
         walletRepository.deleteAll();
         userRepository.deleteAll();
     }
 
+    private void deleteAccountAs(User user, String password) {
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(user.getId().toString(), null, Collections.emptyList()));
+        SecurityContextHolder.setContext(context);
+        try {
+            userProfileService.deleteMe(password);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
     // -----------------------------------------------------------------
-    // C2 — DELETE /auth/account
+    // C2 — DELETE /auth/account -> DELETE /users/me
     // -----------------------------------------------------------------
 
     @Test
     void deleteAccount_wrongPassword_isRejectedAndAccountStaysActive() {
         User user = registerAndReload("xoa.sai.mk@example.com");
 
-        assertThatThrownBy(() -> authService.deleteAccount(user.getId(), new DeleteAccountRequest("sai-mat-khau")))
+        assertThatThrownBy(() -> deleteAccountAs(user, "sai-mat-khau"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
                     assertThat(((BusinessException) ex).getCode()).isEqualTo("WRONG_PASSWORD");
@@ -114,7 +134,7 @@ class AuthDeleteAccountIntegrationTest {
         AuthResponse session = register("xoa.dung.mk@example.com");
         User user = userRepository.findByEmail("xoa.dung.mk@example.com").orElseThrow();
 
-        authService.deleteAccount(user.getId(), new DeleteAccountRequest(PASSWORD));
+        deleteAccountAs(user, PASSWORD);
 
         assertThat(userRepository.findById(user.getId()).orElseThrow().isDeleted()).isTrue();
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isEmpty();
@@ -131,18 +151,18 @@ class AuthDeleteAccountIntegrationTest {
     void deleteAccount_keepsWalletsAndFinancialData() {
         User user = registerAndReload("xoa.giu.vi@example.com");
 
-        authService.deleteAccount(user.getId(), new DeleteAccountRequest(PASSWORD));
+        deleteAccountAs(user, PASSWORD);
 
         assertThat(walletRepository.countByUserIdAndIsDeletedFalse(user.getId())).isEqualTo(1);
     }
 
-    /** Bước 3 của bốn bước: rời mọi nhóm đang tham gia, nhưng bản ghi thành viên vẫn còn. */
+    // Bước 3 của bốn bước: rời mọi nhóm đang tham gia, nhưng bản ghi thành viên vẫn còn.
     @Test
     void deleteAccount_deactivatesGroupMembershipsWithoutDeletingRows() {
         User user = registerAndReload("xoa.roi.nhom@example.com");
         UUID groupId = insertGroupOwnedBy(user.getId());
 
-        authService.deleteAccount(user.getId(), new DeleteAccountRequest(PASSWORD));
+        deleteAccountAs(user, PASSWORD);
 
         Boolean stillActive = jdbcTemplate.queryForObject(
                 "SELECT is_active FROM group_members WHERE group_id = ? AND user_id = ?",
@@ -153,10 +173,10 @@ class AuthDeleteAccountIntegrationTest {
     @Test
     void login_afterAccountDeleted_returnsInvalidCredentials() {
         User user = registerAndReload("xoa.roi.dang.nhap@example.com");
-        authService.deleteAccount(user.getId(), new DeleteAccountRequest(PASSWORD));
+        deleteAccountAs(user, PASSWORD);
 
         assertThatThrownBy(() -> authService.login(
-                        new LoginRequest("xoa.roi.dang.nhap@example.com", PASSWORD), "127.0.0.1", "junit"))
+                new LoginRequest("xoa.roi.dang.nhap@example.com", PASSWORD), "127.0.0.1", "junit"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("INVALID_CREDENTIALS"));
     }
@@ -168,7 +188,7 @@ class AuthDeleteAccountIntegrationTest {
     @Test
     void register_withEmailOfDeletedAccount_isStillRejected() {
         User user = registerAndReload("xoa.roi.dang.ky.lai@example.com");
-        authService.deleteAccount(user.getId(), new DeleteAccountRequest(PASSWORD));
+        deleteAccountAs(user, PASSWORD);
 
         assertThatThrownBy(() -> register("xoa.roi.dang.ky.lai@example.com"))
                 .isInstanceOf(BusinessException.class)
@@ -200,7 +220,7 @@ class AuthDeleteAccountIntegrationTest {
                 });
     }
 
-    /** Bộ đếm theo email, không theo lời gọi: sáu email khác nhau không đụng trần của nhau. */
+    // Bộ đếm theo email, không theo lời gọi: sáu email khác nhau không đụng trần của nhau.
     @Test
     void forgotPassword_sixDifferentEmails_areNotRateLimited() {
         for (int i = 0; i < 6; i++) {
@@ -233,7 +253,8 @@ class AuthDeleteAccountIntegrationTest {
     // -----------------------------------------------------------------
 
     private AuthResponse register(String email) {
-        return authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
+        return authService.login(new LoginRequest(email, PASSWORD), "127.0.0.1", "junit");
     }
 
     private User registerAndReload(String email) {
@@ -241,7 +262,7 @@ class AuthDeleteAccountIntegrationTest {
         return userRepository.findByEmail(email).orElseThrow();
     }
 
-    /** Chưa có module group/ (Phase 5 backend) nên dựng dữ liệu nhóm bằng SQL thô. */
+    // Chưa có module group/ (Phase 5 backend) nên dựng dữ liệu nhóm bằng SQL thô.
     private UUID insertGroupOwnedBy(UUID userId) {
         UUID groupId = UUID.randomUUID();
         jdbcTemplate.update(

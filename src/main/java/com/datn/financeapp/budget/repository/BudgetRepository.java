@@ -23,10 +23,12 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
     Optional<Budget> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM budgets b WHERE b.user_id = :currentUser "
-                    + "AND (CAST(:isActive AS boolean) IS NULL OR b.is_active = :isActive) "
-                    + "AND (CAST(:periodType AS text) IS NULL OR b.period_type = :periodType) "
-                    + "ORDER BY b.start_date DESC",
+            value = """
+                    SELECT * FROM budgets b WHERE b.user_id = :currentUser
+                    AND (CAST(:isActive AS boolean) IS NULL OR b.is_active = :isActive)
+                    AND (CAST(:periodType AS text) IS NULL OR b.period_type = :periodType)
+                    ORDER BY b.start_date DESC
+                    """,
             nativeQuery = true)
     List<Budget> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -38,9 +40,11 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
      * ý hạn mức. Không lọc {@code is_active} vì kỳ cũ đã bị JOB-02 tắt khi tự gia hạn.
      */
     @Query(
-            value = "SELECT * FROM budgets b WHERE b.user_id = :currentUser "
-                    + "AND b.category_id = :categoryId AND b.end_date < CURRENT_DATE "
-                    + "ORDER BY b.end_date DESC LIMIT 3",
+            value = """
+                    SELECT * FROM budgets b WHERE b.user_id = :currentUser
+                    AND b.category_id = :categoryId AND b.end_date < CURRENT_DATE
+                    ORDER BY b.end_date DESC LIMIT 3
+                    """,
             nativeQuery = true)
     List<Budget> findLastThreeEndedPeriods(
             @Param("currentUser") UUID currentUser, @Param("categoryId") UUID categoryId);
@@ -52,12 +56,14 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
      * (CLAUDE.md §2). Phạm vi quyền {@code t.user_id = :currentUser} ngay trong SQL.
      */
     @Query(
-            value = "SELECT COALESCE(SUM(t.amount), 0) FROM transactions t "
-                    + "WHERE t.type = 'expense' AND NOT t.is_deleted AND t.counts_in_report "
-                    + "AND t.user_id = :currentUser "
-                    + "AND t.date BETWEEN :startDate AND :endDate "
-                    + "AND t.category_id IN (SELECT * FROM fn_category_tree(:categoryId)) "
-                    + "AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = :walletId)",
+            value = """
+                    SELECT COALESCE(SUM(t.amount), 0) FROM transactions t
+                    WHERE t.type = 'expense' AND NOT t.is_deleted AND t.counts_in_report
+                    AND t.user_id = :currentUser
+                    AND t.date BETWEEN :startDate AND :endDate
+                    AND t.category_id IN (SELECT * FROM fn_category_tree(:categoryId))
+                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = :walletId)
+                    """,
             nativeQuery = true)
     long sumExpenseInPeriod(
             @Param("currentUser") UUID currentUser,
@@ -72,8 +78,10 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
      * đó, khác {@code recurring_transactions}). Dùng index {@code idx_bud_renew} (V3) sẵn có.
      */
     @Query(
-            value = "SELECT * FROM budgets b WHERE b.auto_renew = TRUE AND b.is_active = TRUE "
-                    + "AND b.end_date < :today",
+            value = """
+                    SELECT * FROM budgets b WHERE b.auto_renew = TRUE AND b.is_active = TRUE
+                    AND b.end_date < :today
+                    """,
             nativeQuery = true)
     List<Budget> findAutoRenewExpired(@Param("today") java.time.LocalDate today);
 
@@ -83,11 +91,13 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
      * là lớp bảo vệ CSDL cuối cùng nếu kiểm tra Java này bị race.
      */
     @Query(
-            value = "SELECT EXISTS(SELECT 1 FROM budgets b WHERE b.user_id = :userId "
-                    + "AND b.category_id = :categoryId "
-                    + "AND (CAST(:walletId AS uuid) IS NULL AND b.wallet_id IS NULL OR b.wallet_id = :walletId) "
-                    + "AND b.is_active = TRUE "
-                    + "AND b.start_date = :newStart AND b.end_date = :newEnd)",
+            value = """
+                    SELECT EXISTS(SELECT 1 FROM budgets b WHERE b.user_id = :userId
+                    AND b.category_id = :categoryId
+                    AND (CAST(:walletId AS uuid) IS NULL AND b.wallet_id IS NULL OR b.wallet_id = :walletId)
+                    AND b.is_active = TRUE
+                    AND b.start_date = :newStart AND b.end_date = :newEnd)
+                    """,
             nativeQuery = true)
     boolean existsOverlapping(
             @Param("userId") UUID userId,

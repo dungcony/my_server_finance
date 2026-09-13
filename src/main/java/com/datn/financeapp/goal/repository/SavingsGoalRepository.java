@@ -23,9 +23,11 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID> 
     Optional<SavingsGoal> findByIdAndUserId(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Query(
-            value = "SELECT * FROM savings_goals WHERE user_id = :currentUser "
-                    + "AND (CAST(:status AS text) IS NULL OR status = :status) "
-                    + "ORDER BY created_at DESC",
+            value = """
+                    SELECT * FROM savings_goals WHERE user_id = :currentUser
+                    AND (CAST(:status AS text) IS NULL OR status = :status)
+                    ORDER BY created_at DESC
+                    """,
             nativeQuery = true)
     List<SavingsGoal> findAllForUser(@Param("currentUser") UUID currentUser, @Param("status") String status);
 
@@ -50,7 +52,7 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID> 
     @Query(value = "SELECT saved_amount FROM savings_goals WHERE id = :id", nativeQuery = true)
     Optional<Long> findSavedAmountNative(@Param("id") UUID id);
 
-    /** Cặp đôi với {@link #findSavedAmountNative} — cùng lý do trả scalar. */
+    // Cặp đôi với {@link #findSavedAmountNative} — cùng lý do trả scalar.
     @Query(value = "SELECT status FROM savings_goals WHERE id = :id", nativeQuery = true)
     Optional<String> findStatusNative(@Param("id") UUID id);
 }

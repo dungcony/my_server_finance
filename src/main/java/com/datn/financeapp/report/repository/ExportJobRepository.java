@@ -21,8 +21,10 @@ public interface ExportJobRepository extends JpaRepository<ExportJob, UUID> {
     Optional<ExportJob> findByIdAndUserId(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
     @Modifying
-    @Query("UPDATE ExportJob e SET e.status = 'completed', e.filePath = :filePath, e.expiresAt = :expiresAt "
-            + "WHERE e.id = :id")
+    @Query("""
+            UPDATE ExportJob e SET e.status = 'completed', e.filePath = :filePath, e.expiresAt = :expiresAt
+            WHERE e.id = :id
+            """)
     void markCompleted(
             @Param("id") UUID id, @Param("filePath") String filePath, @Param("expiresAt") Instant expiresAt);
 
@@ -30,7 +32,7 @@ public interface ExportJobRepository extends JpaRepository<ExportJob, UUID> {
     @Query("UPDATE ExportJob e SET e.status = 'failed', e.errorMessage = :error WHERE e.id = :id")
     void markFailed(@Param("id") UUID id, @Param("error") String error);
 
-    /** Dùng cho job dọn quá hạn hằng ngày (D-45, Plan 07). */
+    // Dùng cho job dọn quá hạn hằng ngày (D-45, Plan 07).
     @Query(value = "SELECT * FROM export_jobs WHERE status = 'completed' AND expires_at < :now", nativeQuery = true)
     List<ExportJob> findExpired(@Param("now") Instant now);
 

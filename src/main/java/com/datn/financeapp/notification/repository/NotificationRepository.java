@@ -18,9 +18,11 @@ import org.springframework.data.repository.query.Param;
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
     @Query(
-            value = "SELECT * FROM notifications WHERE user_id = :currentUser "
-                    + "AND (CAST(:isRead AS boolean) IS NULL OR is_read = :isRead) "
-                    + "ORDER BY created_at DESC LIMIT :limit OFFSET :offset",
+            value = """
+                    SELECT * FROM notifications WHERE user_id = :currentUser
+                    AND (CAST(:isRead AS boolean) IS NULL OR is_read = :isRead)
+                    ORDER BY created_at DESC LIMIT :limit OFFSET :offset
+                    """,
             nativeQuery = true)
     List<Notification> findAllForUser(
             @Param("currentUser") UUID currentUser,
@@ -29,8 +31,10 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
             @Param("offset") int offset);
 
     @Query(
-            value = "SELECT COUNT(*) FROM notifications WHERE user_id = :currentUser "
-                    + "AND (CAST(:isRead AS boolean) IS NULL OR is_read = :isRead)",
+            value = """
+                    SELECT COUNT(*) FROM notifications WHERE user_id = :currentUser
+                    AND (CAST(:isRead AS boolean) IS NULL OR is_read = :isRead)
+                    """,
             nativeQuery = true)
     long countForUser(@Param("currentUser") UUID currentUser, @Param("isRead") Boolean isRead);
 
@@ -63,9 +67,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
      */
     @Modifying
     @Query(
-            value = "INSERT INTO notifications (id, user_id, type, title, content, reference_id) "
-                    + "VALUES (gen_random_uuid(), :userId, 'budget_alert', :title, :content, :budgetId) "
-                    + "ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING",
+            value = """
+                    INSERT INTO notifications (id, user_id, type, title, content, reference_id)
+                    VALUES (gen_random_uuid(), :userId, 'budget_alert', :title, :content, :budgetId)
+                    ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING
+                    """,
             nativeQuery = true)
     void insertBudgetAlertIfNotExists(
             @Param("userId") UUID userId,
@@ -88,9 +94,11 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
      */
     @Modifying
     @Query(
-            value = "INSERT INTO notifications (id, user_id, type, title, content, reference_id) "
-                    + "VALUES (gen_random_uuid(), :userId, 'debt_reminder', :title, :content, :debtId) "
-                    + "ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING",
+            value = """
+                    INSERT INTO notifications (id, user_id, type, title, content, reference_id)
+                    VALUES (gen_random_uuid(), :userId, 'debt_reminder', :title, :content, :debtId)
+                    ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING
+                    """,
             nativeQuery = true)
     void insertDebtReminderIfNotExists(
             @Param("userId") UUID userId,
@@ -106,8 +114,10 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
      */
     @Modifying
     @Query(
-            value = "INSERT INTO notifications (id, user_id, type, title, content, reference_id) "
-                    + "VALUES (gen_random_uuid(), :userId, :type, :title, :content, :referenceId)",
+            value = """
+                    INSERT INTO notifications (id, user_id, type, title, content, reference_id)
+                    VALUES (gen_random_uuid(), :userId, :type, :title, :content, :referenceId)
+                    """,
             nativeQuery = true)
     void insertGenericNotification(
             @Param("userId") UUID userId,

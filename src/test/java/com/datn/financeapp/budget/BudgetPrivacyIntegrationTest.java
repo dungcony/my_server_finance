@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.repository.UserRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -119,7 +119,7 @@ class BudgetPrivacyIntegrationTest {
         return (String) data.get("access_token");
     }
 
-    /** Danh mục CHI hệ thống ({@code user_id IS NULL}) — cả A và B đều nhìn thấy và dùng chung. */
+    // Danh mục CHI hệ thống ({@code user_id IS NULL}) — cả A và B đều nhìn thấy và dùng chung.
     private String findSharedSystemExpenseCategoryId() {
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM categories WHERE user_id IS NULL AND type = 'expense' "
