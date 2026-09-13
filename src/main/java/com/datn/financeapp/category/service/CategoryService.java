@@ -21,6 +21,22 @@ public interface CategoryService {
 
     List<CategoryResponse> list(UUID userId, String type, boolean asTree, boolean rootsOnly);
 
+    /**
+     * Cây danh mục hai cấp kèm cờ bật/tắt của một ví cụ thể (api/03 mục 9).
+     *
+     * <p>Ví không thuộc người dùng (và không nằm trong nhóm họ đang tham gia) trả 404, không phải
+     * 403 — để không lộ việc ví đó có tồn tại hay không.
+     */
+    List<CategoryResponse> listForWallet(UUID userId, UUID walletId);
+
+    /**
+     * Bật/tắt một danh mục ở một ví. Tắt danh mục cha thì các con tắt theo.
+     *
+     * <p>Chỉ ảnh hưởng màn chọn danh mục: giao dịch cũ đã gán vào danh mục này không bị đụng tới,
+     * báo cáo vẫn tính đủ.
+     */
+    void setCategoryEnabledForWallet(UUID userId, UUID walletId, UUID categoryId, boolean enabled);
+
     CategoryDetailResponse detail(UUID userId, UUID categoryId);
 
     CategoryResponse create(UUID userId, CreateCategoryRequest req);
