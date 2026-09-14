@@ -180,6 +180,8 @@ class DebtReminderJobIntegrationTest {
         return count == null ? 0 : count;
     }
 
+    private static final java.time.ZoneId VIETNAM_ZONE = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+
     // ---------------------------------------------------------------------
     // Test
     // ---------------------------------------------------------------------
@@ -190,7 +192,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.bay.ngay@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ 7 Ngày", 10_000_000);
         String debtId = createLendingDebt(
-                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(7).toString());
+                token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).plusDays(7).toString());
 
         debtReminderJob.run();
 
@@ -205,7 +207,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.ba.ngay@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ 3 Ngày", 10_000_000);
         String debtId = createLendingDebt(
-                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(3).toString());
+                token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).plusDays(3).toString());
 
         debtReminderJob.run();
 
@@ -224,7 +226,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.hom.nay@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ Hôm Nay", 10_000_000);
         String debtId =
-                createLendingDebt(token, walletId, 2_000_000, java.time.LocalDate.now().toString());
+                createLendingDebt(token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).toString());
 
         debtReminderJob.run();
 
@@ -237,13 +239,13 @@ class DebtReminderJobIntegrationTest {
     @Test
     void sendDueReminders_sevenDaysOverdue_createsNotification() throws Exception {
         String token = registerAndGetAccessToken("nhac.no.qua.han.bay@example.com");
-        String walletId = createWallet(token, "Ví Nhắc Nợ Quá Hạn", 10_000_000);
+        String walletId = createWallet(token, "Ví Nhắc NỢ Quá Hạn", 10_000_000);
         String debtId = createLendingDebt(
                 token,
                 walletId,
                 2_000_000,
-                java.time.LocalDate.now().minusDays(7).toString(),
-                java.time.LocalDate.now().minusDays(30).toString());
+                java.time.LocalDate.now(VIETNAM_ZONE).minusDays(7).toString(),
+                java.time.LocalDate.now(VIETNAM_ZONE).minusDays(30).toString());
 
         debtReminderJob.run();
 
@@ -262,7 +264,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.chay.hai.lan@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ Chạy Lại", 10_000_000);
         String debtId = createLendingDebt(
-                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(7).toString());
+                token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).plusDays(7).toString());
 
         debtReminderJob.run();
         debtReminderJob.run();
