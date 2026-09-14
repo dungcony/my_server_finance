@@ -351,15 +351,25 @@ public class AuthServiceImpl implements AuthService {
 
 
     private boolean isLockedOut(String email) {
+        // BƯỚC 1: Lấy 5 lần đăng nhập gần đây nhất của email này
         List<LoginAttempt> recent = loginAttemptRepository.findTop5ByEmailOrderByAttemptedAtDesc(email);
+
+        // BƯỚC 2: Nếu chưa đủ 5 lần đăng nhập -> chưa đủ điều kiện khóa -> cho qua
         if (recent.size() < MAX_CONSECUTIVE_FAILURES) {
             return false;
         }
+
+        // BƯỚC 3: Kiểm tra xem cả 5 lần đó có PHẢI ĐỀU THẤT BẠI (nhập sai pass) hay không
+        // (Nếu có 1 lần đăng nhập đúng xen vào giữa thì chuỗi sai bị ngắt -> không khóa)
         boolean allFailed = recent.stream().noneMatch(LoginAttempt::getSucceeded);
         if (!allFailed) {
             return false;
         }
+
+        // BƯỚC 4: Kiểm tra thời gian của lần sai thứ 5 (lần gần nhất - recent.get(0))
         Instant mostRecentFailure = recent.get(0).getAttemptedAt();
+
+        // Nếu lần sai gần nhất diễn ra trong vòng 15 phút trở lại đây -> TRẢ VỀ TRUE (ĐANG BỊ KHÓA)
         return mostRecentFailure.isAfter(Instant.now().minus(LOCKOUT_MINUTES, ChronoUnit.MINUTES));
     }
 
