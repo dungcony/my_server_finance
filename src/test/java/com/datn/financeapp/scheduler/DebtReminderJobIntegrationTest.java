@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -44,6 +46,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
 class DebtReminderJobIntegrationTest {
 
     @Container
@@ -91,8 +94,16 @@ class DebtReminderJobIntegrationTest {
     @Autowired
     private DebtReminderJob debtReminderJob;
 
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM notifications");
         jdbcTemplate.update("DELETE FROM debt_payments");
         jdbcTemplate.update("DELETE FROM debts");
@@ -107,19 +118,7 @@ class DebtReminderJobIntegrationTest {
     // ---------------------------------------------------------------------
 
     private String registerAndGetAccessToken(String email) throws Exception {
-        Map<String, Object> body = Map.of(
-                "email", email,
-                "password", "matkhau123",
-                "username", "Người Kiểm Thử Nhắc Nợ");
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        return (String) data.get("access_token");
+        return authSupport.registerAndGetAccessToken(email);
     }
 
     private String createWallet(String token, String name, long initialBalance) throws Exception {
@@ -181,6 +180,8 @@ class DebtReminderJobIntegrationTest {
         return count == null ? 0 : count;
     }
 
+    private static final java.time.ZoneId VIETNAM_ZONE = java.time.ZoneId.of("Asia/Ho_Chi_Minh");
+
     // ---------------------------------------------------------------------
     // Test
     // ---------------------------------------------------------------------
@@ -191,7 +192,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.bay.ngay@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ 7 Ngày", 10_000_000);
         String debtId = createLendingDebt(
-                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(7).toString());
+                token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).plusDays(7).toString());
 
         debtReminderJob.run();
 
@@ -206,7 +207,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.ba.ngay@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ 3 Ngày", 10_000_000);
         String debtId = createLendingDebt(
-                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(3).toString());
+                token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).plusDays(3).toString());
 
         debtReminderJob.run();
 
@@ -225,7 +226,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.hom.nay@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ Hôm Nay", 10_000_000);
         String debtId =
-                createLendingDebt(token, walletId, 2_000_000, java.time.LocalDate.now().toString());
+                createLendingDebt(token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).toString());
 
         debtReminderJob.run();
 
@@ -238,13 +239,13 @@ class DebtReminderJobIntegrationTest {
     @Test
     void sendDueReminders_sevenDaysOverdue_createsNotification() throws Exception {
         String token = registerAndGetAccessToken("nhac.no.qua.han.bay@example.com");
-        String walletId = createWallet(token, "Ví Nhắc Nợ Quá Hạn", 10_000_000);
+        String walletId = createWallet(token, "Ví Nhắc NỢ Quá Hạn", 10_000_000);
         String debtId = createLendingDebt(
                 token,
                 walletId,
                 2_000_000,
-                java.time.LocalDate.now().minusDays(7).toString(),
-                java.time.LocalDate.now().minusDays(30).toString());
+                java.time.LocalDate.now(VIETNAM_ZONE).minusDays(7).toString(),
+                java.time.LocalDate.now(VIETNAM_ZONE).minusDays(30).toString());
 
         debtReminderJob.run();
 
@@ -263,7 +264,7 @@ class DebtReminderJobIntegrationTest {
         String token = registerAndGetAccessToken("nhac.no.chay.hai.lan@example.com");
         String walletId = createWallet(token, "Ví Nhắc Nợ Chạy Lại", 10_000_000);
         String debtId = createLendingDebt(
-                token, walletId, 2_000_000, java.time.LocalDate.now().plusDays(7).toString());
+                token, walletId, 2_000_000, java.time.LocalDate.now(VIETNAM_ZONE).plusDays(7).toString());
 
         debtReminderJob.run();
         debtReminderJob.run();

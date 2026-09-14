@@ -29,6 +29,8 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.JwtService;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
+import com.datn.financeapp.user.exception.AccountNotVerifiedException;
+import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.service.AccountService;
 
@@ -117,8 +119,6 @@ public class AuthServiceImpl implements AuthService {
 
         eventPublisher.publishEvent(new VerifyEmailEvent(email));
 
-
-//        userAccountService.confirmUserEmail(email);
         otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, email);
 
         var user = userAccountService.findByEmail(email);
@@ -133,8 +133,10 @@ public class AuthServiceImpl implements AuthService {
         String email = req.email().toLowerCase().trim();
         Instant now = Instant.now();
 
+        // Tài khoản đã xoá hoặc bị khoá im lặng như email chưa đăng ký — không gửi mã, không báo
+        // lỗi, để người gửi không suy ra được trạng thái tài khoản.
         var u = userAccountService.findByEmail(email);
-        if (u == null) {
+        if (u == null || u.isDeleted() || u.isBlocked()) {
             return;
         }
         if (u.isConfirm()) {
@@ -142,7 +144,10 @@ public class AuthServiceImpl implements AuthService {
         }
 
 
-        Optional<OtpModel> existingOtp = otpRepository.findById(email);
+        // Phải tra bằng findByTypeAndEmail: khoá Redis thật là "register_otp:<email>"
+        // (OtpModel.buildId), nên findById(email) luôn trả rỗng và cơ chế chờ 60 giây bên dưới
+        // không bao giờ chạy — gửi lại mã bao nhiêu lần cũng được.
+        Optional<OtpModel> existingOtp = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email);
         if (existingOtp.isPresent() && existingOtp.get().getCreatedAt() != null) {
             long secondsSinceLast = Duration.between(existingOtp.get().getCreatedAt(), now).getSeconds();
             if (secondsSinceLast < 60) {
@@ -175,7 +180,6 @@ public class AuthServiceImpl implements AuthService {
         var user = userAccountService.findByEmail(email);
 
         boolean passwordOk = user != null
-                && !user.isDeleted()
                 && user.password() != null
                 && passwordEncoder.matches(req.password(), user.password());
 
@@ -192,8 +196,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthInvalidCredentialsException();
         }
 
-        if (user.notConfirm()) { // hoặc user.status() == UserStatus.PENDING_VERIFY
-            throw new AuthAccountNotVerifiedException();
+        // Chỉ người gõ ĐÚNG mật khẩu mới thẩm định trạng thái tài khoản
+        userAccountService.validateAccountForLogin(user);
+
+        if (user.notConfirm()) {
+            throw new AccountNotVerifiedException();
         }
 
         eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), Instant.now()));
@@ -214,11 +221,14 @@ public class AuthServiceImpl implements AuthService {
             var byEmail = userAccountService.findByEmail(email);
             if (byEmail != null) {
                 // Đã có tài khoản bằng email -> liên kết với Google ID
+                userAccountService.validateAccountForLogin(byEmail);
                 user = userAccountService.linkGoogleAccount(byEmail.id(), info.googleId(), now);
             } else {
                 // Chưa từng có tài khoản -> tạo mới
                 user = userAccountService.createGoogleUser(email, info.googleId(), now);
             }
+        } else {
+            userAccountService.validateAccountForLogin(user);
         }
 
         // 2. Bắn event đăng nhập thành công (đồng bộ với hàm login thường)
@@ -313,8 +323,14 @@ public class AuthServiceImpl implements AuthService {
 
         var user = userAccountService.findByEmail(email);
 
-        if (user.isBlocked()) {
+        // Tài khoản bị khoá HOẶC đã xoá đều trả RESET_CODE_INVALID như mã sai thường — mã lỗi
+        // riêng sẽ xác nhận email đó có đăng ký và đang ở trạng thái nào.
+        if (user == null || user.isDeleted() || user.isBlocked()) {
             throw new AuthResetCodeInvalidException();
+        }
+
+        if (user.password() != null && passwordEncoder.matches(req.newPassword(), user.password())) {
+            throw new AuthPasswordSameAsOldException();
         }
 
         try {
@@ -333,17 +349,27 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.revokeAllActiveForUser(userId);
     }
 
-    // Kiểm tra tài khoản có đang bị tạm khoá đăng nhập (5 lần thất bại liên tiếp trong vòng 15 phút)
+
     private boolean isLockedOut(String email) {
+        // BƯỚC 1: Lấy 5 lần đăng nhập gần đây nhất của email này
         List<LoginAttempt> recent = loginAttemptRepository.findTop5ByEmailOrderByAttemptedAtDesc(email);
+
+        // BƯỚC 2: Nếu chưa đủ 5 lần đăng nhập -> chưa đủ điều kiện khóa -> cho qua
         if (recent.size() < MAX_CONSECUTIVE_FAILURES) {
             return false;
         }
+
+        // BƯỚC 3: Kiểm tra xem cả 5 lần đó có PHẢI ĐỀU THẤT BẠI (nhập sai pass) hay không
+        // (Nếu có 1 lần đăng nhập đúng xen vào giữa thì chuỗi sai bị ngắt -> không khóa)
         boolean allFailed = recent.stream().noneMatch(LoginAttempt::getSucceeded);
         if (!allFailed) {
             return false;
         }
+
+        // BƯỚC 4: Kiểm tra thời gian của lần sai thứ 5 (lần gần nhất - recent.get(0))
         Instant mostRecentFailure = recent.get(0).getAttemptedAt();
+
+        // Nếu lần sai gần nhất diễn ra trong vòng 15 phút trở lại đây -> TRẢ VỀ TRUE (ĐANG BỊ KHÓA)
         return mostRecentFailure.isAfter(Instant.now().minus(LOCKOUT_MINUTES, ChronoUnit.MINUTES));
     }
 

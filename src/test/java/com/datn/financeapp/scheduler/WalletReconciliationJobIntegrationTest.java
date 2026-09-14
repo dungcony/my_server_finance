@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
@@ -43,6 +45,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
 class WalletReconciliationJobIntegrationTest {
 
     @Container
@@ -90,8 +93,16 @@ class WalletReconciliationJobIntegrationTest {
     @Autowired
     private WalletReconciliationJob walletReconciliationJob;
 
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
     @BeforeEach
     void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM notifications");
         jdbcTemplate.update("DELETE FROM transactions");
         refreshTokenRepository.deleteAll();
@@ -104,19 +115,7 @@ class WalletReconciliationJobIntegrationTest {
     // ---------------------------------------------------------------------
 
     private String registerAndGetAccessToken(String email) throws Exception {
-        Map<String, Object> body = Map.of(
-                "email", email,
-                "password", "matkhau123",
-                "username", "Người Kiểm Thử Đối Chiếu Ví");
-        String response = mockMvc.perform(post("/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        return (String) data.get("access_token");
+        return authSupport.registerAndGetAccessToken(email);
     }
 
     private String createWallet(String token, String name, long initialBalance) throws Exception {

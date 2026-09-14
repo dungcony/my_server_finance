@@ -20,8 +20,10 @@ import com.datn.financeapp.category.mapper.CategoryMapper;
 import com.datn.financeapp.category.repository.CategoryGroupRepository;
 import com.datn.financeapp.category.repository.CategoryRepository;
 import com.datn.financeapp.category.repository.IconRepository;
+import com.datn.financeapp.category.repository.WalletCategorySettingRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.wallet.repository.WalletRepository;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -68,6 +70,8 @@ public class CategoryServiceImpl implements CategoryService {
     private final IconRepository iconRepository;
     private final JdbcTemplate jdbcTemplate;
     private final CategoryMapper categoryMapper;
+    private final WalletCategorySettingRepository walletCategorySettingRepository;
+    private final WalletRepository walletRepository;
 
     @Transactional(readOnly = true)
     public List<CategoryResponse> list(UUID userId, String type, boolean asTree, boolean rootsOnly) {
@@ -92,6 +96,55 @@ public class CategoryServiceImpl implements CategoryService {
                 .filter(c -> c.parentCategoryId() == null)
                 .map(c -> withChildren(c, childrenByParent.getOrDefault(c.id(), List.of())))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> listForWallet(UUID userId, UUID walletId) {
+        assertWalletVisible(userId, walletId);
+
+        // Vắng dòng = đang bật, nên chỉ nạp các dòng LỆCH mặc định rồi phủ lên cây đầy đủ.
+        Map<UUID, Boolean> flagsByCategory = walletCategorySettingRepository.findAllByWalletId(walletId)
+                .stream()
+                .collect(Collectors.toMap(
+                        s -> s.getCategoryId(), s -> s.getIsEnabled(), (a, b) -> b, HashMap::new));
+
+        return list(userId, null, true, false).stream()
+                .map(root -> root.withEnabled(
+                        flagsByCategory.getOrDefault(root.id(), Boolean.TRUE),
+                        root.children().stream()
+                                .map(child -> child.withEnabled(
+                                        flagsByCategory.getOrDefault(child.id(), Boolean.TRUE),
+                                        child.children()))
+                                .toList()))
+                .toList();
+    }
+
+    @Transactional
+    public void setCategoryEnabledForWallet(UUID userId, UUID walletId, UUID categoryId, boolean enabled) {
+        assertWalletVisible(userId, walletId);
+
+        Category category = categoryRepository
+                .findByIdAndVisibleToUser(categoryId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục."));
+
+        if (category.getParentCategoryId() == null) {
+            // Danh mục cha: các con phải theo cùng trạng thái. Con bật lơ lửng dưới cha đã tắt là
+            // trạng thái vô nghĩa — người dùng không nhìn thấy cha thì cũng không tới được con.
+            walletCategorySettingRepository.upsertWithChildren(walletId, categoryId, enabled);
+        } else {
+            walletCategorySettingRepository.upsert(walletId, categoryId, enabled);
+        }
+    }
+
+    /**
+     * Ví phải thuộc người dùng hoặc thuộc nhóm họ đang tham gia — kiểm ngay trong câu truy vấn
+     * (D-27), không "lấy hết rồi lọc ở code". Không có quyền trả <b>404</b> chứ không phải 403,
+     * để không lộ việc ví đó có tồn tại hay không.
+     */
+    private void assertWalletVisible(UUID userId, UUID walletId) {
+        walletRepository
+                .findByIdForUser(walletId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
     }
 
     @Transactional(readOnly = true)
@@ -484,10 +537,7 @@ public class CategoryServiceImpl implements CategoryService {
     private CategoryResponse withChildren(CategoryResponse parent, List<CategoryResponse> children) {
         List<CategoryResponse> sortedChildren =
                 children.stream().sorted(Comparator.comparingInt(CategoryResponse::sortOrder)).toList();
-        return new CategoryResponse(
-                parent.id(), parent.name(), parent.type(), parent.isSystem(), parent.parentCategoryId(),
-                parent.categoryGroup(), parent.icon(), parent.color(), parent.sortOrder(), parent.createdAt(),
-                sortedChildren);
+        return parent.withEnabled(parent.isEnabled(), sortedChildren);
     }
 
     private CategoryResponse toResponse(Category c, CategoryGroup group, Icon icon, List<CategoryResponse> children) {

@@ -5,6 +5,7 @@ import com.datn.financeapp.category.dto.response.CategoryGroupResponse;
 import com.datn.financeapp.category.dto.response.CategoryResponse;
 import com.datn.financeapp.category.dto.request.CreateCategoryRequest;
 import com.datn.financeapp.category.dto.request.ReorderCategoriesRequest;
+import com.datn.financeapp.category.dto.request.ToggleWalletCategoryRequest;
 import com.datn.financeapp.category.dto.request.UpdateCategoryRequest;
 import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.idempotency.Idempotent;
@@ -79,6 +80,28 @@ public class CategoryController {
     public ApiResponse<Void> reorder(@Valid @RequestBody ReorderCategoriesRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         categoryService.reorder(userId, req);
+        return ApiResponse.of(null);
+    }
+
+    /**
+     * Cây danh mục kèm cờ bật/tắt của một ví (api/03 mục 9).
+     *
+     * <p>Nằm ở {@code CategoryController} chứ không phải {@code WalletController} vì nghiệp vụ là
+     * danh mục; ví chỉ là ngữ cảnh lọc.
+     */
+    @GetMapping("/wallets/{walletId}/categories")
+    public ApiResponse<List<CategoryResponse>> listForWallet(@PathVariable UUID walletId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(categoryService.listForWallet(userId, walletId));
+    }
+
+    @PatchMapping("/wallets/{walletId}/categories/{categoryId}")
+    public ApiResponse<Void> setCategoryEnabledForWallet(
+            @PathVariable UUID walletId,
+            @PathVariable UUID categoryId,
+            @Valid @RequestBody ToggleWalletCategoryRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        categoryService.setCategoryEnabledForWallet(userId, walletId, categoryId, req.isEnabled());
         return ApiResponse.of(null);
     }
 

@@ -2,18 +2,13 @@ package com.datn.financeapp.user.service.impl;
 
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.event.UserCreateEvent;
-import com.datn.financeapp.user.event.UserDeletedEvent;
 import com.datn.financeapp.user.event.UserPasswordChangedEvent;
-import com.datn.financeapp.user.exception.NoPasswordSetException;
-import com.datn.financeapp.user.exception.UserBlockedException;
-import com.datn.financeapp.user.exception.UserNotFoundException;
-import com.datn.financeapp.user.exception.WrongPasswordException;
+import com.datn.financeapp.user.exception.*;
 import com.datn.financeapp.user.mapper.UserMapper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.service.AccountService;
@@ -64,6 +59,10 @@ public class AccountServiceImpl implements AccountService {
 
         if (!passwordEncoder.matches(req.oldPassword(), user.getPassword())) {
             throw new WrongPasswordException(ErrorCode.WRONG_OLD_PASSWORD);
+        }
+
+        if (passwordEncoder.matches(req.newPassword(), user.getPassword())) {
+            throw new PasswordSameAsOldException();
         }
 
         user.setPassword(passwordEncoder.encode(req.newPassword()));
@@ -149,39 +148,18 @@ public class AccountServiceImpl implements AccountService {
     @Transactional(readOnly = true)
     @Override
     public UserAccountResponse findByEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElse(null);
-
-        if (user == null)
-            return null;
-
-        if (user.isDeleted())
-            throw new UserNotFoundException();
-
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-
-        return userMapper.toAccountResponse(user);
+        return
+                userRepository.findByEmail(email)
+                        .map(userMapper::toAccountResponse)
+                        .orElse(null);
     }
 
     @Transactional(readOnly = true)
     @Override
     public UserAccountResponse findByGoogleId(String googleId) {
-        User user = userRepository.findByGoogleId(googleId)
-                .orElse(null);
-
-        if (user == null)
-            return null;
-
-        if (user.isDeleted())
-            throw new UserNotFoundException();
-
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-
-        return userMapper.toAccountResponse(user);
+        return userRepository.findByGoogleId(googleId)
+                        .map(userMapper::toAccountResponse)
+                        .orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -222,5 +200,13 @@ public class AccountServiceImpl implements AccountService {
         return userRepository.findTopRoleLevelByUserId(userId);
     }
 
-
+    @Override
+    public void validateAccountForLogin(UserAccountResponse user) {
+        if (user == null || user.isDeleted()) {
+            throw new UserNotFoundException();
+        }
+        if (user.isBlocked()) {
+            throw new UserBlockedException();
+        }
+    }
 }
