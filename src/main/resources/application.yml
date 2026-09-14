@@ -24,7 +24,7 @@ spring:
       port: ${REDIS_PORT:6379}
       timeout: 2000ms
   flyway:
-    locations: filesystem:../../db/migration
+    locations: classpath:db/migration
     encoding: UTF-8
     baseline-on-migrate: false
   mail:
