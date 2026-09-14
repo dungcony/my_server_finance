@@ -3,6 +3,7 @@ package com.datn.financeapp.auth.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import jakarta.annotation.PostConstruct;
@@ -39,7 +40,7 @@ import java.util.Collections;
 public class GoogleServiceImpl implements GoogleService {
 
     private final String webClientId;
-    private com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier delegate;
+    private GoogleIdTokenVerifier delegate;
 
     public GoogleServiceImpl(@Value("${google.web-client-id:}") String webClientId) {
         this.webClientId = webClientId;
@@ -53,7 +54,7 @@ public class GoogleServiceImpl implements GoogleService {
             log.warn("GOOGLE_WEB_CLIENT_ID chưa cấu hình — POST /auth/google sẽ luôn từ chối.");
             return;
         }
-        delegate = new com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier.Builder(
+        delegate = new GoogleIdTokenVerifier.Builder(
                 new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(webClientId))
                 .build();

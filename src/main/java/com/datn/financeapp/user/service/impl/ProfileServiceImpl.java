@@ -30,6 +30,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Transactional(readOnly = true)
     @Override
@@ -75,6 +76,15 @@ public class ProfileServiceImpl implements ProfileService {
 
         user.setDeleted(true);
         userRepository.save(user);
+
+        // Rời mọi nhóm gia đình đang tham gia (api/01-EXTEND-USER-PROFILE.md mục 3): đánh dấu
+        // is_active = FALSE chứ KHÔNG xoá dòng — giao dịch chung người này từng tạo vẫn phải tra
+        // ngược được về chủ sở hữu, xoá dòng thì lịch sử nhóm mất chỗ bám.
+        //
+        // Dùng SQL thô vì module group/ chưa tồn tại (Phase 5 backend); khi có rồi thì chuyển
+        // thành lời gọi service của module đó.
+        jdbcTemplate.update(
+                "UPDATE group_members SET is_active = FALSE WHERE user_id = ? AND is_active", uid);
 
         eventPublisher.publishEvent(new UserDeletedEvent(uid));
     }
