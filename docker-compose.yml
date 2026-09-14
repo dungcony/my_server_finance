@@ -1,14 +1,14 @@
 services:
   postgres:
-    container_name: postgres_dev
+    container_name: postgres_prod
     image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-finance}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:5432:5432" # Chỉ mở nội bộ server
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,16 +18,38 @@ services:
       retries: 5
 
   redis:
-    container_name: redis_dev
+    container_name: redis_prod
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+
+  finance-app:
+    container_name: finance_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB:-finance}
+      - DB_USERNAME=${POSTGRES_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
 volumes:
   pgdata:
