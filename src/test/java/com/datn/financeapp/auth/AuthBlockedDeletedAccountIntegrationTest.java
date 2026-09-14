@@ -142,19 +142,18 @@ class AuthBlockedDeletedAccountIntegrationTest {
     }
 
     /**
-     * Tài khoản đã xoá KHÔNG được trả {@code ACCOUNT_BLOCKED} — với thế giới bên ngoài nó phải
-     * giống hệt một email chưa từng đăng ký, kể cả khi gõ đúng mật khẩu cũ.
+     * Tài khoản đã xoá coi như không tồn tại — trả về NOT_FOUND (404).
      */
     @Test
-    void login_deletedAccountWithCorrectPassword_returnsInvalidCredentialsNotBlocked() {
+    void login_deletedAccountWithCorrectPassword_returnsNotFound() {
         register("da.xoa@example.com");
         markUser("da.xoa@example.com", u -> u.setDeleted(true));
 
         assertThatThrownBy(() -> login("da.xoa@example.com", PASSWORD))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
-                    assertThat(((BusinessException) ex).getCode()).isEqualTo("INVALID_CREDENTIALS");
-                    assertThat(((BusinessException) ex).getHttpStatus()).isEqualTo(401);
+                    assertThat(((BusinessException) ex).getCode()).isEqualTo("NOT_FOUND");
+                    assertThat(((BusinessException) ex).getHttpStatus()).isEqualTo(404);
                 });
     }
 

@@ -258,16 +258,16 @@ class AuthGoogleLoginIntegrationTest {
     }
 
     @Test
-    void loginWithGoogle_DeletedAccount_ReturnsInvalidCredentials() {
+    void loginWithGoogle_DeletedAccount_ReturnsNotFound() {
         authService.register(new RegisterRequest("da.xoa@example.com", PASSWORD, "Đã Xoá"));
         setFlag("da.xoa@example.com", u -> u.setDeleted(true));
 
         stubGoogle("sub-da-xoa", "da.xoa@example.com", "Đã Xoá");
 
-        // Tài khoản đã xoá coi như không tồn tại — nói "đã xoá" là xác nhận email từng đăng ký
+        // Tài khoản đã xoá coi như không tồn tại
         assertThatThrownBy(() -> authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN)))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "INVALID_CREDENTIALS");
+                .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
     }
 
     @Test
