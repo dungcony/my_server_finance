@@ -120,6 +120,9 @@ public enum ErrorCode {
     // Đổi mật khẩu nhưng gõ sai mật khẩu hiện tại. Nhãn theo đúng ô nhập trên app (PRD 01 mục 6.5).
     WRONG_OLD_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu cũ không đúng."),
 
+    // Mật khẩu mới trùng với mật khẩu cũ hiện tại.
+    NEW_PASSWORD_SAME_AS_OLD(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được trùng với mật khẩu cũ."),
+
     // Xoá tài khoản nhưng gõ sai mật khẩu xác nhận.
     WRONG_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu không đúng."),
 

@@ -1,4 +1,4 @@
-package com.datn.financeapp.user;
+package com.datn.financeapp.user.controller;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;

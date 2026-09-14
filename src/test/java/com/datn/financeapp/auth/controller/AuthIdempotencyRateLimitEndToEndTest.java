@@ -1,4 +1,4 @@
-package com.datn.financeapp.auth;
+package com.datn.financeapp.auth.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

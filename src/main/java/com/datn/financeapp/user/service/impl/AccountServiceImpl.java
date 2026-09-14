@@ -61,6 +61,10 @@ public class AccountServiceImpl implements AccountService {
             throw new WrongPasswordException(ErrorCode.WRONG_OLD_PASSWORD);
         }
 
+        if (passwordEncoder.matches(req.newPassword(), user.getPassword())) {
+            throw new PasswordSameAsOldException();
+        }
+
         user.setPassword(passwordEncoder.encode(req.newPassword()));
         userRepository.save(user);
 

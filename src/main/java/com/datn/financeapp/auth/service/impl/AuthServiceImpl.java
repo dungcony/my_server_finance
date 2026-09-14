@@ -329,6 +329,10 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthResetCodeInvalidException();
         }
 
+        if (user.password() != null && passwordEncoder.matches(req.newPassword(), user.password())) {
+            throw new AuthPasswordSameAsOldException();
+        }
+
         try {
             userAccountService.resetPasswordWithCode(user.id(), req.newPassword());
         } catch (UserNotFoundException e) {

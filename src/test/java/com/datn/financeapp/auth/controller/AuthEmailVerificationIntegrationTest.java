@@ -1,4 +1,4 @@
-package com.datn.financeapp.auth;
+package com.datn.financeapp.auth.controller;
 
 import com.datn.financeapp.auth.enums.OtpType;
 import com.datn.financeapp.TestRedisConfig;

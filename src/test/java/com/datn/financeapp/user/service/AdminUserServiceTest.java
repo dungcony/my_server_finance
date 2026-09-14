@@ -1,4 +1,4 @@
-package com.datn.financeapp.user;
+package com.datn.financeapp.user.service;
 
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;

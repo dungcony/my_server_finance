@@ -1,9 +1,10 @@
-package com.datn.financeapp.auth;
+package com.datn.financeapp.auth.service;
 
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
 import com.datn.financeapp.auth.entity.OtpModel;
 import com.datn.financeapp.auth.enums.OtpType;
+import com.datn.financeapp.auth.exception.AuthPasswordSameAsOldException;
 import com.datn.financeapp.auth.exception.AuthResetCodeInvalidException;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.OtpRepository;
@@ -112,12 +113,11 @@ class AuthResetPasswordServiceTest {
         verify(otpRepository, never()).save(any());
         verify(emailService, never()).sendPasswordResetCode(any(), any());
     }
-
     @Test
-    @DisplayName("resetPassword: Mã OTP khớp -> Đổi mật khẩu, xóa OTP trong Redis, thu hồi refresh tokens")
-    void resetPassword_ValidOtp_ResetsPasswordAndDeletesOtp() {
+    @DisplayName("resetPassword: Mật khẩu mới trùng mật khẩu cũ -> Ném AuthPasswordSameAsOldException")
+    void resetPassword_NewPasswordMatchesOldPassword_ThrowsAuthPasswordSameAsOldException() {
         String code = "123456";
-        String newPassword = "newPassword123";
+        String samePassword = "currentPassword123";
 
         OtpModel otp = OtpModel.builder()
                 .email(email)
@@ -130,7 +130,39 @@ class AuthResetPasswordServiceTest {
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
 
         UserAccountResponse user = new UserAccountResponse(
-                userId, email, "oldHash", UserPlan.FREE, UserStatus.ACTIVE,
+                userId, email, "encodedCurrentPassword", UserPlan.FREE, UserStatus.ACTIVE,
+                Collections.emptyList(), false, null
+        );
+        when(userAccountService.findByEmail(email)).thenReturn(user);
+        when(passwordEncoder.matches(samePassword, "encodedCurrentPassword")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, code, samePassword)))
+                .isInstanceOf(AuthPasswordSameAsOldException.class)
+                .hasFieldOrPropertyWithValue("code", "NEW_PASSWORD_SAME_AS_OLD");
+
+        verify(userAccountService, never()).resetPasswordWithCode(any(), any());
+        verify(otpRepository, never()).deleteByTypeAndEmail(any(), any());
+        verify(refreshTokenRepository, never()).revokeAllActiveForUser(any());
+    }
+
+    @Test
+    @DisplayName("resetPassword: Mã OTP khớp -> Đổi mật khẩu, xóa OTP trong Redis, thu hồi refresh tokens")
+    void resetPassword_ValidOtp_ResetsPasswordAndDeletesOtp() {
+        String code = "123456";
+        String newPassword = "123456";
+
+        OtpModel otp = OtpModel.builder()
+                .email(email)
+                .type(OtpType.PASSWORD_RESET_OTP)
+                .code(code)
+                .ttl(15L)
+                .createdAt(Instant.now())
+                .build();
+
+        when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
+
+        UserAccountResponse user = new UserAccountResponse(
+                userId, email, "1234567", UserPlan.FREE, UserStatus.ACTIVE,
                 Collections.emptyList(), false, null
         );
         when(userAccountService.findByEmail(email)).thenReturn(user);

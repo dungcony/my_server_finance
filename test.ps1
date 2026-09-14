@@ -76,7 +76,19 @@ try {
 
 # 3. Kiem tra Docker (Ho tro ca Windows va WSL)
 function Check-DockerStatus {
-    # 3.1 Kiem tra Docker tren Windows
+    # 3.1 Kiem tra Docker trong WSL truoc (vi da phan backend dev chay tren WSL)
+    try {
+        if (Get-Command "wsl" -ErrorAction SilentlyContinue) {
+            $wslDockerRes = wsl -e docker ps 2>&1 | Out-String
+            if ($wslDockerRes -match "CONTAINER ID") {
+                return @{ Found = $true; Type = "WSL" }
+            }
+        }
+    } catch {
+        # ignore
+    }
+
+    # 3.2 Kiem tra Docker tren Windows
     $winDocker = $false
     try {
         $dockerCmd = "docker"
@@ -96,18 +108,6 @@ function Check-DockerStatus {
 
     if ($winDocker) {
         return @{ Found = $true; Type = "WINDOWS" }
-    }
-
-    # 3.2 Kiem tra Docker trong WSL
-    try {
-        if (Get-Command "wsl" -ErrorAction SilentlyContinue) {
-            $wslDockerRes = wsl -e docker ps 2>&1 | Out-String
-            if ($wslDockerRes -match "CONTAINER ID") {
-                return @{ Found = $true; Type = "WSL" }
-            }
-        }
-    } catch {
-        # ignore
     }
 
     return @{ Found = $false; Type = "NONE" }
@@ -152,7 +152,7 @@ if ($Name) {
 }
 
 # 5. Kiem tra Docker neu can chay Integration Test
-if ($testMode -in @("ALL", "INTEGRATION") -and -not $Force) {
+if ($testMode -in @("ALL", "INTEGRATION", "CUSTOM") -and -not $Force) {
     Write-Host ""
     Write-Host "[Dang kiem tra Docker...]" -ForegroundColor Gray
     $dockerInfo = Check-DockerStatus
@@ -162,10 +162,11 @@ if ($testMode -in @("ALL", "INTEGRATION") -and -not $Force) {
                 $wslIp = (wsl -e hostname -I).Trim().Split(" ")[0]
                 $env:DOCKER_HOST = "tcp://${wslIp}:2375"
                 $env:TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock"
+                $env:TESTCONTAINERS_RYUK_DISABLED = "true"
                 
                 # Tu dong dong bo vao ~/.testcontainers.properties de moi IDE va Maven deu nhan
                 $tcFile = [System.IO.Path]::Combine($env:USERPROFILE, ".testcontainers.properties")
-                $tcContent = "docker.host=tcp\://${wslIp}\:2375`ntestcontainers.reuse.enable=true`n"
+                $tcContent = "docker.host=tcp\://${wslIp}\:2375`ntestcontainers.reuse.enable=true`nryuk.disabled=true`n"
                 [System.IO.File]::WriteAllText($tcFile, $tcContent)
 
                 Write-Host "[OK] Da ket noi Docker trong WSL qua tcp://${wslIp}:2375" -ForegroundColor Green
