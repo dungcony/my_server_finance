@@ -12,7 +12,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-finance}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-finance}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -30,7 +34,7 @@ services:
       retries: 5
 
   finance-app:
-    container_name: finance_api
+    container_name: finance_server
     build:
       context: .
       dockerfile: Dockerfile
