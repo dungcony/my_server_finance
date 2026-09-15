@@ -1,0 +1,461 @@
+package com.datn.financeapp.report.controller;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
+import com.datn.financeapp.auth.repository.RefreshTokenRepository;
+import com.datn.financeapp.user.repository.UserRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
+import com.datn.financeapp.wallet.repository.WalletRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+/**
+ * 4 test case cho REPORT-01/02/04 (api/06-BAO-CAO.md) — Task 2 plan 04-06. Ưu tiên D-58 mục 5:
+ * loại transfer + adjustment không tính báo cáo, cộng gộp danh mục con, home gộp đủ khối trong
+ * MỘT lần gọi, và daily-trend current_line chỉ chạy tới hôm nay.
+ */
+@Testcontainers
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
+class ReportSummaryIntegrationTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+
+    @DynamicPropertySource
+    static void registerJwtSecret(DynamicPropertyRegistry registry) {
+        registry.add("jwt.secret", () -> "dGVzdC1qd3Qtc2VjcmV0LWZvci1yZXBvcnQtdGVzdC0zMmI=");
+    }
+
+    @TestConfiguration
+    static class NoRateLimitConfig {
+        @Bean
+        @Primary
+        RateLimitFilter rateLimitFilter() {
+            return new RateLimitFilter(null) {
+                @Override
+                protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+                        throws ServletException, IOException {
+                    chain.doFilter(req, res);
+                }
+            };
+        }
+    }
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private WalletRepository walletRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TestAuthSupport authSupport;
+
+    @Autowired
+    private com.datn.financeapp.auth.repository.OtpRepository otpRepository;
+
+    @BeforeEach
+    void cleanTables() {
+        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
+        otpRepository.deleteAll();
+        jdbcTemplate.update("DELETE FROM transactions");
+        refreshTokenRepository.deleteAll();
+        walletRepository.deleteAll();
+        jdbcTemplate.update("DELETE FROM categories WHERE user_id IS NOT NULL");
+        userRepository.deleteAll();
+    }
+
+    // ---------------------------------------------------------------- helpers
+
+    private String registerAndGetAccessToken(String email) throws Exception {
+        return authSupport.registerAndGetAccessToken(email);
+    }
+
+    private String createWallet(String token, String name, long initialBalance) throws Exception {
+        Map<String, Object> body = Map.of("name", name, "type", "cash", "initial_balance", initialBalance);
+        String response = mockMvc.perform(post("/wallets")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        return (String) data.get("id");
+    }
+
+    private String findIconId(String code) {
+        return jdbcTemplate.queryForObject("SELECT id FROM icons WHERE code = ?", String.class, code);
+    }
+
+    private String findCategoryGroupId(String name) {
+        return jdbcTemplate.queryForObject("SELECT id FROM category_groups WHERE name = ?", String.class, name);
+    }
+
+    private String createCategory(String token, String name, String type, String parentId) throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("name", name);
+        body.put("type", type);
+        body.put("icon_id", findIconId("khac"));
+        body.put("color", "#3d6b7d");
+        body.put("category_group_id", findCategoryGroupId("Khác"));
+        if (parentId != null) {
+            body.put("parent_category_id", parentId);
+        }
+        String response = mockMvc.perform(post("/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        return (String) data.get("id");
+    }
+
+    private void createExpenseTransaction(String token, String walletId, String categoryId, long amount)
+            throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("type", "expense");
+        body.put("amount", amount);
+        body.put("wallet_id", walletId);
+        body.put("category_id", categoryId);
+        mockMvc.perform(post("/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated());
+    }
+
+    // ------------------------------------------------------------------ tests
+
+    /**
+     * REPORT-01, D-58 mục 5: một giao dịch expense thường, một transfer, một expense
+     * {@code counts_in_report=false} (mô phỏng adjustment) — chỉ giao dịch expense thường được
+     * tính vào {@code total_expense}.
+     */
+    @Test
+    void summary_excludesTransferAndNonReportingAdjustment() throws Exception {
+        String token = registerAndGetAccessToken("bao.cao.tong.quan@example.com");
+        String walletA = createWallet(token, "Ví A", 5_000_000);
+        String walletB = createWallet(token, "Ví B", 1_000_000);
+        String categoryId = createCategory(token, "Ăn uống báo cáo", "expense", null);
+
+        createExpenseTransaction(token, walletA, categoryId, 100_000);
+
+        Map<String, Object> transferBody = new HashMap<>();
+        transferBody.put("type", "transfer");
+        transferBody.put("amount", 2_000_000);
+        transferBody.put("wallet_id", walletA);
+        transferBody.put("destination_wallet_id", walletB);
+        mockMvc.perform(post("/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(transferBody)))
+                .andExpect(status().isCreated());
+
+        Map<String, Object> adjustmentBody = new HashMap<>();
+        adjustmentBody.put("type", "expense");
+        adjustmentBody.put("amount", 50_000);
+        adjustmentBody.put("wallet_id", walletA);
+        adjustmentBody.put("category_id", categoryId);
+        adjustmentBody.put("counts_in_report", false);
+        mockMvc.perform(post("/transactions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(adjustmentBody)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/reports/summary")
+                        .param("period", "month")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total_expense").value(100_000))
+                .andExpect(jsonPath("$.data.total_income").value(0));
+    }
+
+    // REPORT-01 — cộng gộp danh mục con: giao dịch gán vào con phải cộng vào cha ở by-category.
+    @Test
+    void byCategory_parentLevel_aggregatesChildTransactions() throws Exception {
+        String token = registerAndGetAccessToken("bao.cao.danh.muc.con@example.com");
+        String walletId = createWallet(token, "Ví Ăn Uống", 3_000_000);
+        String parentId = createCategory(token, "Ăn uống cha", "expense", null);
+        String childId = createCategory(token, "Cà phê con", "expense", parentId);
+
+        createExpenseTransaction(token, walletId, childId, 68_000);
+        createExpenseTransaction(token, walletId, parentId, 42_000);
+
+        mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].category_id").value(parentId))
+                .andExpect(jsonPath("$.data.items[0].amount").value(68_000 + 42_000))
+                .andExpect(jsonPath("$.data.items[0].has_children").value(true));
+    }
+
+    // REPORT-02 — home gộp đủ các khối bắt buộc trong MỘT lần gọi (api/06 mục 1).
+    @Test
+    void home_returnsAllRequiredBlocks_inOneCall() throws Exception {
+        String token = registerAndGetAccessToken("bao.cao.trang.chu@example.com");
+        String walletId = createWallet(token, "Ví Tổng Quan", 2_000_000);
+        String categoryId = createCategory(token, "Đi lại báo cáo", "expense", null);
+        createExpenseTransaction(token, walletId, categoryId, 42_000);
+
+        mockMvc.perform(get("/reports/home").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.balance").exists())
+                .andExpect(jsonPath("$.data.top_wallets").exists())
+                .andExpect(jsonPath("$.data.period_summary").exists())
+                .andExpect(jsonPath("$.data.daily_trend").exists())
+                .andExpect(jsonPath("$.data.top_spending").exists())
+                .andExpect(jsonPath("$.data.recent_transactions").exists())
+                .andExpect(jsonPath("$.data.recent_transactions[0].amount").value(42_000))
+                .andExpect(jsonPath("$.data.budgets_needing_attention").exists());
+    }
+
+    // REPORT-04 — current_line CHỈ có điểm dữ liệu tới hôm nay, không kéo dài hết tháng.
+    @Test
+    void dailyTrend_currentLine_stopsAtToday() throws Exception {
+        String token = registerAndGetAccessToken("bao.cao.xu.huong.ngay@example.com");
+        String walletId = createWallet(token, "Ví Xu Hướng", 1_000_000);
+        String categoryId = createCategory(token, "Mua sắm báo cáo", "expense", null);
+        createExpenseTransaction(token, walletId, categoryId, 30_000);
+
+        String response = mockMvc.perform(get("/reports/daily-trend").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        var currentLine = (java.util.List<?>) data.get("current_line");
+        int today = java.time.LocalDate.now().getDayOfMonth();
+        for (Object point : currentLine) {
+            int date = (Integer) ((Map<?, ?>) point).get("date");
+            org.assertj.core.api.Assertions.assertThat(date).isLessThanOrEqualTo(today);
+        }
+    }
+
+    /**
+     * FIX-04 (đợt test 02/09/2026) — đổi ví ở màn Sổ nhưng số liệu không lọc theo.
+     *
+     * <p>Trước đây chỉ {@code /reports/summary} nhận {@code wallet_id}; ba điểm cuối còn lại
+     * không có tham số nào để lọc, nên màn Tổng quan và Báo cáo luôn hiện toàn bộ dù người dùng
+     * đã chọn một ví cụ thể. Ca này canh cả bốn.
+     */
+    @Test
+    void reports_locTheoViTrenMoiDiemCuoi() throws Exception {
+        String token = registerAndGetAccessToken("loc.theo.vi@example.com");
+        String walletA = createWallet(token, "Ví A lọc", 5_000_000);
+        String walletB = createWallet(token, "Ví B lọc", 5_000_000);
+        String categoryId = createCategory(token, "Ăn uống lọc ví", "expense", null);
+
+        createExpenseTransaction(token, walletA, categoryId, 300_000);
+        createExpenseTransaction(token, walletB, categoryId, 700_000);
+
+        // Không lọc: thấy cả hai ví.
+        mockMvc.perform(get("/reports/home").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period_summary.total_expense").value(1_000_000));
+
+        // Lọc ví A: chỉ thấy 300.000.
+        mockMvc.perform(get("/reports/home")
+                        .header("Authorization", "Bearer " + token)
+                        .param("wallet_id", walletA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period_summary.total_expense").value(300_000));
+
+        mockMvc.perform(get("/reports/by-category-group")
+                        .header("Authorization", "Bearer " + token)
+                        .param("period", "month")
+                        .param("wallet_id", walletB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(700_000));
+
+        mockMvc.perform(get("/reports/by-category")
+                        .header("Authorization", "Bearer " + token)
+                        .param("period", "month")
+                        .param("wallet_id", walletA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(300_000));
+
+        // daily-trend phải lọc CẢ đường trung bình ba tháng trước, không riêng đường tháng này —
+        // nếu chỉ lọc một đường thì mốc so sánh thuộc phạm vi khác hẳn và biểu đồ nói dối.
+        mockMvc.perform(get("/reports/daily-trend")
+                        .header("Authorization", "Bearer " + token)
+                        .param("wallet_id", walletA))
+                .andExpect(status().isOk());
+    }
+
+    // Ví của người khác thì không lọc ra được gì — quyền nằm ngay trong câu truy vấn.
+    @Test
+    void reports_locTheoViCuaNguoiKhacTraVeRong() throws Exception {
+        String ownerToken = registerAndGetAccessToken("chu.vi.bao.cao@example.com");
+        String ownerWallet = createWallet(ownerToken, "Ví riêng", 5_000_000);
+        String categoryId = createCategory(ownerToken, "Ăn uống riêng tư", "expense", null);
+        createExpenseTransaction(ownerToken, ownerWallet, categoryId, 500_000);
+
+        String otherToken = registerAndGetAccessToken("nguoi.la.bao.cao@example.com");
+
+        mockMvc.perform(get("/reports/home")
+                        .header("Authorization", "Bearer " + otherToken)
+                        .param("wallet_id", ownerWallet))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period_summary.total_expense").value(0));
+    }
+
+    // ------------------------------------------- children_detail (api/06 mục 4)
+
+    /**
+     * Số giao dịch của từng danh mục con phải là số ĐẾM THẬT, không phải 0.
+     *
+     * <p>Câu SQL đã tính {@code COUNT(*)} nhưng projection bỏ sót getter nên giá trị bị vứt đi và
+     * service điền cứng {@code 0L}. Loại lỗi âm thầm: màn hình vẫn hiện số, vẫn trông hợp lý, chỉ
+     * là luôn bằng 0.
+     */
+    @Test
+    void childrenDetail_traVeSoGiaoDichThat_khongPhaiKhong() throws Exception {
+        String token = registerAndGetAccessToken("chi.tiet.con.dem@example.com");
+        String walletId = createWallet(token, "Ví đếm con", 5_000_000);
+        String parentId = createCategory(token, "Ăn uống đếm", "expense", null);
+        String childId = createCategory(token, "Cà phê đếm", "expense", parentId);
+
+        // Ba giao dịch vào con, hai vào cha.
+        createExpenseTransaction(token, walletId, childId, 30_000);
+        createExpenseTransaction(token, walletId, childId, 20_000);
+        createExpenseTransaction(token, walletId, childId, 18_000);
+        createExpenseTransaction(token, walletId, parentId, 100_000);
+        createExpenseTransaction(token, walletId, parentId, 42_000);
+
+        mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                // Con "Cà phê đếm": 68.000 từ 3 giao dịch.
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 68000)].transaction_count")
+                        .value(3))
+                // Dòng gán thẳng vào cha: 142.000 từ 2 giao dịch.
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 142000)].transaction_count")
+                        .value(2));
+    }
+
+    /**
+     * Giao dịch ghi THẲNG vào danh mục cha gom thành một dòng mang chính TÊN CỦA CHA, đứng ngang
+     * hàng với các con.
+     *
+     * <p>Trước đây dòng này ghép chuỗi {@code "Không phân loại " + txnType + " tiết"} → ra
+     * "Không phân loại expense tiết": lẫn tiếng Anh, vô nghĩa với người dùng. Tên cha vừa luôn có
+     * nghĩa vừa dùng chung được cho cả thu lẫn chi.
+     */
+    @Test
+    void childrenDetail_dongGanThangVaoCha_mangTenCuaCha() throws Exception {
+        String token = registerAndGetAccessToken("chi.tiet.con.ten@example.com");
+        String walletId = createWallet(token, "Ví tên con", 5_000_000);
+        String parentId = createCategory(token, "Ăn uống tên", "expense", null);
+        String childId = createCategory(token, "Cà phê tên", "expense", parentId);
+
+        createExpenseTransaction(token, walletId, childId, 68_000);
+        createExpenseTransaction(token, walletId, parentId, 142_000);
+
+        mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 142000)].name")
+                        .value("Ăn uống tên"))
+                .andExpect(jsonPath("$.data.items[0].children_detail[?(@.amount == 142000)].category_id")
+                        .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())));
+    }
+
+    /**
+     * Tổng các dòng {@code children_detail} phải bằng đúng {@code amount} của cha.
+     *
+     * <p>Đây là lý do dòng "gán thẳng vào cha" tồn tại: bỏ nó đi thì cộng các con lại sẽ nhỏ hơn
+     * tổng của cha, người dùng cộng tay rồi hỏi tiền đi đâu.
+     */
+    @Test
+    void childrenDetail_tongCacDongBangDungTongCuaCha() throws Exception {
+        String token = registerAndGetAccessToken("chi.tiet.con.tong@example.com");
+        String walletId = createWallet(token, "Ví tổng con", 5_000_000);
+        String parentId = createCategory(token, "Ăn uống tổng", "expense", null);
+        String childA = createCategory(token, "Ăn sáng tổng", "expense", parentId);
+        String childB = createCategory(token, "Ăn trưa tổng", "expense", parentId);
+
+        createExpenseTransaction(token, walletId, childA, 379_000);
+        createExpenseTransaction(token, walletId, childB, 397_000);
+        createExpenseTransaction(token, walletId, parentId, 320_000);
+
+        String response = mockMvc.perform(get("/reports/by-category")
+                        .param("period", "month")
+                        .param("level", "parent")
+                        .param("type", "expense")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        Map<?, ?> parent = (Map<?, ?>) ((java.util.List<?>) data.get("items")).get(0);
+        long parentAmount = ((Number) parent.get("amount")).longValue();
+        long childrenSum = ((java.util.List<?>) parent.get("children_detail"))
+                .stream()
+                        .mapToLong(c -> ((Number) ((Map<?, ?>) c).get("amount")).longValue())
+                        .sum();
+
+        org.assertj.core.api.Assertions.assertThat(childrenSum).isEqualTo(parentAmount);
+    }
+}

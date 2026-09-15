@@ -29,6 +29,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.JwtService;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
+import com.datn.financeapp.user.exception.AccountNotVerifiedException;
 import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.service.AccountService;
@@ -118,12 +119,9 @@ public class AuthServiceImpl implements AuthService {
 
         eventPublisher.publishEvent(new VerifyEmailEvent(email));
 
-
-//        userAccountService.confirmUserEmail(email);
         otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, email);
 
         var user = userAccountService.findByEmail(email);
-        assertUsable(user);
 
         eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), Instant.now()));
         return buildAuthResponse(user);
@@ -182,7 +180,6 @@ public class AuthServiceImpl implements AuthService {
         var user = userAccountService.findByEmail(email);
 
         boolean passwordOk = user != null
-                && !user.isDeleted()
                 && user.password() != null
                 && passwordEncoder.matches(req.password(), user.password());
 
@@ -199,15 +196,11 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthInvalidCredentialsException();
         }
 
-        // Chỉ người gõ ĐÚNG mật khẩu mới đáng được biết tài khoản đang bị khoá — sai mật khẩu thì
-        // đã trả INVALID_CREDENTIALS ở trên, không xác nhận email đó có tồn tại hay không.
-        // Kiểm ở đây chứ không ở findByEmail: xem Javadoc AccountServiceImpl.findByEmail.
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
+        // Chỉ người gõ ĐÚNG mật khẩu mới thẩm định trạng thái tài khoản
+        userAccountService.validateAccountForLogin(user);
 
-        if (user.notConfirm()) { // hoặc user.status() == UserStatus.PENDING_VERIFY
-            throw new AuthAccountNotVerifiedException();
+        if (user.notConfirm()) {
+            throw new AccountNotVerifiedException();
         }
 
         eventPublisher.publishEvent(new LoginSuccessEvent(user.id(), Instant.now()));
@@ -228,14 +221,14 @@ public class AuthServiceImpl implements AuthService {
             var byEmail = userAccountService.findByEmail(email);
             if (byEmail != null) {
                 // Đã có tài khoản bằng email -> liên kết với Google ID
-                assertUsable(byEmail);
+                userAccountService.validateAccountForLogin(byEmail);
                 user = userAccountService.linkGoogleAccount(byEmail.id(), info.googleId(), now);
             } else {
                 // Chưa từng có tài khoản -> tạo mới
                 user = userAccountService.createGoogleUser(email, info.googleId(), now);
             }
         } else {
-            assertUsable(user);
+            userAccountService.validateAccountForLogin(user);
         }
 
         // 2. Bắn event đăng nhập thành công (đồng bộ với hàm login thường)
@@ -336,6 +329,10 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthResetCodeInvalidException();
         }
 
+        if (user.password() != null && passwordEncoder.matches(req.newPassword(), user.password())) {
+            throw new AuthPasswordSameAsOldException();
+        }
+
         try {
             userAccountService.resetPasswordWithCode(user.id(), req.newPassword());
         } catch (UserNotFoundException e) {
@@ -352,34 +349,27 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.revokeAllActiveForUser(userId);
     }
 
-    // Kiểm tra tài khoản có đang bị tạm khoá đăng nhập (5 lần thất bại liên tiếp trong vòng 15 phút)
-    /**
-     * Chặn tài khoản đã xoá hoặc bị khoá ở những luồng mà danh tính đã được chứng minh sẵn
-     * (đăng nhập Google, xác thực email) — khác {@code login} bằng mật khẩu, nơi phải trả
-     * {@code INVALID_CREDENTIALS} trước để không xác nhận email có tồn tại.
-     *
-     * <p>Tài khoản đã xoá cố tình trả {@code INVALID_CREDENTIALS} chứ không phải mã riêng: với
-     * thế giới bên ngoài nó phải giống hệt một email chưa từng đăng ký.
-     */
-    private void assertUsable(UserAccountResponse user) {
-        if (user.isDeleted()) {
-            throw new AuthInvalidCredentialsException();
-        }
-        if (user.isBlocked()) {
-            throw new UserBlockedException();
-        }
-    }
 
     private boolean isLockedOut(String email) {
+        // BƯỚC 1: Lấy 5 lần đăng nhập gần đây nhất của email này
         List<LoginAttempt> recent = loginAttemptRepository.findTop5ByEmailOrderByAttemptedAtDesc(email);
+
+        // BƯỚC 2: Nếu chưa đủ 5 lần đăng nhập -> chưa đủ điều kiện khóa -> cho qua
         if (recent.size() < MAX_CONSECUTIVE_FAILURES) {
             return false;
         }
+
+        // BƯỚC 3: Kiểm tra xem cả 5 lần đó có PHẢI ĐỀU THẤT BẠI (nhập sai pass) hay không
+        // (Nếu có 1 lần đăng nhập đúng xen vào giữa thì chuỗi sai bị ngắt -> không khóa)
         boolean allFailed = recent.stream().noneMatch(LoginAttempt::getSucceeded);
         if (!allFailed) {
             return false;
         }
+
+        // BƯỚC 4: Kiểm tra thời gian của lần sai thứ 5 (lần gần nhất - recent.get(0))
         Instant mostRecentFailure = recent.get(0).getAttemptedAt();
+
+        // Nếu lần sai gần nhất diễn ra trong vòng 15 phút trở lại đây -> TRẢ VỀ TRUE (ĐANG BỊ KHÓA)
         return mostRecentFailure.isAfter(Instant.now().minus(LOCKOUT_MINUTES, ChronoUnit.MINUTES));
     }
 

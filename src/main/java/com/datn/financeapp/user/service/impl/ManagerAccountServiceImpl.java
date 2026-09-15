@@ -42,7 +42,6 @@ public class ManagerAccountServiceImpl implements ManagerAccountService {
     private final BlacklistedUserRepository blacklistedUserRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
-    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     private static final long DEFAULT_BLACKLIST_TTL_SECONDS = 3600;
     // Quy ước "số nhỏ = quyền cao" — user không có role nào phải là YẾU NHẤT (số cực lớn).
@@ -153,8 +152,8 @@ public class ManagerAccountServiceImpl implements ManagerAccountService {
 
         // Rời mọi nhóm gia đình — cùng quy tắc như người dùng tự xoá tài khoản, xem
         // ProfileServiceImpl.deleteMe và api/01-EXTEND-USER-PROFILE.md mục 3.
-        jdbcTemplate.update(
-                "UPDATE group_members SET is_active = FALSE WHERE user_id = ? AND is_active", userId);
+//        jdbcTemplate.update(
+//                "UPDATE group_members SET is_active = FALSE WHERE user_id = ? AND is_active", userId);
 
         eventPublisher.publishEvent(new UserDeletedEvent(userId));
 

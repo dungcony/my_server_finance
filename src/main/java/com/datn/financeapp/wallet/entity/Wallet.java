@@ -46,8 +46,8 @@ public class Wallet {
     @Column(name = "initial_balance", nullable = false)
     private Long initialBalance;
 
-    @Column(name = "current_balance", nullable = false)
-    private Long currentBalance;
+        @Column(name = "current_balance", nullable = false)
+        private Long currentBalance;
 
     @Column(name = "include_in_total", nullable = false)
     private Boolean includeInTotal;

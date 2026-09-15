@@ -1,5 +1,6 @@
 package com.datn.financeapp;
 
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
@@ -15,11 +16,9 @@ import java.net.Socket;
  * Nếu chưa có Redis chạy, tự động bật 1 container redis:7-alpine qua Testcontainers
  * và truyền thông tin host/port vào System property để Spring Boot tự động kết nối.
  */
+@Slf4j
 @Configuration
 public class TestRedisConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(TestRedisConfig.class);
-    private static GenericContainer<?> redisContainer;
 
     static {
         boolean localRedisAvailable = false;
@@ -34,7 +33,7 @@ public class TestRedisConfig {
         if (!localRedisAvailable) {
             try {
                 log.info("TestRedisConfig: Khởi động Redis Testcontainer (redis:7-alpine)...");
-                redisContainer = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+                GenericContainer<?> redisContainer = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
                         .withExposedPorts(6379);
                 redisContainer.start();
                 System.setProperty("spring.data.redis.host", redisContainer.getHost());

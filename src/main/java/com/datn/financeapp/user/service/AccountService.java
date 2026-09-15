@@ -52,4 +52,8 @@ public interface AccountService {
 
     // Level của role MẠNH NHẤT (số nhỏ nhất) trong các role đang gán cho user — nhúng vào JWT claim "roles_level_top".
     int findTopRoleLevel(UUID userId);
+
+    // Xác thực tài khoản có đủ điều kiện đăng nhập (chưa bị xóa, chưa bị khóa).
+    // Ném UserNotFoundException hoặc UserBlockedException nếu vi phạm.
+    void validateAccountForLogin(UserAccountResponse user);
 }
