@@ -266,7 +266,6 @@ public class BudgetServiceImpl implements BudgetService {
         Budget budget = Budget.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .groupId(null)
                 .categoryId(req.categoryId())
                 .walletId(req.walletId())
                 .limitAmount(req.limitAmount())

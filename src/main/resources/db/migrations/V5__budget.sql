@@ -9,8 +9,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 -- -------------------------------------------------------------
 CREATE TABLE budgets (
     id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id      UUID,
-    group_id     UUID,
+    user_id      UUID        NOT NULL,
     category_id  UUID        NOT NULL,
     wallet_id    UUID,
     limit_amount BIGINT      NOT NULL,
@@ -22,7 +21,6 @@ CREATE TABLE budgets (
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_bud_user     FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
-    CONSTRAINT fk_bud_group    FOREIGN KEY (group_id)    REFERENCES groups     (id) ON DELETE CASCADE,
     CONSTRAINT fk_bud_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
     CONSTRAINT fk_bud_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id) ON DELETE CASCADE,
 
@@ -30,16 +28,9 @@ CREATE TABLE budgets (
     CONSTRAINT ck_bud_period CHECK (period_type IN ('week', 'month', 'quarter', 'year')),
     CONSTRAINT ck_bud_dates  CHECK (end_date >= start_date),
 
-    -- Ngân sách thuộc cá nhân HOẶC nhóm
-    CONSTRAINT ck_bud_owner CHECK (
-        (user_id IS NOT NULL AND group_id IS NULL) OR
-        (user_id IS NULL     AND group_id IS NOT NULL)
-    ),
-
     -- Chống ngân sách trùng chéo thời gian
     CONSTRAINT ex_bud_no_overlap EXCLUDE USING gist (
-        COALESCE(user_id,  '00000000-0000-0000-0000-000000000000'::uuid) WITH =,
-        COALESCE(group_id, '00000000-0000-0000-0000-000000000000'::uuid) WITH =,
+        user_id WITH =,
         category_id WITH =,
         COALESCE(wallet_id, '00000000-0000-0000-0000-000000000000'::uuid) WITH =,
         daterange(start_date, end_date, '[]') WITH &&
@@ -47,7 +38,6 @@ CREATE TABLE budgets (
 );
 
 CREATE INDEX idx_bud_user   ON budgets (user_id, start_date, end_date) WHERE is_active;
-CREATE INDEX idx_bud_group  ON budgets (group_id) WHERE group_id IS NOT NULL AND is_active;
 CREATE INDEX idx_bud_renew  ON budgets (end_date) WHERE auto_renew AND is_active;
 
 -- -------------------------------------------------------------
@@ -80,7 +70,6 @@ CREATE OR REPLACE VIEW v_budget_progress AS
 SELECT
     b.id,
     b.user_id,
-    b.group_id,
     b.category_id,
     b.wallet_id,
     b.limit_amount,
@@ -109,14 +98,9 @@ LEFT JOIN LATERAL (
       AND t.date BETWEEN b.start_date AND b.end_date
       AND t.category_id IN (SELECT * FROM fn_category_tree(b.category_id))
       AND (b.wallet_id IS NULL OR t.wallet_id = b.wallet_id)
-      AND (
-            (b.user_id  IS NOT NULL AND t.user_id = b.user_id)
-         OR (b.group_id IS NOT NULL AND t.wallet_id IN (
-                SELECT w.id FROM wallets w
-                 WHERE w.group_id = b.group_id AND NOT w.is_deleted
-            ))
-      )
+      AND t.user_id = b.user_id
 ) s ON TRUE;
 
 COMMENT ON VIEW v_budget_progress IS
-    'Ngân sách kèm số đã chi, tỉ lệ và trạng thái. Đã cộng gộp danh mục con, lọc counts_in_report và giới hạn đúng phạm vi cá nhân/nhóm.';
+    'Ngân sách kèm số đã chi, tỉ lệ và trạng thái. Đã cộng gộp danh mục con, lọc counts_in_report và giới hạn đúng phạm vi cá nhân.';
+

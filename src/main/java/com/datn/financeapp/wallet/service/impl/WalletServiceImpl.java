@@ -124,8 +124,8 @@ public class WalletServiceImpl implements WalletService {
                 wallet.getInitialBalance(),
                 currentBalanceAsOfToday,
                 wallet.getIncludeInTotal(),
-                wallet.getGroupId() != null,
-                wallet.getGroupId(),
+                false,
+                null,
                 wallet.getIcon(),
                 wallet.getColor(),
                 wallet.getSortOrder(),
@@ -157,7 +157,6 @@ public class WalletServiceImpl implements WalletService {
         Wallet wallet = Wallet.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .groupId(null)
                 .name(req.name())
                 .type(req.type())
                 .initialBalance(req.initialBalance())
@@ -194,7 +193,6 @@ public class WalletServiceImpl implements WalletService {
         Wallet cashWallet = Wallet.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .groupId(null)
                 .name(DEFAULT_WALLET_NAME)
                 .type("cash")
                 .initialBalance(0L)

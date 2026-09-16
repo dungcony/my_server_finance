@@ -39,12 +39,8 @@ public class Budget {
     @Id
     private UUID id;
 
-    // Ngân sách cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_bud_owner).
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
-
-    @Column(name = "group_id")
-    private UUID groupId;
 
     @Column(name = "category_id", nullable = false)
     private UUID categoryId;

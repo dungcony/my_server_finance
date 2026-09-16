@@ -53,7 +53,6 @@ class BudgetRenewalWorker {
         Budget renewed = Budget.builder()
                 .id(UUID.randomUUID())
                 .userId(old.getUserId())
-                .groupId(old.getGroupId())
                 .categoryId(old.getCategoryId())
                 .walletId(old.getWalletId())
                 .limitAmount(old.getLimitAmount())

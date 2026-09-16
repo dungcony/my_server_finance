@@ -106,8 +106,6 @@ class WalletTransferIntegrationTest {
         jdbcTemplate.update("DELETE FROM transactions");
         refreshTokenRepository.deleteAll();
         walletRepository.deleteAll();
-        jdbcTemplate.update("DELETE FROM group_members");
-        jdbcTemplate.update("DELETE FROM groups");
         userRepository.deleteAll();
     }
 
@@ -206,25 +204,15 @@ class WalletTransferIntegrationTest {
     }
 
     @Test
-    void transferFromGroupWalletWithNullUserId_returns404NotFound() throws Exception {
-        String token = registerAndGetAccessToken("chuyen.tu.vi.chung@example.com");
+    void transferFromAnotherUserWallet_returns404NotFound() throws Exception {
+        String token = registerAndGetAccessToken("chuyen.tu.vi.khac@example.com");
         String destId = createWallet(token, "Ví Đích", "bank", 0);
 
-        java.util.UUID userId = jdbcTemplate.queryForObject(
-                "SELECT id FROM users WHERE email = ?", java.util.UUID.class, "chuyen.tu.vi.chung@example.com");
-        java.util.UUID groupId = java.util.UUID.randomUUID();
-        jdbcTemplate.update(
-                "INSERT INTO groups (id, name, created_by_id, invite_code, invite_code_expires_at) "
-                        + "VALUES (?, ?, ?, ?, now() + interval '7 days')",
-                groupId, "Nhóm Kiểm Thử Ví Chung", userId, "GRP" + System.nanoTime());
-        java.util.UUID groupWalletId = java.util.UUID.randomUUID();
-        jdbcTemplate.update(
-                "INSERT INTO wallets (id, user_id, group_id, name, type, initial_balance, current_balance) "
-                        + "VALUES (?, NULL, ?, ?, 'bank', 1000000, 1000000)",
-                groupWalletId, groupId, "Ví Chung Nhóm");
+        String otherToken = registerAndGetAccessToken("chu.vi.khac@example.com");
+        String otherWalletId = createWallet(otherToken, "Ví Người Khác", "bank", 1_000_000);
 
         Map<String, Object> body = Map.of(
-                "source_wallet_id", groupWalletId.toString(),
+                "source_wallet_id", otherWalletId,
                 "destination_wallet_id", destId,
                 "amount", 100_000);
 

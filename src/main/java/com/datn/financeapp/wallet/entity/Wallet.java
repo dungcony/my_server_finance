@@ -29,12 +29,8 @@ public class Wallet {
     @Id
     private UUID id;
 
-    // Ví cá nhân hoặc nhóm — đúng 1 trong 2 có giá trị (ck_wallets_owner).
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
-
-    @Column(name = "group_id")
-    private UUID groupId;
 
     @Column(name = "name", nullable = false)
     private String name;
