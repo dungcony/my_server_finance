@@ -179,6 +179,9 @@ public enum ErrorCode {
     // Xoá danh mục còn giao dịch mà chưa chỉ định danh mục thay thế.
     CATEGORY_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Còn giao dịch, cần chỉ định danh mục thay thế."),
 
+    // Không tìm thấy danh mục.
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy danh mục."),
+
     // Danh mục con phải cùng loại thu/chi với cha.
     TYPE_MISMATCH_WITH_PARENT(HttpStatus.BAD_REQUEST, "Danh mục con phải cùng loại thu/chi với cha."),
 
@@ -299,7 +302,52 @@ public enum ErrorCode {
     GOAL_CANCELLED(HttpStatus.CONFLICT, "Mục tiêu đã huỷ."),
 
     // Nạp tiền thật vào mục tiêu chưa gắn ví.
-    GOAL_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật.");
+    GOAL_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật."),
+
+    // ---------------------------------------------------------------------
+    // Nhóm chung quỹ — docs/prd/03-NHOM-CHUNG-QUY/thiet-ke/api.md
+    // ---------------------------------------------------------------------
+
+    GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy nhóm hoặc bạn không có quyền truy cập."),
+    GROUP_WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy quỹ của nhóm."),
+    GROUP_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch nhóm."),
+    GROUP_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thành viên trong nhóm."),
+    INVITE_CODE_INVALID(HttpStatus.NOT_FOUND, "Mã mời không đúng hoặc đã hết hạn."),
+    ALREADY_IN_GROUP(HttpStatus.CONFLICT, "Bạn đã là thành viên của nhóm này."),
+    FORBIDDEN_NOT_GROUP_MEMBER(HttpStatus.FORBIDDEN, "Bạn không phải thành viên của nhóm này."),
+    FORBIDDEN_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho chủ nhóm."),
+    FORBIDDEN_TREASURER_REQUIRED(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho người giữ quỹ hoặc chủ nhóm."),
+    CATEGORY_REQUIRED_FOR_EXPENSE(HttpStatus.BAD_REQUEST, "Khoản chi tiêu bắt buộc phải có danh mục."),
+    SYSTEM_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch nhóm chỉ được chọn danh mục hệ thống."),
+    PARTICIPANTS_SUM_MISMATCH(HttpStatus.BAD_REQUEST, "Tổng số tiền các thành viên chịu không khớp với số tiền giao dịch."),
+    CANNOT_DELETE_GROUP_WITH_BALANCE(HttpStatus.BAD_REQUEST, "Không thể xóa nhóm khi tổng số dư các quỹ chưa bằng 0."),
+    CANNOT_REMOVE_OWNER(HttpStatus.BAD_REQUEST, "Không thể xóa chủ nhóm hoặc chủ nhóm không thể tự rời khi là chủ nhóm duy nhất."),
+    GROUP_ARCHIVED(HttpStatus.BAD_REQUEST, "Nhóm đã lưu trữ, chỉ cho phép xem."),
+    GROUP_HAS_PENDING_TRANSACTIONS(HttpStatus.BAD_REQUEST, "Nhóm vẫn còn giao dịch đang chờ duyệt."),
+    HAS_PENDING_TRANSACTIONS(HttpStatus.CONFLICT, "Nhóm vẫn còn giao dịch đang chờ duyệt."),
+    GROUP_SETTLEMENT_REQUIRED(HttpStatus.BAD_REQUEST, "Tất cả thành viên phải tất toán công nợ trước khi xóa hoặc rời nhóm."),
+    MEMBER_SHARE_NOT_ZERO(HttpStatus.CONFLICT, "Phần trong quỹ của thành viên chưa bằng 0."),
+    OWNER_MUST_TRANSFER_FIRST(HttpStatus.CONFLICT, "Chủ nhóm phải chuyển quyền trước khi rời nhóm."),
+    TREASURER_MUST_TRANSFER_FIRST(HttpStatus.CONFLICT, "Thủ quỹ phải bàn giao quỹ trước khi rời nhóm."),
+    HOLDER_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người giữ quỹ phải là thành viên hợp lệ của nhóm."),
+    NEW_OWNER_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Chủ nhóm mới phải là thành viên của nhóm."),
+    CANNOT_TRANSFER_TO_SELF(HttpStatus.BAD_REQUEST, "Không thể chuyển quyền cho chính mình."),
+    DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "Thời điểm giao dịch không được ở tương lai."),
+    TRANSACTION_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch không được phép."),
+    MONEY_SOURCE_INVALID(HttpStatus.BAD_REQUEST, "Nguồn tiền không hợp lệ cho loại giao dịch này."),
+    PAYER_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người trả hoặc người góp không phải là thành viên có mặt tại thời điểm này."),
+    PARTICIPANT_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người tham gia không phải là thành viên có mặt tại thời điểm này."),
+    PARTICIPANTS_SHARE_MIXED(HttpStatus.BAD_REQUEST, "Số tiền chia của các thành viên phải đồng nhất (cùng có hoặc cùng trống)."),
+    PARTICIPANTS_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch này không được chỉ định người tham gia."),
+    FORBIDDEN_TRANSACTION_EDIT(HttpStatus.FORBIDDEN, "Bạn không có quyền chỉnh sửa giao dịch này."),
+    TRANSACTION_NOT_PENDING(HttpStatus.CONFLICT, "Giao dịch không ở trạng thái chờ duyệt."),
+    AMOUNT_EXCEEDS_SHARE(HttpStatus.CONFLICT, "Số tiền vượt quá phần trong quỹ hiện có của thành viên."),
+    AMOUNT_EXCEEDS_CONTRIBUTION(HttpStatus.CONFLICT, "Số tiền rút vượt quá số tiền đã góp còn lại."),
+    CANNOT_WITHDRAW_EXCEED_CONTRIBUTION(HttpStatus.BAD_REQUEST, "Số tiền rút vượt quá số tiền đã góp còn lại."),
+    CANNOT_WITHDRAW_EXCEED_BALANCE(HttpStatus.BAD_REQUEST, "Số tiền rút vượt quá phần trong quỹ hiện có."),
+    CANNOT_REFUND_EXCEED_BALANCE(HttpStatus.BAD_REQUEST, "Số tiền hoàn vượt quá phần trong quỹ hiện có."),
+    ONLY_OWNER_CAN_DELETE_TRANSACTION(HttpStatus.FORBIDDEN, "Chỉ chủ nhóm mới có quyền xóa giao dịch."),
+    CANNOT_MODIFY_CONFIRMED_ADJUSTMENT(HttpStatus.BAD_REQUEST, "Khoản kiểm kê không thể chỉnh sửa.");
 
     private final HttpStatus status;
     private final String defaultMessage;

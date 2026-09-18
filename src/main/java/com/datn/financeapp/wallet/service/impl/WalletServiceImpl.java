@@ -72,19 +72,10 @@ public class WalletServiceImpl implements WalletService {
                 "SELECT COUNT(*) FROM wallets WHERE user_id = ? AND include_in_total AND NOT is_deleted",
                 Long.class, userId);
 
-        // Ví chung: user phải là thành viên active của nhóm sở hữu ví. Phase 2 chưa ai INSERT
-        // vào group_members nên hai giá trị này luôn 0 — vẫn viết đúng logic để Phase 5 không
-        // phải sửa lại (D-27).
-        Long sharedTotal = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
-                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
-                        + "AND include_in_total AND NOT is_deleted",
-                Long.class, userId);
-        Long sharedWalletCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM wallets "
-                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
-                        + "AND include_in_total AND NOT is_deleted",
-                Long.class, userId);
+        // Mô hình hai sổ ghi tách biệt (Two Separate Ledgers): ví cá nhân và quỹ nhóm là hai bảng
+        // độc lập hoàn toàn. Sổ cá nhân không còn chứa ví nhóm.
+        Long sharedTotal = 0L;
+        Long sharedWalletCount = 0L;
 
         List<WalletSummaryResponse.ByTypeItem> byType = jdbcTemplate.query(
                 "SELECT type, COALESCE(SUM(current_balance), 0) AS total, COUNT(*) AS wallet_count "

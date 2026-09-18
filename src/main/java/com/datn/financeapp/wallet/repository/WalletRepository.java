@@ -36,8 +36,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Query(
             value = """
                     SELECT * FROM wallets w WHERE w.id = :id AND NOT w.is_deleted
-                    AND (w.user_id = :currentUser OR w.group_id IN
-                    (SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))
+                    AND w.user_id = :currentUser
                     """,
             nativeQuery = true)
     Optional<Wallet> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
@@ -50,8 +49,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Query(
             value = """
                     SELECT * FROM wallets w WHERE w.id = :id
-                    AND (w.user_id = :currentUser OR w.group_id IN
-                    (SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active))
+                    AND w.user_id = :currentUser
                     """,
             nativeQuery = true)
     Optional<Wallet> findByIdForUserIncludingDeleted(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
@@ -59,8 +57,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Query(
             value = """
                     SELECT * FROM wallets w WHERE NOT w.is_deleted
-                    AND (w.user_id = :currentUser OR (:includeShared = TRUE AND w.group_id IN
-                    (SELECT group_id FROM group_members WHERE user_id = :currentUser AND is_active)))
+                    AND w.user_id = :currentUser
                     AND (CAST(:type AS text) IS NULL OR w.type = CAST(:type AS text))
                     AND (CAST(:onlyInTotal AS boolean) IS NULL OR w.include_in_total = CAST(:onlyInTotal AS boolean))
                     ORDER BY w.sort_order
