@@ -51,7 +51,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             default -> "Vui lòng đăng nhập để tiếp tục.";
         };
 
-        log.warn("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
+        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, code + ": " + message);
+        log.debug("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
 
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
 

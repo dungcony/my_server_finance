@@ -30,14 +30,26 @@ import java.util.UUID;
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     public static final String ATTR_USER_ID = "authenticated.userId";
+    public static final String ATTR_ERROR_DETAIL = "request.errorDetail";
+    public static final String ATTR_ERROR_EXCEPTION = "request.errorException";
     private static final String HEADER_REQUEST_ID = "X-Request-Id";
     private static final String MDC_KEY_REQUEST_ID = "requestId";
+
+    private static final String[] STATIC_EXTENSIONS = {
+            ".css", ".js", ".html", ".ico", ".png", ".jpg", ".jpeg", ".svg", ".gif",
+            ".woff", ".woff2", ".ttf", ".eot", ".map"
+    };
 
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain chain) throws ServletException, IOException {
+
+        if (isStaticAsset(request.getRequestURI())) {
+            chain.doFilter(request, response);
+            return;
+        }
 
         long startTime = System.currentTimeMillis();
 
@@ -46,14 +58,11 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             requestId = UUID.randomUUID().toString();
         }
 
-        MDC.put(MDC_KEY_REQUEST_ID, requestId);
-        response.setHeader(HEADER_REQUEST_ID, requestId);
-
         String method = request.getMethod();
+        MDC.put(MDC_KEY_REQUEST_ID, requestId);
+        MDC.put("api", method + " " + request.getRequestURI());
+        response.setHeader(HEADER_REQUEST_ID, requestId);
         String fullPath = getFullPath(request);
-        String clientIp = ClientIpResolver.resolve(request);
-
-        log.info("--> {} {} [ip={}, reqId={}]", method, fullPath, clientIp, requestId);
 
         try {
             chain.doFilter(request, response);
@@ -61,21 +70,44 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             long duration = System.currentTimeMillis() - startTime;
             int status = response.getStatus();
             String userDisplay = resolveUserId(request);
+            String errorDetail = (String) request.getAttribute(ATTR_ERROR_DETAIL);
+            Throwable ex = (Throwable) request.getAttribute(ATTR_ERROR_EXCEPTION);
 
-            logResponse(method, fullPath, status, duration, userDisplay, requestId);
-            MDC.remove(MDC_KEY_REQUEST_ID);
+            logResponse(method, fullPath, status, duration, userDisplay, requestId, errorDetail, ex);
+            // Dọn sạch toàn bộ MDC (không chỉ requestId) vì filter này bọc ngoài cùng
+            // (HIGHEST_PRECEDENCE) toàn bộ chain, kể cả JwtAuthFilter phía sau có thể đã
+            // put thêm "userId". Thread của Tomcat được tái sử dụng giữa các request, nếu
+            // không clear hết thì request kế tiếp trên cùng thread có thể lộ userId của
+            // request trước.
+            MDC.clear();
         }
     }
 
+    private boolean isStaticAsset(String uri) {
+        if (uri == null) return false;
+        String lower = uri.toLowerCase();
+        for (String ext : STATIC_EXTENSIONS) {
+            if (lower.endsWith(ext)) return true;
+        }
+        return lower.contains("/static/") || lower.contains("/pages/") || lower.contains("/css/")
+                || lower.contains("/js/") || lower.contains("/sass/") || lower.equals("/favicon.ico");
+    }
+
     private void logResponse(
-            String method, String fullPath, int status, long duration, String userDisplay, String requestId) {
-        String msg = "<-- {} {} | status={} | time={}ms | user={} | reqId={}";
+            String method, String fullPath, int status, long duration,
+            String userDisplay, String requestId, String errorDetail, Throwable ex) {
+        String detail = (errorDetail != null && !errorDetail.isBlank()) ? errorDetail : "-";
+        String msg = "<-- {} {} | status={} | time={}ms | user={} | reqId={} | {}";
         if (status >= 500) {
-            log.error(msg, method, fullPath, status, duration, userDisplay, requestId);
+            if (ex != null) {
+                log.error(msg, method, fullPath, status, duration, userDisplay, requestId, detail, ex);
+            } else {
+                log.error(msg, method, fullPath, status, duration, userDisplay, requestId, detail);
+            }
         } else if (status >= 400) {
-            log.warn(msg, method, fullPath, status, duration, userDisplay, requestId);
+            log.warn(msg, method, fullPath, status, duration, userDisplay, requestId, detail);
         } else {
-            log.info(msg, method, fullPath, status, duration, userDisplay, requestId);
+            log.info(msg, method, fullPath, status, duration, userDisplay, requestId, detail);
         }
     }
 
@@ -96,6 +128,6 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             return auth.getName();
         }
 
-        return "anonymous";
+        return "anon";
     }
 }

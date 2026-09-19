@@ -5,16 +5,18 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
+import java.io.Serializable;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "group_transaction_participants")
-@IdClass(GroupTransactionParticipantId.class)
+@IdClass(GroupTransactionParticipant.GroupTransactionParticipantId.class)
 @Getter
 @Setter
 @Builder
@@ -32,4 +34,14 @@ public class GroupTransactionParticipant {
 
     @Column(name = "share_amount")
     private Long shareAmount;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    public static class GroupTransactionParticipantId implements Serializable {
+        private UUID groupTransactionId;
+        private UUID userId;
+    }
 }

@@ -1,38 +1,18 @@
 server:
   servlet:
-    context-path: /v1
+    context-path: ${PATH}
 
 spring:
+  profiles:
+    active: ${PROFILES_ACTIVE}
   application:
     name: financeapp
   jackson:
-    # api/00-QUY-UOC-CHUNG.md: mọi trường JSON dùng snake_case. DTO Java giữ camelCase chuẩn
-    # convention ngôn ngữ (CLAUDE.md gốc), Jackson tự chuyển đổi 2 chiều qua naming-strategy —
-    # không cần @JsonProperty thủ công trên từng field của mọi DTO hiện tại lẫn tương lai.
     property-naming-strategy: SNAKE_CASE
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 2000ms
-  flyway:
-    locations: filesystem:../../db/migration
-    encoding: UTF-8
-    baseline-on-migrate: false
+
   mail:
-    # M1: gửi mã đặt lại mật khẩu qua SMTP Gmail. Giá trị mặc định rỗng để context test
-    # (không nạp .env) vẫn khởi động được — profile test dùng LogPasswordResetNotifier,
-    # không đụng tới JavaMailSender.
-    host: smtp.gmail.com
-    port: 587
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
@@ -41,23 +21,15 @@ spring:
           auth: true
           starttls:
             enable: true
-          # Không để treo vô hạn khi mạng chặn cổng 587: forgot-password sẽ trả lỗi
-          # thay vì giữ request mãi.
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
 
 app:
   mail:
-    # Địa chỉ hiện trên trường From. Để trống thì dùng chính spring.mail.username —
-    # Gmail luôn ghi đè From bằng tài khoản đã xác thực nên hai giá trị này phải trùng.
     from: ${MAIL_FROM:${MAIL_USERNAME:}}
 
 google:
-  # D3: backend so trường `aud` của id_token với chuỗi này. Google đặt `aud` bằng
-  # WEB client id kể cả khi người dùng bấm nút trên Android — điền nhầm client
-  # Android vào đây thì mọi lần đăng nhập đều trượt (api/01 mục 13).
-  # Mặc định rỗng để context test khởi động được mà không cần .env.
   web-client-id: ${GOOGLE_WEB_CLIENT_ID:}
 
 jwt:

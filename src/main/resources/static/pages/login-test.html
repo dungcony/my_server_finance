@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Đăng Nhập - Finance AI Server</title>
+    <!-- Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="../css/login-test.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Finance AI — Test Đăng Nhập</h1>
+        <p>Trang kiểm thử xác thực Google OAuth & Tài khoản thường</p>
+    </div>
+
+    <!-- KHỐI 1: GOOGLE SIGN-IN -->
+    <div class="card">
+        <div class="card-title">
+            <span>🔐 Đăng Nhập Với Google</span>
+        </div>
+
+        <div class="google-box">
+            <!-- Nút Google One Tap / Sign-In Button tự render qua thẻ div này -->
+            <div id="g_id_onload"
+                 data-client_id="230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="handleGoogleResponse"
+                 data-auto_prompt="false">
+            </div>
+
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left">
+            </div>
+
+            <div class="client-id-info">
+                Web Client ID đang dùng: <code>230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com</code>
+            </div>
+        </div>
+
+        <div class="divider">HOẶC DÁN TOKEN THỬ THỦ CÔNG</div>
+
+        <div class="form-group">
+            <label for="manualToken">Google ID Token (JWT do Client Mobile/Web gửi lên):</label>
+            <textarea id="manualToken" rows="4" placeholder="Dán chuỗi id_token nhận được từ Google vào đây..."></textarea>
+        </div>
+
+        <button class="btn" onclick="sendManualToken()">Gửi POST /v1/auth/google</button>
+    </div>
+
+    <!-- KHỐI 2: KẾT QUẢ TỪ SERVER -->
+    <div class="card">
+        <div class="card-title">
+            <span>📡 Kết Quả Phản Hồi Từ Máy Chủ</span>
+        </div>
+
+        <div>
+            <span id="statusBadge" class="status-badge status-idle">Chờ gửi yêu cầu...</span>
+        </div>
+
+        <div id="responseView" class="response-box">Chưa có dữ liệu phản hồi...</div>
+    </div>
+</div>
+
+<script src="../js/login-test.js"></script>
+</body>
+</html>

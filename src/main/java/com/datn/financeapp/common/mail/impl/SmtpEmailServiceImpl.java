@@ -70,6 +70,7 @@ public class SmtpEmailServiceImpl implements EmailService {
 
         try {
             mailSender.send(message);
+            log.info("đã gửi {}", subject);
         } catch (MailException e) {
             log.error("Không gửi được email tới {}: {}", to, e.getMessage());
         }

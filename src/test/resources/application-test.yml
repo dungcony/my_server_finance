@@ -1,0 +1,11 @@
+# Profile test: dùng cho Testcontainers / Integration Tests
+# spring.datasource.* được @ServiceConnection tự override lúc chạy test.
+spring:
+  flyway:
+    locations: classpath:db/migrations,classpath:db/migration
+    encoding: UTF-8
+    baseline-on-migrate: false
+
+logging:
+  level:
+    com.datn.financeapp: WARN

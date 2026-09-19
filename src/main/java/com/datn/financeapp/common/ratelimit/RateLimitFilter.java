@@ -66,7 +66,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         .getEpochSecond()));
 
         if (!probe.isConsumed()) {
-            log.warn("Rate limit vượt ngưỡng tại {} {}: bucketKey={}", req.getMethod(), req.getRequestURI(), bucketKey);
+            req.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "RATE_LIMIT_EXCEEDED: Bạn đã gọi quá nhiều lần, vui lòng thử lại sau.");
+            log.debug("Rate limit vượt ngưỡng tại {} {}: bucketKey={}", req.getMethod(), req.getRequestURI(), bucketKey);
             res.setStatus(429);
             res.setContentType("application/json");
             res.getWriter()

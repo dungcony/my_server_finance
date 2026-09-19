@@ -1,7 +1,6 @@
 package com.datn.financeapp.group.repository;
 
 import com.datn.financeapp.group.entity.GroupTransactionParticipant;
-import com.datn.financeapp.group.entity.GroupTransactionParticipantId;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface GroupTransactionParticipantRepository
-        extends JpaRepository<GroupTransactionParticipant, GroupTransactionParticipantId> {
+        extends JpaRepository<GroupTransactionParticipant, GroupTransactionParticipant.GroupTransactionParticipantId> {
 
     List<GroupTransactionParticipant> findByGroupTransactionId(UUID groupTransactionId);
 

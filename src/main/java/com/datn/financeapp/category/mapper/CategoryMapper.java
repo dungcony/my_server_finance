@@ -48,6 +48,7 @@ public interface CategoryMapper {
     @Mapping(target = "sortOrder", source = "c.sortOrder")
     @Mapping(target = "createdAt", source = "c.createdAt")
     @Mapping(target = "children", source = "children")
+    @Mapping(target = "isEnabled", ignore = true)
     CategoryResponse toResponse(Category c, CategoryGroup group, Icon icon, List<CategoryResponse> children);
 
     default CategoryResponse.CategoryGroupSummary toGroupSummary(CategoryGroup group) {

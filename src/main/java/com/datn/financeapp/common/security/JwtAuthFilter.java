@@ -41,9 +41,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain chain) throws ServletException, IOException {
 
+        String token = null;
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+            token = header.substring(7);
+        } else {
+            String paramToken = request.getParameter("token");
+            if (paramToken != null && !paramToken.isBlank()) {
+                token = paramToken.trim();
+            }
+        }
+
+        if (token != null) {
             try {
                 Claims claims = jwtService.parseAndValidate(token);
                 String userId = claims.getSubject();
@@ -70,6 +79,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 authentication.setDetails(topRoleLevel);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
                 request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_USER_ID, userId);
+                // Đưa userId vào MDC để MỌI log phát sinh trong phần còn lại của request
+                // (không chỉ dòng tổng kết HTTP của RequestLoggingFilter) đều mang theo userId,
+                // phục vụ lọc log theo user ở admin console. Dọn dẹp tập trung ở
+                // RequestLoggingFilter.MDC.clear() vì filter đó bọc ngoài cùng.
+                org.slf4j.MDC.put("userId", userId);
             } catch (ExpiredJwtException ex) {
                 request.setAttribute(ATTR_TOKEN_ERROR, "TOKEN_EXPIRED");
             } catch (JwtException | IllegalArgumentException ex) {

@@ -31,7 +31,7 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 @Component
-@Profile("!test")
+@Profile("dev")
 public class AppRunner implements ApplicationRunner {
 
     private final RoleRepository roleRepository;
@@ -44,12 +44,12 @@ public class AppRunner implements ApplicationRunner {
     @Transactional
     @Override
     public void run(ApplicationArguments args) {
-        log.info("AppRunner: Khởi tạo/đồng bộ roles và permissions...");
-        initPermissions();
-        initRoles();
-        assignPermissionsToAdmin();
-        initAdminAccount();
-        log.info("AppRunner: Hoàn tất khởi tạo roles, permissions và tài khoản admin.");
+//        log.info("AppRunner: Khởi tạo/đồng bộ roles và permissions...");
+//        initPermissions();
+//        initRoles();
+//        assignPermissionsToAdmin();
+//        initAdminAccount();
+//        log.info("AppRunner: Hoàn tất khởi tạo roles, permissions và tài khoản admin.");
     }
 
     private void initAdminAccount() {
