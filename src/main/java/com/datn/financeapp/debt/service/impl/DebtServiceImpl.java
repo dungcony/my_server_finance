@@ -25,8 +25,6 @@ import com.datn.financeapp.transaction.service.TransactionWriter;
 import com.datn.financeapp.transaction.dto.response.TransactionRefResponse;
 import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.wallet.service.WalletService;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -39,7 +37,6 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -342,7 +339,7 @@ public class DebtServiceImpl implements DebtService {
 
         List<DebtPayment> payments = debtPaymentRepository.findByDebtId(debtId);
         List<UUID> paymentTransactionIds =
-                payments.stream().map(DebtPayment::getTransactionId).toList();
+                payments.stream().map(p -> p.getTransactionId()).toList();
         UUID originTransactionId = debt.getOriginTransactionId();
 
         // Xoá CỨNG bản ghi nợ -> cascade dọn debt_payments. Flush ngay để không còn bản ghi nào
@@ -506,7 +503,7 @@ public class DebtServiceImpl implements DebtService {
     private Map<UUID, WalletRefResponse> loadWallets(UUID userId, List<Debt> debts) {
         Map<UUID, WalletRefResponse> wallets = new HashMap<>();
         debts.stream()
-                .map(Debt::getWalletId)
+                .map(d -> d.getWalletId())
                 .filter(Objects::nonNull)
                 .distinct()
                 .forEach(id -> {

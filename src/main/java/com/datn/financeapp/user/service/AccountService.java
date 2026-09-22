@@ -1,7 +1,6 @@
 package com.datn.financeapp.user.service;
 
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
 
 import java.time.Instant;

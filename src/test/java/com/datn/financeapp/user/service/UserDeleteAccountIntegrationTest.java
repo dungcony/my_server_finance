@@ -43,6 +43,7 @@ import java.util.UUID;
 @SpringBootTest
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class UserDeleteAccountIntegrationTest {
 
     @Container

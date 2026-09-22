@@ -46,6 +46,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class IdempotencyAspectIntegrationTest {
 
     private static final UUID FIXED_USER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");

@@ -35,6 +35,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class BudgetRepositoryTest {
 
     @Container

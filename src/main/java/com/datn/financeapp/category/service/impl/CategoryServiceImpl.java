@@ -1,7 +1,6 @@
 package com.datn.financeapp.category.service.impl;
 
 import com.datn.financeapp.category.service.CategoryService;
-import com.datn.financeapp.category.service.CategoryService.IconGroupResponseWrapper;
 
 import com.datn.financeapp.category.dto.response.CategoryDetailResponse;
 import com.datn.financeapp.category.dto.response.CategoryGroupResponse;
@@ -10,7 +9,6 @@ import com.datn.financeapp.category.dto.request.CreateCategoryRequest;
 import com.datn.financeapp.category.dto.response.IconGroupResponse;
 import com.datn.financeapp.category.dto.response.CategoryRefResponse;
 import com.datn.financeapp.category.dto.response.IconRefResponse;
-import com.datn.financeapp.category.dto.response.IconResponse;
 import com.datn.financeapp.category.dto.request.ReorderCategoriesRequest;
 import com.datn.financeapp.category.dto.request.UpdateCategoryRequest;
 import com.datn.financeapp.category.entity.Category;
@@ -37,7 +35,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -90,7 +87,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         Map<UUID, List<CategoryResponse>> childrenByParent = flat.stream()
                 .filter(c -> c.parentCategoryId() != null)
-                .collect(Collectors.groupingBy(CategoryResponse::parentCategoryId, LinkedHashMap::new, Collectors.toList()));
+                .collect(Collectors.groupingBy(c -> c.parentCategoryId(), LinkedHashMap::new, Collectors.toList()));
 
         return flat.stream()
                 .filter(c -> c.parentCategoryId() == null)
@@ -491,6 +488,18 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(Category::getId)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.SYSTEM_CATEGORY_MISSING, "Thiếu danh mục hệ thống: " + name));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CategoryRefResponse validateSystemExpenseCategory(UUID categoryId) {
+        Category category = categoryRepository
+                .findById(categoryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        if (category.getUserId() != null || !"expense".equalsIgnoreCase(category.getType())) {
+            throw new BusinessException(ErrorCode.SYSTEM_CATEGORY_REQUIRED);
+        }
+        return toRef(category);
     }
 
     /**

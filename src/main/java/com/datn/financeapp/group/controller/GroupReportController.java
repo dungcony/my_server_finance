@@ -2,8 +2,8 @@ package com.datn.financeapp.group.controller;
 
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.group.dto.report.GroupBalanceReportRes;
-import com.datn.financeapp.group.dto.report.GroupSummaryReportRes;
+import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
+import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.service.GroupReportService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

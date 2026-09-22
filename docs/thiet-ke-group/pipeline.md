@@ -47,14 +47,14 @@ SELECT DISTINCT user_id
 
 ## 2. Xác định người tham gia và chia đều <a id="2-xac-dinh-nguoi-tham-gia"></a>
 
-```
+```text
 Có dòng trong group_transaction_participants  →  đúng những người đó
 Không có dòng nào                              →  mọi thành viên có mặt tại thời điểm giao dịch (mục 1)
 ```
 
 **Chia đều** (khi `share_amount` trống):
 
-```
+```text
 phần cơ bản = amount / số người
 phần dư     = amount % số người    → thêm 1đ cho những người đầu danh sách
 
@@ -81,7 +81,7 @@ Mỗi nhóm có đúng một quỹ. Ảnh hưởng của từng khoản lên qu�
 | `ADJUSTMENT_UP` | `FUND` | + `amount` |
 | `ADJUSTMENT_DOWN` | `FUND` | − `amount` |
 
-```
+```text
 current_balance = Σ ảnh hưởng của mọi khoản CONFIRMED, chưa xoá
 ```
 
@@ -95,7 +95,7 @@ current_balance = Σ ảnh hưởng của mọi khoản CONFIRMED, chưa xoá
 
 Chỉ dùng khi **bật** tính thừa thiếu.
 
-```
+```text
 phần của X = Σ CONTRIBUTION           có user_id = X
            + Σ EXPENSE (PERSONAL)      có user_id = X
            − Σ REFUND                  có user_id = X
@@ -140,6 +140,7 @@ Bất biến: Σ phần của mọi người = số dư quỹ
 4. **Người mới vào nhóm** có đã góp = 0, nên cần nộp đúng bằng mức mỗi người.
 
 **Hiển thị thành viên trong bảng tiền:**
+
 - **Thành viên `ACTIVE`:** luôn hiển thị.
 - **Thành viên đã rời (`LEFT` / `REMOVED`):**
   - Phần trong quỹ bằng 0 → **ẩn hoàn toàn**, không hiển thị để bảng gọn gàng.
@@ -152,9 +153,9 @@ Bất biến: Σ phần của mọi người = số dư quỹ
 
 Trong **một** transaction CSDL:
 
-1. Tạo `groups`, sinh `invite_code` và hạn 7 ngày. `target` không nhập thì để `NULL`.
+1. Tạo `groups`, sinh `invite_code` (không thời hạn). `target` không nhập thì để `NULL`.
 2. Tạo `group_members` cho người tạo: `role = OWNER`, `status = ACTIVE`, `joined_at = now()`.
-3. Tạo **quỹ duy nhất** của nhóm trong `group_wallets`, `held_by_user_id` = người tạo. Tên lấy từ màn tạo nhóm (mặc định "Quỹ chung"); số dư bắt đầu từ **0**.
+3. Tạo **quỹ duy nhất** của nhóm trong `group_wallets`, `held_by_user_id` = người tạo; số dư bắt đầu từ **0**.
 
 Quỹ đã có sẵn tiền thì sau khi tạo nhóm, ghi mỗi người đã đưa tiền một khoản **góp quỹ** (mục 8). Không ghi thành số dư ban đầu, vì số đó không thuộc phần của ai: tổng phần lệch số dư quỹ ngay từ đầu, và khi bật tính thừa thiếu thì không trả lại được cho ai.
 
@@ -168,7 +169,7 @@ Thiếu bước 3 thì nhóm sinh ra đã vi phạm [rule.md](rule.md) quy tắc
 
 **Màn ghi khoản chi** chỉ hỏi thêm ba thứ, cả ba có sẵn giá trị mặc định:
 
-```
+```text
 Trả bằng     [ Tiền quỹ ▾ ]         ← money_source: FUND (mặc định) | PERSONAL (tiền bản thân)
 Ai tham gia    Tất cả (3)  ›        ← mặc định tất cả; chạm vào để bỏ tích
 Lúc           [ Bây giờ ▾ ]         ← occurred_at, mặc định lúc mở màn; ghi bù thì chọn ngày và giờ
@@ -230,11 +231,13 @@ Thủ quỹ hoặc chủ nhóm đếm tiền thật, bấm **"Kiểm kê"**, nh�
 Trong **một** transaction CSDL:
 
 1. **Khoá dòng quỹ** và đọc số dư mới nhất:
+
    ```sql
    SELECT current_balance FROM group_wallets
     WHERE group_id = :groupId AND status = 'ACTIVE'
     FOR UPDATE;
    ```
+
    Khoản xác nhận hoặc ghi phát sinh cùng lúc phải chờ kiểm kê xong.
 2. `difference = actual_balance − current_balance` vừa đọc.
 
@@ -247,6 +250,7 @@ Trong **một** transaction CSDL:
    Dòng kiểm kê: `money_source = FUND`, `user_id` = thủ quỹ, `created_by` = người bấm, **`status = CONFIRMED`** ngay, `reviewed_by` = người bấm.
 3. Người bị bỏ tích (nếu có) → ghi các dòng người tham gia cho những người còn lại. Không bỏ tích ai → **không ghi dòng nào** (chia đều cả nhóm, vì thường không biết ai làm lệch).
 4. **Cộng chênh lệch**, không ghi đè:
+
    ```sql
    UPDATE group_wallets
       SET current_balance = current_balance + :difference
@@ -281,11 +285,13 @@ Qua kiểm tra thì, trong **một** transaction CSDL:
 Các khoản đã ghi **không đổi**: khoản "cả nhóm" có thời điểm trước lúc rời vẫn tính người đó (mục 1), khoản sau lúc rời thì không.
 
 **Ví dụ.** A, B, C mỗi người góp 1.000.000đ; B và C đi chơi riêng tiêu 2.400.000đ tiền quỹ. Phần: A 1.000.000 · B −200.000 · C −200.000; quỹ 600.000.
+
 - C muốn rời → bị chặn, báo "còn thiếu 200.000đ". C góp 200.000đ, thủ quỹ xác nhận → phần C = 0 → rời được.
 - A muốn rời → bị chặn, báo "quỹ còn giữ 1.000.000đ của bạn". Quỹ lúc này chỉ có 800.000đ nên thực tế cần đợi B góp nốt 200.000đ, rồi thủ quỹ ghi A rút 1.000.000đ tiền góp (`WITHDRAWAL`) → phần A = 0 → rời được.
 
 **Xử lý khi phần của người đã rời bị lệch sau đó:**
 Lúc rời phần đã bằng 0, nhưng nếu sau đó chủ nhóm sửa/xoá khoản cũ hoặc ghi bù làm phần của người đã rời $\ne 0$:
+
 - Bảng tiền `/balances` tự động hiển thị người đó kèm số tiền thừa/thiếu.
 - Nhóm giải quyết bằng cả 2 cách:
   - **Cách A (Người cũ nộp bù):** Người đó chuyển khoản trả nhóm $\to$ thủ quỹ ghi nhận khoản `CONTRIBUTION` với `user_id` = người đó $\to$ phần về 0 $\to$ tự động ẩn khỏi bảng tiền.
@@ -372,7 +378,7 @@ Trong **một** transaction CSDL:
 
 **Khi đang lưu trữ:** chỉ cho xem; mọi thao tác ghi khác bị chặn ([rule.md](rule.md) mục 3.7).
 
-**Mở lại** — chủ nhóm: `groups.status = ACTIVE`. Mã mời cũ nếu đã hết hạn thì chủ nhóm tạo mã mới như bình thường.
+**Mở lại** — chủ nhóm: `groups.status = ACTIVE`.
 
 ---
 

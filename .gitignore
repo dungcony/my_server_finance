@@ -4,5 +4,7 @@ target/
 .idea/
 *.iml
 .planing
-
+.classpath 
+.project
+.settings/
 src/main/resources/application-dev.yml

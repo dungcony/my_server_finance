@@ -30,7 +30,6 @@ import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.JwtService;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
 import com.datn.financeapp.user.exception.AccountNotVerifiedException;
-import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.service.AccountService;
 

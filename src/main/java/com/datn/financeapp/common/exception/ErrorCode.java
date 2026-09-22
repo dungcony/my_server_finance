@@ -320,6 +320,7 @@ public enum ErrorCode {
     CATEGORY_REQUIRED_FOR_EXPENSE(HttpStatus.BAD_REQUEST, "Khoản chi tiêu bắt buộc phải có danh mục."),
     SYSTEM_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch nhóm chỉ được chọn danh mục hệ thống."),
     PARTICIPANTS_SUM_MISMATCH(HttpStatus.BAD_REQUEST, "Tổng số tiền các thành viên chịu không khớp với số tiền giao dịch."),
+    INVALID_PARTICIPANT_DATA(HttpStatus.BAD_REQUEST, "Dữ liệu người tham gia giao dịch không hợp lệ."),
     CANNOT_DELETE_GROUP_WITH_BALANCE(HttpStatus.BAD_REQUEST, "Không thể xóa nhóm khi tổng số dư các quỹ chưa bằng 0."),
     CANNOT_REMOVE_OWNER(HttpStatus.BAD_REQUEST, "Không thể xóa chủ nhóm hoặc chủ nhóm không thể tự rời khi là chủ nhóm duy nhất."),
     GROUP_ARCHIVED(HttpStatus.BAD_REQUEST, "Nhóm đã lưu trữ, chỉ cho phép xem."),

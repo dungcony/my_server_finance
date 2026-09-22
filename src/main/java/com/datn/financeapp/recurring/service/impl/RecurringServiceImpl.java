@@ -15,18 +15,15 @@ import com.datn.financeapp.recurring.dto.request.UpdateRecurringRequest;
 import com.datn.financeapp.recurring.entity.RecurringTransaction;
 import com.datn.financeapp.recurring.mapper.RecurringMapper;
 import com.datn.financeapp.recurring.repository.RecurringTransactionRepository;
-import com.datn.financeapp.transaction.dto.response.GeneratedTransactionResponse;
 import com.datn.financeapp.transaction.service.TransactionService;
 import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.wallet.service.WalletService;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

@@ -3,14 +3,14 @@ package com.datn.financeapp.group.controller;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.group.dto.group.GroupCreateReq;
-import com.datn.financeapp.group.dto.group.GroupDetailRes;
-import com.datn.financeapp.group.dto.group.GroupInviteCodeRes;
-import com.datn.financeapp.group.dto.group.GroupJoinReq;
-import com.datn.financeapp.group.dto.group.GroupMemberRes;
-import com.datn.financeapp.group.dto.group.GroupMemberRoleReq;
-import com.datn.financeapp.group.dto.group.GroupSummaryRes;
-import com.datn.financeapp.group.dto.group.GroupUpdateReq;
+import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
+import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.group.GroupInviteCodeRes;
+import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
+import com.datn.financeapp.group.dto.response.group.GroupMemberRes;
+import com.datn.financeapp.group.dto.request.group.GroupMemberRoleReq;
+import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
+import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.service.GroupService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -138,7 +138,7 @@ public class GroupController {
     @PostMapping("/{id}/transfer-ownership")
     public ApiResponse<Void> transferOwnership(
             @PathVariable UUID id,
-            @Valid @RequestBody com.datn.financeapp.group.dto.group.GroupTransferOwnershipReq req) {
+            @Valid @RequestBody com.datn.financeapp.group.dto.request.group.GroupTransferOwnershipReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
         groupService.transferOwnership(userId, id, req.newOwnerId());
         return ApiResponse.of(null);

@@ -2,24 +2,23 @@ package com.datn.financeapp.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.report.GroupBalanceItemRes;
-import com.datn.financeapp.group.dto.report.GroupBalanceReportRes;
-import com.datn.financeapp.group.dto.report.GroupSummaryReportRes;
-import com.datn.financeapp.group.dto.wallet.GroupWalletRes;
-import com.datn.financeapp.group.entity.Group;
+import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
+import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
+import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
+import com.datn.financeapp.group.dto.response.wallet.GroupWalletRes;
 import com.datn.financeapp.group.entity.GroupMember;
-import com.datn.financeapp.group.entity.GroupWallet;
-import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.GroupTransactionType;
 import com.datn.financeapp.group.enums.GroupWalletStatus;
 import com.datn.financeapp.group.enums.MemberStatus;
+import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
+import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.repository.GroupMemberRepository;
-import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.GroupWalletRepository;
-import com.datn.financeapp.group.service.GroupBalanceCalculator;
-import com.datn.financeapp.group.service.GroupBalanceCalculator.MemberBalances;
+import com.datn.financeapp.group.service.GroupBalanceService;
 import com.datn.financeapp.group.service.GroupReportService;
+import com.datn.financeapp.group.service.GroupService;
+import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.repository.UserRepository;
 import java.time.Instant;
@@ -41,20 +40,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GroupReportServiceImpl implements GroupReportService {
 
-    private final GroupRepository groupRepository;
+    private final GroupService groupService;
     private final GroupMemberRepository groupMemberRepository;
-    private final GroupWalletRepository groupWalletRepository;
     private final GroupTransactionRepository groupTransactionRepository;
     private final UserRepository userRepository;
-    private final GroupBalanceCalculator balanceCalculator;
+    private final GroupBalanceService balanceService;
+    private final GroupPermissionValidator permissionValidator;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     @Override
     public GroupSummaryReportRes getSummary(UUID userId, UUID groupId, String month) {
-        verifyGroupMember(groupId, userId);
-        Group group = findActiveGroup(groupId);
-        GroupWallet wallet = getActiveWallet(groupId);
+        permissionValidator.verifyActiveMember(groupId, userId);
+        GroupDetailRes group = groupService.findById(groupId);
+        GroupWalletRes fundRes = group.fund();
+        if (fundRes == null || fundRes.status() != GroupWalletStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.GROUP_WALLET_NOT_FOUND);
+        }
 
         YearMonth ym;
         if (month != null && !month.isBlank()) {
@@ -72,12 +74,10 @@ public class GroupReportServiceImpl implements GroupReportService {
         Long totalContribution = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
                 groupId, GroupTransactionType.CONTRIBUTION, fromTime, toTime);
 
-        GroupWalletRes fundRes = mapToWalletRes(wallet);
-
         return new GroupSummaryReportRes(
-                group.getId(),
-                group.getName(),
-                group.getTarget(),
+                group.id(),
+                group.name(),
+                group.target(),
                 period,
                 fundRes,
                 totalExpense != null ? totalExpense : 0L,
@@ -87,17 +87,14 @@ public class GroupReportServiceImpl implements GroupReportService {
 
     @Override
     public GroupBalanceReportRes getBalances(UUID userId, UUID groupId) {
-        verifyGroupMember(groupId, userId);
-        Group group = findActiveGroup(groupId);
-        GroupWallet wallet = getActiveWallet(groupId);
+        permissionValidator.verifyActiveMember(groupId, userId);
+        GroupDetailRes group = groupService.findById(groupId);
+        GroupWalletRes fund = group.fund();
+        if (fund == null || fund.status() != GroupWalletStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.GROUP_WALLET_NOT_FOUND);
+        }
 
-        MemberBalances mb = balanceCalculator.calculateBalances(groupId, null);
-        Map<UUID, Long> contributedMap = mb.getContributedMap();
-        Map<UUID, Long> paidOutOfPocketMap = mb.getPaidOutOfPocketMap();
-        Map<UUID, Long> refundedMap = mb.getRefundedMap();
-        Map<UUID, Long> withdrawnMap = mb.getWithdrawnMap();
-        Map<UUID, Long> shareMap = mb.getShareMap();
-        Map<UUID, Long> netBalanceMap = mb.getNetBalanceMap();
+        MemberBalances mb = balanceService.calculateBalances(groupId, null);
 
         List<GroupMember> allMembers = groupMemberRepository.findByGroupIdOrderByJoinedAtDesc(groupId);
         List<GroupMember> activeMembers = allMembers.stream()
@@ -107,19 +104,19 @@ public class GroupReportServiceImpl implements GroupReportService {
 
         // Danh sách thành viên cần hiển thị:
         // ACTIVE luôn hiển thị; LEFT/REMOVED chỉ hiển thị khi net_balance != 0
-        List<GroupMember> displayMembers = new ArrayList<>();
-        displayMembers.addAll(activeMembers);
+        List<GroupMember> displayMembers = new ArrayList<>(activeMembers);
 
         for (GroupMember m : allMembers) {
             if (m.getStatus() == MemberStatus.LEFT || m.getStatus() == MemberStatus.REMOVED) {
-                long net = netBalanceMap.getOrDefault(m.getUserId(), 0L);
+                long net = mb.getNetBalance(m.getUserId());
                 if (net != 0L) {
                     displayMembers.add(m);
                 }
             }
         }
 
-        List<UUID> displayUserIds = displayMembers.stream().map(GroupMember::getUserId).distinct().toList();
+        // Batch load profile user cho các member cần hiển thị
+        List<UUID> displayUserIds = displayMembers.stream().map(GroupMember::getUserId).toList();
         Map<UUID, String> userNames = new HashMap<>();
         if (!displayUserIds.isEmpty()) {
             List<User> users = userRepository.findAllById(displayUserIds);
@@ -128,8 +125,8 @@ public class GroupReportServiceImpl implements GroupReportService {
             }
         }
 
-        boolean isSettlement = Boolean.TRUE.equals(group.getIsSettlementEnabled());
-        Long target = group.getTarget();
+        boolean isSettlement = Boolean.TRUE.equals(group.isSettlementEnabled());
+        Long target = group.target();
 
         // Tính target quota cho từng thành viên ACTIVE nếu có target
         Map<UUID, Long> targetQuotaMap = new HashMap<>();
@@ -149,28 +146,31 @@ public class GroupReportServiceImpl implements GroupReportService {
         for (GroupMember m : displayMembers) {
             UUID uid = m.getUserId();
             String name = userNames.getOrDefault(uid, "Thành viên " + uid.toString().substring(0, 8));
-            long contributed = contributedMap.getOrDefault(uid, 0L);
 
-            if (!isSettlement) {
-                // Tắt tính thừa thiếu: chỉ hiển thị total_contributed
+            MemberBalanceAccumulator b = mb.get(uid);
+            if (b == null) {
+                long needed = 0L;
+                if (m.getStatus() == MemberStatus.ACTIVE) {
+                    if (target != null && target > 0) {
+                        needed = targetQuotaMap.getOrDefault(uid, 0L);
+                    }
+                }
+                totalNeeded += needed;
+
                 balances.add(new GroupBalanceItemRes(
                         uid,
                         name,
                         m.getStatus().name(),
-                        contributed,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null
+                        0L, 0L, 0L, 0L, 0L, 0L,
+                        needed
                 ));
             } else {
-                long outOfPocket = paidOutOfPocketMap.getOrDefault(uid, 0L);
-                long refunded = refundedMap.getOrDefault(uid, 0L);
-                long withdrawn = withdrawnMap.getOrDefault(uid, 0L);
-                long share = shareMap.getOrDefault(uid, 0L);
-                long net = netBalanceMap.getOrDefault(uid, 0L);
+                long contributed = b.getRawContribution();
+                long outOfPocket = b.getPaidOutOfPocket();
+                long refunded = b.getRefunded();
+                long withdrawn = b.getWithdrawn();
+                long share = b.getShare();
+                long net = b.getNetBalance();
 
                 long needed;
                 if (m.getStatus() == MemberStatus.ACTIVE) {
@@ -205,9 +205,9 @@ public class GroupReportServiceImpl implements GroupReportService {
         Long totalNeededRes = isSettlement ? totalNeeded : null;
 
         return new GroupBalanceReportRes(
-                group.getId(),
+                group.id(),
                 target,
-                wallet.getCurrentBalance(),
+                fund.currentBalance(),
                 totalNeededRes,
                 isSettlement,
                 balances
@@ -226,38 +226,4 @@ public class GroupReportServiceImpl implements GroupReportService {
         }
         return "Người dùng " + u.getId().toString().substring(0, 8);
     }
-
-    private Group findActiveGroup(UUID groupId) {
-        return groupRepository.findById(groupId)
-                .filter(g -> g.getStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-    }
-
-    private GroupWallet getActiveWallet(UUID groupId) {
-        return groupWalletRepository.findFirstByGroupIdAndStatus(groupId, GroupWalletStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_WALLET_NOT_FOUND));
-    }
-
-    private void verifyGroupMember(UUID groupId, UUID userId) {
-        boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                groupId, userId, MemberStatus.ACTIVE
-        );
-        if (!isMember) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER);
-        }
-    }
-
-    private GroupWalletRes mapToWalletRes(GroupWallet wallet) {
-        return new GroupWalletRes(
-                wallet.getId(),
-                wallet.getGroupId(),
-                wallet.getHeldByUserId(),
-                wallet.getName(),
-                0L,
-                wallet.getCurrentBalance(),
-                wallet.getStatus(),
-                wallet.getCreatedAt()
-        );
-    }
 }
-

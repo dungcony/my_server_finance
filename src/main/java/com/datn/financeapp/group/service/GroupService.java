@@ -1,21 +1,31 @@
 package com.datn.financeapp.group.service;
 
-import com.datn.financeapp.group.dto.group.GroupCreateReq;
-import com.datn.financeapp.group.dto.group.GroupDetailRes;
-import com.datn.financeapp.group.dto.group.GroupInviteCodeRes;
-import com.datn.financeapp.group.dto.group.GroupJoinReq;
-import com.datn.financeapp.group.dto.group.GroupMemberRes;
-import com.datn.financeapp.group.dto.group.GroupSummaryRes;
-import com.datn.financeapp.group.dto.group.GroupUpdateReq;
+import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
+import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.group.GroupInviteCodeRes;
+import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
+import com.datn.financeapp.group.dto.response.group.GroupMemberRes;
+import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
+import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.enums.GroupRole;
 import java.util.List;
 import java.util.UUID;
 
 public interface GroupService {
 
+    GroupDetailRes findNotDeletedById(UUID id);
+
+    default GroupDetailRes findById(UUID id) {
+        return findNotDeletedById(id);
+    }
+
     GroupDetailRes create(UUID userId, GroupCreateReq req);
 
-    List<GroupSummaryRes> list(UUID userId);
+    List<GroupSummaryRes> groupsByUser(UUID userId);
+
+    default List<GroupSummaryRes> list(UUID userId) {
+        return groupsByUser(userId);
+    }
 
     GroupDetailRes detail(UUID userId, UUID groupId);
 

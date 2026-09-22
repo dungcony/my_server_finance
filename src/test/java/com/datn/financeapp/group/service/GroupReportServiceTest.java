@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import com.datn.financeapp.group.dto.report.GroupBalanceItemRes;
-import com.datn.financeapp.group.dto.report.GroupBalanceReportRes;
+import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
+import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.entity.GroupMember;
 import com.datn.financeapp.group.entity.GroupTransaction;
@@ -17,12 +17,19 @@ import com.datn.financeapp.group.enums.GroupTransactionStatus;
 import com.datn.financeapp.group.enums.GroupTransactionType;
 import com.datn.financeapp.group.enums.GroupWalletStatus;
 import com.datn.financeapp.group.enums.MemberStatus;
+import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.wallet.GroupWalletRes;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.repository.GroupMemberRepository;
 import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.repository.GroupTransactionParticipantRepository;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.GroupWalletRepository;
+import com.datn.financeapp.group.helper.GroupBalanceCalculator;
+import com.datn.financeapp.group.service.GroupBalanceService;
+import com.datn.financeapp.group.service.GroupReportService;
+import com.datn.financeapp.group.service.GroupService;
+import com.datn.financeapp.group.service.impl.GroupBalanceServiceImpl;
+import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.group.service.impl.GroupReportServiceImpl;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.repository.UserRepository;
@@ -41,13 +48,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GroupReportServiceTest {
 
     @Mock
-    private GroupRepository groupRepository;
+    private GroupService groupService;
 
     @Mock
     private GroupMemberRepository groupMemberRepository;
-
-    @Mock
-    private GroupWalletRepository groupWalletRepository;
 
     @Mock
     private GroupTransactionRepository groupTransactionRepository;
@@ -58,7 +62,11 @@ class GroupReportServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private GroupRepository groupRepository;
+
     private GroupBalanceCalculator balanceCalculator;
+    private GroupBalanceService balanceService;
     private GroupReportServiceImpl reportService;
 
     private UUID groupId;
@@ -73,19 +81,23 @@ class GroupReportServiceTest {
         userB = UUID.randomUUID();
         userC = UUID.randomUUID();
 
-        balanceCalculator = new GroupBalanceCalculator(
+        balanceCalculator = new GroupBalanceCalculator();
+        balanceService = new GroupBalanceServiceImpl(
                 groupTransactionRepository,
                 participantRepository,
-                groupMemberRepository
+                groupMemberRepository,
+                balanceCalculator
         );
 
+        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupMemberRepository, groupRepository);
+
         reportService = new GroupReportServiceImpl(
-                groupRepository,
+                groupService,
                 groupMemberRepository,
-                groupWalletRepository,
                 groupTransactionRepository,
                 userRepository,
-                balanceCalculator
+                balanceService,
+                permissionValidator
         );
     }
 
@@ -93,16 +105,30 @@ class GroupReportServiceTest {
     @DisplayName("Kiểm tra công thức bất biến: Tổng phần mọi người = Tổng số dư quỹ")
     void testGetBalances_InvariantHolds() {
         // Given
-        Group group = Group.builder()
-                .id(groupId)
-                .name("Du lịch Đà Nẵng")
-                .status(GroupStatus.ACTIVE)
-                .target(15000000L)
-                .isSettlementEnabled(true)
-                .isJoinWithoutConfirm(true)
-                .build();
+        GroupWalletRes wallet = new GroupWalletRes(
+                UUID.randomUUID(),
+                groupId,
+                userA,
+                3000000L,
+                GroupWalletStatus.ACTIVE,
+                Instant.now()
+        );
 
-        when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
+        GroupDetailRes group = new GroupDetailRes(
+                groupId,
+                "Du lịch Đà Nẵng",
+                null,
+                GroupStatus.ACTIVE,
+                15000000L,
+                true,
+                true,
+                Instant.now(),
+                GroupRole.OWNER,
+                wallet,
+                List.of()
+        );
+
+        when(groupService.findById(groupId)).thenReturn(group);
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, userA, MemberStatus.ACTIVE))
                 .thenReturn(true);
 
@@ -117,17 +143,6 @@ class GroupReportServiceTest {
         User uC = User.builder().id(userC).firstName("C").lastName("Le").build();
 
         when(userRepository.findAllById(any())).thenReturn(List.of(uA, uB, uC));
-
-        GroupWallet wallet = GroupWallet.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .name("Quỹ chung")
-                .currentBalance(3000000L)
-                .status(GroupWalletStatus.ACTIVE)
-                .heldByUserId(userA)
-                .createdAt(Instant.now())
-                .build();
-        when(groupWalletRepository.findFirstByGroupIdAndStatus(groupId, GroupWalletStatus.ACTIVE)).thenReturn(Optional.of(wallet));
 
         Instant now = Instant.now();
 
@@ -190,7 +205,7 @@ class GroupReportServiceTest {
 
         GroupTransactionParticipant pB = GroupTransactionParticipant.builder().groupTransactionId(tx4Id).userId(userB).shareAmount(300000L).build();
         GroupTransactionParticipant pC = GroupTransactionParticipant.builder().groupTransactionId(tx4Id).userId(userC).shareAmount(300000L).build();
-        when(participantRepository.findByGroupTransactionId(tx4Id)).thenReturn(List.of(pB, pC));
+        when(participantRepository.findByGroupTransactionIdIn(any())).thenReturn(List.of(pB, pC));
 
         // When
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);

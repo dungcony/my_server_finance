@@ -16,32 +16,32 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 - [1. Quy ước Giao tiếp API Chung](#1-quy-uoc)
 - [2. Danh mục Điểm cuối API (Endpoints Summary)](#2-endpoints-summary)
 - [3. Đặc tả Chi tiết các DTO & API Endpoints Trọng Tâm](#3-dac-ta-chi-tiet)
-    - [3.1 Quản lý Nhóm & Thành viên](#31-nhom-va-thanh-vien)
-        - [Tạo nhóm mới (`POST /v1/groups`)](#311-tao-nhom)
-        - [Danh sách & Chi tiết nhóm (`GET /v1/groups`, `GET /v1/groups/{id}`)](#312-danh-sach-chi-tiet-nhom)
-        - [Cập nhật thông tin nhóm (`PATCH /v1/groups/{id}`)](#313-cap-nhat-nhom)
-        - [Lấy hoặc Làm mới mã mời (`POST /v1/groups/{id}/invite-code`)](#314-ma-moi)
-        - [Tham gia nhóm bằng mã mời (`POST /v1/groups/join`)](#315-tham-gia-nhom)
-        - [Danh sách thành viên nhóm (`GET /v1/groups/{id}/members`)](#315b-danh-sach-thanh-vien)
-        - [Duyệt hoặc từ chối thành viên chờ](#316-duyet-thanh-vien)
-        - [Chuyển quyền chủ nhóm (`POST /v1/groups/{id}/transfer-ownership`)](#317-chuyen-quyen-chu-nhom)
-        - [Rời nhóm và mời thành viên rời nhóm](#318-roi-nhom)
-        - [Lưu trữ và mở lại nhóm](#319-luu-tru-nhom)
-        - [Xoá nhóm (`DELETE /v1/groups/{id}`)](#3110-xoa-nhom)
-    - [3.2 Quỹ Nhóm (`GroupWallet`) — mỗi nhóm một quỹ](#32-quan-ly-quy)
-        - [Xem quỹ (`GET /v1/groups/{id}/fund`)](#321-xem-quy)
-        - [Đổi tên, bàn giao quỹ (`PATCH /v1/groups/{id}/fund`)](#322-sua-quy)
-    - [3.3 Giao dịch Nhóm (`GroupTransaction`)](#33-giao-dich-nhom)
-        - [Tạo giao dịch nhóm (`POST /v1/groups/{id}/transactions`)](#331-tao-giao-dich)
-        - [Lịch sử & Chi tiết giao dịch](#332-lich-su-chi-tiet-giao-dich)
-        - [Trả lại tiền và rút tiền góp (`/refunds`, `/withdrawals`)](#333a-tra-lai-tien)
-        - [Xác nhận hoặc từ chối giao dịch](#333b-xac-nhan-tu-choi)
-        - [Sửa & Xóa giao dịch](#333-sua-xoa-giao-dich)
-    - [3.4 Kiểm kê Quỹ (`Reconciliation`)](#34-kiem-ke-quy)
-        - [Kiểm kê số dư thực tế (`POST /v1/groups/{id}/fund/reconcile`)](#341-kiem-ke-thuc-te)
-    - [3.5 Tổng quan Tài chính & Bảng Phần Trong Quỹ](#35-tong-quan-tai-chinh)
-        - [Tổng quan tài chính nhóm (`GET /v1/groups/{id}/summary`)](#351-tong-quan-summary)
-        - [Bảng phần trong quỹ & Tình trạng nộp quỹ (`GET /v1/groups/{id}/balances`)](#352-bang-phan-balances)
+  - [3.1 Quản lý Nhóm & Thành viên](#31-nhom-va-thanh-vien)
+    - [Tạo nhóm mới (`POST /v1/groups`)](#311-tao-nhom)
+    - [Danh sách & Chi tiết nhóm (`GET /v1/groups`, `GET /v1/groups/{id}`)](#312-danh-sach-chi-tiet-nhom)
+    - [Cập nhật thông tin nhóm (`PATCH /v1/groups/{id}`)](#313-cap-nhat-nhom)
+    - [Lấy hoặc Làm mới mã mời (`POST /v1/groups/{id}/invite-code`)](#314-ma-moi)
+    - [Tham gia nhóm bằng mã mời (`POST /v1/groups/join`)](#315-tham-gia-nhom)
+    - [Danh sách thành viên nhóm (`GET /v1/groups/{id}/members`)](#315b-danh-sach-thanh-vien)
+    - [Duyệt hoặc từ chối thành viên chờ](#316-duyet-thanh-vien)
+    - [Chuyển quyền chủ nhóm (`POST /v1/groups/{id}/transfer-ownership`)](#317-chuyen-quyen-chu-nhom)
+    - [Rời nhóm và mời thành viên rời nhóm](#318-roi-nhom)
+    - [Lưu trữ và mở lại nhóm](#319-luu-tru-nhom)
+    - [Xoá nhóm (`DELETE /v1/groups/{id}`)](#3110-xoa-nhom)
+  - [3.2 Quỹ Nhóm (`GroupWallet`) — mỗi nhóm một quỹ](#32-quan-ly-quy)
+    - [Xem quỹ (`GET /v1/groups/{id}/fund`)](#321-xem-quy)
+    - [Đổi tên, bàn giao quỹ (`PATCH /v1/groups/{id}/fund`)](#322-sua-quy)
+  - [3.3 Giao dịch Nhóm (`GroupTransaction`)](#33-giao-dich-nhom)
+    - [Tạo giao dịch nhóm (`POST /v1/groups/{id}/transactions`)](#331-tao-giao-dich)
+    - [Lịch sử & Chi tiết giao dịch](#332-lich-su-chi-tiet-giao-dich)
+    - [Trả lại tiền và rút tiền góp (`/refunds`, `/withdrawals`)](#333a-tra-lai-tien)
+    - [Xác nhận hoặc từ chối giao dịch](#333b-xac-nhan-tu-choi)
+    - [Sửa & Xóa giao dịch](#333-sua-xoa-giao-dich)
+  - [3.4 Kiểm kê Quỹ (`Reconciliation`)](#34-kiem-ke-quy)
+    - [Kiểm kê số dư thực tế (`POST /v1/groups/{id}/fund/reconcile`)](#341-kiem-ke-thuc-te)
+  - [3.5 Tổng quan Tài chính & Bảng Phần Trong Quỹ](#35-tong-quan-tai-chinh)
+    - [Tổng quan tài chính nhóm (`GET /v1/groups/{id}/summary`)](#351-tong-quan-summary)
+    - [Bảng phần trong quỹ & Tình trạng nộp quỹ (`GET /v1/groups/{id}/balances`)](#352-bang-phan-balances)
 - [4. Bảng Ma trận Mã Lỗi Phản Hồi API (Error Code Matrix)](#4-ma-tran-ma-loi)
 - [5. Biểu đồ Lớp Phân Tầng Spring Boot (Architecture Class Diagram)](#5-class-diagram)
 
@@ -49,14 +49,15 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 
 ## 1. Quy ước Giao tiếp API Chung <a id="1-quy-uoc"></a>
 
-* **Base URL:** `/v1/groups`
-* **Quy ước đặt tên DTO:** Tuân thủ chuẩn `<Object><Action>Req` (cho Request) và `<Object><Action>Res` (cho Response).
-* **Headers Bắt buộc:**
-    * `Authorization: Bearer <jwt_access_token>` (Chứa `userId` của tài khoản đăng nhập)
-    * `Content-Type: application/json`
-    * `Idempotency-Key: <UUID>` (Khuyến nghị, không bắt buộc, với các request ghi tạo mới: tạo nhóm, ghi giao dịch, trả
+- **Base URL:** `/v1/groups`
+- **Quy ước đặt tên DTO:** Tuân thủ chuẩn `<Object><Action>Req` (cho Request) và `<Object><Action>Res` (cho Response).
+- **Headers Bắt buộc:**
+  - `Authorization: Bearer <jwt_access_token>` (Chứa `userId` của tài khoản đăng nhập)
+  - `Content-Type: application/json`
+  - `Idempotency-Key: <UUID>` (Khuyến nghị, không bắt buộc, với các request ghi tạo mới: tạo nhóm, ghi giao dịch, trả
       lại tiền, rút tiền góp, kiểm kê. Không bắt buộc vì khoản thành viên ghi trùng vẫn phải qua bước xác nhận)
-* **Cấu trúc JSON Response Chuẩn (2xx):**
+- **Cấu trúc JSON Response Chuẩn (2xx):**
+
   ```json
   {
     "success": true,
@@ -64,7 +65,8 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
     "message": "Thao tác thành công"
   }
   ```
-* **Cấu trúc JSON Error Chuẩn (4xx / 5xx):**
+- **Cấu trúc JSON Error Chuẩn (4xx / 5xx):**
+
   ```json
   {
     "success": false,
@@ -128,7 +130,7 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và tạo **quỹ duy nhất** của nhóm, do người tạo giữ
 ([pipeline.md](pipeline.md) mục 6).
 
-* **Request Body (`GroupCreateReq`):**
+- **Request Body (`GroupCreateReq`):**
 
 ```json
 {
@@ -141,17 +143,17 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 }
 ```
 
-* **Jakarta Validation:**
-    * `name`: `@NotBlank`, `@Size(max = 100)`
-    * `description`: `@Size(max = 255)`
-    * `target`: Tùy chọn, `@Positive`, `@Max(999999999999L)`. Không nhập thì lưu `NULL` (tuyệt đối không đổi thành 0).
-    * `is_settlement_enabled`: `@NotNull`
-    * `is_join_without_confirm`: `@NotNull`
-    * `fund_name`: `@NotBlank`, `@Size(max = 50)`
-    * **Không có `initial_balance`:** quỹ luôn bắt đầu từ 0. Quỹ đã có sẵn tiền thì sau khi tạo nhóm, ghi cho mỗi người
+- **Jakarta Validation:**
+  - `name`: `@NotBlank`, `@Size(max = 100)`
+  - `description`: `@Size(max = 255)`
+  - `target`: Tùy chọn, `@Positive`, `@Max(999999999999L)`. Không nhập thì lưu `NULL` (tuyệt đối không đổi thành 0).
+  - `is_settlement_enabled`: `@NotNull`
+  - `is_join_without_confirm`: `@NotNull`
+  - `fund_name`: `@NotBlank`, `@Size(max = 50)`
+  - **Không có `initial_balance`:** quỹ luôn bắt đầu từ 0. Quỹ đã có sẵn tiền thì sau khi tạo nhóm, ghi cho mỗi người
       đã đưa tiền một khoản `CONTRIBUTION` ([pipeline.md](pipeline.md) mục 6)
 
-* **Response (`HTTP 201 Created` - `GroupDetailRes`):**
+- **Response (`HTTP 201 Created` - `GroupDetailRes`):**
 
 ```json
 {
@@ -168,7 +170,6 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
     "my_role": "OWNER",
     "fund": {
       "id": "w1000000-0000-0000-0000-000000000001",
-      "name": "Quỹ chung tiền mặt",
       "held_by_user_id": "u1000000-0000-0000-0000-000000000001",
       "current_balance": 0,
       "status": "ACTIVE"
@@ -193,9 +194,9 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 
 #### Danh sách & Chi tiết nhóm (`GET /v1/groups`, `GET /v1/groups/{id}`) <a id="312-danh-sach-chi-tiet-nhom"></a>
 
-* **`GET /v1/groups`:** các nhóm người dùng đang là thành viên `ACTIVE`, **gồm cả nhóm `ARCHIVED`** — app dựa vào
+- **`GET /v1/groups`:** các nhóm người dùng đang là thành viên `ACTIVE`, **gồm cả nhóm `ARCHIVED`** — app dựa vào
   `status` để hiện nhãn "Đã lưu trữ".
-* **`GET /v1/groups` Response (`HTTP 200 OK` - `List<GroupSummaryRes>`):**
+- **`GET /v1/groups` Response (`HTTP 200 OK` - `List<GroupSummaryRes>`):**
 
 ```json
 {
@@ -219,8 +220,8 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 
 #### Cập nhật thông tin nhóm (`PATCH /v1/groups/{id}`) <a id="313-cap-nhat-nhom"></a>
 
-* **Phân quyền:** Chỉ `OWNER` của nhóm.
-* **Request Body (`GroupUpdateReq`):**
+- **Phân quyền:** Chỉ `OWNER` của nhóm.
+- **Request Body (`GroupUpdateReq`):**
 
 ```json
 {
@@ -233,51 +234,49 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 }
 ```
 
-* **Jakarta Validation:**
-    * `name`: Tùy chọn, `@Size(max = 100)`
-    * `description`: Tùy chọn, `@Size(max = 255)`
-    * `target`: Tùy chọn, `@Positive`, `@Max(999999999999L)`
-    * `clear_target`: Tùy chọn, boolean. Nếu `true`, gỡ bỏ mục tiêu quỹ (chuyển `target` về `NULL`).
-    * `is_settlement_enabled`: Tùy chọn, boolean
-    * `is_join_without_confirm`: Tùy chọn, boolean
-* **Nghiệp vụ:**
-    * Nếu `clear_target = true`: Đặt `target = NULL` (gỡ bỏ mục tiêu).
-    * Nếu `clear_target != true` và có truyền `target`: Cập nhật mục tiêu mới.
-    * Nếu cả hai không truyền: Giữ nguyên mục tiêu hiện tại.
-* **Response (`HTTP 200 OK` - `GroupDetailRes`).**
+- **Jakarta Validation:**
+  - `name`: Tùy chọn, `@Size(max = 100)`
+  - `description`: Tùy chọn, `@Size(max = 255)`
+  - `target`: Tùy chọn, `@Positive`, `@Max(999999999999L)`
+  - `clear_target`: Tùy chọn, boolean. Nếu `true`, gỡ bỏ mục tiêu quỹ (chuyển `target` về `NULL`).
+  - `is_settlement_enabled`: Tùy chọn, boolean
+  - `is_join_without_confirm`: Tùy chọn, boolean
+- **Nghiệp vụ:**
+  - Nếu `clear_target = true`: Đặt `target = NULL` (gỡ bỏ mục tiêu).
+  - Nếu `clear_target != true` và có truyền `target`: Cập nhật mục tiêu mới.
+  - Nếu cả hai không truyền: Giữ nguyên mục tiêu hiện tại.
+- **Response (`HTTP 200 OK` - `GroupDetailRes`).**
 
 ---
 
 #### Lấy hoặc Làm mới mã mời (`POST /v1/groups/{id}/invite-code`) <a id="314-ma-moi"></a>
 
-* **Phân quyền:** Chỉ `OWNER` của nhóm.
-* **Query Parameters:**
-    * `regenerate` (boolean, tùy chọn, mặc định `false`):
-        * `false`: Lấy mã mời hiện tại (nếu mã cũ đã hết hạn thì tự sinh mã mới kèm hạn 7 ngày).
-        * `true`: Chủ động hủy mã cũ và sinh ngay mã mới có hạn 7 ngày tiếp theo (kịch bản GD-KB-29).
-* **Response (`HTTP 200 OK` - `GroupInviteCodeRes`):**
+- **Phân quyền:** Chỉ `OWNER` của nhóm.
+- **Query Parameters:**
+  - `regenerate` (boolean, tùy chọn, mặc định `false`):
+    - `false`: Lấy mã mời hiện tại của nhóm.
+    - `true`: Chủ động hủy mã cũ và sinh ngay mã mời mới (kịch bản GD-KB-29).
+- **Response (`HTTP 200 OK` - `GroupInviteCodeRes`):**
 
 ```json
 {
   "success": true,
   "data": {
-    "invite_code": "DN7K2QXP",
-    "expires_at": "2026-09-23T10:00:00Z"
+    "invite_code": "DN7K2QXP"
   },
   "message": "Thao tác thành công"
 }
 ```
 
-* **Nghiệp vụ:**
-    * Mã mời gồm **8 ký tự** viết hoa ngẫu nhiên, chữ và số dễ đọc (bỏ `0`/`O`, `1`/`I`).
-    * Hạn sử dụng mặc định là 7 ngày (`now() + 7 days`).
-    * Trả về `expires_at` để ứng dụng di động hiển thị thời gian còn lại cho người dùng.
+- **Nghiệp vụ:**
+  - Mã mời gồm **8 ký tự** viết hoa ngẫu nhiên, chữ và số dễ đọc (bỏ `0`/`O`, `1`/`I`).
+  - Mã mời không có thời hạn hết hạn (có mã là tham gia được) cho đến khi chủ nhóm chủ động làm mới.
 
 ---
 
 #### Tham gia nhóm bằng mã mời (`POST /v1/groups/join`) <a id="315-tham-gia-nhom"></a>
 
-* **Request Body (`GroupJoinReq`):**
+- **Request Body (`GroupJoinReq`):**
 
 ```json
 {
@@ -285,18 +284,18 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 }
 ```
 
-* **Nghiệp vụ:**
-    * Kiểm tra tính hợp lệ và thời hạn của mã mời: Đối chiếu `invite_code` và kiểm tra `invite_code_expires_at > now()`.
-      Nếu mã không tồn tại, sai ký tự hoặc đã hết hạn quá 7 ngày, hệ thống trả về lỗi `404 INVITE_CODE_INVALID` (*"Mã
-      mời không chính xác hoặc đã hết hạn"*).
-    * Kiểm tra người dùng đã là thành viên (`ACTIVE` hoặc `PENDING`) chưa: nếu rồi trả về lỗi `409 ALREADY_IN_GROUP`.
-    * Nhóm đang lưu trữ → `409 GROUP_ARCHIVED`.
-    * Nếu nhóm có `is_join_without_confirm = true`: Tạo `group_members` với `status = ACTIVE`, `joined_at = now()`.
-    * Nếu `is_join_without_confirm = false`: Tạo `group_members` với `status = PENDING`, `joined_at = NULL`. Thành viên
+- **Nghiệp vụ:**
+  - Kiểm tra tính hợp lệ của mã mời: Đối chiếu `invite_code` trong bảng `groups` (trừ nhóm trạng thái `DELETED`).
+      Nếu mã không tồn tại hoặc sai ký tự, hệ thống trả về lỗi `404 INVITE_CODE_INVALID` (*"Mã
+      mời không chính xác"*). Có mã là được xin vào nhóm.
+  - Kiểm tra người dùng đã là thành viên (`ACTIVE` hoặc `PENDING`) chưa: nếu rồi trả về lỗi `409 ALREADY_IN_GROUP`.
+  - Nhóm đang lưu trữ → `409 GROUP_ARCHIVED`.
+  - Nếu nhóm có `is_join_without_confirm = true`: Tạo `group_members` với `status = ACTIVE`, `joined_at = now()`.
+  - Nếu `is_join_without_confirm = false`: Tạo `group_members` với `status = PENDING`, `joined_at = NULL`. Thành viên
       chưa thấy nội dung nhóm cho đến khi được chủ nhóm duyệt.
-    * Người từng `LEFT` / `REMOVED` quay lại: **tạo bản ghi mới**, không sửa bản ghi cũ ([rule.md](rule.md) quy tắc 4).
+  - Người từng `LEFT` / `REMOVED` quay lại: **tạo bản ghi mới**, không sửa bản ghi cũ ([rule.md](rule.md) quy tắc 4).
 
-* **Response (`HTTP 200 OK` - `GroupJoinRes`):** **chỉ trả trạng thái**, không trả quỹ, giao dịch hay danh sách thành
+- **Response (`HTTP 200 OK` - `GroupJoinRes`):** **chỉ trả trạng thái**, không trả quỹ, giao dịch hay danh sách thành
   viên.
 
   Lý do: người `PENDING` không được thấy nội dung nhóm ([rule.md](rule.md) quy tắc 7). Không được gọi lại
@@ -324,11 +323,11 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 
 #### Danh sách thành viên nhóm (`GET /v1/groups/{id}/members`) <a id="315b-danh-sach-thanh-vien"></a>
 
-* **Phân quyền:** Chỉ thành viên `ACTIVE` của nhóm → nếu không: `403 FORBIDDEN_NOT_GROUP_MEMBER`.
-* **Query Parameters:**
-    * `status` (chuỗi, tùy chọn): Lọc theo trạng thái thành viên (`ACTIVE`, `PENDING`, `LEFT`, `REMOVED`). Nếu để trống:
+- **Phân quyền:** Chỉ thành viên `ACTIVE` của nhóm → nếu không: `403 FORBIDDEN_NOT_GROUP_MEMBER`.
+- **Query Parameters:**
+  - `status` (chuỗi, tùy chọn): Lọc theo trạng thái thành viên (`ACTIVE`, `PENDING`, `LEFT`, `REMOVED`). Nếu để trống:
       lấy toàn bộ thành viên hiện tại và lịch sử tham gia nhóm.
-* **Response (`HTTP 200 OK` - `List<GroupMemberRes>`):**
+- **Response (`HTTP 200 OK` - `List<GroupMemberRes>`):**
 
 ```json
 {
@@ -376,11 +375,11 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 
 #### Duyệt hoặc từ chối thành viên chờ <a id="316-duyet-thanh-vien"></a>
 
-* **`POST /v1/groups/{id}/members/{userId}/approve`** — duyệt
-    * **Phân quyền:** Chỉ `OWNER` của nhóm.
-    * **Nghiệp vụ:** Chỉ áp dụng cho bản ghi đang `PENDING`. Chuyển `status` sang `ACTIVE`, gán `joined_at = now()`.
-* **`DELETE /v1/groups/{id}/members/{userId}`** với người đang `PENDING` — từ chối
-    * **Nghiệp vụ:** **Xoá hẳn** bản ghi `PENDING`. Người này chưa từng ở trong nhóm nên không có lịch sử cần giữ, và
+- **`POST /v1/groups/{id}/members/{userId}/approve`** — duyệt
+  - **Phân quyền:** Chỉ `OWNER` của nhóm.
+  - **Nghiệp vụ:** Chỉ áp dụng cho bản ghi đang `PENDING`. Chuyển `status` sang `ACTIVE`, gán `joined_at = now()`.
+- **`DELETE /v1/groups/{id}/members/{userId}`** với người đang `PENDING` — từ chối
+  - **Nghiệp vụ:** **Xoá hẳn** bản ghi `PENDING`. Người này chưa từng ở trong nhóm nên không có lịch sử cần giữ, và
       ràng buộc `ck_gm_dates` không cho một bản ghi `REMOVED` thiếu `joined_at`.
 
 ---
@@ -391,8 +390,8 @@ Nhóm luôn có **đúng một** `OWNER` đang `ACTIVE` ([rule.md](rule.md) quy 
 tuỳ ý — endpoint `PATCH /v1/groups/{id}/members/{userId}/role` trước đây đã bị bỏ, vì nó cho phép tạo nhóm không có chủ
 hoặc có nhiều chủ.
 
-* **Phân quyền:** Chỉ `OWNER` hiện tại.
-* **Request Body (`GroupTransferOwnershipReq`):**
+- **Phân quyền:** Chỉ `OWNER` hiện tại.
+- **Request Body (`GroupTransferOwnershipReq`):**
 
 ```json
 {
@@ -400,29 +399,29 @@ hoặc có nhiều chủ.
 }
 ```
 
-* **Jakarta Validation:** `new_owner_user_id`: `@NotNull`
-* **Nghiệp vụ** — trong **một** transaction CSDL:
+- **Jakarta Validation:** `new_owner_user_id`: `@NotNull`
+- **Nghiệp vụ** — trong **một** transaction CSDL:
     1. `new_owner_user_id` phải là thành viên `ACTIVE` của nhóm → nếu không: `400 NEW_OWNER_NOT_MEMBER`.
     2. `new_owner_user_id` khác người gọi → nếu trùng: `400 CANNOT_TRANSFER_TO_SELF`.
     3. Chủ cũ: `role = MEMBER`. Người nhận: `role = OWNER`.
     4. Chủ cũ đang giữ quỹ thì quỹ **không tự đổi người giữ** — chủ mới bàn giao lại nếu muốn.
-* **Response:** `HTTP 200 OK`, `data = null`.
+- **Response:** `HTTP 200 OK`, `data = null`.
 
 ---
 
 #### Rời nhóm và mời thành viên rời nhóm <a id="318-roi-nhom"></a>
 
-* **`POST /v1/groups/{id}/leave`** — thành viên tự rời
-    * Người gọi phải đang `ACTIVE`.
-    * Người gọi là `OWNER` → **chặn** với `409 OWNER_MUST_TRANSFER_FIRST`. Chủ nhóm phải chuyển quyền trước.
-    * Người gọi đang giữ quỹ (thủ quỹ) → **chặn** với `409 TREASURER_MUST_TRANSFER_FIRST`. Phải bàn giao quỹ trước.
-* **`DELETE /v1/groups/{id}/members/{userId}`** — chủ nhóm mời rời (với người đang `ACTIVE`)
-    * **Phân quyền:** Chỉ `OWNER`.
-    * Không mời chính mình rời: `409 CANNOT_REMOVE_OWNER`.
-    * Người đó đang giữ quỹ → **chặn** với `409 TREASURER_MUST_TRANSFER_FIRST`. Chủ nhóm bàn giao quỹ (`PATCH /fund`)
+- **`POST /v1/groups/{id}/leave`** — thành viên tự rời
+  - Người gọi phải đang `ACTIVE`.
+  - Người gọi là `OWNER` → **chặn** với `409 OWNER_MUST_TRANSFER_FIRST`. Chủ nhóm phải chuyển quyền trước.
+  - Người gọi đang giữ quỹ (thủ quỹ) → **chặn** với `409 TREASURER_MUST_TRANSFER_FIRST`. Phải bàn giao quỹ trước.
+- **`DELETE /v1/groups/{id}/members/{userId}`** — chủ nhóm mời rời (với người đang `ACTIVE`)
+  - **Phân quyền:** Chỉ `OWNER`.
+  - Không mời chính mình rời: `409 CANNOT_REMOVE_OWNER`.
+  - Người đó đang giữ quỹ → **chặn** với `409 TREASURER_MUST_TRANSFER_FIRST`. Chủ nhóm bàn giao quỹ (`PATCH /fund`)
       trước rồi mới mời rời.
 
-* **Kiểm tra chung khi bật tính thừa thiếu** ([rule.md](rule.md) quy tắc 27) — tắt thì bỏ qua:
+- **Kiểm tra chung khi bật tính thừa thiếu** ([rule.md](rule.md) quy tắc 27) — tắt thì bỏ qua:
 
 | # | Kiểm tra                                  | Lỗi                                                                   |
 |:-:|:------------------------------------------|:----------------------------------------------------------------------|
@@ -433,38 +432,38 @@ Phần dương → thủ quỹ ghi rút tiền góp (`POST /withdrawals`); phầ
 `POST /refunds`. Phần âm → người đó góp thêm (`POST /transactions`, loại `CONTRIBUTION`) rồi thủ quỹ xác nhận. Người còn
 nợ mà không góp thì chủ nhóm cũng không mời ra được ([pipeline.md](pipeline.md) mục 10).
 
-* **Nghiệp vụ chung** — trong **một** transaction CSDL ([pipeline.md](pipeline.md) mục 10):
+- **Nghiệp vụ chung** — trong **một** transaction CSDL ([pipeline.md](pipeline.md) mục 10):
     1. Bản ghi thành viên: `status = LEFT` (tự rời) hoặc `REMOVED` (bị mời rời), `left_at = now()`.
     2. Hệ thống tự **`REJECTED`** mọi khoản `PENDING` có `created_by` = người rời: `reviewed_by` = người kích hoạt
        (chính mình hoặc chủ nhóm), `reviewed_at = now()`.
     3. Không đụng tới giao dịch đã `CONFIRMED` hoặc `REJECTED` từ trước: khoản "cả nhóm" có thời điểm trước lúc rời vẫn
        tính người đó.
-* **Response:** `HTTP 200 OK`, `data = null`.
+- **Response:** `HTTP 200 OK`, `data = null`.
 
 ---
 
 #### Lưu trữ và mở lại nhóm <a id="319-luu-tru-nhom"></a>
 
-* **`POST /v1/groups/{id}/archive`** — lưu trữ
-    * **Phân quyền:** Chỉ `OWNER`.
-    * Nhóm phải đang `ACTIVE`, và **không còn khoản `PENDING`** → nếu còn: `409 HAS_PENDING_TRANSACTIONS`.
-    * `groups.status = ARCHIVED`.
-* **`POST /v1/groups/{id}/unarchive`** — mở lại
-    * **Phân quyền:** Chỉ `OWNER`. Nhóm phải đang `ARCHIVED`.
-    * `groups.status = ACTIVE`. Mã mời cũ đã hết hạn thì chủ nhóm tạo mã mới như bình thường.
-* **Khi nhóm đang lưu trữ** ([rule.md](rule.md) quy tắc 26, mục 3.7):
-    * Mọi endpoint `GET` vẫn dùng được.
-    * Bị chặn với `409 GROUP_ARCHIVED`: ghi / sửa / xoá / xác nhận / từ chối giao dịch, trả lại tiền, kiểm kê, sửa nhóm,
+- **`POST /v1/groups/{id}/archive`** — lưu trữ
+  - **Phân quyền:** Chỉ `OWNER`.
+  - Nhóm phải đang `ACTIVE`, và **không còn khoản `PENDING`** → nếu còn: `409 HAS_PENDING_TRANSACTIONS`.
+  - `groups.status = ARCHIVED`.
+- **`POST /v1/groups/{id}/unarchive`** — mở lại
+  - **Phân quyền:** Chỉ `OWNER`. Nhóm phải đang `ARCHIVED`.
+  - `groups.status = ACTIVE`.
+- **Khi nhóm đang lưu trữ** ([rule.md](rule.md) quy tắc 26, mục 3.7):
+  - Mọi endpoint `GET` vẫn dùng được.
+  - Bị chặn với `409 GROUP_ARCHIVED`: ghi / sửa / xoá / xác nhận / từ chối giao dịch, trả lại tiền, kiểm kê, sửa nhóm,
       sửa quỹ, mã mời, vào nhóm, duyệt, mời rời, rời nhóm, chuyển quyền.
-    * Vẫn làm được: `unarchive` và `DELETE /v1/groups/{id}`.
-* **Response:** `HTTP 200 OK`, `data = null`.
+  - Vẫn làm được: `unarchive` và `DELETE /v1/groups/{id}`.
+- **Response:** `HTTP 200 OK`, `data = null`.
 
 ---
 
 #### Xoá nhóm (`DELETE /v1/groups/{id}`) <a id="3110-xoa-nhom"></a>
 
-* **Phân quyền:** Chỉ `OWNER`.
-* **Điều kiện** ([rule.md](rule.md) quy tắc 23):
+- **Phân quyền:** Chỉ `OWNER`.
+- **Điều kiện** ([rule.md](rule.md) quy tắc 23):
 
 | # | Điều kiện                                                                              | Lỗi                                    |
 |:-:|:---------------------------------------------------------------------------------------|:---------------------------------------|
@@ -476,8 +475,8 @@ Muốn đạt điều kiện 3: thủ quỹ ghi rút tiền góp / trả lại t
 dương, người còn phần âm góp thêm (người đã rời góp bù theo Cách A hoặc nhóm tự gánh theo Cách B —
 xem [pipeline.md](pipeline.md) mục 10 & 14).
 
-* **Nghiệp vụ:** `groups.status = DELETED`, quỹ `status = CLOSED` (xoá mềm), cùng một transaction CSDL.
-* **Response:** `HTTP 200 OK`, `data = null`.
+- **Nghiệp vụ:** `groups.status = DELETED`, quỹ `status = CLOSED` (xoá mềm), cùng một transaction CSDL.
+- **Response:** `HTTP 200 OK`, `data = null`.
 
 ---
 
@@ -489,8 +488,8 @@ Mỗi nhóm có **đúng một quỹ**, tạo cùng lúc với nhóm và giao ch
 
 #### Xem quỹ (`GET /v1/groups/{id}/fund`) <a id="321-xem-quy"></a>
 
-* **Phân quyền:** Thành viên `ACTIVE` của nhóm.
-* **Response (`HTTP 200 OK` - `GroupWalletRes`):**
+- **Phân quyền:** Thành viên `ACTIVE` của nhóm.
+- **Response (`HTTP 200 OK` - `GroupWalletRes`):**
 
 ```json
 {
@@ -499,7 +498,6 @@ Mỗi nhóm có **đúng một quỹ**, tạo cùng lúc với nhóm và giao ch
     "id": "w1000000-0000-0000-0000-000000000001",
     "group_id": "a1000000-0000-0000-0000-000000000001",
     "held_by_user_id": "u1000000-0000-0000-0000-000000000001",
-    "name": "Quỹ chung tiền mặt",
     "current_balance": 2400000,
     "status": "ACTIVE",
     "created_at": "2026-09-16T10:00:00Z"
@@ -509,28 +507,26 @@ Mỗi nhóm có **đúng một quỹ**, tạo cùng lúc với nhóm và giao ch
 
 ---
 
-#### Đổi tên, bàn giao quỹ (`PATCH /v1/groups/{id}/fund`) <a id="322-sua-quy"></a>
+#### Bàn giao thủ quỹ (`PATCH /v1/groups/{id}/fund`) <a id="322-sua-quy"></a>
 
-* **Phân quyền:** Chỉ `OWNER`.
-* **Request Body (`GroupWalletUpdateReq`)** — mọi trường đều tuỳ chọn:
+- **Phân quyền:** Chỉ `OWNER`.
+- **Request Body (`GroupWalletUpdateReq`):**
 
 ```json
 {
-  "name": "Quỹ tiền mặt ở nhà",
   "held_by_user_id": "u3000000-0000-0000-0000-000000000003"
 }
 ```
 
-* **Nghiệp vụ:**
+- **Nghiệp vụ:**
 
 | Trường            | Kiểm tra                             | Lỗi                     |
 |:------------------|:-------------------------------------|:------------------------|
-| `name`            | Không rỗng, tối đa 50 ký tự          | `400` (validation)      |
 | `held_by_user_id` | Phải là thành viên `ACTIVE` của nhóm | `400 HOLDER_NOT_MEMBER` |
 
 Không có trường `status`: quỹ không đóng riêng được.
 
-* **Response (`HTTP 200 OK` - `GroupWalletRes`).**
+- **Response (`HTTP 200 OK` - `GroupWalletRes`).**
 
 ---
 
@@ -571,7 +567,7 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 
 #### Tạo giao dịch nhóm (`POST /v1/groups/{id}/transactions`) <a id="331-tao-giao-dich"></a>
 
-* **Request Body Trường hợp 1: Chi tiêu trả bằng tiền túi, chia cho 2 người B và C (`GroupTransactionCreateReq`):**
+- **Request Body Trường hợp 1: Chi tiêu trả bằng tiền túi, chia cho 2 người B và C (`GroupTransactionCreateReq`):**
 
 ```json
 {
@@ -596,12 +592,13 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 ```
 
 > **Lưu ý quy ước:**
+>
 > - `money_source = PERSONAL`: Tiền túi của B, số dư quỹ giữ nguyên.
 > - `participants`: B và C được chọn, `share_amount = null` ➔ hệ thống tự chia đều mỗi người 300.000đ khi đọc.
 > - Nếu chi cho **cả nhóm**: Để `participants: []` (rỗng) ➔ hệ thống tự hiểu chia đều cho tất cả thành viên có mặt lúc
     `2026-09-16T12:30:00Z`.
 
-* **Request Body Trường hợp 2: B góp 1.000.000đ vào quỹ chung:**
+- **Request Body Trường hợp 2: B góp 1.000.000đ vào quỹ chung:**
 
 ```json
 {
@@ -616,16 +613,16 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 }
 ```
 
-* **Jakarta Validation:**
-    * `type`: `@NotNull`, **chỉ `EXPENSE` hoặc `CONTRIBUTION`**
-    * `money_source`: `@NotNull`, `FUND` hoặc `PERSONAL`
-    * `amount`: `@NotNull`, `@Positive`, `@Max(999999999999L)`
-    * `occurred_at`: `@NotNull`, thời điểm ISO 8601 giờ UTC, tới giây. App mặc định là lúc mở màn ghi; ghi bù thì người
+- **Jakarta Validation:**
+  - `type`: `@NotNull`, **chỉ `EXPENSE` hoặc `CONTRIBUTION`**
+  - `money_source`: `@NotNull`, `FUND` hoặc `PERSONAL`
+  - `amount`: `@NotNull`, `@Positive`, `@Max(999999999999L)`
+  - `occurred_at`: `@NotNull`, thời điểm ISO 8601 giờ UTC, tới giây. App mặc định là lúc mở màn ghi; ghi bù thì người
       dùng chọn ngày và giờ
-    * `user_id`: `@NotNull` (Người thực chi / người góp tiền)
-    * `note`: `@Size(max = 255)`
+  - `user_id`: `@NotNull` (Người thực chi / người góp tiền)
+  - `note`: `@Size(max = 255)`
 
-* **Kiểm tra nghiệp vụ** (service, áp dụng cho cả `POST` và `PUT`):
+- **Kiểm tra nghiệp vụ** (service, áp dụng cho cả `POST` và `PUT`):
 
 | #  | Kiểm tra                                                                                                                                                                                                                         | Lỗi                                                          |
 |:--:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------|
@@ -644,13 +641,13 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 | 13 | `category_id` là danh mục hệ thống, loại chi ([rule.md](rule.md) quy tắc 6)                                                                                                                                                      | `400 SYSTEM_CATEGORY_REQUIRED`                               |
 | 14 | Nhóm không đang lưu trữ                                                                                                                                                                                                          | `409 GROUP_ARCHIVED`                                         |
 
-* **Trạng thái khi tạo** ([pipeline.md](pipeline.md) mục 7.1): người ghi là thủ quỹ / chủ nhóm → `CONFIRMED` và cập nhật
+- **Trạng thái khi tạo** ([pipeline.md](pipeline.md) mục 7.1): người ghi là thủ quỹ / chủ nhóm → `CONFIRMED` và cập nhật
   quỹ ngay (khoản `EXPENSE` bằng `PERSONAL` không đổi quỹ); người khác → `PENDING`, quỹ chưa đổi.
 
   "Có mặt tại `occurred_at`" dùng đúng truy vấn ở [pipeline.md](pipeline.md) mục 1. Không kiểm tra thì người ngoài nhóm
   có phần tiền, trong khi bảng phần trong quỹ chỉ liệt kê thành viên — tổng phần sẽ lệch số dư quỹ.
 
-* **Response (`HTTP 201 Created` - `GroupTransactionDetailRes`):**
+- **Response (`HTTP 201 Created` - `GroupTransactionDetailRes`):**
 
 ```json
 {
@@ -694,19 +691,19 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 
 #### Lịch sử & Chi tiết giao dịch <a id="332-lich-su-chi-tiet-giao-dich"></a>
 
-* **`GET /v1/groups/{id}/transactions`**:
-    * **Phân quyền:** Thành viên `ACTIVE` của nhóm.
-    * **Query Parameters** (100% `snake_case`):
-        * `money_source` (chuỗi, tùy chọn): `FUND` hoặc `PERSONAL`
-        * `type` (chuỗi, tùy chọn): `EXPENSE`, `CONTRIBUTION`, `REFUND`, `WITHDRAWAL`, `ADJUSTMENT_UP`,`ADJUSTMENT_DOWN`
-        * `status` (chuỗi, tùy chọn): `PENDING`, `CONFIRMED`, `REJECTED`
-        * `start_date` (chuỗi `YYYY-MM-DD`, tùy chọn): Lọc theo ngày giao dịch (tính theo múi giờ Việt Nam UTC+7)
-        * `end_date` (chuỗi `YYYY-MM-DD`, tùy chọn): Lọc theo ngày giao dịch (tính theo múi giờ Việt Nam UTC+7)
-        * `user_id` (UUID, tùy chọn): Lọc theo người thực hiện/thủ quỹ
-        * `page` (số nguyên >= 0, tùy chọn, mặc định `0`)
-        * `size` (số nguyên > 0, tùy chọn, mặc định `20`)
-    * Sắp xếp: `occurred_at` giảm dần (mới nhất lên đầu).
-    * **Response (`HTTP 200 OK` - `GroupTransactionPageRes`):**
+- **`GET /v1/groups/{id}/transactions`**:
+  - **Phân quyền:** Thành viên `ACTIVE` của nhóm.
+  - **Query Parameters** (100% `snake_case`):
+    - `money_source` (chuỗi, tùy chọn): `FUND` hoặc `PERSONAL`
+    - `type` (chuỗi, tùy chọn): `EXPENSE`, `CONTRIBUTION`, `REFUND`, `WITHDRAWAL`, `ADJUSTMENT_UP`,`ADJUSTMENT_DOWN`
+    - `status` (chuỗi, tùy chọn): `PENDING`, `CONFIRMED`, `REJECTED`
+    - `start_date` (chuỗi `YYYY-MM-DD`, tùy chọn): Lọc theo ngày giao dịch (tính theo múi giờ Việt Nam UTC+7)
+    - `end_date` (chuỗi `YYYY-MM-DD`, tùy chọn): Lọc theo ngày giao dịch (tính theo múi giờ Việt Nam UTC+7)
+    - `user_id` (UUID, tùy chọn): Lọc theo người thực hiện/thủ quỹ
+    - `page` (số nguyên >= 0, tùy chọn, mặc định `0`)
+    - `size` (số nguyên > 0, tùy chọn, mặc định `20`)
+  - Sắp xếp: `occurred_at` giảm dần (mới nhất lên đầu).
+  - **Response (`HTTP 200 OK` - `GroupTransactionPageRes`):**
 
 ```json
 {
@@ -743,7 +740,7 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 }
 ```
 
-* **`GET /v1/groups/{id}/transactions/{tId}`**: Trả về `GroupTransactionDetailRes` có tính sẵn danh sách người tham gia
+- **`GET /v1/groups/{id}/transactions/{tId}`**: Trả về `GroupTransactionDetailRes` có tính sẵn danh sách người tham gia
   (kèm `user_id`, `full_name`, `avatar_url`, `share_amount`) và số tiền mỗi người chịu. Không tìm thấy khoản →
   `404 TRANSACTION_NOT_FOUND`.
 
@@ -760,8 +757,8 @@ Hai cách tiền quỹ đi ra cho một thành viên ([pipeline.md](pipeline.md)
 
 Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đây; khác nhau ở loại ghi ra và kiểm tra 4.
 
-* **Phân quyền:** Chỉ thủ quỹ hoặc `OWNER` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
-* **Request Body (`GroupPayoutReq`)** — dùng cho cả tạo và sửa, cả hai loại:
+- **Phân quyền:** Chỉ thủ quỹ hoặc `OWNER` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
+- **Request Body (`GroupPayoutReq`)** — dùng cho cả tạo và sửa, cả hai loại:
 
 ```json
 {
@@ -772,12 +769,12 @@ Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đâ
 }
 ```
 
-* **Jakarta Validation:**
-    * `user_id`: `@NotNull` (người nhận tiền)
-    * `amount`: `@NotNull`, `@Positive`, `@Max(999999999999L)`
-    * `occurred_at`: `@NotNull`, thời điểm ISO 8601 giờ UTC
-    * `note`: `@Size(max = 255)`
-* **Kiểm tra nghiệp vụ:**
+- **Jakarta Validation:**
+  - `user_id`: `@NotNull` (người nhận tiền)
+  - `amount`: `@NotNull`, `@Positive`, `@Max(999999999999L)`
+  - `occurred_at`: `@NotNull`, thời điểm ISO 8601 giờ UTC
+  - `note`: `@Size(max = 255)`
+- **Kiểm tra nghiệp vụ:**
 
 | # | Kiểm tra                                                                                                    | Lỗi                               |
 |:-:|:------------------------------------------------------------------------------------------------------------|:----------------------------------|
@@ -787,48 +784,48 @@ Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đâ
 | 4 | Chỉ `WITHDRAWAL`: `amount` ≤ số đã góp còn lại (Σ góp − Σ rút) của người đó, dù bật hay tắt tính thừa thiếu | `409 AMOUNT_EXCEEDS_CONTRIBUTION` |
 | 5 | Nhóm không đang lưu trữ                                                                                     | `409 GROUP_ARCHIVED`              |
 
-* **Nghiệp vụ** — trong một transaction CSDL:
+- **Nghiệp vụ** — trong một transaction CSDL:
     1. Ghi `group_transactions`: `type = REFUND` hoặc `WITHDRAWAL` theo endpoint, `money_source = FUND`, `user_id` =
        người nhận, `created_by = userId`, `category_id = NULL`, **`status = CONFIRMED`**, `reviewed_by = userId`,
        `reviewed_at = now()`. Không có người tham gia.
     2. Khoá dòng quỹ rồi `current_balance = current_balance − amount`.
-* **Response (`HTTP 201 Created` - `GroupTransactionDetailRes`).**
+- **Response (`HTTP 201 Created` - `GroupTransactionDetailRes`).**
 
-* **`PUT .../refunds/{tId}`, `PUT .../withdrawals/{tId}`** — sửa:
-    * **Phân quyền:** thủ quỹ **hiện tại** hoặc `OWNER` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`. Người từng ghi
+- **`PUT .../refunds/{tId}`, `PUT .../withdrawals/{tId}`** — sửa:
+  - **Phân quyền:** thủ quỹ **hiện tại** hoặc `OWNER` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`. Người từng ghi
       khoản này mà nay không giữ quỹ thì không sửa được.
-    * Khoản không đúng loại của endpoint → `400 TRANSACTION_TYPE_NOT_ALLOWED`. Không đổi được loại.
-    * **Request Body:** `GroupPayoutReq` như trên.
-    * Áp dụng đủ bảng kiểm tra ở trên. Kiểm tra 3 và 4 tính **không kể chính khoản đang sửa**([pipeline.md](pipeline.md)
+  - Khoản không đúng loại của endpoint → `400 TRANSACTION_TYPE_NOT_ALLOWED`. Không đổi được loại.
+  - **Request Body:** `GroupPayoutReq` như trên.
+  - Áp dụng đủ bảng kiểm tra ở trên. Kiểm tra 3 và 4 tính **không kể chính khoản đang sửa**([pipeline.md](pipeline.md)
       mục 12).
-    * **Nghiệp vụ** — trong một transaction CSDL: khoá dòng quỹ → hoàn tác khoản cũ (`+ amount cũ`) → ghi giá trị mới,
+  - **Nghiệp vụ** — trong một transaction CSDL: khoá dòng quỹ → hoàn tác khoản cũ (`+ amount cũ`) → ghi giá trị mới,
       `reviewed_by = userId`, `reviewed_at = now()` → áp khoản mới (`− amount mới`). Khoản **vẫn `CONFIRMED`**.
-    * **Response (`HTTP 200 OK` - `GroupTransactionDetailRes`).**
+  - **Response (`HTTP 200 OK` - `GroupTransactionDetailRes`).**
 
 ---
 
 #### Xác nhận hoặc từ chối giao dịch <a id="333b-xac-nhan-tu-choi"></a>
 
-* **`POST /v1/groups/{id}/transactions/{tId}/confirm`** — xác nhận
-* **`POST /v1/groups/{id}/transactions/{tId}/reject`** — từ chối
-* **Phân quyền** ([rule.md](rule.md) quy tắc 18): **thủ quỹ** hoặc `OWNER`, với mọi khoản → nếu không:
+- **`POST /v1/groups/{id}/transactions/{tId}/confirm`** — xác nhận
+- **`POST /v1/groups/{id}/transactions/{tId}/reject`** — từ chối
+- **Phân quyền** ([rule.md](rule.md) quy tắc 18): **thủ quỹ** hoặc `OWNER`, với mọi khoản → nếu không:
   `403 FORBIDDEN_TREASURER_REQUIRED`.
 
-* **Nghiệp vụ** — trong một transaction CSDL:
+- **Nghiệp vụ** — trong một transaction CSDL:
     1. Khoản phải đang `PENDING` → nếu không: `409 TRANSACTION_NOT_PENDING`.
     2. `confirm`: `status = CONFIRMED`, `reviewed_by = userId`, `reviewed_at = now()`. **Khoá dòng quỹ** rồi áp ảnh
        hưởng theo [pipeline.md](pipeline.md) mục 3 (khoản `EXPENSE` bằng `PERSONAL` không đổi quỹ).
     3. `reject`: `status = REJECTED`, `reviewed_by`, `reviewed_at`. Không đụng tới quỹ.
-* **Response:** `HTTP 200 OK` — `GroupTransactionDetailRes` với `status` mới.
+- **Response:** `HTTP 200 OK` — `GroupTransactionDetailRes` với `status` mới.
 
 ---
 
 #### Xác nhận hoặc từ chối hàng loạt (`bulk-confirm`, `bulk-reject`) <a id="333c-bulk-review"></a>
 
-* **`POST /v1/groups/{id}/transactions/bulk-confirm`** — xác nhận nhiều khoản
-* **`POST /v1/groups/{id}/transactions/bulk-reject`** — từ chối nhiều khoản
-* **Phân quyền:** **thủ quỹ** hoặc `OWNER` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
-* **Request Body (`GroupTransactionBulkReviewReq`):**
+- **`POST /v1/groups/{id}/transactions/bulk-confirm`** — xác nhận nhiều khoản
+- **`POST /v1/groups/{id}/transactions/bulk-reject`** — từ chối nhiều khoản
+- **Phân quyền:** **thủ quỹ** hoặc `OWNER` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
+- **Request Body (`GroupTransactionBulkReviewReq`):**
 
 ```json
 {
@@ -839,15 +836,15 @@ Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đâ
 }
 ```
 
-* **Jakarta Validation:** `transaction_ids`: `@NotEmpty`, mỗi phần tử `@NotNull`.
-* **Nghiệp vụ** — trong **một** transaction CSDL:
+- **Jakarta Validation:** `transaction_ids`: `@NotEmpty`, mỗi phần tử `@NotNull`.
+- **Nghiệp vụ** — trong **một** transaction CSDL:
     1. Mọi khoản trong danh sách phải đang `PENDING` và thuộc nhóm `{id}` → khoản không đạt:
        `409 TRANSACTION_NOT_PENDING` kèm `details` liệt kê id sai.
     2. `bulk-confirm`: với mỗi khoản, `status = CONFIRMED`, ghi `reviewed_by`, `reviewed_at`. **Khoá dòng quỹ một lần**,
        áp tổng ảnh hưởng của tất cả khoản lên quỹ.
     3. `bulk-reject`: với mỗi khoản, `status = REJECTED`, ghi `reviewed_by`, `reviewed_at`. Không đụng quỹ.
     4. Nhóm đang lưu trữ → `409 GROUP_ARCHIVED`.
-* **Response (`HTTP 200 OK`):**
+- **Response (`HTTP 200 OK`):**
 
 ```json
 {
@@ -865,12 +862,12 @@ Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đâ
 
 #### Sửa & Xóa giao dịch <a id="333-sua-xoa-giao-dich"></a>
 
-* **`PUT /v1/groups/{id}/transactions/{tId}`**:
-    - **Phân quyền:** người ghi khoản đó (`created_by`) hoặc `OWNER` → nếu không: `403 FORBIDDEN_TRANSACTION_EDIT`.
-    - Chỉ sửa được giao dịch `EXPENSE` / `CONTRIBUTION`. `REFUND` / `WITHDRAWAL` sửa qua `PUT /refunds/{tId}` /
+- **`PUT /v1/groups/{id}/transactions/{tId}`**:
+  - **Phân quyền:** người ghi khoản đó (`created_by`) hoặc `OWNER` → nếu không: `403 FORBIDDEN_TRANSACTION_EDIT`.
+  - Chỉ sửa được giao dịch `EXPENSE` / `CONTRIBUTION`. `REFUND` / `WITHDRAWAL` sửa qua `PUT /refunds/{tId}` /
       `PUT /withdrawals/{tId}`. `ADJUSTMENT_*` không sửa — kiểm kê sai thì kiểm kê lại.
-    - **Không đổi được `type`** của giao dịch. Muốn đổi loại, người dùng xóa và tạo khoản mới.
-    - **Request Body (`GroupTransactionUpdateReq`):**
+  - **Không đổi được `type`** của giao dịch. Muốn đổi loại, người dùng xóa và tạo khoản mới.
+  - **Request Body (`GroupTransactionUpdateReq`):**
 
 ```json
 {
@@ -893,12 +890,12 @@ Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đâ
 ```
 
 - **Jakarta Validation:**
-    * `amount`: `@NotNull`, `@Positive`, `@Max(999999999999L)`
-    * `occurred_at`: `@NotNull`, thời điểm ISO 8601 giờ UTC
-    * `money_source`: `@NotNull`, `FUND` hoặc `PERSONAL`
-    * `category_id`: Bắt buộc với `EXPENSE`, `NULL` với `CONTRIBUTION`
-    * `note`: `@Size(max = 255)`
-    * `participants`: Với `EXPENSE`: rỗng = cả nhóm có mặt; có danh sách = chỉ chia người được chọn. Với `CONTRIBUTION`:
+  - `amount`: `@NotNull`, `@Positive`, `@Max(999999999999L)`
+  - `occurred_at`: `@NotNull`, thời điểm ISO 8601 giờ UTC
+  - `money_source`: `@NotNull`, `FUND` hoặc `PERSONAL`
+  - `category_id`: Bắt buộc với `EXPENSE`, `NULL` với `CONTRIBUTION`
+  - `note`: `@Size(max = 255)`
+  - `participants`: Với `EXPENSE`: rỗng = cả nhóm có mặt; có danh sách = chỉ chia người được chọn. Với `CONTRIBUTION`:
       bắt buộc rỗng `[]`
 - **Kiểm tra nghiệp vụ:** Áp dụng đầy đủ bảng kiểm tra như khi tạo `POST` (thành viên có mặt tại `occurred_at`,
   `category_id` tồn tại trong hệ thống, nhóm không lưu trữ,...).
@@ -912,10 +909,10 @@ Hai nhóm endpoint dùng chung request body, kiểm tra và luồng dưới đâ
        thống nhất tự chịu phần chi phí đó (Cách B để nhóm tự gánh).
 - **Response (`HTTP 200 OK` - `GroupTransactionDetailRes`).**
 
-* **`DELETE /v1/groups/{id}/transactions/{tId}`**:
-    - **Phân quyền:** **chỉ `OWNER`** → nếu không: `403 FORBIDDEN_OWNER_REQUIRED`.
-    - Gán `deleted_at = now()` (Xóa mềm).
-    - Khoản đang `CONFIRMED` → hoàn tác ảnh hưởng lên quỹ (nếu có). Áp dụng cho mọi loại, kể cả `REFUND`, `WITHDRAWAL`và
+- **`DELETE /v1/groups/{id}/transactions/{tId}`**:
+  - **Phân quyền:** **chỉ `OWNER`** → nếu không: `403 FORBIDDEN_OWNER_REQUIRED`.
+  - Gán `deleted_at = now()` (Xóa mềm).
+  - Khoản đang `CONFIRMED` → hoàn tác ảnh hưởng lên quỹ (nếu có). Áp dụng cho mọi loại, kể cả `REFUND`, `WITHDRAWAL`và
       `ADJUSTMENT_*`.
 
 ---
@@ -927,7 +924,7 @@ mà không làm sai lệch báo cáo chi tiêu.
 
 #### Kiểm kê số dư thực tế (`POST /v1/groups/{id}/fund/reconcile`) <a id="341-kiem-ke-thuc-te"></a>
 
-* **Request Body (`GroupWalletReconcileReq`):**
+- **Request Body (`GroupWalletReconcileReq`):**
 
 ```json
 {
@@ -938,17 +935,19 @@ mà không làm sai lệch báo cáo chi tiêu.
 }
 ```
 
-* **Xử lý nghiệp vụ — thực hiện trong một transaction CSDL:**
+- **Xử lý nghiệp vụ — thực hiện trong một transaction CSDL:**
     1. **Kiểm tra:** Người gọi API phải là thủ quỹ (`held_by_user_id`) hoặc `OWNER`(`403 FORBIDDEN_TREASURER_REQUIRED`).
        `occurred_at` tuỳ chọn, bỏ trống thì lấy lúc nhận request; có gửi thì không được ở tương lai
        (`400 DATE_IN_FUTURE`). Nhóm không đang lưu trữ (`409 GROUP_ARCHIVED`).
     2. **Khóa bi quan dòng quỹ (`PESSIMISTIC_WRITE` / `FOR UPDATE`):**
         - Đóng băng quỹ tại thời điểm kiểm kê bằng truy vấn khóa:
+
           ```text
           SELECT * FROM group_wallets
            WHERE group_id = :groupId AND status = 'ACTIVE'
              FOR UPDATE;
           ```
+
         - Các thao tác xác nhận, trả lại tiền, sửa hoặc xoá khoản đã xác nhận phát sinh đồng thời sẽ phải chờ kiểm kê
           xong.
     3. **Tính độ lệch trên số dư vừa khóa:**
@@ -961,11 +960,13 @@ mà không làm sai lệch báo cáo chi tiêu.
           `status = CONFIRMED`**, `reviewed_by = userId`, `reviewed_at = now()`.
     5. **Cộng chênh lệch vào số dư quỹ (không ghi đè):**
         - Cập nhật số dư bằng câu UPDATE nguyên tử:
+
           ```text
           UPDATE group_wallets
              SET current_balance = current_balance + :difference
            WHERE group_id = :groupId AND status = 'ACTIVE';
           ```
+
         - **Tuyệt đối không ghi đè** `current_balance = actual_balance`. Kết hợp khóa bi quan ở bước 2 và cộng chênh
           lệch ở bước này đảm bảo vừa khớp số dư đếm thực tế `actual_balance`, vừa không bị mất mát (Lost Update) các
           giao dịch chi tiêu/góp quỹ diễn ra đồng thời.
@@ -973,7 +974,7 @@ mà không làm sai lệch báo cáo chi tiêu.
        nhận các thành viên còn lại vào `group_transaction_participants`.
     7. **Báo cáo chi tiêu nhóm:** Hoàn toàn không bị tính các khoản `ADJUSTMENT_*` này vào tổng chi tiêu.
 
-* **Response (`HTTP 200 OK` - `GroupWalletReconcileRes`):**
+- **Response (`HTTP 200 OK` - `GroupWalletReconcileRes`):**
 
 ```json
 {
@@ -1000,16 +1001,16 @@ mà không làm sai lệch báo cáo chi tiêu.
 
 Hiển thị thẻ tổng quan ở màn hình chính của nhóm:
 
-* **Phân quyền:** Thành viên `ACTIVE` của nhóm.
-* **Query Parameters:**
-    * `month` (chuỗi `YYYY-MM`, tùy chọn): Kỳ tháng thống kê chi tiêu và góp quỹ (theo múi giờ Việt Nam UTC+7). Nếu
+- **Phân quyền:** Thành viên `ACTIVE` của nhóm.
+- **Query Parameters:**
+  - `month` (chuỗi `YYYY-MM`, tùy chọn): Kỳ tháng thống kê chi tiêu và góp quỹ (theo múi giờ Việt Nam UTC+7). Nếu
       không truyền: mặc định là tháng hiện tại (ví dụ: `2026-09`).
-* **Response (`HTTP 200 OK` - `GroupFinanceSummaryRes`):**
-    * `target`: Quỹ mục tiêu hiện tại của nhóm (NULL nếu không đặt mục tiêu).
-    * `fund`: Quỹ duy nhất của nhóm và số dư thực tế hiện tại (`current_balance`).
-    * `period`: Chu kỳ tháng thống kê áp dụng (`YYYY-MM`).
-    * `total_expense`: Tổng chi tiêu (`EXPENSE` đã xác nhận, chưa xoá) diễn ra trong tháng.
-    * `total_contribution`: Tổng số tiền thành viên góp vào quỹ (`CONTRIBUTION` đã xác nhận, chưa xoá) diễn ra trong
+- **Response (`HTTP 200 OK` - `GroupFinanceSummaryRes`):**
+  - `target`: Quỹ mục tiêu hiện tại của nhóm (NULL nếu không đặt mục tiêu).
+  - `fund`: Quỹ duy nhất của nhóm và số dư thực tế hiện tại (`current_balance`).
+  - `period`: Chu kỳ tháng thống kê áp dụng (`YYYY-MM`).
+  - `total_expense`: Tổng chi tiêu (`EXPENSE` đã xác nhận, chưa xoá) diễn ra trong tháng.
+  - `total_contribution`: Tổng số tiền thành viên góp vào quỹ (`CONTRIBUTION` đã xác nhận, chưa xoá) diễn ra trong
       tháng.
 
 ```json
@@ -1022,7 +1023,6 @@ Hiển thị thẻ tổng quan ở màn hình chính của nhóm:
     "period": "2026-09",
     "fund": {
       "id": "w1000000-0000-0000-0000-000000000001",
-      "name": "Quỹ chung tiền mặt",
       "held_by_user_id": "u1000000-0000-0000-0000-000000000001",
       "current_balance": 2300000
     },
@@ -1053,6 +1053,7 @@ Chỉ tính các khoản **`CONFIRMED`, chưa xoá**. Chi tiết ở [pipeline.m
 trừ vào số này.
 
 > **Quy tắc cốt lõi về dòng tiền:**
+>
 > - Nhóm vận hành theo **Mô hình Quỹ tập trung**. Mọi chênh lệch giải quyết **qua quỹ**: người thiếu góp thêm
     (`CONTRIBUTION`), người thừa được rút tiền góp / trả lại (`WITHDRAWAL` / `REFUND`); **tuyệt đối không** gợi ý các
     thành viên chuyển tiền trực tiếp cho nhau ngoài đời.
@@ -1061,7 +1062,7 @@ trừ vào số này.
 > - Vì vậy API **không trả về `settlement_suggestions`** ("X chuyển cho Y"), mà trả về **"Số tiền cần nộp thêm vào
     quỹ" (`needed_contribution`)** cho từng người.
 
-* **Quy tắc tính Số tiền cần nộp thêm (`needed_contribution`)** — chỉ khi bật tính thừa thiếu; mục tiêu là **tổng tiền
+- **Quy tắc tính Số tiền cần nộp thêm (`needed_contribution`)** — chỉ khi bật tính thừa thiếu; mục tiêu là **tổng tiền
   cả nhóm cần gom** ([pipeline.md](pipeline.md) mục 5):
     1. **Nhóm có mục tiêu:**
         - `mức mỗi người = target ÷ số thành viên ACTIVE`, phần dư chia theo quy tắc 1đ (sắp theo `user_id`).
@@ -1070,19 +1071,19 @@ trừ vào số này.
     2. **Nhóm không có mục tiêu** (`target` là `null`): phần âm → nộp đúng bằng `|net_balance|`; phần không âm → `0`.
     3. **`total_needed_contribution`** = tổng `needed_contribution` của mọi thành viên.
 
-* **Quy tắc hiển thị và xử lý thành viên trong `balances`:**
-    - **Thành viên `ACTIVE`:** Luôn xuất hiện trong mảng `balances`.
-    - **Thành viên đã rời (`LEFT` / `REMOVED`):**
-        - `net_balance == 0`: **Ẩn hoàn toàn** khỏi mảng `balances` để màn hình gọn gàng.
-        - `net_balance != 0`: **Hiển thị** trong `balances` kèm `status: "LEFT"` (hoặc `"REMOVED"`).
-        - `needed_contribution`: nếu `net_balance < 0` thì `needed_contribution = |net_balance|`; nếu `net_balance >= 0`
+- **Quy tắc hiển thị và xử lý thành viên trong `balances`:**
+  - **Thành viên `ACTIVE`:** Luôn xuất hiện trong mảng `balances`.
+  - **Thành viên đã rời (`LEFT` / `REMOVED`):**
+    - `net_balance == 0`: **Ẩn hoàn toàn** khỏi mảng `balances` để màn hình gọn gàng.
+    - `net_balance != 0`: **Hiển thị** trong `balances` kèm `status: "LEFT"` (hoặc `"REMOVED"`).
+    - `needed_contribution`: nếu `net_balance < 0` thì `needed_contribution = |net_balance|`; nếu `net_balance >= 0`
           thì `0` (không áp dụng mức chia mục tiêu `target` của nhóm lên người đã rời).
-    - **Giải quyết khi người đã rời bị lệch sau đó:**
-        - Nếu phần âm: (A) Người đó nộp bù qua `CONTRIBUTION` $\to$ `net_balance` về 0 $\to$ tự động ẩn; (B) Nhóm tự
+  - **Giải quyết khi người đã rời bị lệch sau đó:**
+    - Nếu phần âm: (A) Người đó nộp bù qua `CONTRIBUTION` $\to$ `net_balance` về 0 $\to$ tự động ẩn; (B) Nhóm tự
           gánh bằng cách sửa khoản cũ bỏ tích người đó khỏi `participants` $\to$ `net_balance` về 0 $\to$ tự động ẩn.
-        - Nếu phần dương: Quỹ hoàn trả cho người đó qua `POST /withdrawals` hoặc `POST /refunds`.
+    - Nếu phần dương: Quỹ hoàn trả cho người đó qua `POST /withdrawals` hoặc `POST /refunds`.
 
-* **Response khi bật tính thừa thiếu (`HTTP 200 OK` - `GroupBalanceReportRes`):**
+- **Response khi bật tính thừa thiếu (`HTTP 200 OK` - `GroupBalanceReportRes`):**
 
 ```json
 {
@@ -1135,7 +1136,7 @@ trừ vào số này.
 }
 ```
 
-* **Response khi tắt tính thừa thiếu** — mỗi người góp 1.000.000đ, nhóm đã tiêu 600.000đ tiền quỹ:
+- **Response khi tắt tính thừa thiếu** — mỗi người góp 1.000.000đ, nhóm đã tiêu 600.000đ tiền quỹ:
 
 ```json
 {
@@ -1202,7 +1203,7 @@ trừ vào số này.
 |    `403`    | `FORBIDDEN_TREASURER_REQUIRED`     | Kiểm kê, ghi hoặc sửa khoản trả lại / rút tiền góp, xác nhận hoặc từ chối giao dịch — chỉ thủ quỹ hoặc Chủ nhóm                                                                                       |
 |    `403`    | `FORBIDDEN_TRANSACTION_EDIT`       | Sửa giao dịch không phải do mình ghi, và không phải Chủ nhóm                                                                                                                                          |
 |    `404`    | `GROUP_NOT_FOUND`                  | Nhóm không tồn tại hoặc người dùng không có quyền xem                                                                                                                                                 |
-|    `404`    | `INVITE_CODE_INVALID`              | Mã mời không đúng, đã hết hạn sau 7 ngày hoặc nhóm đã đóng                                                                                                                                            |
+|    `404`    | `INVITE_CODE_INVALID`              | Mã mời không đúng hoặc nhóm đã đóng (bị xóa)                                                                                                                                                           |
 |    `404`    | `CATEGORY_NOT_FOUND`               | Danh mục chi tiêu không tồn tại trong hệ thống                                                                                                                                                        |
 |    `404`    | `TRANSACTION_NOT_FOUND`            | Giao dịch không tồn tại trong nhóm                                                                                                                                                                    |
 |    `409`    | `ALREADY_IN_GROUP`                 | Người dùng đã là thành viên trong nhóm                                                                                                                                                                |

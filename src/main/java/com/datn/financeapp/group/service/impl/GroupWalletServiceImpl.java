@@ -2,27 +2,23 @@ package com.datn.financeapp.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.wallet.GroupWalletCreateReq;
-import com.datn.financeapp.group.dto.wallet.GroupWalletReconcileReq;
-import com.datn.financeapp.group.dto.wallet.GroupWalletReconcileRes;
-import com.datn.financeapp.group.dto.wallet.GroupWalletRes;
-import com.datn.financeapp.group.dto.wallet.GroupWalletUpdateReq;
-import com.datn.financeapp.group.entity.Group;
+import com.datn.financeapp.group.dto.request.wallet.GroupWalletReconcileReq;
+import com.datn.financeapp.group.dto.response.wallet.GroupWalletReconcileRes;
+import com.datn.financeapp.group.dto.response.wallet.GroupWalletRes;
+import com.datn.financeapp.group.dto.request.wallet.GroupWalletUpdateReq;
 import com.datn.financeapp.group.entity.GroupTransaction;
 import com.datn.financeapp.group.entity.GroupTransactionParticipant;
 import com.datn.financeapp.group.entity.GroupWallet;
-import com.datn.financeapp.group.enums.GroupRole;
-import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.GroupTransactionStatus;
 import com.datn.financeapp.group.enums.GroupTransactionType;
 import com.datn.financeapp.group.enums.GroupWalletStatus;
 import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.repository.GroupMemberRepository;
-import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.repository.GroupTransactionParticipantRepository;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.repository.GroupWalletRepository;
+import com.datn.financeapp.group.mapper.GroupWalletMapper;
 import com.datn.financeapp.group.service.GroupWalletService;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -32,6 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -41,110 +38,49 @@ public class GroupWalletServiceImpl implements GroupWalletService {
 
     private final GroupWalletRepository groupWalletRepository;
     private final GroupMemberRepository groupMemberRepository;
-    private final GroupRepository groupRepository;
     private final GroupTransactionRepository groupTransactionRepository;
     private final GroupTransactionParticipantRepository participantRepository;
+    private final GroupPermissionValidator permissionValidator;
+    private final GroupWalletMapper walletMapper;
 
     @Override
-    public GroupWalletRes getFund(UUID userId, UUID groupId) {
-        verifyGroupMember(groupId, userId);
-        GroupWallet wallet = groupWalletRepository.findFirstByGroupId(groupId)
+    public GroupWalletRes getWallet(UUID userId, UUID groupId) {
+        permissionValidator.verifyActiveMember(groupId, userId);
+        GroupWallet wallet = groupWalletRepository.findByGroupId(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_WALLET_NOT_FOUND));
-        return mapToRes(wallet);
+        return walletMapper.toResponse(wallet);
     }
 
     @Override
     @Transactional
     public GroupWalletRes updateFund(UUID userId, UUID groupId, GroupWalletUpdateReq req) {
-        verifyOwnerRole(groupId, userId);
+        permissionValidator.verifyOwnerRole(groupId, userId);
 
-        Group group = groupRepository.findById(groupId)
-                .filter(g -> g.getStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-
-        if (group.getStatus() == GroupStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
-        }
-
-        GroupWallet wallet = groupWalletRepository.findFirstByGroupId(groupId)
+        GroupWallet wallet = groupWalletRepository.findByGroupId(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_WALLET_NOT_FOUND));
 
-        if (req.name() != null && !req.name().isBlank()) {
-            wallet.setName(req.name().trim());
-        }
         if (req.heldByUserId() != null) {
-            boolean isHeldUserMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
+            boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
                     groupId, req.heldByUserId(), MemberStatus.ACTIVE
             );
-            if (!isHeldUserMember) {
+            if (!isMember) {
                 throw new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER);
             }
             wallet.setHeldByUserId(req.heldByUserId());
         }
-        if (req.status() != null) {
-            wallet.setStatus(req.status());
-        }
-        wallet = groupWalletRepository.save(wallet);
 
-        return mapToRes(wallet);
+        wallet = groupWalletRepository.save(wallet);
+        return walletMapper.toResponse(wallet);
     }
 
     @Override
     @Transactional
     public GroupWalletReconcileRes reconcileFund(UUID userId, UUID groupId, GroupWalletReconcileReq req) {
-        Group group = groupRepository.findById(groupId)
-                .filter(g -> g.getStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        if (group.getStatus() == GroupStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
-        }
-
-        GroupWallet wallet = groupWalletRepository.findFirstByGroupId(groupId)
+        GroupWallet wallet = groupWalletRepository.findByGroupId(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_WALLET_NOT_FOUND));
 
         return executeReconcile(userId, groupId, wallet, req);
-    }
-
-    @Override
-    @Transactional
-    public GroupWalletRes create(UUID userId, UUID groupId, GroupWalletCreateReq req) {
-        // Tương thích ngược: nếu nhóm đã có quỹ thì trả về quỹ đó
-        return groupWalletRepository.findFirstByGroupId(groupId)
-                .map(this::mapToRes)
-                .orElseGet(() -> {
-                    verifyOwnerRole(groupId, userId);
-                    Instant now = Instant.now();
-                    GroupWallet wallet = GroupWallet.builder()
-                            .id(UUID.randomUUID())
-                            .groupId(groupId)
-                            .heldByUserId(req.heldByUserId() != null ? req.heldByUserId() : userId)
-                            .name(req.name().trim())
-                            .currentBalance(0L)
-                            .status(GroupWalletStatus.ACTIVE)
-                            .createdAt(now)
-                            .build();
-                    return mapToRes(groupWalletRepository.save(wallet));
-                });
-    }
-
-    @Override
-    public List<GroupWalletRes> list(UUID userId, UUID groupId) {
-        verifyGroupMember(groupId, userId);
-        return groupWalletRepository.findFirstByGroupId(groupId)
-                .map(w -> List.of(mapToRes(w)))
-                .orElse(List.of());
-    }
-
-    @Override
-    public GroupWalletRes detail(UUID userId, UUID groupId, UUID walletId) {
-        return getFund(userId, groupId);
-    }
-
-    @Override
-    @Transactional
-    public GroupWalletRes update(UUID userId, UUID groupId, UUID walletId, GroupWalletUpdateReq req) {
-        return updateFund(userId, groupId, req);
     }
 
     @Override
@@ -153,20 +89,8 @@ public class GroupWalletServiceImpl implements GroupWalletService {
         groupWalletRepository.adjustBalance(walletId, delta);
     }
 
-    @Override
-    @Transactional
-    public GroupWalletReconcileRes reconcile(UUID userId, UUID groupId, UUID walletId, GroupWalletReconcileReq req) {
-        return reconcileFund(userId, groupId, req);
-    }
-
     private GroupWalletReconcileRes executeReconcile(UUID userId, UUID groupId, GroupWallet wallet, GroupWalletReconcileReq req) {
-        boolean isTreasurer = wallet.getHeldByUserId().equals(userId);
-        boolean isOwner = groupMemberRepository.existsByGroupIdAndUserIdAndRoleAndStatus(
-                groupId, userId, GroupRole.OWNER, MemberStatus.ACTIVE
-        );
-        if (!isTreasurer && !isOwner) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
-        }
+        permissionValidator.verifyOwnerOrTreasurer(groupId, userId, wallet.getHeldByUserId());
 
         long previousBalance = wallet.getCurrentBalance();
         long actualBalance = req.actualBalance();
@@ -242,37 +166,6 @@ public class GroupWalletServiceImpl implements GroupWalletService {
                 difference,
                 adjustmentType,
                 transactionId
-        );
-    }
-
-    private void verifyGroupMember(UUID groupId, UUID userId) {
-        boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                groupId, userId, MemberStatus.ACTIVE
-        );
-        if (!isMember) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER);
-        }
-    }
-
-    private void verifyOwnerRole(UUID groupId, UUID userId) {
-        boolean isOwner = groupMemberRepository.existsByGroupIdAndUserIdAndRoleAndStatus(
-                groupId, userId, GroupRole.OWNER, MemberStatus.ACTIVE
-        );
-        if (!isOwner) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
-        }
-    }
-
-    private GroupWalletRes mapToRes(GroupWallet wallet) {
-        return new GroupWalletRes(
-                wallet.getId(),
-                wallet.getGroupId(),
-                wallet.getHeldByUserId(),
-                wallet.getName(),
-                0L,
-                wallet.getCurrentBalance(),
-                wallet.getStatus(),
-                wallet.getCreatedAt()
         );
     }
 }

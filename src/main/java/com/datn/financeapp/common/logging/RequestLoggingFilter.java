@@ -1,6 +1,5 @@
 package com.datn.financeapp.common.logging;
 
-import com.datn.financeapp.common.security.ClientIpResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

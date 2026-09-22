@@ -1,0 +1,11 @@
+{
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "spring-boot.ls.problem.boot2.JAVA_AUTOWIRED_CONSTRUCTOR": "IGNORE",
+  "spring-boot.ls.problem.boot3.JAVA_AUTOWIRED_CONSTRUCTOR": "IGNORE",
+  "spring-boot.ls.problem.boot2.JAVA_REPOSITORY": "IGNORE",
+  "spring-boot.ls.problem.boot3.JAVA_REPOSITORY": "IGNORE",
+  "spring-boot.ls.problem.boot2.JAVA_CONSTRUCTOR_PARAMETER_INJECTION": "IGNORE",
+  "spring-boot.ls.problem.boot3.JAVA_CONSTRUCTOR_PARAMETER_INJECTION": "IGNORE",
+  "spring-boot.ls.code-actions.generate-constructor-injection.enabled": false
+}

@@ -62,6 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 }))
 @org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
 @WithMockUser
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 public class GlobalExceptionHandlerTest {
 
     @Autowired

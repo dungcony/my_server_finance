@@ -56,6 +56,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class DebtPaymentIntegrationTest {
 
     @Container

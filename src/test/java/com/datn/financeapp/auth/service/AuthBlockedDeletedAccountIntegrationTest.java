@@ -19,7 +19,6 @@ import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
-import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.user.service.ProfileService;
@@ -61,6 +60,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class AuthBlockedDeletedAccountIntegrationTest {
 
     @Container

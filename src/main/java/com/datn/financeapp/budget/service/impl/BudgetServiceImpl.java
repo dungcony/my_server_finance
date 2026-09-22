@@ -26,18 +26,13 @@ import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,7 +89,7 @@ public class BudgetServiceImpl implements BudgetService {
     public BudgetSummaryResponse summary(UUID userId) {
         List<BudgetProgressProjection> rows = budgetProgressRepository.findAllForUser(userId, true, null);
 
-        long totalLimit = rows.stream().mapToLong(BudgetProgressProjection::getLimitAmount).sum();
+        long totalLimit = rows.stream().mapToLong(row -> nullToZero(row.getLimitAmount())).sum();
         long totalSpent = rows.stream().mapToLong(row -> nullToZero(row.getSpentAmount())).sum();
 
         BigDecimal ratio = totalLimit == 0
@@ -217,9 +212,9 @@ public class BudgetServiceImpl implements BudgetService {
         }
 
         long average = Math.round(
-                spentPerPeriod.stream().mapToLong(Long::longValue).average().orElse(0));
-        long max = spentPerPeriod.stream().mapToLong(Long::longValue).max().orElse(0);
-        long min = spentPerPeriod.stream().mapToLong(Long::longValue).min().orElse(0);
+                spentPerPeriod.stream().mapToLong(val -> val != null ? val : 0L).average().orElse(0));
+        long max = spentPerPeriod.stream().mapToLong(val -> val != null ? val : 0L).max().orElse(0);
+        long min = spentPerPeriod.stream().mapToLong(val -> val != null ? val : 0L).min().orElse(0);
 
         return new BudgetSuggestionResponse(
                 categorySummary,
@@ -420,13 +415,13 @@ public class BudgetServiceImpl implements BudgetService {
     private Map<UUID, CategoryRefResponse> loadCategories(
             UUID userId, List<BudgetProgressProjection> rows) {
         return categoryService.findRefsVisibleToUser(
-                rows.stream().map(BudgetProgressProjection::getCategoryId).toList(), userId);
+                rows.stream().map(row -> row.getCategoryId()).toList(), userId);
     }
 
     private Map<UUID, WalletRefResponse> loadWallets(
             UUID userId, List<BudgetProgressProjection> rows) {
         return walletService.findRefsForUser(
-                rows.stream().map(BudgetProgressProjection::getWalletId).toList(), userId);
+                rows.stream().map(row -> row.getWalletId()).toList(), userId);
     }
 
     // Ngưỡng 0.8/1.0 giống hệt view {@code v_budget_progress} — dùng cho con số TỔNG HỢP.

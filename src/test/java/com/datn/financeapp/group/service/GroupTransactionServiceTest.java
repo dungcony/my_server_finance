@@ -7,13 +7,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.datn.financeapp.category.entity.Category;
-import com.datn.financeapp.category.repository.CategoryRepository;
+import com.datn.financeapp.category.dto.response.CategoryRefResponse;
+import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.group.dto.transaction.GroupTransactionDetailRes;
-import com.datn.financeapp.group.dto.transaction.GroupWithdrawalReq;
+import com.datn.financeapp.group.service.GroupBalanceService;
+import com.datn.financeapp.group.validator.GroupPermissionValidator;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
+import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
+import com.datn.financeapp.group.dto.request.transaction.GroupWithdrawalReq;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.entity.GroupTransaction;
 import com.datn.financeapp.group.entity.GroupWallet;
@@ -24,6 +26,8 @@ import com.datn.financeapp.group.enums.GroupTransactionType;
 import com.datn.financeapp.group.enums.GroupWalletStatus;
 import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.enums.MoneySource;
+import com.datn.financeapp.group.helper.GroupSplitHelper;
+import com.datn.financeapp.group.mapper.GroupTransactionMapper;
 import com.datn.financeapp.group.repository.GroupMemberRepository;
 import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.repository.GroupTransactionParticipantRepository;
@@ -38,6 +42,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -60,10 +65,10 @@ class GroupTransactionServiceTest {
     private GroupWalletRepository groupWalletRepository;
 
     @Mock
-    private CategoryRepository categoryRepository;
+    private CategoryService categoryService;
 
     @Mock
-    private GroupBalanceCalculator balanceCalculator;
+    private GroupBalanceService balanceService;
 
     private GroupTransactionServiceImpl transactionService;
 
@@ -81,14 +86,20 @@ class GroupTransactionServiceTest {
         walletId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
 
+        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupMemberRepository, groupRepository);
+        GroupTransactionMapper transactionMapper = Mappers.getMapper(GroupTransactionMapper.class);
+        GroupSplitHelper splitHelper = new GroupSplitHelper();
+
         transactionService = new GroupTransactionServiceImpl(
                 transactionRepository,
                 participantRepository,
-                groupRepository,
                 groupMemberRepository,
                 groupWalletRepository,
-                categoryRepository,
-                balanceCalculator
+                categoryService,
+                balanceService,
+                permissionValidator,
+                transactionMapper,
+                splitHelper
         );
     }
 
@@ -97,12 +108,12 @@ class GroupTransactionServiceTest {
     void testCreate_ExpenseByOwner_DirectConfirmed() {
         Group group = Group.builder().id(groupId).status(GroupStatus.ACTIVE).isSettlementEnabled(true).build();
         GroupWallet wallet = GroupWallet.builder().id(walletId).groupId(groupId).heldByUserId(ownerId).status(GroupWalletStatus.ACTIVE).currentBalance(5000000L).build();
-        Category cat = Category.builder().id(categoryId).type("expense").build();
+        CategoryRefResponse cat = new CategoryRefResponse(categoryId, "Ăn uống", "expense", "#FF0000", null, null);
 
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, ownerId, MemberStatus.ACTIVE)).thenReturn(true);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
         when(groupWalletRepository.findFirstByGroupIdAndStatus(groupId, GroupWalletStatus.ACTIVE)).thenReturn(Optional.of(wallet));
-        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(cat));
+        when(categoryService.validateSystemExpenseCategory(categoryId)).thenReturn(cat);
         when(groupMemberRepository.findMemberUserIdsAtOccurredAt(eq(groupId), any())).thenReturn(List.of(ownerId, memberId));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndRoleAndStatus(groupId, ownerId, GroupRole.OWNER, MemberStatus.ACTIVE)).thenReturn(true);
         when(groupWalletRepository.findByGroupIdForUpdate(groupId)).thenReturn(Optional.of(wallet));
@@ -135,12 +146,12 @@ class GroupTransactionServiceTest {
     void testCreate_ExpenseByMember_Pending() {
         Group group = Group.builder().id(groupId).status(GroupStatus.ACTIVE).isSettlementEnabled(true).build();
         GroupWallet wallet = GroupWallet.builder().id(walletId).groupId(groupId).heldByUserId(ownerId).status(GroupWalletStatus.ACTIVE).currentBalance(5000000L).build();
-        Category cat = Category.builder().id(categoryId).type("expense").build();
+        CategoryRefResponse cat = new CategoryRefResponse(categoryId, "Ăn uống", "expense", "#FF0000", null, null);
 
         when(groupMemberRepository.existsByGroupIdAndUserIdAndStatus(groupId, memberId, MemberStatus.ACTIVE)).thenReturn(true);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
         when(groupWalletRepository.findFirstByGroupIdAndStatus(groupId, GroupWalletStatus.ACTIVE)).thenReturn(Optional.of(wallet));
-        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(cat));
+        when(categoryService.validateSystemExpenseCategory(categoryId)).thenReturn(cat);
         when(groupMemberRepository.findMemberUserIdsAtOccurredAt(eq(groupId), any())).thenReturn(List.of(ownerId, memberId));
         when(groupMemberRepository.existsByGroupIdAndUserIdAndRoleAndStatus(groupId, memberId, GroupRole.OWNER, MemberStatus.ACTIVE)).thenReturn(false);
         when(transactionRepository.save(any(GroupTransaction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -206,7 +217,7 @@ class GroupTransactionServiceTest {
         when(groupMemberRepository.existsByGroupIdAndUserIdAndRoleAndStatus(groupId, ownerId, GroupRole.OWNER, MemberStatus.ACTIVE)).thenReturn(true);
         when(groupRepository.findById(groupId)).thenReturn(Optional.of(group));
         when(groupMemberRepository.findMemberUserIdsAtOccurredAt(eq(groupId), any())).thenReturn(List.of(ownerId, memberId));
-        when(balanceCalculator.getRemainingContribution(groupId, memberId, null)).thenReturn(200000L);
+        when(balanceService.getRemainingContribution(groupId, memberId, null)).thenReturn(200000L);
 
         GroupWithdrawalReq req = new GroupWithdrawalReq(memberId, 500000L, "Rút tiền góp", Instant.now());
 

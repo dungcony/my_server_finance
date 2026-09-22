@@ -219,7 +219,7 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 - **Rời nhóm phải tất toán về 0** nếu bật tính thừa thiếu, cả tự rời lẫn bị mời rời (quy tắc 27, 17/09).
 - **Thêm loại `WITHDRAWAL` (rút tiền góp):** trừ quỹ và trừ số đã góp; `REFUND` chỉ để hoàn tiền túi, không trừ số đã góp (17/09).
 - **Đổi tên cờ `is_split_equally` thành `is_settlement_enabled`** — nghĩa thật là bật / tắt tính thừa thiếu (17/09).
-- **Mã mời 8 ký tự**, chữ hoa và số dễ đọc (17/09).
+- **Mã mời 8 ký tự**, chữ hoa và số dễ đọc; **không thời hạn hết hạn** (có mã là tham gia được).
 - **`Idempotency-Key` giữ mức khuyến nghị**, không bắt buộc: khoản thành viên ghi trùng vẫn phải qua bước xác nhận của thủ quỹ / chủ nhóm (17/09).
 - **Xử lý phần người đã rời bị lệch:** hiển thị trên bảng tiền khi $\ne 0$ (về 0 tự động ẩn); hỗ trợ cả 2 cách giải quyết: người đó góp bù (`CONTRIBUTION`) hoặc nhóm tự gánh (bỏ tích người đó khi sửa khoản cũ); xoá nhóm đòi hỏi phần của mọi người (kể cả người đã rời) đều bằng 0 (quy tắc 28, 17/09).
 - **Rời nhóm → tự `REJECTED` khoản `PENDING`** do người đó ghi (`created_by`). Khoản `REJECTED` sẵn không cần xử lý thêm (17/09).

@@ -33,11 +33,8 @@ public class Group {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "invite_code", nullable = false, length = 32)
+    @Column(name = "invite_code", nullable = false, length = 8)
     private String inviteCode;
-
-    @Column(name = "invite_code_expires_at", nullable = false)
-    private Instant inviteCodeExpiresAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

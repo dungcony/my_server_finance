@@ -20,11 +20,4 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
         ORDER BY g.createdAt DESC
     """)
     List<Group> findAllActiveByUserId(@Param("userId") UUID userId);
-
-    @Query("""
-        SELECT g FROM Group g
-        JOIN GroupMember gm ON gm.groupId = g.id
-        WHERE g.id = :groupId AND gm.userId = :userId AND gm.status = 'ACTIVE' AND g.status <> 'DELETED'
-    """)
-    Optional<Group> findActiveByIdAndUserId(@Param("groupId") UUID groupId, @Param("userId") UUID userId);
 }

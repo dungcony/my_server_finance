@@ -5,20 +5,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.datn.financeapp.TestAuthSupport;
-import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.user.repository.UserRepository;
-import com.datn.financeapp.common.ratelimit.RateLimitFilter;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +28,18 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import com.datn.financeapp.TestAuthSupport;
+import com.datn.financeapp.TestRedisConfig;
+import com.datn.financeapp.auth.repository.RefreshTokenRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
+import com.datn.financeapp.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 /**
  * BUDGET-08 — test riêng tư ưu tiên cao nhất của Phase 4 (D-58).
  *
@@ -54,6 +56,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class BudgetPrivacyIntegrationTest {
 
     @Container

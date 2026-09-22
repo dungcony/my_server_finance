@@ -5,7 +5,6 @@ import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.ResendVerificationRequest;
 import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
-import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.auth.entity.OtpModel;
 import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
@@ -39,7 +38,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,6 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class AuthEmailVerificationIntegrationTest {
 
     @Container

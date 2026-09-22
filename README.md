@@ -78,7 +78,7 @@ Toàn bộ biến trong `.env.example` là **bắt buộc, không có giá trị
 
 Package-by-feature — xem chi tiết ở `CLAUDE.md` tại thư mục này.
 
-```
+```text
 src/main/java/com/datn/financeapp/
 ├── common/     # response wrapper, exception handler, security, idempotency, rate limit
 ├── auth/       # đăng ký/đăng nhập/refresh/quên-đổi mật khẩu

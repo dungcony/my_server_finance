@@ -36,9 +36,6 @@ public class GroupWallet {
     @Column(name = "held_by_user_id", nullable = false)
     private UUID heldByUserId;
 
-    @Column(name = "name", nullable = false, length = 50)
-    private String name;
-
     @Column(name = "current_balance", nullable = false)
     @Builder.Default
     private Long currentBalance = 0L;

@@ -23,16 +23,12 @@ import com.datn.financeapp.transaction.service.TransactionWriteCommand;
 import com.datn.financeapp.transaction.service.TransactionWriter;
 import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.wallet.service.WalletService;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -333,7 +329,7 @@ public class GoalServiceImpl implements GoalService {
         SavingsGoal goal = loadOwnedGoal(userId, goalId);
 
         List<UUID> transactionIds = goalContributionRepository.findByGoalId(goalId).stream()
-                .map(GoalContribution::getTransactionId)
+                .map(c -> c.getTransactionId())
                 .filter(java.util.Objects::nonNull)
                 .toList();
 

@@ -73,7 +73,6 @@ CREATE TABLE group_wallets (
     id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id         UUID        NOT NULL,
     held_by_user_id  UUID        NOT NULL,
-    name             VARCHAR(50) NOT NULL,
     current_balance  BIGINT      NOT NULL DEFAULT 0,
     status           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),

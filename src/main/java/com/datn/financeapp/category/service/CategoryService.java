@@ -62,4 +62,6 @@ public interface CategoryService {
     IconRefResponse findIconRef(UUID iconId);
 
     IconGroupResponseWrapper listIcons(String iconGroup, String search);
+
+    CategoryRefResponse validateSystemExpenseCategory(UUID categoryId);
 }

@@ -41,6 +41,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class AuthResetPasswordIntegrationTest {
 
     @Container

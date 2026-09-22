@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
 import com.datn.financeapp.auth.dto.request.LoginRequest;
@@ -63,6 +62,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class AuthGoogleLoginIntegrationTest {
 
     @Container

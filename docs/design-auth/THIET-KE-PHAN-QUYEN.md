@@ -78,9 +78,9 @@ tuyệt đối riêng tư; chỉ dữ liệu ví chung và ngân sách chung m�
 * **Tầng 1b — Phân quyền Gói cước (Plan Feature Gate)**: Sử dụng trường enum `plan` (`FREE` vs `PREMIUM`) trên `users`
   để kiểm soát hạn mức gọi AI và số nhóm gia đình tối đa được phép tạo.
 * **Tầng 2 — Phân quyền Ngữ cảnh Nhóm & Tài nguyên (Group Context & Data-Level Security)**:
-    * Một người dùng có thể là `OWNER` của nhóm A nhưng là `MEMBER` của nhóm B. Quyền trong nhóm không phải role toàn
+  * Một người dùng có thể là `OWNER` của nhóm A nhưng là `MEMBER` của nhóm B. Quyền trong nhóm không phải role toàn
       cục.
-    * Phân quyền động được kiểm tra tại boundary thông qua bean `@groupSecurity` kết hợp với Service layer xác thực
+  * Phân quyền động được kiểm tra tại boundary thông qua bean `@groupSecurity` kết hợp với Service layer xác thực
       quyền truy cập trên từng tài nguyên cụ thể (`groupId`, `walletId`, `transactionId`).
 
 ### 1.3. Bảng ma trận quyền hạn nhóm
@@ -116,7 +116,7 @@ chính (Information Disclosure):
 
 ## 2. THIẾT KẾ CƠ SỞ DỮ LIỆU TỔNG THỂ (DATABASE SCHEMA & ERD)
 
-```
+```text
 +--------------------------+                      +--------------------------+
 |          User            | 1                0..*|        UserRole          |
 +--------------------------+----------------------+--------------------------+
@@ -195,7 +195,7 @@ chính (Information Disclosure):
 * **Request Body**: `BlockUserRequest` (JSON record) — chứa `reason`
 * **Response Body**: `ApiResponse<Void>` (JSON)
 
-#### 1. Kịch bản chính (Main Success Flow — 200 OK):
+#### 1. Kịch bản chính (Main Success Flow — 200 OK)
 
 1. **Client** gửi HTTP Request `PATCH /v1/admin/users/{userId}/block` kèm body
    `{ "reason": "Vi phạm quy chế chi tiêu" }`.
@@ -217,23 +217,23 @@ chính (Information Disclosure):
 10. **`ManagerUserController`** trả về HTTP Status **`200 OK`** kèm
     `ApiResponse.of(null, "Khóa tài khoản người dùng thành công")`.
 
-#### 2. Kịch bản ngoại lệ (Exception Flows):
+#### 2. Kịch bản ngoại lệ (Exception Flows)
 
 * **Ngoại lệ 1: Thiếu quyền Quản trị viên (403 Forbidden)**
-    * *Tại bước 2*: SecurityContext không chứa authority `admin:users:manage`.
-    * *Xử lý*: `GlobalExceptionHandler` bắt `AccessDeniedException` và phản hồi HTTP `403 Forbidden` kèm
+  * *Tại bước 2*: SecurityContext không chứa authority `admin:users:manage`.
+  * *Xử lý*: `GlobalExceptionHandler` bắt `AccessDeniedException` và phản hồi HTTP `403 Forbidden` kèm
       `{ "success": false, "error": { "code": "FORBIDDEN", "message": "Bạn không có quyền truy cập tài nguyên này." } }`.
 * **Ngoại lệ 2: Không tìm thấy người dùng (404 Not Found)**
-    * *Tại bước 5*: `userRepository` không tìm thấy người dùng có ID tương ứng.
-    * *Xử lý*: Ném `BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng")`, phản hồi HTTP `404 Not Found`.
+  * *Tại bước 5*: `userRepository` không tìm thấy người dùng có ID tương ứng.
+  * *Xử lý*: Ném `BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng")`, phản hồi HTTP `404 Not Found`.
 * **Ngoại lệ 3: Quản trị viên tự khóa chính mình (400 Bad Request)**
-    * *Tại bước 4*: Phát hiện `userId.equals(currentUserId)`.
-    * *Xử lý*: Ném
+  * *Tại bước 4*: Phát hiện `userId.equals(currentUserId)`.
+  * *Xử lý*: Ném
       `BusinessException(ErrorCode.VALIDATION_ERROR, "Quản trị viên không được phép tự khóa tài khoản của chính mình")`,
       phản hồi HTTP `400 Bad Request`.
 * **Ngoại lệ 4: Lý do khóa bị bỏ trống (400 Bad Request)**
-    * *Tại bước 2*: Validation `@NotBlank` trên trường `reason` thất bại.
-    * *Xử lý*: Phản hồi HTTP `400 Bad Request` kèm chi tiết lỗi validation.
+  * *Tại bước 2*: Validation `@NotBlank` trên trường `reason` thất bại.
+  * *Xử lý*: Phản hồi HTTP `400 Bad Request` kèm chi tiết lỗi validation.
 
 ---
 
@@ -404,7 +404,7 @@ sequenceDiagram
 * **Headers**: `Authorization: Bearer <token>`
 * **Response Body**: `ApiResponse<Void>` (JSON)
 
-#### 1. Kịch bản chính (Main Success Flow — 200 OK):
+#### 1. Kịch bản chính (Main Success Flow — 200 OK)
 
 1. **Client** gửi request `DELETE /v1/groups/{groupId}/members/{userId}`.
 2. **`GroupController`** tiếp nhận. Spring Security kiểm tra `@PreAuthorize("@groupSecurity.isOwner(#groupId)")`.
@@ -417,19 +417,19 @@ sequenceDiagram
 9. **`GroupController`** phản hồi HTTP Status **`200 OK`** kèm
    `ApiResponse.of(null, "Đã xóa thành viên khỏi nhóm thành công")`.
 
-#### 2. Kịch bản ngoại lệ (Exception Flows):
+#### 2. Kịch bản ngoại lệ (Exception Flows)
 
 * **Ngoại lệ 1: Người thực hiện không phải Chủ nhóm (403 Forbidden)**
-    * *Tại bước 2*: `@groupSecurity.isOwner(#groupId)` đánh giá `false` (người gọi là `MEMBER`).
-    * *Xử lý*: Trả về HTTP `403 Forbidden`. Áp dụng 403 vì người gọi đã là thành viên trong nhóm, biết rõ nhóm tồn tại.
+  * *Tại bước 2*: `@groupSecurity.isOwner(#groupId)` đánh giá `false` (người gọi là `MEMBER`).
+  * *Xử lý*: Trả về HTTP `403 Forbidden`. Áp dụng 403 vì người gọi đã là thành viên trong nhóm, biết rõ nhóm tồn tại.
 * **Ngoại lệ 2: Chủ nhóm cố tự đuổi mình (400 Bad Request)**
-    * *Tại bước 4*: Phát hiện `userId.equals(currentUserId)`.
-    * *Xử lý*: Ném
+  * *Tại bước 4*: Phát hiện `userId.equals(currentUserId)`.
+  * *Xử lý*: Ném
       `BusinessException(ErrorCode.VALIDATION_ERROR, "Chủ nhóm không thể tự xóa chính mình. Vui lòng chuyển quyền hoặc giải tán nhóm")`,
       trả về HTTP `400 Bad Request`.
 * **Ngoại lệ 3: Thành viên không tồn tại trong nhóm (404 Not Found)**
-    * *Tại bước 5*: Không tìm thấy bản ghi `GroupMember` đang active.
-    * *Xử lý*: Ném `BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy thành viên trong nhóm")`, trả về HTTP
+  * *Tại bước 5*: Không tìm thấy bản ghi `GroupMember` đang active.
+  * *Xử lý*: Ném `BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy thành viên trong nhóm")`, trả về HTTP
       `404 Not Found`.
 
 ---
@@ -567,7 +567,7 @@ sequenceDiagram
 * **Request Body**: `UpdateTransactionRequest` (JSON record)
 * **Response Body**: `ApiResponse<TransactionDetailResponse>` (JSON)
 
-#### 1. Khóa dòng Transaction chống Stale Read (P0 v2):
+#### 1. Khóa dòng Transaction chống Stale Read (P0 v2)
 
 * Nếu đọc `Transaction` bằng `findById` thông thường trước khi khóa ví: Hai request A và B cùng sửa một giao dịch sẽ đọc
   cùng dữ liệu cũ. Request B sau khi đợi A commit sẽ hoàn tác số tiền cũ đã bị ghi đè $\rightarrow$ **Sai lệch số dư
@@ -576,7 +576,7 @@ sequenceDiagram
   (`transactionRepository.findByIdForUpdate(transactionId)`) ngay khi bắt đầu transaction, đảm bảo request đọc luôn lấy
   được trạng thái dữ liệu mới nhất đã commit và tuần tự hóa các request sửa cùng 1 giao dịch.
 
-#### 2. Nguyên tắc bảo mật tài nguyên đa ví (Multi-resource Authorization - P0 v1 / P1 v2):
+#### 2. Nguyên tắc bảo mật tài nguyên đa ví (Multi-resource Authorization - P0 v1 / P1 v2)
 
 Khi cập nhật giao dịch, client có quyền thay đổi `walletId` hoặc `destinationWalletId`. Hệ thống bắt buộc phải kiểm tra
 quyền trên cả 3 đối tượng:
@@ -593,14 +593,14 @@ quyền trên cả 3 đối tượng:
 > **Chính sách mã lỗi**: Nếu thất bại bất kỳ bước kiểm tra quyền tài nguyên nào ở trên, hệ thống trả về **
 > `404 Not Found`** (theo CORE-05) để không làm lộ sự tồn tại của ví/giao dịch không thuộc quyền.
 
-#### 3. Khóa ví chống Lost Update số dư & Quy tắc chống Deadlock:
+#### 3. Khóa ví chống Lost Update số dư & Quy tắc chống Deadlock
 
 * Hệ thống áp dụng **Pessimistic Locking** (`SELECT ... FOR UPDATE` thông qua `@Lock(LockModeType.PESSIMISTIC_WRITE)`
   trên `WalletRepository`).
 * **Quy tắc chống Deadlock**: Khi giao dịch liên quan đến nhiều ví (đổi ví hoặc chuyển khoản), các ví bắt buộc phải được
   khóa theo **thứ tự UUID tăng dần** (`ORDER BY id ASC`).
 
-#### 4. Kịch bản chính (Main Success Flow — 200 OK):
+#### 4. Kịch bản chính (Main Success Flow — 200 OK)
 
 1. **Client** gửi request `PUT /v1/transactions/{transactionId}` kèm đầy đủ dữ liệu cập nhật.
 2. **`TransactionController`** tiếp nhận, kiểm tra validation `@Valid` trên DTO.
@@ -845,12 +845,13 @@ sequenceDiagram
 * **Request Body**: `DeleteGroupRequest` (JSON record) — chứa enum `sharedWalletAction`
 * **Response Body**: `ApiResponse<Void>` (JSON)
 
-#### 1. Cơ chế Khóa đồng bộ Tập ví chung chống Race Condition (P0 v2):
+#### 1. Cơ chế Khóa đồng bộ Tập ví chung chống Race Condition (P0 v2)
 
 * Nếu Xóa nhóm chỉ khóa dòng `Group` trong khi Tạo/Sửa giao dịch chỉ khóa `Wallet`: Hai luồng này không cạnh tranh cùng
   1 lock $\rightarrow$ Thành viên vẫn có thể tạo giao dịch trên ví chung trong lúc Chủ nhóm đang giải tán nhóm.
 * **Giải pháp tối ưu**: Khi bắt đầu quy trình xóa nhóm, hệ thống **khóa dòng Group đồng thời khóa toàn bộ các ví chung
   của Group đó**:
+
   ```sql
   -- 1. Khóa Group chống 2 request xóa nhóm đồng thời
   SELECT * FROM groups WHERE id = :groupId AND is_deleted = FALSE FOR UPDATE;
@@ -858,11 +859,12 @@ sequenceDiagram
   -- 2. Khóa toàn bộ ví chung thuộc nhóm theo thứ tự UUID tăng dần
   SELECT * FROM wallets WHERE group_id = :groupId AND is_deleted = FALSE ORDER BY id ASC FOR UPDATE;
   ```
+
 * **Lợi ích kiến trúc**: Vì mọi luồng Tạo/Sửa giao dịch trên ví chung **vốn dĩ đã khóa dòng Wallet**, việc Xóa nhóm khóa
   toàn bộ ví chung sẽ **tự động chặn mọi luồng giao dịch mới mà không cần bắt các giao dịch thường nhật phải khóa
   Group** (tránh thắt cổ chai hiệu năng hàng ngày).
 
-#### 2. Kịch bản chính (Main Success Flow — 200 OK):
+#### 2. Kịch bản chính (Main Success Flow — 200 OK)
 
 1. **Client** gửi request `DELETE /v1/groups/{groupId}` kèm body `{ "sharedWalletAction": "TRANSFER_TO_OWNER" }`.
 2. **`GroupController`** kiểm tra `@Valid`. Spring Security kiểm tra
@@ -878,11 +880,13 @@ sequenceDiagram
 7. **Xử lý số dư ví chung theo phương án đã chọn**:
     * **Phương án `TRANSFER_TO_OWNER`**: Gọi `walletService.transferSharedWalletsToOwner(groupId, ownerId)`. Hệ thống
       chạy câu lệnh SQL nguyên tử:
+
       ```sql
       UPDATE wallets 
       SET group_id = NULL, user_id = :ownerId 
       WHERE group_id = :groupId AND is_deleted = FALSE;
       ```
+
       *(Thỏa mãn tuyệt đối ràng buộc CSDL `ck_wallets_owner`, biến ví chung thành ví cá nhân của chủ nhóm).*
     * **Phương án `DELETE_ALL`**: Gọi `walletService.softDeleteSharedWallets(groupId)`. Hệ thống xóa mềm toàn bộ giao
       dịch trên các ví chung, sau đó xóa mềm các ví chung (`is_deleted = TRUE`).
@@ -1052,11 +1056,13 @@ Khi Quản trị viên khóa tài khoản:
    $$\text{remainingTTL} = \max (\text{tokenExpiration} - \text{currentTime}, 0)$$
    Nếu không có metadata phiên chi tiết, fallback về thời hạn tối đa của Access Token (1 giờ).
 2. Lưu vào Redis:
+
    ```text
    Key: blacklist:user:{userId}
    Value: "blocked"
    TTL: remainingTTL (giây)
    ```
+
 3. Tại `JwtAuthFilter`:
     * Với mỗi HTTP request có JWT hợp lệ, trích xuất `userId` từ token claim.
     * Kiểm tra nhanh trên Redis: `redisTemplate.hasKey("blacklist:user:" + userId)` ($O (1) < 1\text{ms}$).

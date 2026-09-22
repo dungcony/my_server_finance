@@ -1,6 +1,6 @@
 server:
   servlet:
-    context-path: ${PATH}
+    context-path: ${API_PATH}
 
 spring:
   profiles:

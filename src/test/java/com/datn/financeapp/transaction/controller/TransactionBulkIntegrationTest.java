@@ -64,6 +64,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class TransactionBulkIntegrationTest {
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");

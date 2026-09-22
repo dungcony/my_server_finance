@@ -4,7 +4,7 @@
 
 Endpoint:
 
-``` text
+```text
 GET /v1/admin/logs/stream
 ```
 
@@ -13,11 +13,11 @@ có khả năng là một endpoint **Server-Sent Events (SSE)**.
 SSE giữ một HTTP connection mở để server liên tục gửi dữ liệu về client.
 Vì vậy, khi người dùng:
 
--   F5 trang
--   đóng tab
--   chuyển trang
--   mất mạng
--   frontend chủ động đóng `EventSource`
+- F5 trang
+- đóng tab
+- chuyển trang
+- mất mạng
+- frontend chủ động đóng `EventSource`
 
 thì connection SSE cũ sẽ bị đóng.
 
@@ -25,13 +25,13 @@ Việc server nhận exception khi client disconnect **có thể là hành vi
 bình thường**. Điều cần làm là phân biệt trường hợp này với lỗi thực sự
 của application.
 
-------------------------------------------------------------------------
+---
 
-# 2. Vấn đề trong log hiện tại
+## 2. Vấn đề trong log hiện tại
 
 Ví dụ log:
 
-``` text
+```text
 GET /v1/admin/logs/stream → 200 → 467ms
 GET /v1/admin/logs/stream → 200 → 9ms
 
@@ -42,7 +42,7 @@ ERROR Servlet.service() for servlet [dispatcherServlet] threw exception
 
 Điểm đáng chú ý nhất là:
 
-``` text
+```text
 Failure in @ExceptionHandler
 GlobalExceptionHandler#handleUnexpected(...)
 ```
@@ -54,16 +54,16 @@ Tuy nhiên, **không nên kết luận chỉ từ log này** rằng nguyên nhâ
 chắn là client disconnect hoặc `AuthorizationDeniedException`. Cần xem
 stack trace/root cause thực tế.
 
-------------------------------------------------------------------------
+---
 
-# 3. Với Spring Boot 3 + Spring Security 6: có thêm Security layer
+## 3. Với Spring Boot 3 + Spring Security 6: có thêm Security layer
 
 Đây là phần quan trọng khi ứng dụng sử dụng `SseEmitter` hoặc các cơ chế
 Servlet async.
 
 Request ban đầu có dispatcher type:
 
-``` text
+```text
 DispatcherType.REQUEST
 ```
 
@@ -75,7 +75,7 @@ này.
 
 Do đó, với ứng dụng có async/SSE, nên cấu hình rõ:
 
-``` java
+```java
 .dispatcherTypeMatchers(
     DispatcherType.ASYNC,
     DispatcherType.ERROR
@@ -84,7 +84,7 @@ Do đó, với ứng dụng có async/SSE, nên cấu hình rõ:
 
 Ví dụ:
 
-``` java
+```java
 http
     .authorizeHttpRequests(auth -> auth
         .dispatcherTypeMatchers(
@@ -102,7 +102,7 @@ http
 
 Nếu async/error dispatch bị áp dụng rule:
 
-``` java
+```java
 .anyRequest().authenticated()
 ```
 
@@ -112,7 +112,7 @@ dispatch trước khi request đi tới Controller hoặc
 
 Một exception có thể xuất hiện dạng:
 
-``` text
+```text
 AuthorizationDeniedException: Access Denied
 ```
 
@@ -122,7 +122,7 @@ hoặc lỗi liên quan tới authorization.
 
 Không nên hiểu rằng:
 
-``` text
+```text
 F5
  ↓
 ASYNC dispatch
@@ -136,26 +136,26 @@ là flow **bắt buộc**.
 
 Flow thực tế phụ thuộc vào:
 
--   cách triển khai SSE
--   `SseEmitter` hay WebFlux
--   Servlet container
--   lifecycle của `AsyncContext`
--   Security filter chain
--   dispatcher type
--   request matcher
--   thời điểm client disconnect
+- cách triển khai SSE
+- `SseEmitter` hay WebFlux
+- Servlet container
+- lifecycle của `AsyncContext`
+- Security filter chain
+- dispatcher type
+- request matcher
+- thời điểm client disconnect
 
 Vì vậy, `ASYNC/ERROR permitAll()` là một cấu hình phòng tránh phù hợp
 cho async/SSE, nhưng **không thể dùng nó để kết luận nguyên nhân của mọi
 lỗi F5**.
 
-------------------------------------------------------------------------
+---
 
-# 4. Nên xử lý SSE ở hai tầng
+## 4. Nên xử lý SSE ở hai tầng
 
 Với Spring Boot 3 + Spring Security 6, nên tư duy theo hai tầng:
 
-``` text
+```text
                  GET /v1/admin/logs/stream
                               │
                               ▼
@@ -188,7 +188,7 @@ Với Spring Boot 3 + Spring Security 6, nên tư duy theo hai tầng:
 
 Nếu exception thực sự là lỗi application:
 
-``` text
+```text
 Unexpected application exception
             ↓
 GlobalExceptionHandler
@@ -198,13 +198,13 @@ ERROR + stack trace
 HTTP 500
 ```
 
-------------------------------------------------------------------------
+---
 
 # 5. Không để client disconnect rơi vào `handleUnexpected()`
 
 Ví dụ handler tổng quát:
 
-``` java
+```java
 @ExceptionHandler(Exception.class)
 public ResponseEntity<?> handleUnexpected(
         Exception ex,
@@ -226,7 +226,7 @@ Handler này nên dành cho lỗi thực sự không dự kiến.
 
 Nếu exception do client đóng SSE connection đi vào đây:
 
-``` text
+```text
 F5
  ↓
 SSE connection đóng
@@ -240,13 +240,13 @@ ERROR
 
 thì log sẽ bị "đỏ" dù không phải application failure.
 
-------------------------------------------------------------------------
+---
 
 # 6. Handle riêng các exception do disconnect
 
 Một số stack có thể phát sinh:
 
-``` text
+```text
 ClientAbortException
 Broken pipe
 AsyncRequestNotUsableException
@@ -256,7 +256,7 @@ Exception cụ thể phụ thuộc vào Spring Boot, Tomcat và cách triển kh
 
 Ví dụ với Tomcat:
 
-``` java
+```java
 import org.apache.catalina.connector.ClientAbortException;
 
 @ExceptionHandler(ClientAbortException.class)
@@ -276,13 +276,13 @@ không sử dụng nó.
 
 Hãy kiểm tra **root cause** trước rồi handle đúng exception type.
 
-------------------------------------------------------------------------
+---
 
 # 7. Xử lý lifecycle của `SseEmitter`
 
 Nếu endpoint sử dụng `SseEmitter`, nên đăng ký lifecycle callback:
 
-``` java
+```java
 @GetMapping(
     value = "/logs/stream",
     produces = MediaType.TEXT_EVENT_STREAM_VALUE
@@ -313,7 +313,7 @@ public SseEmitter streamLogs() {
 
 Mục tiêu:
 
-``` text
+```text
 Client F5
     ↓
 Connection cũ đóng
@@ -325,7 +325,7 @@ Cleanup
 DEBUG / ignore nếu đây là expected disconnect
 ```
 
-------------------------------------------------------------------------
+---
 
 # 8. Cleanup subscriber/listener
 
@@ -334,7 +334,7 @@ chú ý cleanup.
 
 Ví dụ:
 
-``` java
+```java
 SseEmitter emitter = new SseEmitter(0L);
 
 logService.subscribe(emitter);
@@ -355,7 +355,7 @@ emitter.onError(error ->
 
 Nếu không cleanup, F5 nhiều lần có thể tạo:
 
-``` text
+```text
 Browser
    │
    ├── SSE #1
@@ -369,19 +369,19 @@ trong khi server vẫn giữ reference tới các emitter cũ.
 
 Điều này có thể dẫn tới:
 
--   memory leak
--   listener bị tích tụ
--   gửi event vào connection đã chết
--   CPU/network overhead
--   log lỗi liên tục
+- memory leak
+- listener bị tích tụ
+- gửi event vào connection đã chết
+- CPU/network overhead
+- log lỗi liên tục
 
-------------------------------------------------------------------------
+---
 
 # 9. `GlobalExceptionHandler` vẫn phải giữ
 
 Không nên xóa:
 
-``` java
+```java
 @ExceptionHandler(Exception.class)
 ```
 
@@ -389,7 +389,7 @@ Handler tổng quát vẫn rất cần thiết.
 
 Ví dụ:
 
-``` java
+```java
 @ExceptionHandler(Exception.class)
 public ResponseEntity<?> handleUnexpected(
         Exception ex,
@@ -409,7 +409,7 @@ public ResponseEntity<?> handleUnexpected(
 
 Mục tiêu là để các exception đã biết được xử lý trước:
 
-``` text
+```text
 Client disconnect
        ↓
 Specific handler / SSE lifecycle
@@ -435,26 +435,28 @@ handleUnexpected()
 ERROR / 500
 ```
 
-------------------------------------------------------------------------
+---
 
 # 10. Phân loại log level
 
 Một hệ thống log hợp lý có thể phân loại:
 
-  Tình huống                  Log level
-  --------------------------- ---------------------
-  Login thành công            `INFO`
-  SSE connection được tạo     `DEBUG` hoặc `INFO`
-  SSE client disconnect       `DEBUG`
-  SSE completed               `DEBUG`
-  Expected timeout            `DEBUG` hoặc `WARN`
-  Validation/business error   `WARN`
-  Database/system failure     `ERROR`
-  Unexpected exception        `ERROR`
+Tình huống Log level
+
+---
+
+Login thành công `INFO`
+SSE connection được tạo `DEBUG` hoặc `INFO`
+SSE client disconnect `DEBUG`
+SSE completed `DEBUG`
+Expected timeout `DEBUG` hoặc `WARN`
+Validation/business error `WARN`
+Database/system failure `ERROR`
+Unexpected exception `ERROR`
 
 Không nên biến:
 
-``` text
+```text
 F5
  ↓
 client disconnect
@@ -464,13 +466,13 @@ ERROR 🔴
 
 thành lỗi server.
 
-------------------------------------------------------------------------
+---
 
 # 11. Cách kiểm tra chính xác lỗi hiện tại
 
 Không nên chỉ nhìn:
 
-``` text
+```text
 Failure in @ExceptionHandler
 ```
 
@@ -480,7 +482,7 @@ Hãy tìm stack trace đầy đủ và xác định exception gốc.
 
 Ví dụ:
 
-``` text
+```text
 ClientAbortException
 Broken pipe
 AsyncRequestNotUsableException
@@ -490,25 +492,25 @@ AsyncRequestNotUsableException
 
 Xử lý:
 
-``` text
+```text
 cleanup
 +
 DEBUG / ignore
 ```
 
-------------------------------------------------------------------------
+---
 
 ### Trường hợp B --- Security authorization
 
 Nếu thấy:
 
-``` text
+```text
 AuthorizationDeniedException: Access Denied
 ```
 
 → Kiểm tra:
 
-``` java
+```java
 .dispatcherTypeMatchers(
     DispatcherType.ASYNC,
     DispatcherType.ERROR
@@ -519,19 +521,19 @@ và toàn bộ `SecurityFilterChain`.
 
 Đặc biệt kiểm tra rule:
 
-``` java
+```java
 .anyRequest().authenticated()
 ```
 
 có đang bắt async/error dispatch hay không.
 
-------------------------------------------------------------------------
+---
 
 ### Trường hợp C --- Application exception
 
 Ví dụ:
 
-``` text
+```text
 NullPointerException
 DataAccessException
 IllegalStateException
@@ -542,13 +544,13 @@ IllegalStateException
 
 Cần sửa nguyên nhân trong application.
 
-------------------------------------------------------------------------
+---
 
 # 12. `PathRequest.toStaticResources()` là chuyện khác
 
 Config:
 
-``` java
+```java
 .requestMatchers(
     PathRequest.toStaticResources().atCommonLocations()
 ).permitAll()
@@ -564,13 +566,13 @@ nên giữ/điều chỉnh theo cấu trúc ứng dụng.
 Nếu frontend được deploy riêng và backend chỉ là REST API thì matcher
 này thường không đóng vai trò trong `/v1/admin/logs/stream`.
 
-------------------------------------------------------------------------
+---
 
 # 13. Hai matcher `ASYNC/ERROR` có ảnh hưởng performance không?
 
 Ví dụ:
 
-``` java
+```java
 .dispatcherTypeMatchers(
     DispatcherType.ASYNC,
     DispatcherType.ERROR
@@ -583,7 +585,7 @@ Nó phục vụ **đúng authorization behavior của async/error dispatch**.
 
 Đối với API login:
 
-``` text
+```text
 Request
  ↓
 DB query
@@ -603,13 +605,13 @@ Vì vậy:
 > login nhanh hơn, mà để security không vô tình cản trở lifecycle của
 > async request.
 
-------------------------------------------------------------------------
+---
 
 # 14. Flow "đẹp" cuối cùng
 
 Kiến trúc nên hướng tới:
 
-``` text
+```text
                         SSE REQUEST
                             │
                             ▼
@@ -642,7 +644,7 @@ Kiến trúc nên hướng tới:
 
 Còn application failure:
 
-``` text
+```text
                     Application failure
                             │
                             ▼
@@ -657,41 +659,41 @@ Còn application failure:
                               ERROR + 500
 ```
 
-------------------------------------------------------------------------
+---
 
 # 15. Checklist cho project
 
 ## Security
 
--   [ ] Có `DispatcherType.ASYNC` cho async/SSE.
--   [ ] Có `DispatcherType.ERROR` nếu muốn error dispatch không bị
-    authorization rule chặn.
--   [ ] Kiểm tra thứ tự matcher trước `.anyRequest().authenticated()`.
--   [ ] Không dùng `permitAll()` rộng hơn phạm vi cần thiết.
+- [ ] Có `DispatcherType.ASYNC` cho async/SSE.
+- [ ] Có `DispatcherType.ERROR` nếu muốn error dispatch không bị
+      authorization rule chặn.
+- [ ] Kiểm tra thứ tự matcher trước `.anyRequest().authenticated()`.
+- [ ] Không dùng `permitAll()` rộng hơn phạm vi cần thiết.
 
 ## SSE
 
--   [ ] Có `onCompletion()`.
--   [ ] Có `onTimeout()`.
--   [ ] Có `onError()`.
--   [ ] Cleanup subscriber/listener khi connection chết.
--   [ ] Không gửi event vô hạn vào emitter đã chết.
+- [ ] Có `onCompletion()`.
+- [ ] Có `onTimeout()`.
+- [ ] Có `onError()`.
+- [ ] Cleanup subscriber/listener khi connection chết.
+- [ ] Không gửi event vô hạn vào emitter đã chết.
 
 ## Exception
 
--   [ ] Client disconnect được phân biệt với server failure.
--   [ ] Exception expected không bị log `ERROR`.
--   [ ] `GlobalExceptionHandler` vẫn giữ cho lỗi unexpected.
--   [ ] Kiểm tra root cause trước khi thêm `@ExceptionHandler`.
+- [ ] Client disconnect được phân biệt với server failure.
+- [ ] Exception expected không bị log `ERROR`.
+- [ ] `GlobalExceptionHandler` vẫn giữ cho lỗi unexpected.
+- [ ] Kiểm tra root cause trước khi thêm `@ExceptionHandler`.
 
 ## Logging
 
--   [ ] Expected disconnect → `DEBUG`.
--   [ ] Business/validation issue → `WARN` hoặc response 4xx phù hợp.
--   [ ] Unexpected server failure → `ERROR`.
--   [ ] Không dùng latency của SSE để đánh giá latency REST API.
+- [ ] Expected disconnect → `DEBUG`.
+- [ ] Business/validation issue → `WARN` hoặc response 4xx phù hợp.
+- [ ] Unexpected server failure → `ERROR`.
+- [ ] Không dùng latency của SSE để đánh giá latency REST API.
 
-------------------------------------------------------------------------
+---
 
 # 16. Kết luận
 
@@ -702,7 +704,7 @@ Còn application failure:
 
 Cho phép async/error dispatch phù hợp:
 
-``` java
+```java
 .dispatcherTypeMatchers(
     DispatcherType.ASYNC,
     DispatcherType.ERROR
@@ -716,7 +718,7 @@ async/error dispatch trong những lifecycle phù hợp.
 
 Xử lý lifecycle:
 
-``` text
+```text
 onCompletion()
 onTimeout()
 onError()
@@ -724,7 +726,7 @@ onError()
 
 và phân biệt:
 
-``` text
+```text
 Expected client disconnect
         ↓
 cleanup
@@ -734,7 +736,7 @@ DEBUG / ignore
 
 với:
 
-``` text
+```text
 Unexpected application exception
         ↓
 GlobalExceptionHandler

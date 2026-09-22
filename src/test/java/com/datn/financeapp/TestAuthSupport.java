@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * khởi tạo và toàn bộ test của lớp đó chết theo. Nạp tường minh bằng
  * {@code @Import({TestRedisConfig.class, TestAuthSupport.class})} ở đúng những lớp cần.
  */
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 public class TestAuthSupport {
 
     @Autowired

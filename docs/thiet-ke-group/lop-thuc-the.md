@@ -46,7 +46,6 @@ classDiagram
         +String description
         +GroupStatus status
         +String inviteCode
-        +Instant inviteCodeExpiresAt
         +Money target
         +Boolean isSettlementEnabled
         +Boolean isJoinWithoutConfirm
@@ -61,7 +60,6 @@ classDiagram
     }
 
     class GroupWallet {
-        +String name
         +Money currentBalance
         +WalletStatus status
         +Instant createdAt
@@ -85,27 +83,24 @@ classDiagram
     }
 
     class User {
-<<thamchiếu>>
-}
+        <<thamchiếu>>
+    }
 
-class Category {
-<<thamchiếu>>
-}
+    class Category {
+        <<thamchiếu>>
+    }
 
-Group "1" --> "1..*" GroupMember: chứa thành viên
-User "1" --> "0..*" GroupMember: định danh thành viên
-
-Group "1" --> "1" GroupWallet: sở hữu đúng một quỹ
-User "1" --> "0..*" GroupWallet: giữ quỹ (thủ quỹ)
-
-Group "1" --> "0..*" GroupTransaction: ghi nhận
-User "1" --> "0..*" GroupTransaction: người trả / góp / nhận / thủ quỹ
-User "1" --> "0..*" GroupTransaction: người ghi
-User "0..1" --> "0..*" GroupTransaction: người xác nhận / từ chối
-Category "0..1" --> "0..*" GroupTransaction: phân loại khoản chi
-
-GroupTransaction "1" --> "0..*" GroupTransactionParticipant: chia cho (vắng = cả nhóm)
-User "1" --> "0..*" GroupTransactionParticipant: người cùng chịu
+    Group "1" --> "1..*" GroupMember: chứa thành viên
+    User "1" --> "0..*" GroupMember: định danh thành viên
+    Group "1" --> "1" GroupWallet: sở hữu đúng một quỹ
+    User "1" --> "0..*" GroupWallet: giữ quỹ (thủ quỹ)
+    Group "1" --> "0..*" GroupTransaction: ghi nhận
+    User "1" --> "0..*" GroupTransaction: người trả / góp / nhận / thủ quỹ
+    User "1" --> "0..*" GroupTransaction: người ghi
+    User "0..1" --> "0..*" GroupTransaction: người xác nhận / từ chối
+    Category "0..1" --> "0..*" GroupTransaction: phân loại khoản chi
+    GroupTransaction "1" --> "0..*" GroupTransactionParticipant: chia cho (vắng = cả nhóm)
+    User "1" --> "0..*" GroupTransactionParticipant: người cùng chịu
 ```
 
 ---
@@ -114,9 +109,9 @@ User "1" --> "0..*" GroupTransactionParticipant: người cùng chịu
 
 |  STT  | Thực thể                                            | Thuộc tính bản chất                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Ý nghĩa nghiệp vụ                                                                                                                                       |
 |:-----:|:----------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **1** | **`Group`** (Nhóm chung)                            | - `name`: Tên nhóm<br>- `description`: Mô tả<br>- `status`: `ACTIVE`, `ARCHIVED` (lưu trữ, chỉ xem), `DELETED`<br>- `inviteCode`: Mã mời vào nhóm<br>- `inviteCodeExpiresAt`: Hạn dùng mã mời (7 ngày)<br>- `target`: Số tiền quỹ mục tiêu cần gom<br>- `isSettlementEnabled`: **Bật tính thừa thiếu** — bật thì hệ thống tính phần của từng người; tắt thì không ai cần trả ai<br>- `isJoinWithoutConfirm`: Bật thì nhập mã là vào thẳng; tắt thì chờ chủ nhóm duyệt<br>- `createdAt`                                                                                                                                                                                                                                                   | Gốc điều phối thành viên, quỹ và giao dịch chung. Mọi nhóm vận hành cùng một cơ chế, không phân loại.                                                   |
-| **2** | **`GroupMember`** (Người trong nhóm)                | - `role`: `OWNER`, `MEMBER`<br>- `status`: `PENDING`, `ACTIVE`, `LEFT`, `REMOVED`<br>- `joinedAt`: Lúc được duyệt vào<br>- `leftAt`: Lúc rời hoặc bị đuổi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Tư cách của một người trong **một khoảng thời gian** ở một nhóm. Rời rồi quay lại là bản ghi mới, nhờ vậy biết được tại mỗi thời điểm nhóm có những ai. |
-| **3** | **`GroupWallet`** (Quỹ nhóm)                        | - `name`: Tên quỹ (Quỹ chung, Tiền mặt ở nhà…)<br>- `currentBalance`: Tiền quỹ còn lại, **được phép âm**<br>- `status`: `ACTIVE`, `CLOSED`<br>- `createdAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Nơi giữ tiền chung. **Mỗi nhóm đúng một quỹ**, giao cho **một người giữ** (thủ quỹ).                                                                    |
+| **1** | **`Group`** (Nhóm chung)                            | - `name`: Tên nhóm<br>- `description`: Mô tả<br>- `status`: `ACTIVE`, `ARCHIVED` (lưu trữ, chỉ xem), `DELETED`<br>- `inviteCode`: Mã mời vào nhóm (không giới hạn thời gian)<br>- `target`: Số tiền quỹ mục tiêu cần gom<br>- `isSettlementEnabled`: **Bật tính thừa thiếu** — bật thì hệ thống tính phần của từng người; tắt thì không ai cần trả ai<br>- `isJoinWithoutConfirm`: Bật thì nhập mã là vào thẳng; tắt thì chờ chủ nhóm duyệt<br>- `createdAt`                                                                                                                                                                                                                                                   | Gốc điều phối thành viên, quỹ và giao dịch chung. Mọi nhóm vận hành cùng một cơ chế, không phân loại.                                                   |
+| **2** | **`GroupMember`** (Người trong nhóm)                | - `role`: `OWNER`, `MEMBER`<br>- `status`: `PENDING`, `ACTIVE`, `LEFT`, `REMOVED`<br>- `joinedAt`: Lúc được duyệt vào<br>- `leftAt`: Lúc rời hoặc bị đuổi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ----------------------------------| Tư cách của một người trong **một khoảng thời gian** ở một nhóm. Rời rồi quay lại là bản ghi mới, nhờ vậy biết được tại mỗi thời điểm nhóm có những ai. |
+| **3** | **`GroupWallet`** (Quỹ nhóm)                        | - `currentBalance`: Tiền quỹ còn lại, **được phép âm**<br>- `status`: `ACTIVE`, `CLOSED`<br>- `createdAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Nơi giữ tiền chung. **Mỗi nhóm đúng một quỹ**, giao cho **một người giữ** (thủ quỹ).                                                                    |
 | **4** | **`GroupTransaction`** (Giao dịch nhóm)             | - `type`:<br>&nbsp;&nbsp;· `EXPENSE` — chi tiêu<br>&nbsp;&nbsp;· `CONTRIBUTION` — góp quỹ<br>&nbsp;&nbsp;· `REFUND` — quỹ hoàn tiền túi cho người đã trả hộ<br>&nbsp;&nbsp;· `WITHDRAWAL` — thành viên rút lại tiền đã góp<br>&nbsp;&nbsp;· `ADJUSTMENT_UP` — kiểm kê, tiền thật **nhiều hơn** sổ<br>&nbsp;&nbsp;· `ADJUSTMENT_DOWN` — kiểm kê, tiền thật **ít hơn** sổ<br>- `moneySource`: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền bản thân)<br>- `status`: `PENDING` (chờ xác nhận), `CONFIRMED` (đã xác nhận), `REJECTED` (bị từ chối)<br>- `amount`: Luôn dương<br>- `occurredAt`: Thời điểm phát sinh (tới giây)<br>- `note`: Nội dung<br>- `reviewedAt`: Lúc được xác nhận hoặc từ chối<br>- `createdAt`, `updatedAt`, `deletedAt` | Một lần tiền vào, ra, hoặc được điều chỉnh trong phạm vi nhóm.                                                                                          |
 | **5** | **`GroupTransactionParticipant`** (Người cùng chịu) | - `shareAmount`: Số tiền người này chịu (hoặc hưởng, với `ADJUSTMENT_UP`). **Để trống = chia đều** trong số người được chọn                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Chỉ xuất hiện khi khoản đó **không phải của cả nhóm**.                                                                                                  |
 
@@ -168,7 +163,7 @@ JPA Entity**.
 **Ranh giới module:** `@ManyToOne` chỉ dùng **trong cùng module group**. Trỏ sang `users` hay `categories` thì **chỉ giữ
 `UUID`**.
 
-```
+```text
 group  ──phụ thuộc──►  user (cố định)
 group  ──phụ thuộc──►  category
 
@@ -197,7 +192,6 @@ erDiagram
         VARCHAR description
         VARCHAR status "ACTIVE | ARCHIVED | DELETED"
         VARCHAR invite_code UK "8 ký tự"
-        TIMESTAMPTZ invite_code_expires_at
         BIGINT target
         BOOLEAN is_settlement_enabled
         BOOLEAN is_join_without_confirm
@@ -219,7 +213,6 @@ erDiagram
         UUID id PK
         UUID group_id FK "UNIQUE — mỗi nhóm một quỹ"
         UUID held_by_user_id FK "thủ quỹ"
-        VARCHAR name
         BIGINT current_balance "được phép âm"
         VARCHAR status "ACTIVE | CLOSED"
         TIMESTAMPTZ created_at
@@ -300,10 +293,6 @@ public class GroupEntity {
 
     @Column(name = "invite_code", nullable = false, unique = true, length = 8)
     private String inviteCode;
-
-    // Hết hạn thì chủ nhóm tạo mã mới.
-    @Column(name = "invite_code_expires_at", nullable = false)
-    private Instant inviteCodeExpiresAt;
 
     // Quỹ mục tiêu cần gom. NULL = không đặt mục tiêu.
     @Column(name = "target")
@@ -435,7 +424,7 @@ thành viên. Truy vấn "những ai có mặt tại một thời điểm" ở [
 - **Khóa chính (PK):** `id` (UUID).
 - **Khóa ngoại (FK):** `group_id` → `groups.id` (bắt buộc, **duy nhất** — mỗi nhóm một quỹ); `held_by_user_id` →
   `users.id` (bắt buộc).
-- **Không có cột `type`:** "tiền đang ở đâu" đã trả lời bằng tên quỹ cộng người giữ.
+- **Không có cột `type`:** quỹ duy nhất gắn trực tiếp với nhóm và thủ quỹ giữ tiền (`held_by_user_id`).
 - **`current_balance` được phép âm.**
 - **Không có cột `initial_balance`:** quỹ luôn bắt đầu từ 0. Tiền có sẵn lúc lập nhóm được ghi thành khoản
   `CONTRIBUTION` của đúng người đã đưa, nên `current_balance` luôn bằng tổng ảnh hưởng của các khoản đã xác nhận.
@@ -468,9 +457,6 @@ public class GroupWalletEntity {
     // Phải là thành viên ACTIVE của chính nhóm này.
     @Column(name = "held_by_user_id", nullable = false)
     private UUID heldByUserId;
-
-    @Column(name = "name", nullable = false, length = 50)
-    private String name;
 
     // Được phép ÂM: nhóm chi vượt quỹ là chuyện có thật.
     @Column(name = "current_balance", nullable = false)
@@ -689,6 +675,7 @@ CREATE INDEX idx_gt_user
 ---
 
 #### 5. Thực thể `GroupTransactionParticipantEntity` (Bảng
+
 `group_transaction_participants`) <a id="225-group-transaction-participant-entity"></a>
 
 - **Khóa chính (PK):** tổ hợp `(group_transaction_id, user_id)`.

@@ -169,7 +169,6 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 : reportRepository.byCategoryChildLevel(userId, range.from(), range.to(), txnType, limit, walletId);
 
         long total = rows.stream().mapToLong(r -> orZero(r.getAmount())).sum();
-        long transactionTotal = rows.stream().mapToLong(r -> orZero(r.getTransactionCount())).sum();
         long days = ChronoUnit.DAYS.between(range.from(), range.to()) + 1;
         long avgPerDay = days > 0 ? Math.round((double) total / days) : 0;
 
@@ -254,7 +253,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                     reportRepository.summary(userId, past.atDay(1), past.atEndOfMonth(), walletId);
             pastMonthTotals.add(orZero(s.getTotalExpense()));
         }
-        double avgTotal = pastMonthTotals.stream().mapToLong(Long::longValue).average().orElse(0);
+        double avgTotal = pastMonthTotals.stream().mapToLong(val -> val != null ? val : 0L).average().orElse(0);
         int daysInMonth = target.lengthOfMonth();
         List<DailyTrendResponse.AveragePoint> avgLine = new ArrayList<>();
         double perDay = daysInMonth == 0 ? 0 : avgTotal / daysInMonth;
@@ -307,12 +306,12 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         }
 
         double averageExpense =
-                months.stream().mapToLong(MonthlyTrendResponse.MonthItem::totalExpense).average().orElse(0);
+                months.stream().mapToLong(item -> item.totalExpense()).average().orElse(0);
         MonthlyTrendResponse.MonthItem highest = months.stream()
-                .max(Comparator.comparingLong(MonthlyTrendResponse.MonthItem::totalExpense))
+                .max(Comparator.comparingLong(item -> item.totalExpense()))
                 .orElse(null);
         MonthlyTrendResponse.MonthItem lowest = months.stream()
-                .min(Comparator.comparingLong(MonthlyTrendResponse.MonthItem::totalExpense))
+                .min(Comparator.comparingLong(item -> item.totalExpense()))
                 .orElse(null);
 
         return new MonthlyTrendResponse(
@@ -358,11 +357,11 @@ public class ReportQueryServiceImpl implements ReportQueryService {
 
         DailyTrendResponse trend = dailyTrend(userId, YearMonth.from(range.to()), walletId);
         long maxValue = trend.currentLine().stream()
-                .mapToLong(DailyTrendResponse.CurrentPoint::cumulative)
+                .mapToLong(p -> p.cumulative())
                 .max()
                 .orElse(0);
         DailyTrendResponse.CurrentPoint highest = trend.currentLine().stream()
-                .max(Comparator.comparingLong(DailyTrendResponse.CurrentPoint::spentThatDay))
+                .max(Comparator.comparingLong(p -> p.spentThatDay()))
                 .orElse(null);
         ReportHomeResponse.DailyTrend.Note note = highest == null
                 ? new ReportHomeResponse.DailyTrend.Note(null, 0L, trend.avg3MonthsSamePoint())
