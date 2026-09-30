@@ -9,10 +9,12 @@ import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.enums.MemberStatus;
+import com.datn.financeapp.group.enums.TransactionStatus;
 import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
 import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
+import com.datn.financeapp.group.service.GTransactionService;
 import com.datn.financeapp.group.service.GroupService;
 import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.service.ReportService;
@@ -44,7 +46,7 @@ public class ReportServiceImpl implements ReportService {
 
     private final GroupService groupService;
     private final MemberService memberService;
-    private final GroupTransactionRepository groupTransactionRepository;
+    private final GTransactionService gTransactionService;
     private final ProfileService profileService;
     private final GroupPermissionValidator permissionValidator;
 
@@ -94,13 +96,12 @@ public class ReportServiceImpl implements ReportService {
             throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
         }
 
-        List<com.datn.financeapp.group.entity.GTransaction> allTxns = groupTransactionRepository
+        List<GTransaction> allTxns = groupTransactionRepository
                 .findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                        groupId, com.datn.financeapp.group.enums.TransactionStatus.CONFIRMED);
+                        groupId, TransactionStatus.CONFIRMED);
 
         List<UUID> allMemberIds = memberService.findIdAllMember(groupId);
-        List<com.datn.financeapp.group.entity.Member> allMemberEntities = memberService.findMembers(groupId,
-                allMemberIds);
+        List<MemberRes> allMemberEntities = memberService.findMembers(groupId, allMemberIds);
 
         MemberBalances mb = com.datn.financeapp.group.helper.BalanceCalculator.calculateBalances(allTxns,
                 allMemberEntities, null);

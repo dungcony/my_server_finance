@@ -19,7 +19,7 @@ public class ManagerUserController {
     private final ManagerAccountService adminUserService;
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAuthority('users:read')")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USERS_READ.getValue())")
     public ApiResponse<?> findUserByid(
             @PathVariable UUID userId) {
 
@@ -27,13 +27,13 @@ public class ManagerUserController {
     }
 
     @GetMapping("/all")
-    @PreAuthorize("hasAuthority('users:read')")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USERS_READ.getValue())")
     public ApiResponse<?> findAllUser() {
         return ApiResponse.of(adminUserService.findAllUser());
     }
 
     @PatchMapping("/block")
-    @PreAuthorize("hasAuthority('users:update')")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USERS_UPDATE.getValue())")
     public ApiResponse<Void> blockUser(
             @Valid @RequestBody BlockUserRequest req) {
         adminUserService.blockUser(req);
@@ -41,7 +41,7 @@ public class ManagerUserController {
     }
 
     @PostMapping("/role")
-    @PreAuthorize("hasAuthority('user_role:update')")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USER_ROLE_UPDATE.getValue())")
     public ApiResponse<Void> addRoleToUser(
             @Valid @RequestBody UpdateUserRoleReq req) {
         adminUserService.addRoleToUser(req);
@@ -49,7 +49,7 @@ public class ManagerUserController {
     }
 
     @DeleteMapping("/role")
-    @PreAuthorize("hasAuthority('user_role:delete')")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USER_ROLE_DELETE.getValue())")
     public ApiResponse<Void> removeRoleToUser(
             @Valid @RequestBody UpdateUserRoleReq req) {
         adminUserService.removeRoleToUser(req);
@@ -57,7 +57,7 @@ public class ManagerUserController {
     }
 
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasAuthority('users:delete')")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USERS_DELETE.getValue())")
     public ApiResponse<?> deleteUserById(
             @PathVariable UUID userId
     ) {

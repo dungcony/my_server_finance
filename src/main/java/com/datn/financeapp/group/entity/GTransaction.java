@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -157,6 +158,15 @@ public class GTransaction {
      */
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    /**
+     * Khóa lạc quan: mỗi lần ghi Hibernate tăng số này và chỉ ghi khi số trong DB còn khớp,
+     * nhờ đó hai request cùng duyệt/sửa một giao dịch thì request đến sau bị từ chối
+     * (quỹ không bị cộng trừ hai lần). Bản ghi mới để {@code null}.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     /**
      * Danh sách phân bổ chi phí cho các thành viên (chỉ dùng cho EXPENSE hoặc ADJUSTMENT).

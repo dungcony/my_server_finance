@@ -14,17 +14,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
-import com.datn.financeapp.group.dto.request.group.GroupMemberRoleReq;
 import com.datn.financeapp.group.dto.request.group.GroupTransferOwnershipReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.service.GroupService;
-import com.datn.financeapp.group.service.MemberService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.Collections;
@@ -58,9 +54,6 @@ class GroupControllerTest {
 
     @Mock
     private GroupService groupService;
-
-    @Mock
-    private MemberService memberService;
 
     @InjectMocks
     private GroupController groupController;
@@ -189,63 +182,6 @@ class GroupControllerTest {
     }
 
     @Test
-    @DisplayName("GET /groups/{id}/members - Lấy danh sách thành viên nhóm")
-    void listMembers_success() throws Exception {
-        UUID memberId = UUID.randomUUID();
-        MemberRes member = new MemberRes(
-                memberId, userId, MemberRole.OWNER, MemberStatus.ACTIVE, Instant.now()
-        );
-        when(memberService.findMembers(groupId)).thenReturn(List.of(member));
-
-        mockMvc.perform(get("/groups/{id}/members", groupId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].id").value(memberId.toString()))
-                .andExpect(jsonPath("$.data[0].user_id").value(userId.toString()));
-
-        verify(memberService).findMembers(groupId);
-    }
-
-    @Test
-    @DisplayName("PATCH /groups/{id}/members/{memberUserId}/role - Chuyển quyền owner khi role là OWNER")
-    void updateMemberRole_transferOwner() throws Exception {
-        UUID targetMemberId = UUID.randomUUID();
-        GroupMemberRoleReq req = new GroupMemberRoleReq(MemberRole.OWNER);
-
-        mockMvc.perform(patch("/groups/{id}/members/{memberUserId}/role", groupId, targetMemberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-
-        verify(groupService).transferOwnership(userId, groupId, targetMemberId);
-    }
-
-    @Test
-    @DisplayName("POST /groups/{id}/members/{memberUserId}/approve - Duyệt thành viên")
-    void approveMember_success() throws Exception {
-        UUID targetMemberId = UUID.randomUUID();
-
-        mockMvc.perform(post("/groups/{id}/members/{memberUserId}/approve", groupId, targetMemberId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-
-        verify(memberService).approve(userId, groupId, targetMemberId);
-    }
-
-    @Test
-    @DisplayName("DELETE /groups/{id}/members/{memberUserId} - Xóa thành viên khỏi nhóm")
-    void removeMember_success() throws Exception {
-        UUID targetMemberId = UUID.randomUUID();
-
-        mockMvc.perform(delete("/groups/{id}/members/{memberUserId}", groupId, targetMemberId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-
-        verify(memberService).removeMember(userId, groupId, targetMemberId);
-    }
-
-    @Test
     @DisplayName("POST /groups/{id}/archive - Lưu trữ nhóm")
     void archiveGroup_success() throws Exception {
         mockMvc.perform(post("/groups/{id}/archive", groupId))
@@ -278,15 +214,5 @@ class GroupControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(groupService).transferOwnership(userId, groupId, newOwnerId);
-    }
-
-    @Test
-    @DisplayName("POST /groups/{id}/leave - Rời khỏi nhóm")
-    void leaveGroup_success() throws Exception {
-        mockMvc.perform(post("/groups/{id}/leave", groupId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-
-        verify(memberService).leave(userId, groupId);
     }
 }

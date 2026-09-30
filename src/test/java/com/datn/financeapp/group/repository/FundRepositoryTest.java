@@ -10,9 +10,13 @@ import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.repository.UserRepository;
+
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +37,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestRedisConfig.class)
-@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class FundRepositoryTest {
 
     @Container
@@ -54,13 +57,15 @@ class FundRepositoryTest {
     @Autowired
     private UserRepository userRepository;
 
-    private User testUser;
     private Group testGroup;
     private Fund testFund;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @BeforeEach
     void setUp() {
-        testUser = userRepository.save(User.builder()
+        User testUser = userRepository.save(User.builder()
                 .id(UUID.randomUUID())
                 .email("test.fund." + UUID.randomUUID() + "@example.com")
                 .password("hashed_password")
@@ -107,6 +112,8 @@ class FundRepositoryTest {
         int updated = fundRepository.adjustBalance(testFund.getId(), 50_000L);
         assertThat(updated).isEqualTo(1);
 
+        entityManager.clear();
+
         Optional<Fund> reloaded = fundRepository.findById(testFund.getId());
         assertThat(reloaded).isPresent();
         assertThat(reloaded.get().getCurrentBalance()).isEqualTo(250_000L);
@@ -117,7 +124,8 @@ class FundRepositoryTest {
     void adjustBalanceByGroupId_success() {
         int updated = fundRepository.adjustBalanceByGroupId(testGroup.getId(), -50_000L);
         assertThat(updated).isEqualTo(1);
-
+        entityManager.flush();
+        entityManager.clear();
         Optional<Fund> reloaded = fundRepository.findById(testFund.getId());
         assertThat(reloaded).isPresent();
         assertThat(reloaded.get().getCurrentBalance()).isEqualTo(150_000L);

@@ -47,7 +47,7 @@
 |:------------------------|:-----------:|:-----------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Người dùng hệ thống** |   `User`    | Tài khoản đã xác thực (`JWT`)                        | Bất kỳ người dùng nào đã đăng nhập, chưa tham gia nhóm hoặc đang tìm kiếm tham gia nhóm.                                                                                                                                      |
 | **Thành viên Nhóm**     |  `Member`   | `group_members.role = 'MEMBER'`, `status = 'ACTIVE'` | Thành viên chính thức trong nhóm. Có quyền xem thông tin, ghi nhận chi tiêu/đóng góp, xem bảng phân bổ số dư và tự rời nhóm.                                                                                                  |
-| **Thủ quỹ Nhóm**        | `Treasurer` | `group_funds.held_by_user_id = user.id`              | Thành viên `ACTIVE` được chỉ định cầm tiền quỹ (mỗi nhóm đúng 1 thủ quỹ). Kế thừa toàn bộ quyền của `Member`, cộng thêm quyền: duyệt giao dịch, trả tiền cho thành viên (`REFUND`), kiểm kê quỹ.                                 |
+| **Thủ quỹ Nhóm**        | `Treasurer` | `group_funds.held_by_user_id = user.id`              | Thành viên `ACTIVE` được chỉ định cầm tiền quỹ (mỗi nhóm đúng 1 thủ quỹ). Kế thừa toàn bộ quyền của `Member`, cộng thêm quyền: duyệt giao dịch, trả tiền cho thành viên (`REFUND`), kiểm kê quỹ.                              |
 | **Chủ nhóm**            |   `Owner`   | `group_members.role = 'OWNER'`, `status = 'ACTIVE'`  | Người sáng lập hoặc nhận chuyển nhượng quyền quản trị nhóm (mỗi nhóm đúng 1 chủ nhóm). Kế thừa toàn bộ quyền của `Member` và `Treasurer`, cộng thêm toàn quyền quản trị cấu hình nhóm, thành viên, và xoá giao dịch/xoá nhóm. |
 
 > 💡 **Bản chất kiến trúc:** Toàn hệ thống chỉ có **duy nhất 1 thực thể tài khoản người dùng** (`User` từ bảng `users`).
@@ -211,7 +211,8 @@ flowchart LR
 #### UC02: Tham gia nhóm bằng mã mời <a id="uc02-tham-gia-nhom"></a>
 
 - **Tác nhân:** `User`
-- **Mô tả:** Người dùng nhập mã mời gồm 8 ký tự để gia nhập nhóm chung (có mã là được xin vào, không giới hạn thời gian).
+- **Mô tả:** Người dùng nhập mã mời gồm 8 ký tự để gia nhập nhóm chung (có mã là được xin vào, không giới hạn thời
+  gian).
 - **Tiền điều kiện:** Người dùng đã đăng nhập hệ thống, có mã mời 8 ký tự của nhóm.
 - **Hậu điều kiện:** Người dùng trở thành thành viên `ACTIVE` (vào thẳng) hoặc `PENDING` (chờ chủ nhóm duyệt).
 - **Luồng chính (Success Flow):**
@@ -424,7 +425,8 @@ flowchart LR
 - **Tiền điều kiện:** `money_source = 'PERSONAL'`; không có danh mục; không có người tham gia (`participants: []`).
 - **Luồng chính (Success Flow):**
     1. Thành viên gửi yêu cầu nộp quỹ (`type = 'CONTRIBUTION'`).
-    2. Người nộp/đối ứng (`transactor_id`) phải là thành viên có mặt tại `occurred_at`, HOẶC là cựu thành viên đang có phần âm trong
+    2. Người nộp/đối ứng (`transactor_id`) phải là thành viên có mặt tại `occurred_at`, HOẶC là cựu thành viên đang có
+       phần âm trong
        quỹ (nộp bù theo Cách A).
     3. Phân định trạng thái:
         - Thủ quỹ/Chủ nhóm tự ghi → `CONFIRMED` ngay, khoá quỹ và cộng số dư
@@ -471,7 +473,8 @@ flowchart LR
     1. Tác nhân gửi thông tin cập nhật (`PUT /v1/groups/{id}/transactions/{tId}`).
     2. Trong 1 transaction CSDL:
         - Nếu khoản đang `CONFIRMED`: Hoàn tác ảnh hưởng số tiền cũ lên quỹ.
-        - Điều phối tới `GTransactionUpdateStrategy` phụ trách loại giao dịch đó để cập nhật thông tin và danh sách người tham gia (nếu có).
+        - Điều phối tới `GTransactionUpdateStrategy` phụ trách loại giao dịch đó để cập nhật thông tin và danh sách
+          người tham gia (nếu có).
         - Kiểm tra người sửa:
             - Nếu là `Treasurer` hoặc `Owner` → Khoản giữ nguyên `CONFIRMED`, áp ảnh hưởng mới lên quỹ.
             - Nếu là `Member` thường → Khoản chuyển về `PENDING`, chờ duyệt lại.
@@ -503,7 +506,9 @@ flowchart LR
 #### UC16: Quỹ trả tiền cho thành viên (REFUND) <a id="uc16-hoan-tra-tien-tui"></a>
 
 - **Tác nhân:** `Treasurer`, `Owner`
-- **Mô tả:** Quỹ nhóm chi trả tiền cho một thành viên qua giao dịch loại `REFUND`: hoàn tiền túi người đó đã bỏ ra chi hộ nhóm, hoặc trả lại tiền người đó đã góp (góp dư, tất toán rời nhóm, giải tán nhóm). Số UC17 (rút lại tiền góp) đã gộp vào use case này (29/09/2026), số UC không đánh lại.
+- **Mô tả:** Quỹ nhóm chi trả tiền cho một thành viên qua giao dịch loại `REFUND`: hoàn tiền túi người đó đã bỏ ra chi
+  hộ nhóm, hoặc trả lại tiền người đó đã góp (góp dư, tất toán rời nhóm, giải tán nhóm). Số UC17 (rút lại tiền góp) đã
+  gộp vào use case này (29/09/2026), số UC không đánh lại.
 - **Tiền điều kiện:** Người nhận phải là thành viên nhóm; `amount <= net_balance` (không được trả vượt phần người đó
   còn trong quỹ), áp dụng cho cả bật và tắt tính thừa thiếu.
 - **Hậu điều kiện:**
@@ -511,7 +516,8 @@ flowchart LR
     - Trừ số dư quỹ `current_balance = current_balance - amount`.
     - Phần trong quỹ (`net_balance`) của người nhận giảm tương ứng.
 - **Luồng chính (Success Flow):**
-    1. Tác nhân gửi yêu cầu tạo giao dịch (`POST /v1/groups/{id}/transactions` với `type = 'REFUND'`, `money_source = 'FUND'`, `transactor_id` là người nhận).
+    1. Tác nhân gửi yêu cầu tạo giao dịch (`POST /v1/groups/{id}/transactions` với `type = 'REFUND'`,
+       `money_source = 'FUND'`, `transactor_id` là người nhận).
     2. Hệ thống kiểm tra điều kiện giới hạn số tiền (`RefundTransactionStrategy`).
     3. Khoá dòng quỹ, trừ tiền quỹ, ghi nhận giao dịch `CONFIRMED`.
     4. Trả về `201 Created`.
@@ -609,26 +615,26 @@ flowchart LR
 
 ## 5. Ma trận Phân quyền Use Case (Traceability Matrix) <a id="5-ma-tran-phan-quyen"></a>
 
-|  Mã UC   | Tên Use Case                       | Khách (`User`) | Thành viên (`Member`) | Thủ quỹ (`Treasurer`) | Chủ nhóm (`Owner`) | Nhóm lưu trữ (`ARCHIVED`) |
-|:--------:|:-----------------------------------|:--------------:|:---------------------:|:---------------------:|:------------------:|:-------------------------:|
-| **UC01** | Tạo nhóm mới                       |       ✅       |          ✅           |          ✅           |         ✅         |             —             |
-| **UC02** | Tham gia nhóm bằng mã mời          |       ✅       |          ❌           |          ❌           |         ❌         |         ❌ (Chặn)         |
-| **UC03** | Lấy / Làm mới mã mời               |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
-| **UC04** | Duyệt / Từ chối thành viên chờ     |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
-| **UC05** | Chuyển quyền chủ nhóm              |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
-| **UC06** | Bàn giao thủ quỹ                   |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
-| **UC07** | Mời thành viên rời nhóm            |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
-| **UC08** | Tự rời nhóm                        |       ❌       |          ✅           |   ❌ (Phải chuyển)    |  ❌ (Phải chuyển)  |         ❌ (Chặn)         |
-| **UC09** | Lưu trữ / Mở lại nhóm              |       ❌       |          ❌           |          ❌           |         ✅         |        ✅ (Mở lại)        |
-| **UC10** | Xoá nhóm                           |       ❌       |          ❌           |          ❌           |         ✅         |       ✅ (Cho phép)       |
-| **UC11** | Ghi nhận chi tiêu (`EXPENSE`)      |       ❌       |     ✅ (PENDING)      |    ✅ (CONFIRMED)     |   ✅ (CONFIRMED)   |         ❌ (Chặn)         |
-| **UC12** | Đóng góp tiền quỹ (`CONTRIBUTION`) |       ❌       |     ✅ (PENDING)      |    ✅ (CONFIRMED)     |   ✅ (CONFIRMED)   |         ❌ (Chặn)         |
-| **UC13** | Duyệt / Từ chối giao dịch          |       ❌       |          ❌           |          ✅           |         ✅         |         ❌ (Chặn)         |
-| **UC14** | Sửa giao dịch                      |       ❌       |     ✅ (Của mình)     |     ✅ (Của mình)     |    ✅ (Tất cả)     |         ❌ (Chặn)         |
-| **UC15** | Xoá giao dịch                      |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
+|  Mã UC   | Tên Use Case                           | Khách (`User`) | Thành viên (`Member`) | Thủ quỹ (`Treasurer`) | Chủ nhóm (`Owner`) | Nhóm lưu trữ (`ARCHIVED`) |
+|:--------:|:---------------------------------------|:--------------:|:---------------------:|:---------------------:|:------------------:|:-------------------------:|
+| **UC01** | Tạo nhóm mới                           |       ✅       |          ✅           |          ✅           |         ✅         |             —             |
+| **UC02** | Tham gia nhóm bằng mã mời              |       ✅       |          ❌           |          ❌           |         ❌         |         ❌ (Chặn)         |
+| **UC03** | Lấy / Làm mới mã mời                   |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
+| **UC04** | Duyệt / Từ chối thành viên chờ         |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
+| **UC05** | Chuyển quyền chủ nhóm                  |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
+| **UC06** | Bàn giao thủ quỹ                       |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
+| **UC07** | Mời thành viên rời nhóm                |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
+| **UC08** | Tự rời nhóm                            |       ❌       |          ✅           |   ❌ (Phải chuyển)    |  ❌ (Phải chuyển)  |         ❌ (Chặn)         |
+| **UC09** | Lưu trữ / Mở lại nhóm                  |       ❌       |          ❌           |          ❌           |         ✅         |        ✅ (Mở lại)        |
+| **UC10** | Xoá nhóm                               |       ❌       |          ❌           |          ❌           |         ✅         |       ✅ (Cho phép)       |
+| **UC11** | Ghi nhận chi tiêu (`EXPENSE`)          |       ❌       |     ✅ (PENDING)      |    ✅ (CONFIRMED)     |   ✅ (CONFIRMED)   |         ❌ (Chặn)         |
+| **UC12** | Đóng góp tiền quỹ (`CONTRIBUTION`)     |       ❌       |     ✅ (PENDING)      |    ✅ (CONFIRMED)     |   ✅ (CONFIRMED)   |         ❌ (Chặn)         |
+| **UC13** | Duyệt / Từ chối giao dịch              |       ❌       |          ❌           |          ✅           |         ✅         |         ❌ (Chặn)         |
+| **UC14** | Sửa giao dịch                          |       ❌       |     ✅ (Của mình)     |     ✅ (Của mình)     |    ✅ (Tất cả)     |         ❌ (Chặn)         |
+| **UC15** | Xoá giao dịch                          |       ❌       |          ❌           |          ❌           |         ✅         |         ❌ (Chặn)         |
 | **UC16** | Quỹ trả tiền cho thành viên (`REFUND`) |       ❌       |          ❌           |          ✅           |         ✅         |         ❌ (Chặn)         |
-| **UC18** | Kiểm kê quỹ thực tế (`Reconcile`)  |       ❌       |          ❌           |          ✅           |         ✅         |         ❌ (Chặn)         |
-| **UC19** | Tra cứu thông tin nhóm & Quỹ       |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
-| **UC20** | Tra cứu lịch sử giao dịch nhóm     |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
-| **UC21** | Xem bảng phân bổ số dư & Cần nộp   |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
-| **UC22** | Xem tổng quan tài chính nhóm       |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
+| **UC18** | Kiểm kê quỹ thực tế (`Reconcile`)      |       ❌       |          ❌           |          ✅           |         ✅         |         ❌ (Chặn)         |
+| **UC19** | Tra cứu thông tin nhóm & Quỹ           |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
+| **UC20** | Tra cứu lịch sử giao dịch nhóm         |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
+| **UC21** | Xem bảng phân bổ số dư & Cần nộp       |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
+| **UC22** | Xem tổng quan tài chính nhóm           |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |

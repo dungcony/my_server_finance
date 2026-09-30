@@ -3,14 +3,10 @@ package com.datn.financeapp.group.controller;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
+import com.datn.financeapp.group.dto.request.group.*;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
-import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
-import com.datn.financeapp.group.dto.request.group.GroupMemberRoleReq;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
-import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
-import com.datn.financeapp.group.service.MemberService;
+import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.service.GroupService;
 import jakarta.validation.Valid;
 
@@ -19,15 +15,8 @@ import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/groups")
@@ -35,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class GroupController {
 
     private final GroupService groupService;
-    private final MemberService memberService;
 
     @PostMapping
     @Idempotent
@@ -49,6 +37,17 @@ public class GroupController {
     public ApiResponse<List<GroupSummaryRes>> list() {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(groupService.list(userId));
+    }
+
+    @PutMapping("/{groupId}/owner-role/{memberUserId}/")
+    public ApiResponse<Void> updateMemberRole(
+            @PathVariable UUID groupId,
+            @PathVariable UUID memberUserId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+
+        groupService.transferOwnership(userId, groupId, memberUserId);
+
+        return ApiResponse.of(null);
     }
 
     @GetMapping("/{id}")
@@ -75,42 +74,7 @@ public class GroupController {
     @PostMapping("/join")
     public ApiResponse<Void> join(@Valid @RequestBody GroupJoinReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
-        groupService.join(userId, req);
-        return ApiResponse.of(null);
-    }
-
-    @GetMapping("/{id}/members")
-    public ApiResponse<List<MemberRes>> listMembers(@PathVariable UUID id) {
-        return ApiResponse.of(memberService.findMembers(id));
-    }
-
-    @PatchMapping("/{id}/members/{memberUserId}/role")
-    public ApiResponse<Void> updateMemberRole(
-            @PathVariable UUID id,
-            @PathVariable UUID memberUserId,
-            @Valid @RequestBody GroupMemberRoleReq req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        if (req.role() == com.datn.financeapp.group.enums.MemberRole.OWNER) {
-            groupService.transferOwnership(userId, id, memberUserId);
-        }
-        return ApiResponse.of(null);
-    }
-
-    @PostMapping("/{id}/members/{memberUserId}/approve")
-    public ApiResponse<Void> approveMember(
-            @PathVariable UUID id,
-            @PathVariable UUID memberUserId) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        memberService.approve(userId, id, memberUserId);
-        return ApiResponse.of(null);
-    }
-
-    @DeleteMapping("/{id}/members/{memberUserId}")
-    public ApiResponse<Void> removeMember(
-            @PathVariable UUID id,
-            @PathVariable UUID memberUserId) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        memberService.removeMember(userId, id, memberUserId);
+        groupService.joinByCode(userId, req);
         return ApiResponse.of(null);
     }
 
@@ -131,16 +95,9 @@ public class GroupController {
     @PostMapping("/{id}/transfer-ownership")
     public ApiResponse<Void> transferOwnership(
             @PathVariable UUID id,
-            @Valid @RequestBody com.datn.financeapp.group.dto.request.group.GroupTransferOwnershipReq req) {
+            @Valid @RequestBody GroupTransferOwnershipReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
         groupService.transferOwnership(userId, id, req.newOwnerId());
-        return ApiResponse.of(null);
-    }
-
-    @PostMapping("/{id}/leave")
-    public ApiResponse<Void> leave(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        memberService.leave(userId, id);
         return ApiResponse.of(null);
     }
 }

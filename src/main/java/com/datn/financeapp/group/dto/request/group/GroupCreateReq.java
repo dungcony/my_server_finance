@@ -13,8 +13,8 @@ public record GroupCreateReq(
         @NotBlank @Size(max = 100) String name,
         @Size(max = 255) String description,
         @PositiveOrZero Long target,
-        @NotNull @JsonAlias({"is_split_equally", "isSplitEqually"}) Boolean isSettlementEnabled,
+        @NotNull Boolean isSettlementEnabled,
         @NotNull Boolean isJoinWithoutConfirm,
-        List<UUID> members
-        ) {
+        @NotNull List<UUID> members
+) {
 }

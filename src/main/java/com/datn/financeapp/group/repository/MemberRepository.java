@@ -22,21 +22,32 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 
     Optional<Member> findByGroupIdAndRoleAndStatus(UUID groupId, MemberRole role, MemberStatus status);
 
-    Optional<Member> findByGroupIdAndUserIdAndStatusIn(UUID groupId, UUID userId, List<MemberStatus> status);
-
     List<Member> findByGroupIdAndStatusNotOrderByJoinedAtDesc(UUID groupId, MemberStatus status);
 
     List<Member> findByGroupIdAndStatusOrderByJoinedAtDesc(UUID groupId, MemberStatus status);
 
     long countByGroupIdAndStatus(UUID groupId, MemberStatus status);
 
-    boolean existsByGroupIdAndUserIdAndRoleAndStatus(UUID groupId, UUID userId, MemberRole role,
-            MemberStatus status);
-
-    boolean existsByGroupIdAndUserIdAndStatus(UUID groupId, UUID userId, MemberStatus status);
-
     // Lấy các thành viên đang ACTIVE theo danh sách userId
     List<Member> findByGroupIdAndUserIdInAndStatus(UUID groupId, Collection<UUID> userIds, MemberStatus status);
+
+    // Lấy các thành viên của nhóm có trạng thái nằm trong danh sách, mới vào nhóm xếp trước
+    List<Member> findByGroupIdAndStatusInOrderByJoinedAtDesc(UUID groupId, Collection<MemberStatus> statuses);
+
+    // Lấy các thành viên theo danh sách userId có trạng thái nằm trong danh sách
+    List<Member> findByGroupIdAndUserIdInAndStatusIn(UUID groupId, Collection<UUID> userIds, Collection<MemberStatus> statuses);
+
+    boolean existsByGroupIdAndUserIdAndStatus(UUID groupId, UUID memberId, MemberStatus memberStatus);
+
+    // MemberRepository
+    @Modifying
+    @Query("""
+                DELETE FROM Member m
+                 WHERE m.groupId = :groupId
+                   AND m.userId = :memberId
+                   AND m.status = MemberStatus.PENDING
+            """)
+    int deletePending(@Param("groupId") UUID groupId, @Param("memberId") UUID memberId);
 
     /**
      * Thành viên có mặt tại thời điểm giao dịch (theo pipeline.md mục 1).
@@ -53,9 +64,9 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                 ORDER BY user_id
             """, nativeQuery = true)
     List<UUID> findMemberUserIdsAtOccurredAt(@Param("groupId") UUID groupId,
-            @Param("occurredAt") Instant occurredAt);
+                                             @Param("occurredAt") Instant occurredAt);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying
     @Query("""
                 UPDATE Member gm
                 SET gm.status = :newStatus,
@@ -71,7 +82,7 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
             @Param("newStatus") MemberStatus newStatus,
             @Param("joinedAt") Instant joinedAt);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying
     @Query("""
                 UPDATE Member gm
                 SET gm.status = MemberStatus.ACTIVE,
@@ -92,8 +103,31 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
             from Member mem
             where mem.groupId = :groupId
             and mem.userId in (:memberIds)
+            and mem.status = 'ACTIVE'
             """)
     boolean allMemberInGroup(
             @Param("groupId") UUID groupId,
             @Param("memberIds") Collection<UUID> memberIds);
+
+    @Modifying
+    @Query("""
+                UPDATE Member m
+                   SET m.role = CASE
+                               WHEN m.userId = :newOwnerId
+                               THEN MemberRole.OWNER
+                               ELSE MemberRole.MEMBER
+                   END
+                 WHERE m.groupId = :groupId
+                   AND m.status = MemberStatus.ACTIVE
+                   AND m.userId IN (:operatorId, :newOwnerId)
+                   AND EXISTS (
+                               SELECT 1
+                               FROM Member o
+                               WHERE o.groupId = :groupId
+                                AND o.userId = :operatorId
+                                AND o.role = MemberRole.OWNER
+                                AND o.status = MemberStatus.ACTIVE
+                              )
+            """)
+    int swapOwner(UUID groupId, UUID operatorId, UUID newOwnerId);
 }

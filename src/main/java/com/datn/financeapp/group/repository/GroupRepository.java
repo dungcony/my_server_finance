@@ -1,17 +1,16 @@
 package com.datn.financeapp.group.repository;
 
+import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.enums.GroupStatus;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.datn.financeapp.group.helper.MemberAuthInfo;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface GroupRepository extends JpaRepository<Group, UUID> {
 
@@ -32,23 +31,35 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
                 FROM Group g
                 LEFT JOIN Member gm ON gm.groupId = g.id AND gm.userId = :userId
                 LEFT JOIN Fund f ON f.groupId = g.id
-                WHERE g.id = :groupId
+                WHERE g.id = :groupId and gm.status = MemberStatus.ACTIVE
             """)
     Optional<MemberAuthInfo> findAuthInfo(
             @Param("groupId") UUID groupId,
-            @Param("userId") UUID userId
-    );
+            @Param("userId") UUID userId);
 
-    @EntityGraph(attributePaths = {"fund"})
     @Query("""
-                SELECT g FROM Group g
-                JOIN Member gm ON gm.groupId = g.id
-                WHERE gm.userId = :userId AND gm.status = 'ACTIVE' AND g.status <> 'DELETED'
-                ORDER BY g.createdAt DESC
+            SELECT new com.datn.financeapp.group.dto.response.group.GroupSummaryRes(
+                g.id,
+                g.name,
+                gm.role,
+                g.status,
+                g.inviteCode,
+                (SELECT COUNT(m2) FROM Member m2
+                  WHERE m2.groupId = g.id AND m2.status = MemberStatus.ACTIVE),
+                f.currentBalance,
+                g.target,
+                g.createdAt
+            )
+            FROM Group g
+            JOIN Member gm ON gm.groupId = g.id
+                            AND gm.userId = :userId
+                            AND gm.status = MemberStatus.ACTIVE
+            LEFT JOIN Fund f ON f.groupId = g.id
+            ORDER BY g.createdAt DESC
             """)
-    List<Group> findAllActiveByUserId(@Param("userId") UUID userId);
+    List<GroupSummaryRes> findSummariesByUserId(UUID userId);
 
-    @Query(""" 
+    @Query("""
             SELECT g
             FROM Group g
             LEFT JOIN FETCH g.fund
@@ -56,7 +67,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             """)
     Optional<Group> findNotDeletedWithFundById(@Param("id") UUID id);
 
-    @Query(""" 
+    @Query("""
             SELECT g
             FROM Group g
             LEFT JOIN FETCH g.fund
@@ -64,7 +75,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             """)
     Optional<Group> findActivatedWithFundById(@Param("id") UUID id);
 
-    @Query(""" 
+    @Query("""
             SELECT g
             FROM Group g
             LEFT JOIN FETCH g.fund

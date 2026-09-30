@@ -1,10 +1,21 @@
 package com.datn.financeapp.group.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionBulkReviewReq;
 import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
@@ -27,12 +38,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
- * Kiểm thử {@link GTransactionServiceImpl#delete}: chủ nhóm xoá mềm giao dịch nhóm.
+ * Kiểm thử {@link GTransactionServiceImpl}:
+ * <ul>
+ * <li>{@link GTransactionServiceImpl#delete}: chủ nhóm xoá mềm giao dịch nhóm.</li>
+ * <li>{@link GTransactionServiceImpl#confirm}, {@link GTransactionServiceImpl#reject},
+ * {@link GTransactionServiceImpl#bulkConfirm}, {@link GTransactionServiceImpl#bulkReject}:
+ * luồng duyệt giao dịch đang chờ.</li>
+ * </ul>
  */
 @ExtendWith(MockitoExtension.class)
 class GTransactionServiceImplTest {
@@ -64,9 +82,15 @@ class GTransactionServiceImplTest {
         ownerId = UUID.randomUUID();
         memberId = UUID.randomUUID();
 
-        when(permissionValidator.verifyActiveMemberInGroupActive(groupId, ownerId)).thenReturn(
+        lenient().when(permissionValidator.verifyActiveMemberInGroupActive(groupId, ownerId)).thenReturn(
                 new MemberAuthInfo(groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
                         MemberRole.OWNER, ownerId));
+        lenient().when(permissionValidator.verifyActiveMemberInGroupActive(groupId, memberId)).thenReturn(
+                new MemberAuthInfo(groupId, memberId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
+                        MemberRole.MEMBER, ownerId));
+        // delta giả lập đúng chiều cộng: bằng số tiền giao dịch
+        lenient().when(transactionHelper.calculateDelta(any(), any(), anyLong(), eq(false)))
+                .thenAnswer(invocation -> invocation.<Long>getArgument(2));
     }
 
     @Test
@@ -79,6 +103,185 @@ class GTransactionServiceImplTest {
 
         assertThat(contribution.getDeletedAt()).isNotNull();
         verify(transactionRepository).save(contribution);
+    }
+
+    @Test
+    @DisplayName("Chủ nhóm duyệt giao dịch chờ thì đổi trạng thái, ghi người duyệt và cộng quỹ đúng số tiền")
+    void confirm_ByOwner_MarksConfirmedAndPublishesDelta() {
+        GTransaction pending = pendingTxn(100_000L);
+        stubFind(pending);
+
+        service.confirm(ownerId, groupId, pending.getId());
+
+        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(pending.getReviewedBy()).isEqualTo(ownerId);
+        assertThat(pending.getReviewedAt()).isNotNull();
+        assertThat(capturePublishedEvents()).containsExactly(new FundBalanceChangedEvent(groupId, 100_000L));
+    }
+
+    @Test
+    @DisplayName("Thành viên thường không duyệt được giao dịch và quỹ không đổi")
+    void confirm_ByPlainMember_ThrowsForbidden() {
+        GTransaction pending = pendingTxn(100_000L);
+
+        assertThatThrownBy(() -> service.confirm(memberId, groupId, pending.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode()));
+
+        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.PENDING);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Giao dịch không còn ở trạng thái chờ thì duyệt bị từ chối và quỹ không đổi")
+    void confirm_WhenNotPending_ThrowsConflict() {
+        GTransaction confirmed = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, 100_000L);
+        stubFind(confirmed);
+
+        assertThatThrownBy(() -> service.confirm(ownerId, groupId, confirmed.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.TRANSACTION_NOT_PENDING.getCode()));
+
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Từ chối giao dịch chờ thì đổi trạng thái sang REJECTED và không đụng tới quỹ")
+    void reject_MarksRejectedWithoutFundChange() {
+        GTransaction pending = pendingTxn(100_000L);
+        stubFind(pending);
+
+        service.reject(ownerId, groupId, pending.getId());
+
+        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.REJECTED);
+        assertThat(pending.getReviewedBy()).isEqualTo(ownerId);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Từ chối giao dịch không còn ở trạng thái chờ thì bị chặn")
+    void reject_WhenNotPending_ThrowsConflict() {
+        GTransaction confirmed = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, 100_000L);
+        stubFind(confirmed);
+
+        assertThatThrownBy(() -> service.reject(ownerId, groupId, confirmed.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.TRANSACTION_NOT_PENDING.getCode()));
+
+        assertThat(confirmed.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("Duyệt hàng loạt mà danh sách id rỗng thì trả 0 và không đụng tới quỹ")
+    void bulkConfirm_EmptyIds_ReturnsZeroWithoutEvent() {
+        int count = service.bulkConfirm(ownerId, groupId, new GroupTransactionBulkReviewReq(List.of()));
+
+        assertThat(count).isZero();
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Duyệt hàng loạt bởi thành viên thường thì bị chặn trước khi truy vấn giao dịch")
+    void bulkConfirm_ByPlainMember_ThrowsForbidden() {
+        GroupTransactionBulkReviewReq req = new GroupTransactionBulkReviewReq(List.of(UUID.randomUUID()));
+
+        assertThatThrownBy(() -> service.bulkConfirm(memberId, groupId, req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode()));
+
+        verify(transactionRepository, never())
+                .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Duyệt hàng loạt mà có id không còn ở trạng thái chờ thì báo lỗi và không đổi giao dịch nào")
+    void bulkConfirm_SomeIdsNotPending_ThrowsValidationError() {
+        GTransaction pending = pendingTxn(100_000L);
+        UUID missingId = UUID.randomUUID();
+        stubFindPendingBatch(List.of(pending.getId(), missingId), List.of(pending));
+
+        GroupTransactionBulkReviewReq req = new GroupTransactionBulkReviewReq(List.of(pending.getId(), missingId));
+
+        assertThatThrownBy(() -> service.bulkConfirm(ownerId, groupId, req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.VALIDATION_ERROR.getCode()));
+
+        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.PENDING);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Duyệt hàng loạt có id trùng thì mỗi giao dịch duyệt một lần và quỹ chỉ nhận một sự kiện với tổng delta")
+    void bulkConfirm_DuplicateIds_ConfirmsOnceAndPublishesSingleSummedEvent() {
+        GTransaction first = pendingTxn(100_000L);
+        GTransaction second = pendingTxn(250_000L);
+        stubFindPendingBatch(List.of(first.getId(), second.getId()), List.of(first, second));
+
+        int count = service.bulkConfirm(ownerId, groupId,
+                new GroupTransactionBulkReviewReq(List.of(first.getId(), first.getId(), second.getId())));
+
+        assertThat(count).isEqualTo(2);
+        assertThat(first.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(second.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(first.getReviewedBy()).isEqualTo(ownerId);
+        assertThat(capturePublishedEvents()).containsExactly(new FundBalanceChangedEvent(groupId, 350_000L));
+    }
+
+    @Test
+    @DisplayName("Từ chối hàng loạt mà danh sách id rỗng thì trả 0")
+    void bulkReject_EmptyIds_ReturnsZero() {
+        int count = service.bulkReject(ownerId, groupId, new GroupTransactionBulkReviewReq(List.of()));
+
+        assertThat(count).isZero();
+    }
+
+    @Test
+    @DisplayName("Từ chối hàng loạt mà có id không còn ở trạng thái chờ thì báo lỗi")
+    void bulkReject_SomeIdsNotPending_ThrowsValidationError() {
+        GTransaction pending = pendingTxn(100_000L);
+        UUID missingId = UUID.randomUUID();
+        stubFindPendingBatch(List.of(pending.getId(), missingId), List.of(pending));
+
+        GroupTransactionBulkReviewReq req = new GroupTransactionBulkReviewReq(List.of(pending.getId(), missingId));
+
+        assertThatThrownBy(() -> service.bulkReject(ownerId, groupId, req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.VALIDATION_ERROR.getCode()));
+
+        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("Từ chối hàng loạt thì tất cả sang REJECTED và không đụng tới quỹ")
+    void bulkReject_MarksAllRejectedWithoutFundChange() {
+        GTransaction first = pendingTxn(100_000L);
+        GTransaction second = pendingTxn(250_000L);
+        stubFindPendingBatch(List.of(first.getId(), second.getId()), List.of(first, second));
+
+        int count = service.bulkReject(ownerId, groupId,
+                new GroupTransactionBulkReviewReq(List.of(first.getId(), second.getId())));
+
+        assertThat(count).isEqualTo(2);
+        assertThat(first.getStatus()).isEqualTo(TransactionStatus.REJECTED);
+        assertThat(second.getStatus()).isEqualTo(TransactionStatus.REJECTED);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    private List<Object> capturePublishedEvents() {
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, atLeastOnce()).publishEvent(captor.capture());
+        return captor.getAllValues();
+    }
+
+    private void stubFindPendingBatch(List<UUID> ids, List<GTransaction> found) {
+        when(transactionRepository.findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(
+                ids, groupId, TransactionStatus.PENDING)).thenReturn(found);
+    }
+
+    private GTransaction pendingTxn(long amount) {
+        GTransaction pending = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, amount);
+        pending.setStatus(TransactionStatus.PENDING);
+        return pending;
     }
 
     private void stubFind(GTransaction txn) {

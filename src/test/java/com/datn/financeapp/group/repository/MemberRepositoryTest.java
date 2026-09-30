@@ -12,12 +12,16 @@ import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.repository.UserRepository;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,8 @@ class MemberRepositoryTest {
     private User testUser2;
     private Group testGroup;
     private Member testMember1;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -172,7 +178,8 @@ class MemberRepositoryTest {
                 testGroup.getId(), testUser2.getId(), MemberStatus.PENDING, MemberStatus.ACTIVE, now
         );
         assertThat(rows).isEqualTo(1);
-
+        entityManager.flush();
+        entityManager.clear();
         Optional<Member> reloaded = memberRepository.findById(pendingMember.getId());
         assertThat(reloaded).isPresent();
         assertThat(reloaded.get().getStatus()).isEqualTo(MemberStatus.ACTIVE);

@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -111,6 +112,19 @@ public class GlobalExceptionHandler {
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody(ex.getCode(), ex.getMessage(), ex.getDetail()));
         return ResponseEntity.status(ex.getHttpStatus()).body(body);
+    }
+
+    // Hai yêu cầu cùng ghi một bản ghi: yêu cầu đến sau bị từ chối → 409, không phải 500.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex,
+                                                              HttpServletRequest request) {
+        ErrorCode errorCode = ErrorCode.CONCURRENT_MODIFICATION;
+        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL,
+                errorCode.getCode() + ": " + ex.getMessage());
+        log.debug("Xung đột ghi đồng thời tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        var body = new ErrorResponse(false,
+                new ErrorResponse.ErrorBody(errorCode.getCode(), errorCode.getDefaultMessage()));
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(body);
     }
 
     @ExceptionHandler(AuthenticationException.class)

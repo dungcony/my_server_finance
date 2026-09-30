@@ -16,11 +16,11 @@ public interface FundRepository extends JpaRepository<Fund, UUID> {
 
     Optional<Fund> findFirstByGroupId(UUID groupId);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying
     @Query("UPDATE Fund gf SET gf.currentBalance = gf.currentBalance + :delta WHERE gf.id = :id")
     int adjustBalance(@Param("id") UUID id, @Param("delta") Long delta);
 
-    @Modifying(clearAutomatically = true)
+    @Modifying
     @Query("UPDATE Fund gf SET gf.currentBalance = gf.currentBalance + :delta WHERE gf.groupId = :groupId")
     int adjustBalanceByGroupId(@Param("groupId") UUID groupId, @Param("delta") Long delta);
 

@@ -1,6 +1,7 @@
 package com.datn.financeapp.group.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.group.entity.GTransaction;
@@ -19,6 +20,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -50,6 +54,9 @@ class GroupTransactionRepositoryTest {
     static void registerJwtSecret(DynamicPropertyRegistry registry) {
         registry.add("jwt.secret", () -> "dGVzdC1qd3Qtc2VjcmV0LWZvci1ndHhuLXJlcG8tdGVzdA==");
     }
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private GroupTransactionRepository groupTransactionRepository;
@@ -117,6 +124,21 @@ class GroupTransactionRepositoryTest {
                                 .build()
                 ))
                 .build());
+    }
+
+    @Test
+    @DisplayName("Ghi giao dịch khi bản ghi đã bị request khác sửa trước thì bị từ chối thay vì ghi đè")
+    void saveAndFlush_WhenRowChangedByAnotherTransaction_ThrowsOptimisticLockFailure() {
+        entityManager.flush();
+        // request kia đã ghi trước: DB đã đổi bản ghi trong khi entity này vẫn cầm trạng thái cũ
+        entityManager.createNativeQuery("UPDATE group_transactions SET version = version + 1 WHERE id = :id")
+                .setParameter("id", testTxn.getId())
+                .executeUpdate();
+
+        testTxn.setStatus(TransactionStatus.REJECTED);
+
+        assertThatThrownBy(() -> groupTransactionRepository.saveAndFlush(testTxn))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 
     @Test

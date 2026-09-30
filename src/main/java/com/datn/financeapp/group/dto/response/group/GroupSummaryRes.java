@@ -12,8 +12,12 @@ public record GroupSummaryRes(
         MemberRole myRole,
         GroupStatus status,
         String inviteCode,
-        long memberCount,
+        Long memberCount,
         Long fundBalance,
         Long target,
         Instant createdAt) {
+
+    public GroupSummaryRes {
+        if (fundBalance == null) fundBalance = 0L;
+    }
 }

@@ -9,8 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.datn.financeapp.group.enums.TransactionType;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -29,15 +27,18 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
 
     @EntityGraph(attributePaths = {"participants"})
     List<GTransaction> findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-            UUID groupId, TransactionStatus status);
+            UUID groupId,
+            TransactionStatus status
+    );
 
     long countByGroupIdAndStatusAndDeletedAtIsNull(UUID groupId, TransactionStatus status);
 
     @Query("""
-                SELECT COALESCE(SUM(gt.amount), 0) FROM GTransaction gt
+                SELECT COALESCE(SUM(gt.amount), 0)
+                FROM GTransaction gt
                 WHERE gt.groupId = :groupId
                   AND gt.type = :type
-                  AND gt.status = 'CONFIRMED'
+                  AND gt.status = TransactionStatus.CONFIRMED
                   AND gt.deletedAt IS NULL
                   AND gt.occurredAt >= :fromTime
                   AND gt.occurredAt < :toTime

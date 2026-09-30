@@ -101,6 +101,10 @@ public class GroupTransactionPaticipantValidator {
      * @throws BusinessException nếu số tiền <= 0, tổng tiền không khớp, hoặc danh sách nhập tiền không đồng nhất
      */
     private void validParticipantShares(List<GroupTransactionParticipantReq> participants, long amount) {
+
+        if (participants.isEmpty())
+            return;
+        
         boolean anyNull = false;
         boolean allNull = true;
         long sum = 0;

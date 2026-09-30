@@ -11,7 +11,6 @@ import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetail
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
@@ -109,11 +108,10 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     @Transactional(readOnly = true)
     public GroupTransactionDetailRes detail(UUID operatorId, UUID groupId, UUID transactionId) {
-        // xác thực người thực hiện và lấy thông tin quyền hạn
-        MemberAuthInfo info = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        // xác thực người thực hiện đang trong group
+        permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+
         GTransaction txn = findActiveTransaction(transactionId, groupId);
-        if (!info.isOwner() && !info.isTreasurer() && !txn.getCreatedBy().equals(operatorId))
-            throw new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_BELONG_MEMBER);
 
         return transactionHelper.buildDetailRes(txn);
     }
@@ -206,106 +204,53 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         return transactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(groupId, TransactionStatus.PENDING);
     }
 
-    // -----------------------------------
-    // REVIEWING-----------------------------------------//
+    // -----------------------------------REVIEWING-----------------------------------------//
     @Override
     public GroupTransactionDetailRes confirm(UUID operatorId, UUID groupId, UUID transactionId) {
-        // xác thực người thực hiện và lấy thông tin quyền hạn
-        MemberAuthInfo authInfo = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
-        if (!authInfo.isOwner() && !authInfo.isTreasurer()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
-        }
-
-        GTransaction txn = findActiveTransaction(transactionId, groupId);
-        if (txn.getStatus() != TransactionStatus.PENDING)
-            throw new BusinessException(ErrorCode.TRANSACTION_NOT_PENDING);
+        requireReviewer(groupId, operatorId);
+        GTransaction txn = findPendingTransaction(transactionId, groupId);
 
         updateReviewStatus(txn, TransactionStatus.CONFIRMED, operatorId, Instant.now());
-
-        publishFundChangeEvent(
-                groupId, transactionHelper.calculateDelta(
-                        txn.getType(),
-                        txn.getMoneySource(),
-                        txn.getAmount(),
-                        false));
-        txn = transactionRepository.save(txn);
+        publishFundChangeEvent(groupId, deltaOf(txn));
 
         return transactionHelper.buildDetailRes(txn);
     }
 
     @Override
     public GroupTransactionDetailRes reject(UUID operatorId, UUID groupId, UUID transactionId) {
-        MemberAuthInfo info = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
-        if (!info.isOwner() && !info.isTreasurer()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
-        }
-
-        GTransaction txn = findActiveTransaction(transactionId, groupId);
-        if (txn.getStatus() != TransactionStatus.PENDING)
-            throw new BusinessException(ErrorCode.TRANSACTION_NOT_PENDING);
+        requireReviewer(groupId, operatorId);
+        GTransaction txn = findPendingTransaction(transactionId, groupId);
 
         updateReviewStatus(txn, TransactionStatus.REJECTED, operatorId, Instant.now());
-        txn = transactionRepository.save(txn);
 
         return transactionHelper.buildDetailRes(txn);
     }
 
     @Override
     public int bulkConfirm(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req) {
-        MemberAuthInfo info = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
-        if (!info.isOwner() && !info.isTreasurer()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
-        }
-
-        if (req.transactionIds() == null || req.transactionIds().isEmpty()) {
-            return 0;
-        }
-
-        List<UUID> distinctIds = req.transactionIds().stream().distinct().toList();
-        List<GTransaction> txns = transactionRepository
-                .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(distinctIds, groupId, TransactionStatus.PENDING);
-
-        if (txns.isEmpty() || txns.size() != distinctIds.size())
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        requireReviewer(groupId, operatorId);
+        List<GTransaction> txns = findPendingBatch(groupId, req);
 
         long totalDelta = 0L;
         Instant now = Instant.now();
         for (GTransaction t : txns) {
             updateReviewStatus(t, TransactionStatus.CONFIRMED, operatorId, now);
-            totalDelta += transactionHelper.calculateDelta(t.getType(), t.getMoneySource(), t.getAmount(), false);
+            totalDelta += deltaOf(t);
         }
 
-        // cập nhật số dư quỹ 1 lần duy nhất và batch save
+        // cập nhật số dư quỹ 1 lần duy nhất cho cả lô
         publishFundChangeEvent(groupId, totalDelta);
-        transactionRepository.saveAll(txns);
 
         return txns.size();
     }
 
     @Override
     public int bulkReject(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req) {
-        MemberAuthInfo info = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
-        if (!info.isOwner() && !info.isTreasurer()) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
-        }
+        requireReviewer(groupId, operatorId);
+        List<GTransaction> txns = findPendingBatch(groupId, req);
 
-        if (req.transactionIds() == null || req.transactionIds().isEmpty()) {
-            return 0;
-        }
-
-        List<UUID> distinctIds = req.transactionIds().stream().distinct().toList();
-        List<GTransaction> txns = transactionRepository
-                .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(distinctIds, groupId, TransactionStatus.PENDING);
-
-        if (txns.isEmpty() || txns.size() != distinctIds.size())
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
-
-        // đánh dấu REJECTED cho toàn bộ danh sách và batch save
         Instant now = Instant.now();
-        for (GTransaction t : txns) {
-            updateReviewStatus(t, TransactionStatus.REJECTED, operatorId, now);
-        }
-        transactionRepository.saveAll(txns);
+        txns.forEach(t -> updateReviewStatus(t, TransactionStatus.REJECTED, operatorId, now));
 
         return txns.size();
     }
@@ -315,6 +260,38 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     private GTransaction findActiveTransaction(UUID transactionId, UUID groupId) {
         return transactionRepository.findByIdAndGroupIdAndDeletedAtIsNull(transactionId, groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND));
+    }
+
+    // xác thực người thực hiện đang trong nhóm và là chủ nhóm hoặc thủ quỹ
+    private void requireReviewer(UUID groupId, UUID operatorId) {
+        MemberAuthInfo info = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        if (!info.isOwner() && !info.isTreasurer())
+            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
+    }
+
+    private GTransaction findPendingTransaction(UUID transactionId, UUID groupId) {
+        GTransaction txn = findActiveTransaction(transactionId, groupId);
+        if (txn.getStatus() != TransactionStatus.PENDING)
+            throw new BusinessException(ErrorCode.TRANSACTION_NOT_PENDING);
+        return txn;
+    }
+
+    // trả danh sách rỗng khi request không có id, ném lỗi nếu có id không tìm thấy hoặc không còn chờ duyệt
+    private List<GTransaction> findPendingBatch(UUID groupId, GroupTransactionBulkReviewReq req) {
+        if (req.transactionIds() == null || req.transactionIds().isEmpty())
+            return List.of();
+
+        List<UUID> distinctIds = req.transactionIds().stream().distinct().toList();
+        List<GTransaction> txns = transactionRepository
+                .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(distinctIds, groupId, TransactionStatus.PENDING);
+
+        if (txns.size() != distinctIds.size())
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        return txns;
+    }
+
+    private long deltaOf(GTransaction txn) {
+        return transactionHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), false);
     }
 
     private void publishFundChangeEvent(UUID groupId, long delta) {

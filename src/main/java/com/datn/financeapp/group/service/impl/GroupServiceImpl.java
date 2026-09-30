@@ -5,12 +5,12 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
+import com.datn.financeapp.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.Group;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
@@ -19,8 +19,8 @@ import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.mapper.GroupMapper;
 import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.service.FundService;
-import com.datn.financeapp.group.service.GroupService;
 import com.datn.financeapp.group.service.GTransactionService;
+import com.datn.financeapp.group.service.GroupService;
 import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -67,6 +67,13 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public GroupDetailRes create(UUID operatorId, GroupCreateReq req) {
+
+        if (req.members().contains(operatorId))
+            throw new BusinessException(ErrorCode.GROUP_CREATE_MEMBER_CAN_NOT_OWNER);
+
+        if (req.members().isEmpty())
+            throw new BusinessException(ErrorCode.GROUP_CREATE_NOT_ONLY_ONE);
+
         Instant now = Instant.now();
         UUID groupId = UUID.randomUUID();
 
@@ -78,16 +85,15 @@ public class GroupServiceImpl implements GroupService {
         var fundRes = fundService.addFund(groupId, operatorId, now);
 
         // 3. Thêm chủ nhóm (OWNER)
-        var own = memberService.addOwner(groupId, operatorId, now);
+        var own = memberService.addOwner(operatorId, groupId, now);
 
         // 4. Lọc bỏ operatorId của OWNER khỏi danh sách mời (tránh trùng)
-        List<UUID> memberIds = (req.members() == null) ? List.of() :
-                req.members().stream()
-                        .filter(id -> id != null && !id.equals(operatorId))
-                        .distinct()
-                        .toList();
+        List<UUID> memberIds = req.members().stream()
+                .filter(id -> id != null && !id.equals(operatorId))
+                .distinct()
+                .toList();
 
-        var members = memberService.addMembers(operatorId, groupId, memberIds, now);
+        var members = memberService.addMembers(operatorId, groupId, new MemberAddReq(memberIds, MemberStatus.ACTIVE, MemberRole.MEMBER, now));
 
         // 5. Ghép OWNER lên đầu danh sách thành viên trả về
         List<MemberRes> allMembers = new ArrayList<>();
@@ -104,27 +110,13 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public List<GroupSummaryRes> list(UUID operatorId) {
-        List<Group> groups = groupRepository.findAllActiveByUserId(operatorId);
-        List<GroupSummaryRes> result = new ArrayList<>();
-        for (Group group : groups) {
-            long memberCount = memberService.countActiveMembers(group.getId());
-            Long fundBalance = (group.getFund() != null) ? group.getFund().getCurrentBalance() : 0L;
-            var currentMember = memberService.findMember(group.getId(), operatorId);
-            MemberRole myRole = currentMember != null ? currentMember.role() : MemberRole.MEMBER;
-            result.add(groupMapper.toSummaryResponse(
-                    group,
-                    myRole,
-                    memberCount,
-                    fundBalance
-            ));
-        }
-        return result;
+        return groupRepository.findSummariesByUserId(operatorId);
     }
 
     @Override
     public GroupDetailRes detail(UUID operatorId, UUID groupId) {
 
-        MemberRes mem = memberService.findMember(groupId, operatorId, MemberStatus.ACTIVE);
+        MemberRes mem = memberService.getMember(groupId, operatorId, MemberStatus.ACTIVE);
 
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
@@ -140,25 +132,21 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        if (group.getStatus().equals(GroupStatus.ARCHIVED)) {
-            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
-        }
-
-        if (req.name() != null && !req.name().isBlank()) {
+        if (req.name() != null && !req.name().isBlank())
             group.setName(req.name().trim());
-        }
-        if (req.description() != null) {
+
+        if (req.description() != null)
             group.setDescription(req.description().trim());
-        }
-        if (req.target() != null) {
+
+        if (req.target() != null)
             group.setTarget(req.target());
-        }
-        if (req.isSettlementEnabled() != null) {
+
+        if (req.isSettlementEnabled() != null)
             group.setIsSettlementEnabled(req.isSettlementEnabled());
-        }
-        if (req.isJoinWithoutConfirm() != null) {
+
+        if (req.isJoinWithoutConfirm() != null)
             group.setIsJoinWithoutConfirm(req.isJoinWithoutConfirm());
-        }
+
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
 
@@ -183,57 +171,15 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void unarchive(UUID operatorId, UUID groupId) {
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+
+        permissionValidator.verifyOwner(groupId, operatorId);
+
         Group group = groupRepository.findArchivedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_ARCHIVED));
 
         group.setStatus(GroupStatus.ACTIVE);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
-    }
-
-    @Override
-    @Transactional
-    public void transferOwnership(
-            UUID operatorId,
-            UUID groupId,
-            UUID memberId
-    ) {
-        if (operatorId.equals(memberId)) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
-        }
-
-        groupRepository.findByIdAndStatus(groupId, GroupStatus.ACTIVE)
-                .orElseThrow(() ->
-                        new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-
-        List<Member> members = memberService.findMembers(
-                groupId,
-                List.of(operatorId, memberId)
-        );
-
-        Map<UUID, Member> memberMap = members.stream()
-                .collect(Collectors.toMap(
-                        Member::getUserId,
-                        Function.identity()
-                ));
-
-        Member currentOwner = Optional.ofNullable(memberMap.get(operatorId))
-                .orElseThrow(() ->
-                        new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
-
-        Member newOwner = Optional.ofNullable(memberMap.get(memberId))
-                .orElseThrow(() ->
-                        new BusinessException(ErrorCode.NEW_OWNER_NOT_MEMBER));
-
-        if (currentOwner.getRole() != MemberRole.OWNER) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
-        }
-
-        currentOwner.setRole(MemberRole.MEMBER);
-        newOwner.setRole(MemberRole.OWNER);
-
-        log.info("group {} is transfered owner. The new owner is {}", groupId, memberId);
     }
 
     @Override
@@ -259,7 +205,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void join(UUID operatorId, GroupJoinReq req) {
+    public void joinByCode(UUID operatorId, GroupJoinReq req) {
 
         Instant now = null;
 
@@ -276,6 +222,7 @@ public class GroupServiceImpl implements GroupService {
             status = MemberStatus.ACTIVE;
             now = Instant.now();
         }
+
         memberService.addMember(
                 operatorId,
                 group.getId(),
@@ -318,7 +265,7 @@ public class GroupServiceImpl implements GroupService {
         SecureRandom RANDOM = new SecureRandom();
 
         StringBuilder sb = new StringBuilder(length);
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < length; i++) {
             sb.append(INVITE_CHARS.charAt(RANDOM.nextInt(INVITE_CHARS.length())));
         }
         return sb.toString();

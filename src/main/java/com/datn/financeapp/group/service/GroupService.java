@@ -52,6 +52,13 @@ public interface GroupService {
      */
     GroupDetailRes create(UUID operatorId, GroupCreateReq req);
 
+    /**
+     * lấy toàn bộ group member đang ở
+     * <p>Yêu cầu: Người gọi phải là thành viên đang hoạt động ({@code ACTIVE}) của nhóm.</p>
+     *
+     * @param operatorId ID người dùng yêu cầu
+     * @return Danh sách nhóm (thông tin nhóm, vai trò {@code myRole}, quỹ nhóm, danh sách thành viên)
+     */
     List<GroupSummaryRes> list(UUID operatorId);
 
     /**
@@ -104,21 +111,6 @@ public interface GroupService {
     void unarchive(UUID operatorId, UUID groupId);
 
     /**
-     * Chuyển giao quyền Trưởng nhóm ({@code OWNER}) cho một thành viên khác trong nhóm.
-     * <p>
-     * Yêu cầu: Người gọi phải là Trưởng nhóm hiện tại, và người nhận quyền phải là thành viên
-     * đang hoạt động ({@code ACTIVE}) của nhóm.
-     * </p>
-     *
-     * @param operatorId ID Trưởng nhóm hiện tại
-     * @param groupId    ID nhóm
-     * @param memberId   ID thành viên được chỉ định làm Trưởng nhóm mới
-     * @throws BusinessException nếu không phải Owner, chuyển cho chính mình,
-     *                           hoặc người nhận không phải thành viên hợp lệ
-     */
-    void transferOwnership(UUID operatorId, UUID groupId, UUID memberId);
-
-    /**
      * Xóa nhóm (chuyển trạng thái sang {@code DELETED}) và đóng quỹ nhóm ({@code CLOSED}).
      * <p>
      * Yêu cầu quyền: Trưởng nhóm ({@code OWNER}).
@@ -145,5 +137,5 @@ public interface GroupService {
      *                           nhóm đã lưu trữ ({@code GROUP_ARCHIVED}),
      *                           hoặc đã là thành viên trong nhóm ({@code ALREADY_IN_GROUP})
      */
-    void join(UUID operatorId, GroupJoinReq req);
+    void joinByCode(UUID operatorId, GroupJoinReq req);
 }

@@ -21,6 +21,7 @@ import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.group.service.impl.ReportServiceImpl;
 import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
+
 import java.util.Optional;
 
 import java.time.Instant;
@@ -75,8 +76,7 @@ class GroupReportServiceTest {
         userC = UUID.randomUUID();
 
 
-
-        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(memberRepository, groupRepository);
+        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository);
 
         reportService = new ReportServiceImpl(
                 groupService,
@@ -125,7 +125,6 @@ class GroupReportServiceTest {
         Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER).status(MemberStatus.ACTIVE).joinedAt(Instant.now()).build();
         Member memB = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userB).role(MemberRole.MEMBER).status(MemberStatus.ACTIVE).joinedAt(Instant.now()).build();
         Member memC = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userC).role(MemberRole.MEMBER).status(MemberStatus.ACTIVE).joinedAt(Instant.now()).build();
-
 
 
         MemberRes mResA = new MemberRes(memA.getId(), userA, MemberRole.OWNER, MemberStatus.ACTIVE, memA.getJoinedAt());
@@ -320,7 +319,7 @@ class GroupReportServiceTest {
     }
 
     private GTransaction txn(TransactionType type, MoneySource source, UUID transactorId, long amount,
-            List<TransactionParticipant> participants) {
+                             List<TransactionParticipant> participants) {
         Instant now = Instant.now();
         return GTransaction.builder()
                 .id(UUID.randomUUID())

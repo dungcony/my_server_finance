@@ -17,35 +17,35 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * Validator kiểm tra tư cách thành viên, phân quyền thao tác và tính hợp lệ của nhóm tài chính.
+ * Validator kiểm tra tư cách thành viên, phân quyền thao tác và tính hợp lệ của
+ * nhóm tài chính.
  * <p>
- * Tái sử dụng tập trung cho các service trong module {@code group}, tránh duplicate code
- * và nhất quán trong việc bắn các lỗi {@link BusinessException} liên quan đến quyền truy cập.
+ * Tái sử dụng tập trung cho các service trong module {@code group}, tránh
+ * duplicate code
+ * và nhất quán trong việc bắn các lỗi {@link BusinessException} liên quan đến
+ * quyền truy cập.
  * </p>
  */
 @Component
 @RequiredArgsConstructor
 public class GroupPermissionValidator {
 
-    private final MemberRepository memberRepository;
     private final GroupRepository groupRepository;
 
-
     /**
-     * Xác thực cả trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE) chỉ bằng 1 DB roundtrip duy nhất.
+     * Xác thực cả trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE) chỉ bằng
+     * 1 DB roundtrip duy nhất.
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng
-     * @return {@link MemberAuthInfo} chứa trạng thái và role để tái sử dụng mà không cần query lại
+     * @return {@link MemberAuthInfo} chứa trạng thái và role để tái sử dụng mà
+     * không cần query lại
      */
     public MemberAuthInfo verifyActiveMemberInGroupActive(UUID groupId, UUID operatorId) {
         MemberAuthInfo info = groupRepository.findAuthInfo(groupId, operatorId)
+                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        // Kiểm tra trạng thái Nhóm
-        if (info.groupStatus() == GroupStatus.DELETED) {
-            throw new BusinessException(ErrorCode.GROUP_NOT_FOUND);
-        }
         if (info.groupStatus() == GroupStatus.ARCHIVED) {
             throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
         }
@@ -63,7 +63,8 @@ public class GroupPermissionValidator {
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng thực hiện thao tác
-     * @throws BusinessException nếu không phải Owner ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
+     * @throws BusinessException nếu không phải Owner
+     *                           ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
      */
     public MemberAuthInfo verifyOwnerInGroupActive(UUID groupId, UUID operatorId) {
 
@@ -76,12 +77,14 @@ public class GroupPermissionValidator {
     }
 
     /**
-     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ quỹ).
+     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ
+     * quỹ).
      *
      * @param groupId      ID nhóm
      * @param operatorId   ID người dùng đang thực hiện thao tác
      * @param heldByUserId ID người dùng đang giữ quỹ
-     * @throws BusinessException nếu không phải Owner và không phải Thủ quỹ ({@link ErrorCode#FORBIDDEN_TREASURER_REQUIRED})
+     * @throws BusinessException nếu không phải Owner và không phải Thủ quỹ
+     *                           ({@link ErrorCode#FORBIDDEN_TREASURER_REQUIRED})
      */
     public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID heldByUserId) {
         var info = verifyActiveMemberInGroupActive(groupId, operatorId);
@@ -92,13 +95,24 @@ public class GroupPermissionValidator {
         }
     }
 
+    public void verifyOwner(UUID groupId, UUID operatorId) {
+        MemberAuthInfo info = groupRepository.findAuthInfo(groupId, operatorId)
+                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (info.memberRole() != MemberRole.OWNER) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+        }
+    }
+
     /**
      * Xác thực quyền chỉnh sửa giao dịch tài chính nhóm.
      * <p>
      * Quy tắc:
      * <ul>
-     *   <li>Trưởng nhóm (OWNER) và Thủ quỹ (TREASURER): Được sửa mọi giao dịch.</li>
-     *   <li>Thành viên thường: Chỉ được sửa giao dịch do chính mình tạo (EXPENSE, CONTRIBUTION).</li>
+     * <li>Trưởng nhóm (OWNER) và Thủ quỹ (TREASURER): Được sửa mọi giao dịch.</li>
+     * <li>Thành viên thường: Chỉ được sửa giao dịch do chính mình tạo (EXPENSE,
+     * CONTRIBUTION).</li>
      * </ul>
      * </p>
      *

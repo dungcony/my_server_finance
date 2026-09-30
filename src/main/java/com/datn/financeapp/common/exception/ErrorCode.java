@@ -393,7 +393,10 @@ public enum ErrorCode {
     AMOUNT_EXCEEDS_SHARE(HttpStatus.CONFLICT, "Số tiền vượt quá phần trong quỹ hiện có của thành viên."),
     CANNOT_REFUND_EXCEED_BALANCE(HttpStatus.BAD_REQUEST, "Số tiền hoàn vượt quá phần trong quỹ hiện có."),
     ONLY_OWNER_CAN_DELETE_TRANSACTION(HttpStatus.FORBIDDEN, "Chỉ chủ nhóm mới có quyền xóa giao dịch."),
-    ADJUSTMENT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh là bắt buộc.");
+    ADJUSTMENT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh là bắt buộc."),
+    GROUP_CREATE_NOT_ONLY_ONE(HttpStatus.BAD_REQUEST, "1 nhóm phải có từ 2 người trở lên"),
+    GROUP_CREATE_MEMBER_CAN_NOT_OWNER(HttpStatus.BAD_REQUEST, "người tạo k được trong danh sách member");
+
 
     private final HttpStatus status;
     private final String defaultMessage;
