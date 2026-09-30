@@ -17,6 +17,7 @@ import com.datn.financeapp.transaction.entity.Transaction;
 import com.datn.financeapp.wallet.dto.response.WalletRawBalanceResponse;
 import com.datn.financeapp.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.wallet.service.WalletService;
+
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -336,12 +338,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                         + "WHERE user_id = ? AND include_in_total AND NOT is_deleted",
                 Long.class,
                 userId);
-        Long sharedTotal = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
-                        + "WHERE group_id IN (SELECT group_id FROM group_members WHERE user_id = ? AND is_active) "
-                        + "AND include_in_total AND NOT is_deleted",
-                Long.class,
-                userId);
+        Long sharedTotal = 0L;
 
         List<WalletRawBalanceResponse> wallets = walletService.listWithRawBalance(userId, true);
         List<ReportHomeResponse.WalletItem> topWallets = wallets.stream()
@@ -366,9 +363,9 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         ReportHomeResponse.DailyTrend.Note note = highest == null
                 ? new ReportHomeResponse.DailyTrend.Note(null, 0L, trend.avg3MonthsSamePoint())
                 : new ReportHomeResponse.DailyTrend.Note(
-                        String.format("%02d/%02d", highest.date(), range.to().getMonthValue()),
-                        highest.spentThatDay(),
-                        trend.avg3MonthsSamePoint());
+                String.format("%02d/%02d", highest.date(), range.to().getMonthValue()),
+                highest.spentThatDay(),
+                trend.avg3MonthsSamePoint());
 
         CategoryBreakdownResponse topSpendingBreakdown =
                 byCategory(userId, period, null, null, "expense", "parent", 5, walletId);
@@ -482,5 +479,6 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         return new DateRange(prevFrom, prevTo, "Kỳ trước");
     }
 
-    private record DateRange(LocalDate from, LocalDate to, String label) {}
+    private record DateRange(LocalDate from, LocalDate to, String label) {
+    }
 }

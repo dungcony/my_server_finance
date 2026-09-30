@@ -24,45 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Kiểm tra GlobalExceptionHandler qua @WebMvcTest với controller test-only,
  * không đụng tới controller nghiệp vụ thật nào.
  */
-@WebMvcTest(
-        excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
-                type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
-                classes = {
-                        com.datn.financeapp.common.security.SecurityConfig.class,
-                        com.datn.financeapp.common.security.JwtAuthFilter.class,
-                        com.datn.financeapp.common.ratelimit.RateLimitFilter.class,
-                        // Plan 04: AuthController mới thêm bị @WebMvcTest (không dùng controllers=)
-                        // tự component-scan vào slice context, kéo theo AuthService không tồn tại
-                        // ở đây — loại tường minh, cùng lý do với 3 bean phía trên.
-                        com.datn.financeapp.auth.controller.AuthController.class,
-                        // Phase 2 plan 02-02: WalletController mới thêm bị component-scan vào
-                        // cùng slice context, kéo theo WalletService không tồn tại ở đây (chỉ
-                        // GlobalExceptionHandlerTest + TestController được @Import tường minh) —
-                        // cùng lý do loại trừ với AuthController phía trên.
-                        com.datn.financeapp.wallet.controller.WalletController.class,
-                        // Phase 2 plan 02-03: CategoryController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.category.controller.CategoryController.class,
-                        // Phase 3 plan 03-02: TransactionController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.transaction.controller.TransactionController.class,
-                        // Phase 4 plan 04-01: NotificationController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.notification.controller.NotificationController.class,
-                        // Phase 4 plan 04-02: BudgetController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.budget.controller.BudgetController.class,
-                        // Phase 4 plan 04-03: DebtController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.debt.controller.DebtController.class,
-                        // Phase 4 plan 04-04: GoalController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.goal.controller.GoalController.class,
-                        // Phase 4 plan 04-05: RecurringController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.recurring.controller.RecurringController.class,
-                        // Phase 4 plan 04-06: ReportController mới thêm — cùng lý do loại trừ.
-                        com.datn.financeapp.report.controller.ReportController.class,
-                        com.datn.financeapp.user.controller.UserController.class,
-                        ManagerUserController.class,
-                        ManagerRoleController.class
-                }))
-@org.springframework.context.annotation.Import({GlobalExceptionHandler.class, GlobalExceptionHandlerTest.TestController.class})
-@WithMockUser
-@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
+@WebMvcTest(controllers = GlobalExceptionHandlerTest.TestController.class)
 public class GlobalExceptionHandlerTest {
 
     @Autowired
@@ -123,3 +85,4 @@ public class GlobalExceptionHandlerTest {
             @JsonProperty("field_two") @NotBlank String fieldTwo) {
     }
 }
+

@@ -7,5 +7,6 @@
   "spring-boot.ls.problem.boot3.JAVA_REPOSITORY": "IGNORE",
   "spring-boot.ls.problem.boot2.JAVA_CONSTRUCTOR_PARAMETER_INJECTION": "IGNORE",
   "spring-boot.ls.problem.boot3.JAVA_CONSTRUCTOR_PARAMETER_INJECTION": "IGNORE",
-  "spring-boot.ls.code-actions.generate-constructor-injection.enabled": false
+  "spring-boot.ls.code-actions.generate-constructor-injection.enabled": false,
+  "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable"
 }

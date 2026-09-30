@@ -1,8 +1,9 @@
 package com.datn.financeapp.group.dto.request.transaction;
 
-import com.datn.financeapp.group.enums.GroupTransactionStatus;
-import com.datn.financeapp.group.enums.GroupTransactionType;
+import com.datn.financeapp.group.enums.TransactionStatus;
+import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -10,12 +11,11 @@ import java.util.UUID;
 
 public record GroupTransactionFilterReq(
         MoneySource moneySource,
-        GroupTransactionType type,
-        GroupTransactionStatus status,
-        UUID userId,
+        TransactionType type,
+        TransactionStatus status,
+        UUID transactorId,
         Instant fromOccurredAt,
         Instant toOccurredAt,
-        UUID walletId,
         LocalDate startDate,
         LocalDate endDate,
         Integer page,

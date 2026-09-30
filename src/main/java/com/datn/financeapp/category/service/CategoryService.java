@@ -9,6 +9,7 @@ import com.datn.financeapp.category.dto.response.CategoryRefResponse;
 import com.datn.financeapp.category.dto.response.CategoryResponse;
 import com.datn.financeapp.category.dto.response.IconGroupResponse;
 import com.datn.financeapp.category.dto.response.IconRefResponse;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,8 @@ import java.util.UUID;
 // Public API của module Category.
 public interface CategoryService {
 
-    record IconGroupResponseWrapper(List<IconGroupResponse> group, int total) {}
+    record IconGroupResponseWrapper(List<IconGroupResponse> group, int total) {
+    }
 
     List<CategoryResponse> list(UUID userId, String type, boolean asTree, boolean rootsOnly);
 
@@ -63,5 +65,4 @@ public interface CategoryService {
 
     IconGroupResponseWrapper listIcons(String iconGroup, String search);
 
-    CategoryRefResponse validateSystemExpenseCategory(UUID categoryId);
 }

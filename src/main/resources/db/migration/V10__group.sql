@@ -67,9 +67,9 @@ COMMENT ON COLUMN group_members.joined_at IS 'NULL khi còn PENDING; có giá tr
 COMMENT ON COLUMN group_members.left_at   IS 'NULL = vẫn đang ở trong nhóm';
 
 -- -------------------------------------------------------------
--- 3. group_wallets — Quỹ nhóm duy nhất (Gắn với thủ quỹ)
+-- 3. group_funds — Quỹ nhóm duy nhất (Gắn với thủ quỹ)
 -- -------------------------------------------------------------
-CREATE TABLE group_wallets (
+CREATE TABLE group_funds (
     id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id         UUID        NOT NULL,
     held_by_user_id  UUID        NOT NULL,
@@ -77,16 +77,16 @@ CREATE TABLE group_wallets (
     status           VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    CONSTRAINT fk_gw_group   FOREIGN KEY (group_id)        REFERENCES groups (id) ON DELETE CASCADE,
-    CONSTRAINT fk_gw_held_by FOREIGN KEY (held_by_user_id) REFERENCES users  (id) ON DELETE RESTRICT,
-    CONSTRAINT uq_group_wallets_group UNIQUE (group_id),
-    CONSTRAINT ck_gw_status  CHECK (status IN ('ACTIVE', 'CLOSED'))
+    CONSTRAINT fk_gf_group   FOREIGN KEY (group_id)        REFERENCES groups (id) ON DELETE CASCADE,
+    CONSTRAINT fk_gf_held_by FOREIGN KEY (held_by_user_id) REFERENCES users  (id) ON DELETE RESTRICT,
+    CONSTRAINT uq_group_funds_group UNIQUE (group_id),
+    CONSTRAINT ck_gf_status  CHECK (status IN ('ACTIVE', 'CLOSED'))
 );
 
-CREATE INDEX idx_gw_held_by ON group_wallets (held_by_user_id);
+CREATE INDEX idx_gf_held_by ON group_funds (held_by_user_id);
 
-COMMENT ON TABLE group_wallets IS 'Quỹ duy nhất của nhóm, giao cho một thủ quỹ cầm giữ';
-COMMENT ON COLUMN group_wallets.current_balance IS 'Số dư quỹ, được phép âm khi nhóm chi vượt quỹ';
+COMMENT ON TABLE group_funds IS 'Quỹ duy nhất của nhóm, giao cho một thủ quỹ cầm giữ';
+COMMENT ON COLUMN group_funds.current_balance IS 'Số dư quỹ, được phép âm khi nhóm chi vượt quỹ';
 
 -- -------------------------------------------------------------
 -- 4. group_transactions — Giao dịch tài chính của nhóm
@@ -95,7 +95,7 @@ CREATE TABLE group_transactions (
     id                      UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id                UUID         NOT NULL,
     money_source            VARCHAR(20)  NOT NULL,
-    user_id                 UUID         NOT NULL,
+    transactor_id           UUID         NOT NULL,
     created_by              UUID         NOT NULL,
     category_id             UUID,
     type                    VARCHAR(20)  NOT NULL,
@@ -110,13 +110,13 @@ CREATE TABLE group_transactions (
     deleted_at              TIMESTAMPTZ,
 
     CONSTRAINT fk_gt_group      FOREIGN KEY (group_id)    REFERENCES groups     (id) ON DELETE CASCADE,
-    CONSTRAINT fk_gt_user       FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gt_transactor FOREIGN KEY (transactor_id) REFERENCES users      (id) ON DELETE RESTRICT,
     CONSTRAINT fk_gt_creator    FOREIGN KEY (created_by)  REFERENCES users      (id) ON DELETE RESTRICT,
     CONSTRAINT fk_gt_category   FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
     CONSTRAINT fk_gt_reviewer   FOREIGN KEY (reviewed_by) REFERENCES users      (id) ON DELETE RESTRICT,
 
     CONSTRAINT ck_gt_amount CHECK (amount > 0 AND amount <= 999999999999),
-    CONSTRAINT ck_gt_type   CHECK (type IN ('EXPENSE', 'CONTRIBUTION', 'REFUND', 'WITHDRAWAL', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')),
+    CONSTRAINT ck_gt_type   CHECK (type IN ('EXPENSE', 'CONTRIBUTION', 'REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')),
     CONSTRAINT ck_gt_money_source CHECK (money_source IN ('FUND', 'PERSONAL')),
     CONSTRAINT ck_gt_status CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED')),
     CONSTRAINT ck_gt_review CHECK (
@@ -124,23 +124,23 @@ CREATE TABLE group_transactions (
      OR (status IN ('CONFIRMED', 'REJECTED') AND reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)
     ),
     CONSTRAINT ck_gt_treasurer_confirmed CHECK (
-        type NOT IN ('REFUND', 'WITHDRAWAL', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') OR status = 'CONFIRMED'
+        type NOT IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') OR status = 'CONFIRMED'
     ),
     CONSTRAINT ck_gt_shape  CHECK (
         (type = 'EXPENSE' AND category_id IS NOT NULL)
      OR (type = 'CONTRIBUTION' AND money_source = 'PERSONAL' AND category_id IS NULL)
-     OR (type IN ('REFUND', 'WITHDRAWAL', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') AND money_source = 'FUND' AND category_id IS NULL)
+     OR (type IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') AND money_source = 'FUND' AND category_id IS NULL)
     )
 );
 
 CREATE INDEX idx_gt_group_occurred ON group_transactions (group_id, occurred_at DESC) WHERE deleted_at IS NULL;
 CREATE INDEX idx_gt_group_status   ON group_transactions (group_id, status) WHERE deleted_at IS NULL;
-CREATE INDEX idx_gt_user           ON group_transactions (user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_gt_transactor     ON group_transactions (transactor_id) WHERE deleted_at IS NULL;
 
 COMMENT ON TABLE group_transactions IS 'Giao dịch thu, chi, góp quỹ, kiểm kê của nhóm';
 COMMENT ON COLUMN group_transactions.money_source IS 'FUND = tiền quỹ; PERSONAL = tiền bản thân';
-COMMENT ON COLUMN group_transactions.user_id IS 'Người bỏ tiền ra (EXPENSE, CONTRIBUTION) hoặc người nhận tiền (REFUND, WITHDRAWAL) hoặc người kiểm kê (ADJUSTMENT_*)';
-COMMENT ON COLUMN group_transactions.created_by IS 'Người bấm ghi, có thể khác user_id';
+COMMENT ON COLUMN group_transactions.transactor_id IS 'Người bỏ tiền ra (EXPENSE, CONTRIBUTION) hoặc người nhận tiền (REFUND) hoặc người kiểm kê (ADJUSTMENT_*)';
+COMMENT ON COLUMN group_transactions.created_by IS 'Người bấm ghi, có thể khác transactor_id';
 COMMENT ON COLUMN group_transactions.occurred_at IS 'Thời điểm phát sinh giao dịch thật sự (khác created_at khi ghi bù)';
 
 -- -------------------------------------------------------------

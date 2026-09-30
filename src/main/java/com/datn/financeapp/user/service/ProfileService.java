@@ -19,4 +19,6 @@ public interface ProfileService {
     // Xóa mềm tài khoản.
     void deleteMe(String password);
 
+    // Lấy họ tên hiển thị của danh sách người dùng theo IDs.
+    java.util.Map<UUID, String> getDisplayNames(java.util.Collection<UUID> userIds);
 }

@@ -4,25 +4,41 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /**
- * Toàn bộ mã lỗi nghiệp vụ của backend, mỗi mã gắn sẵn HTTP status và câu thông báo mặc định.
+ * Toàn bộ mã lỗi nghiệp vụ của backend, mỗi mã gắn sẵn HTTP status và câu thông
+ * báo mặc định.
  *
- * <p><b>Vì sao là enum chứ không phải hằng số String.</b> Trước đây mỗi chỗ ném lỗi gõ tay ba
- * mẩu — mã, status, câu thông báo — ở 147 chỗ. Gõ sai mã ({@code "WALLET_NOTFOUND"}) thì build
- * vẫn qua, test vẫn xanh, và app Flutter rơi vào nhánh xử lý mặc định; lỗi chỉ lộ khi người dùng
- * bấm trúng nút đó. Hằng số {@code String} không giải quyết được vì việc dùng chung vẫn là tự
- * nguyện — ai vội vẫn gõ thẳng chuỗi vào được. Enum làm nó thành bắt buộc: tham số nhận kiểu
+ * <p>
+ * <b>Vì sao là enum chứ không phải hằng số String.</b> Trước đây mỗi chỗ ném
+ * lỗi gõ tay ba
+ * mẩu — mã, status, câu thông báo — ở 147 chỗ. Gõ sai mã
+ * ({@code "WALLET_NOTFOUND"}) thì build
+ * vẫn qua, test vẫn xanh, và app Flutter rơi vào nhánh xử lý mặc định; lỗi chỉ
+ * lộ khi người dùng
+ * bấm trúng nút đó. Hằng số {@code String} không giải quyết được vì việc dùng
+ * chung vẫn là tự
+ * nguyện — ai vội vẫn gõ thẳng chuỗi vào được. Enum làm nó thành bắt buộc: tham
+ * số nhận kiểu
  * {@code ErrorCode} nên gõ chuỗi là lỗi biên dịch.
  *
- * <p><b>Tên hằng số CHÍNH LÀ mã lỗi đi ra JSON</b> — {@link #getCode()} trả {@code name()}. Đây
- * là hợp đồng với app Flutter (xem {@code lib/core/network/api_error.dart}), nên đổi tên một hằng
- * số ở đây là đổi hợp đồng API: phải sửa {@code api/*.md} và app trong cùng lần thay đổi.
+ * <p>
+ * <b>Tên hằng số CHÍNH LÀ mã lỗi đi ra JSON</b> — {@link #getCode()} trả
+ * {@code name()}. Đây
+ * là hợp đồng với app Flutter (xem {@code lib/core/network/api_error.dart}),
+ * nên đổi tên một hằng
+ * số ở đây là đổi hợp đồng API: phải sửa {@code api/*.md} và app trong cùng lần
+ * thay đổi.
  *
- * <p><b>Câu thông báo ở đây chỉ là mặc định.</b> Nhiều chỗ cần câu cụ thể hơn theo ngữ cảnh —
- * rõ nhất là {@link #NOT_FOUND}, một mã dùng chung cho 46 chỗ với 15 câu khác nhau ("Không tìm
+ * <p>
+ * <b>Câu thông báo ở đây chỉ là mặc định.</b> Nhiều chỗ cần câu cụ thể hơn theo
+ * ngữ cảnh —
+ * rõ nhất là {@link #NOT_FOUND}, một mã dùng chung cho 46 chỗ với 15 câu khác
+ * nhau ("Không tìm
  * thấy ví.", "Không tìm thấy danh mục."…). Dùng
  * {@link BusinessException#BusinessException(ErrorCode, String)} để ghi đè.
  *
- * <p>Đối chiếu đầy đủ với {@code api/*.md}: xem {@code prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/
+ * <p>
+ * Đối chiếu đầy đủ với {@code api/*.md}: xem
+ * {@code prd/02-CHUAN-HOA-KIEN-TRUC-BACKEND/
  * E1-DOI-SOAT-MA-LOI.md}.
  */
 @Getter
@@ -33,12 +49,14 @@ public enum ErrorCode {
     // ---------------------------------------------------------------------
 
     /**
-     * Dữ liệu gửi lên sai định dạng hoặc thiếu. {@code GlobalExceptionHandler} cũng phát mã này
+     * Dữ liệu gửi lên sai định dạng hoặc thiếu. {@code GlobalExceptionHandler} cũng
+     * phát mã này
      * khi bean validation trượt, kèm danh sách lỗi theo từng trường.
      */
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu gửi lên không hợp lệ."),
 
-    // Thiếu thẻ truy cập. Do {@code GlobalExceptionHandler} phát, không ném từ service.
+    // Thiếu thẻ truy cập. Do {@code GlobalExceptionHandler} phát, không ném từ
+    // service.
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để tiếp tục."),
 
     // Thẻ truy cập đã hết hạn. Do {@code GlobalExceptionHandler} phát.
@@ -47,17 +65,24 @@ public enum ErrorCode {
     // Thẻ sai hoặc đã bị thu hồi. Do {@code GlobalExceptionHandler} phát.
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Thẻ truy cập không hợp lệ."),
 
-    // Không được phép truy cập tài nguyên này. Do {@code GlobalExceptionHandler} phát.
+    // Không được phép truy cập tài nguyên này. Do {@code GlobalExceptionHandler}
+    // phát.
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này."),
 
     /**
      * Không tìm thấy bản ghi.
      *
-     * <p><b>Cố ý dùng chung một mã cho mọi loại tài nguyên</b> — ví, danh mục, giao dịch, ngân
-     * sách đều trả {@code NOT_FOUND}. Đây là quy tắc nghiệp vụ bất biến số 7: khi người dùng
-     * không có quyền, trả 404 chứ không 403, để không lộ việc bản ghi có tồn tại hay không.
-     * Tách thành {@code WALLET_NOT_FOUND}, {@code BUDGET_NOT_FOUND}… sẽ khiến chính mã lỗi tiết
-     * lộ loại tài nguyên vừa dò trúng — đúng thứ thiết kế đang giấu. Câu thông báo thì được ghi
+     * <p>
+     * <b>Cố ý dùng chung một mã cho mọi loại tài nguyên</b> — ví, danh mục, giao
+     * dịch, ngân
+     * sách đều trả {@code NOT_FOUND}. Đây là quy tắc nghiệp vụ bất biến số 7: khi
+     * người dùng
+     * không có quyền, trả 404 chứ không 403, để không lộ việc bản ghi có tồn tại
+     * hay không.
+     * Tách thành {@code WALLET_NOT_FOUND}, {@code BUDGET_NOT_FOUND}… sẽ khiến chính
+     * mã lỗi tiết
+     * lộ loại tài nguyên vừa dò trúng — đúng thứ thiết kế đang giấu. Câu thông báo
+     * thì được ghi
      * đè theo ngữ cảnh, vì nó chỉ hiện cho chủ sở hữu hợp lệ.
      */
     NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bản ghi."),
@@ -68,7 +93,8 @@ public enum ErrorCode {
     // Gọi quá nhiều lần.
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau."),
 
-    // Phương thức HTTP không được hỗ trợ ở điểm cuối này. Do {@code GlobalExceptionHandler} phát.
+    // Phương thức HTTP không được hỗ trợ ở điểm cuối này. Do {@code
+    // GlobalExceptionHandler} phát.
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức không được hỗ trợ."),
 
     // Lỗi ngoài dự kiến. Không bao giờ đưa message gốc ra response (T-02-02).
@@ -92,10 +118,11 @@ public enum ErrorCode {
 
     /**
      * Khoá TẠM 15 phút do đăng nhập sai 5 lần liên tiếp — tự mở sau khi hết hạn.
-     * Khác hẳn {@link #ACCOUNT_BLOCKED}; app hiện hai câu khác nhau (PRD 01 nhóm B5).
+     * Khác hẳn {@link #ACCOUNT_BLOCKED}; app hiện hai câu khác nhau (PRD 01 nhóm
+     * B5).
      */
     ACCOUNT_LOCKED(HttpStatus.FORBIDDEN, "Tài khoản tạm khoá do đăng nhập sai nhiều lần."),
-    
+
     // tài khoản chưa được xác thực
     ACCOUNT_NOT_VERIFIED(HttpStatus.FORBIDDEN, "Tài khoản chưa được xác thực email."),
 
@@ -117,7 +144,8 @@ public enum ErrorCode {
     // Tài khoản đã được kích hoạt trước đó.
     ACCOUNT_ALREADY_VERIFIED(HttpStatus.BAD_REQUEST, "Tài khoản đã được xác thực."),
 
-    // Đổi mật khẩu nhưng gõ sai mật khẩu hiện tại. Nhãn theo đúng ô nhập trên app (PRD 01 mục 6.5).
+    // Đổi mật khẩu nhưng gõ sai mật khẩu hiện tại. Nhãn theo đúng ô nhập trên app
+    // (PRD 01 mục 6.5).
     WRONG_OLD_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu cũ không đúng."),
 
     // Mật khẩu mới trùng với mật khẩu cũ hiện tại.
@@ -126,10 +154,12 @@ public enum ErrorCode {
     // Xoá tài khoản nhưng gõ sai mật khẩu xác nhận.
     WRONG_PASSWORD(HttpStatus.BAD_REQUEST, "Mật khẩu không đúng."),
 
-    // Tài khoản Google thuần chưa từng đặt mật khẩu — không đổi/không xác nhận bằng mật khẩu được.
+    // Tài khoản Google thuần chưa từng đặt mật khẩu — không đổi/không xác nhận bằng
+    // mật khẩu được.
     NO_PASSWORD_SET(HttpStatus.BAD_REQUEST, "Tài khoản đăng nhập bằng Google, chưa đặt mật khẩu."),
 
-    // {@code id_token} của Google không kiểm chứng được, hoặc máy chủ chưa cấu hình client id.
+    // {@code id_token} của Google không kiểm chứng được, hoặc máy chủ chưa cấu hình
+    // client id.
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Đăng nhập bằng Google thất bại. Vui lòng thử lại."),
 
     // ---------------------------------------------------------------------
@@ -145,7 +175,8 @@ public enum ErrorCode {
     // Xoá ví còn giao dịch mà chưa xác nhận xoá kèm.
     WALLET_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Ví còn giao dịch, cần xác nhận xoá kèm giao dịch."),
 
-    // Sửa số dư hoặc loại ví qua PATCH — hai trường này cố ý không cho sửa trực tiếp.
+    // Sửa số dư hoặc loại ví qua PATCH — hai trường này cố ý không cho sửa trực
+    // tiếp.
     BALANCE_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "Không sửa được số dư và loại ví qua PATCH."),
 
     // Chuyển tiền giữa hai ví trùng nhau.
@@ -170,7 +201,8 @@ public enum ErrorCode {
     // Danh mục cha bắt buộc thuộc một nhóm lớn.
     CATEGORY_GROUP_REQUIRED(HttpStatus.BAD_REQUEST, "Danh mục cha bắt buộc có nhóm lớn."),
 
-    // Chuyển danh mục thành cấp con trong khi nó đang có con. Khác {@link #CHILD_CATEGORIES_EXIST}.
+    // Chuyển danh mục thành cấp con trong khi nó đang có con. Khác {@link
+    // #CHILD_CATEGORIES_EXIST}.
     CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "Danh mục đang có con, không thể chuyển thành cấp con."),
 
     // Xoá danh mục khi còn danh mục con. Khác {@link #CATEGORY_HAS_CHILDREN}.
@@ -198,8 +230,10 @@ public enum ErrorCode {
     INVALID_ICON(HttpStatus.BAD_REQUEST, "Biểu tượng không tồn tại hoặc đã ngừng dùng."),
 
     /**
-     * Thiếu danh mục hệ thống mà nghiệp vụ sổ nợ cần (lỗi dữ liệu nền, không phải lỗi người dùng).
-     * Là 500 chứ không phải 404 — đổi tên từ {@code CATEGORY_NOT_FOUND} cũ vì tên đó gợi nhầm
+     * Thiếu danh mục hệ thống mà nghiệp vụ sổ nợ cần (lỗi dữ liệu nền, không phải
+     * lỗi người dùng).
+     * Là 500 chứ không phải 404 — đổi tên từ {@code CATEGORY_NOT_FOUND} cũ vì tên
+     * đó gợi nhầm
      * sang lỗi tra cứu 404 thông thường (E1 mục 3).
      */
     SYSTEM_CATEGORY_MISSING(HttpStatus.INTERNAL_SERVER_ERROR, "Thiếu danh mục hệ thống."),
@@ -208,13 +242,15 @@ public enum ErrorCode {
     // Giao dịch — api/04-GIAO-DICH.md
     // ---------------------------------------------------------------------
 
-    // Số tiền phải là số dương — quy tắc nghiệp vụ số 3, không bao giờ dùng số âm để biểu diễn chi.
+    // Số tiền phải là số dương — quy tắc nghiệp vụ số 3, không bao giờ dùng số âm
+    // để biểu diễn chi.
     INVALID_AMOUNT(HttpStatus.BAD_REQUEST, "Số tiền phải lớn hơn 0."),
 
     // Giao dịch chi/thu bắt buộc có danh mục.
     CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Chi/thu phải có danh mục."),
 
-    // Danh mục không hợp lệ với loại giao dịch, hoặc giao dịch chuyển tiền lại kèm danh mục.
+    // Danh mục không hợp lệ với loại giao dịch, hoặc giao dịch chuyển tiền lại kèm
+    // danh mục.
     CATEGORY_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Danh mục không hợp lệ."),
 
     // Gán danh mục thu cho khoản chi hoặc ngược lại.
@@ -309,24 +345,32 @@ public enum ErrorCode {
     // ---------------------------------------------------------------------
 
     GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy nhóm hoặc bạn không có quyền truy cập."),
-    GROUP_WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy quỹ của nhóm."),
+    GROUP_NOT_ARCHIVED(HttpStatus.BAD_REQUEST, "Nhóm không bị lưu trữ"),
+    GROUP_FUND_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy quỹ của nhóm."),
     GROUP_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch nhóm."),
+    GROUP_TRANSACTION_NOT_BELONG_MEMBER(HttpStatus.BAD_REQUEST, "Chỉ ch nhóm và thủ quỹ mới được xem giao dịch của người khác"),
     GROUP_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thành viên trong nhóm."),
-    INVITE_CODE_INVALID(HttpStatus.NOT_FOUND, "Mã mời không đúng hoặc đã hết hạn."),
+    GROUP_MEMBER_EXTSIS_NOT_IN(HttpStatus.BAD_REQUEST, "Tồn tại thành viên không trong group"),
+    INVITE_CODE_INVALID(HttpStatus.NOT_FOUND, "Mã mời không đúng."),
     ALREADY_IN_GROUP(HttpStatus.CONFLICT, "Bạn đã là thành viên của nhóm này."),
+    PENDING_IN_GROUP(HttpStatus.CONFLICT, "Bạn đã xin vào nhóm này rồi."),
     FORBIDDEN_NOT_GROUP_MEMBER(HttpStatus.FORBIDDEN, "Bạn không phải thành viên của nhóm này."),
     FORBIDDEN_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho chủ nhóm."),
     FORBIDDEN_TREASURER_REQUIRED(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho người giữ quỹ hoặc chủ nhóm."),
     CATEGORY_REQUIRED_FOR_EXPENSE(HttpStatus.BAD_REQUEST, "Khoản chi tiêu bắt buộc phải có danh mục."),
     SYSTEM_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch nhóm chỉ được chọn danh mục hệ thống."),
-    PARTICIPANTS_SUM_MISMATCH(HttpStatus.BAD_REQUEST, "Tổng số tiền các thành viên chịu không khớp với số tiền giao dịch."),
+    PARTICIPANTS_SUM_MISMATCH(HttpStatus.BAD_REQUEST,
+            "Tổng số tiền các thành viên chịu không khớp với số tiền giao dịch."),
+    PARTICIPANTS_AMOUNT_INVALID(HttpStatus.BAD_REQUEST, "Số tiền đưa vào không hợp lệ."),
     INVALID_PARTICIPANT_DATA(HttpStatus.BAD_REQUEST, "Dữ liệu người tham gia giao dịch không hợp lệ."),
     CANNOT_DELETE_GROUP_WITH_BALANCE(HttpStatus.BAD_REQUEST, "Không thể xóa nhóm khi tổng số dư các quỹ chưa bằng 0."),
-    CANNOT_REMOVE_OWNER(HttpStatus.BAD_REQUEST, "Không thể xóa chủ nhóm hoặc chủ nhóm không thể tự rời khi là chủ nhóm duy nhất."),
+    CANNOT_REMOVE_OWNER(HttpStatus.BAD_REQUEST,
+            "Không thể xóa chủ nhóm hoặc chủ nhóm không thể tự rời khi là chủ nhóm duy nhất."),
     GROUP_ARCHIVED(HttpStatus.BAD_REQUEST, "Nhóm đã lưu trữ, chỉ cho phép xem."),
     GROUP_HAS_PENDING_TRANSACTIONS(HttpStatus.BAD_REQUEST, "Nhóm vẫn còn giao dịch đang chờ duyệt."),
     HAS_PENDING_TRANSACTIONS(HttpStatus.CONFLICT, "Nhóm vẫn còn giao dịch đang chờ duyệt."),
-    GROUP_SETTLEMENT_REQUIRED(HttpStatus.BAD_REQUEST, "Tất cả thành viên phải tất toán công nợ trước khi xóa hoặc rời nhóm."),
+    GROUP_SETTLEMENT_REQUIRED(HttpStatus.BAD_REQUEST,
+            "Tất cả thành viên phải tất toán công nợ trước khi xóa hoặc rời nhóm."),
     MEMBER_SHARE_NOT_ZERO(HttpStatus.CONFLICT, "Phần trong quỹ của thành viên chưa bằng 0."),
     OWNER_MUST_TRANSFER_FIRST(HttpStatus.CONFLICT, "Chủ nhóm phải chuyển quyền trước khi rời nhóm."),
     TREASURER_MUST_TRANSFER_FIRST(HttpStatus.CONFLICT, "Thủ quỹ phải bàn giao quỹ trước khi rời nhóm."),
@@ -336,19 +380,20 @@ public enum ErrorCode {
     DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "Thời điểm giao dịch không được ở tương lai."),
     TRANSACTION_TYPE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch không được phép."),
     MONEY_SOURCE_INVALID(HttpStatus.BAD_REQUEST, "Nguồn tiền không hợp lệ cho loại giao dịch này."),
-    PAYER_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người trả hoặc người góp không phải là thành viên có mặt tại thời điểm này."),
+    PAYER_NOT_MEMBER(HttpStatus.BAD_REQUEST,
+            "Người trả hoặc người góp không phải là thành viên có mặt tại thời điểm này."),
     PARTICIPANT_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người tham gia không phải là thành viên có mặt tại thời điểm này."),
-    PARTICIPANTS_SHARE_MIXED(HttpStatus.BAD_REQUEST, "Số tiền chia của các thành viên phải đồng nhất (cùng có hoặc cùng trống)."),
+    PARTICIPANT_IS_CONFLICT(HttpStatus.CONFLICT, "Chỉ được thêm mỗi người 1 lần."),
+    PARTICIPANTS_SHARE_MIXED(HttpStatus.BAD_REQUEST,
+            "Số tiền chia của các thành viên phải đồng nhất (cùng có hoặc cùng trống)."),
     PARTICIPANTS_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch này không được chỉ định người tham gia."),
+    PARTICIPANTS_REQUIRED_ON_AMOUNT_CHANGE(HttpStatus.BAD_REQUEST, "Vui lòng cung cấp danh sách người chia tiền khi thay đổi tổng số tiền."),
     FORBIDDEN_TRANSACTION_EDIT(HttpStatus.FORBIDDEN, "Bạn không có quyền chỉnh sửa giao dịch này."),
     TRANSACTION_NOT_PENDING(HttpStatus.CONFLICT, "Giao dịch không ở trạng thái chờ duyệt."),
     AMOUNT_EXCEEDS_SHARE(HttpStatus.CONFLICT, "Số tiền vượt quá phần trong quỹ hiện có của thành viên."),
-    AMOUNT_EXCEEDS_CONTRIBUTION(HttpStatus.CONFLICT, "Số tiền rút vượt quá số tiền đã góp còn lại."),
-    CANNOT_WITHDRAW_EXCEED_CONTRIBUTION(HttpStatus.BAD_REQUEST, "Số tiền rút vượt quá số tiền đã góp còn lại."),
-    CANNOT_WITHDRAW_EXCEED_BALANCE(HttpStatus.BAD_REQUEST, "Số tiền rút vượt quá phần trong quỹ hiện có."),
     CANNOT_REFUND_EXCEED_BALANCE(HttpStatus.BAD_REQUEST, "Số tiền hoàn vượt quá phần trong quỹ hiện có."),
     ONLY_OWNER_CAN_DELETE_TRANSACTION(HttpStatus.FORBIDDEN, "Chỉ chủ nhóm mới có quyền xóa giao dịch."),
-    CANNOT_MODIFY_CONFIRMED_ADJUSTMENT(HttpStatus.BAD_REQUEST, "Khoản kiểm kê không thể chỉnh sửa.");
+    ADJUSTMENT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh là bắt buộc.");
 
     private final HttpStatus status;
     private final String defaultMessage;
@@ -358,7 +403,8 @@ public enum ErrorCode {
         this.defaultMessage = defaultMessage;
     }
 
-    // Mã lỗi đi ra JSON — chính là tên hằng số. Giữ nguyên tên là giữ nguyên hợp đồng với app.
+    // Mã lỗi đi ra JSON — chính là tên hằng số. Giữ nguyên tên là giữ nguyên hợp
+    // đồng với app.
     public String getCode() {
         return name();
     }

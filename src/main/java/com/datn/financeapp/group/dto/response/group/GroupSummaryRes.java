@@ -1,15 +1,17 @@
 package com.datn.financeapp.group.dto.response.group;
 
-import com.datn.financeapp.group.enums.GroupRole;
+import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.GroupStatus;
+
 import java.time.Instant;
 import java.util.UUID;
 
 public record GroupSummaryRes(
         UUID id,
         String name,
-        GroupRole myRole,
+        MemberRole myRole,
         GroupStatus status,
+        String inviteCode,
         long memberCount,
         Long fundBalance,
         Long target,

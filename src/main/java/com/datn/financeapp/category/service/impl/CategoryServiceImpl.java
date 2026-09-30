@@ -490,17 +490,6 @@ public class CategoryServiceImpl implements CategoryService {
                         ErrorCode.SYSTEM_CATEGORY_MISSING, "Thiếu danh mục hệ thống: " + name));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public CategoryRefResponse validateSystemExpenseCategory(UUID categoryId) {
-        Category category = categoryRepository
-                .findById(categoryId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        if (category.getUserId() != null || !"expense".equalsIgnoreCase(category.getType())) {
-            throw new BusinessException(ErrorCode.SYSTEM_CATEGORY_REQUIRED);
-        }
-        return toRef(category);
-    }
 
     /**
      * Tham chiếu tối thiểu (mã + đường vẽ) tới một biểu tượng, hoặc {@code null} nếu không tìm

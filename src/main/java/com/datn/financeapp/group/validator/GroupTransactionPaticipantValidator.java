@@ -1,0 +1,130 @@
+package com.datn.financeapp.group.validator;
+
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionParticipantReq;
+import com.datn.financeapp.group.service.MemberService;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.util.*;
+
+/**
+ * Validator chuyên trách kiểm tra các ràng buộc nghiệp vụ (Domain Constraints) của giao dịch nhóm.
+ * <p>
+ * Đảm bảo các quy tắc kiểm tra logic phức tạp được đóng gói độc lập, tái sử dụng giữa Create và Update,
+ * tuân thủ nguyên tắc Single Responsibility Principle (SRP).
+ * </p>
+ */
+@Component
+@RequiredArgsConstructor
+public class GroupTransactionPaticipantValidator {
+
+    private final MemberService memberService;
+
+    /**
+     * Kiểm tra thời điểm xảy ra giao dịch (không được là thời gian trong tương lai).
+     *
+     * @param occurredAt Thời điểm phát sinh giao dịch
+     * @throws BusinessException nếu thời điểm lớn hơn hiện tại ({@link ErrorCode#DATE_IN_FUTURE})
+     */
+    public void timeNotFuture(Instant occurredAt) {
+        if (occurredAt != null && occurredAt.isAfter(Instant.now()))
+            throw new BusinessException(ErrorCode.DATE_IN_FUTURE);
+    }
+
+    /**
+     * kiểm tra người tạo, chi, và người đc chỉ định tham gia là ở trong nhóm
+     * chỉ bằng đúng 1 câu query IN duy nhất tới Database (WHERE user_id IN (:candidateIds)).
+     *
+     * @param groupId      ID nhóm
+     * @param transactorId ID người đứng tên giao dịch
+     * @param participants Danh sách người chia tiền
+     * @param amount       Số tiền giao dịch
+     */
+    public void validTransactorAndParticipants(
+            UUID groupId,
+            UUID transactorId,
+            @NonNull List<GroupTransactionParticipantReq> participants,
+            long amount
+    ) {
+
+        // kiểm tra có bị trùng lặp id khi gửi lên k
+        List<UUID> candidateIds = new ArrayList<>(participants.stream()
+                .map(GroupTransactionParticipantReq::userId)
+                .toList());
+
+        checkExists(candidateIds);
+
+
+        if (!candidateIds.contains(transactorId))
+            candidateIds.add(transactorId);
+
+        // Kiểm tra format chia tiền và tổng số tiền
+        validParticipantShares(participants, amount);
+
+        // kiểm tra tư cách thành viên cho toàn bộ ID cần xét
+        if (!memberService.allMemberInGroup(groupId, candidateIds))
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_EXTSIS_NOT_IN);
+
+    }
+
+    //-----------------------------PRIVATE----------------------------------//
+    // kiểm tra tồn tại 2 id giống nhau
+    private static void checkExists(List<UUID> ids) {
+
+        // 1. Dùng Set để lấy danh sách ID không trùng lặp
+        Set<UUID> uniqueParticipantIds = new HashSet<>(ids);
+        // 2. So sánh size của Set với size của List ban đầu để phát hiện trùng lặp
+        if (uniqueParticipantIds.size() != ids.size()) {
+            throw new BusinessException(ErrorCode.PARTICIPANT_IS_CONFLICT);
+        }
+
+    }
+
+
+    /**
+     * Xác thực tính hợp lệ về số tiền của danh sách người tham gia.
+     * <p>
+     * Quy tắc:
+     * <ul>
+     * <li>Hoặc TẤT CẢ để trống số tiền (hệ thống tự chia đều).</li>
+     * <li>Hoặc TẤT CẢ đều nhập số tiền cụ thể.</li>
+     * <li>Không cho phép danh sách lẫn lộn người nhập, người không nhập.</li>
+     * <li>Nếu nhập số tiền cụ thể, tổng phải bằng tổng hóa đơn và mỗi khoản phải > 0.</li>
+     * </ul>
+     *
+     * @param participants danh sách người tham gia chia tiền
+     * @param amount       tổng số tiền của hóa đơn (giao dịch)
+     * @throws BusinessException nếu số tiền <= 0, tổng tiền không khớp, hoặc danh sách nhập tiền không đồng nhất
+     */
+    private void validParticipantShares(List<GroupTransactionParticipantReq> participants, long amount) {
+        boolean anyNull = false;
+        boolean allNull = true;
+        long sum = 0;
+
+        for (var p : participants) {
+            if (p.shareAmount() == null) {
+                anyNull = true;
+            } else {
+                if (p.shareAmount() <= 0) {
+                    throw new BusinessException(ErrorCode.PARTICIPANTS_AMOUNT_INVALID);
+                }
+                sum += p.shareAmount();
+                allNull = false;
+            }
+
+            if (anyNull && !allNull)
+                throw new BusinessException(ErrorCode.PARTICIPANTS_SHARE_MIXED);
+        }
+
+        // Nếu tất cả đều có tiền
+        if (!anyNull) {
+            if (sum != amount) {
+                throw new BusinessException(ErrorCode.PARTICIPANTS_SUM_MISMATCH);
+            }
+        }
+    }
+}

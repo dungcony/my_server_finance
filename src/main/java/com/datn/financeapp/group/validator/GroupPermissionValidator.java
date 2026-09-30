@@ -2,13 +2,17 @@ package com.datn.financeapp.group.validator;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.entity.Group;
-import com.datn.financeapp.group.enums.GroupRole;
+import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.repository.GroupMemberRepository;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.repository.GroupRepository;
+
 import java.util.UUID;
+
+import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.enums.TransactionType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,93 +27,100 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class GroupPermissionValidator {
 
-    private final GroupMemberRepository groupMemberRepository;
+    private final MemberRepository memberRepository;
     private final GroupRepository groupRepository;
 
+
     /**
-     * Xác thực người dùng phải là thành viên đang hoạt động (ACTIVE) trong nhóm.
+     * Xác thực cả trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE) chỉ bằng 1 DB roundtrip duy nhất.
      *
-     * @param groupId ID nhóm
-     * @param userId  ID người dùng
-     * @throws BusinessException nếu không phải thành viên ACTIVE ({@link ErrorCode#FORBIDDEN_NOT_GROUP_MEMBER})
+     * @param groupId    ID nhóm
+     * @param operatorId ID người dùng
+     * @return {@link MemberAuthInfo} chứa trạng thái và role để tái sử dụng mà không cần query lại
      */
-    public void verifyActiveMember(UUID groupId, UUID userId) {
-        boolean isMember = groupMemberRepository.existsByGroupIdAndUserIdAndStatus(
-                groupId, userId, MemberStatus.ACTIVE
-        );
-        if (!isMember) {
+    public MemberAuthInfo verifyActiveMemberInGroupActive(UUID groupId, UUID operatorId) {
+        MemberAuthInfo info = groupRepository.findAuthInfo(groupId, operatorId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        // Kiểm tra trạng thái Nhóm
+        if (info.groupStatus() == GroupStatus.DELETED) {
+            throw new BusinessException(ErrorCode.GROUP_NOT_FOUND);
+        }
+        if (info.groupStatus() == GroupStatus.ARCHIVED) {
+            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
+        }
+
+        // Kiểm tra trạng thái Thành viên
+        if (info.memberStatus() != MemberStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER);
         }
+
+        return info;
     }
 
     /**
      * Xác thực người dùng phải là Trưởng nhóm (OWNER) đang hoạt động.
      *
-     * @param groupId ID nhóm
-     * @param userId  ID người dùng
+     * @param groupId    ID nhóm
+     * @param operatorId ID người dùng thực hiện thao tác
      * @throws BusinessException nếu không phải Owner ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
      */
-    public void verifyOwnerRole(UUID groupId, UUID userId) {
-        if (!isOwner(groupId, userId)) {
+    public MemberAuthInfo verifyOwnerInGroupActive(UUID groupId, UUID operatorId) {
+
+        var info = verifyActiveMemberInGroupActive(groupId, operatorId);
+
+        if (info.memberRole() != MemberRole.OWNER) {
             throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
         }
+        return info;
     }
 
     /**
-     * Kiểm tra người dùng có phải là Trưởng nhóm (OWNER) đang hoạt động hay không.
-     *
-     * @param groupId ID nhóm
-     * @param userId  ID người dùng
-     * @return {@code true} nếu là Owner ACTIVE, ngược lại {@code false}
-     */
-    public boolean isOwner(UUID groupId, UUID userId) {
-        return groupMemberRepository.existsByGroupIdAndUserIdAndRoleAndStatus(
-                groupId, userId, GroupRole.OWNER, MemberStatus.ACTIVE
-        );
-    }
-
-    /**
-     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ ví).
+     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ quỹ).
      *
      * @param groupId      ID nhóm
-     * @param userId       ID người dùng đang thực hiện thao tác
-     * @param heldByUserId ID người dùng đang giữ ví
+     * @param operatorId   ID người dùng đang thực hiện thao tác
+     * @param heldByUserId ID người dùng đang giữ quỹ
      * @throws BusinessException nếu không phải Owner và không phải Thủ quỹ ({@link ErrorCode#FORBIDDEN_TREASURER_REQUIRED})
      */
-    public void verifyOwnerOrTreasurer(UUID groupId, UUID userId, UUID heldByUserId) {
-        boolean isTreasurer = heldByUserId != null && heldByUserId.equals(userId);
-        boolean isOwner = isOwner(groupId, userId);
+    public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID heldByUserId) {
+        var info = verifyActiveMemberInGroupActive(groupId, operatorId);
+        boolean isOwner = info.memberRole() == MemberRole.OWNER;
+        boolean isTreasurer = heldByUserId != null && heldByUserId.equals(operatorId);
         if (!isOwner && !isTreasurer) {
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
         }
     }
 
     /**
-     * Tìm và xác thực nhóm tồn tại, chưa bị xóa (DELETED).
+     * Xác thực quyền chỉnh sửa giao dịch tài chính nhóm.
+     * <p>
+     * Quy tắc:
+     * <ul>
+     *   <li>Trưởng nhóm (OWNER) và Thủ quỹ (TREASURER): Được sửa mọi giao dịch.</li>
+     *   <li>Thành viên thường: Chỉ được sửa giao dịch do chính mình tạo (EXPENSE, CONTRIBUTION).</li>
+     * </ul>
+     * </p>
      *
-     * @param groupId ID nhóm
-     * @return {@link Group} nếu hợp lệ
-     * @throws BusinessException nếu nhóm không tồn tại hoặc đã bị xóa ({@link ErrorCode#GROUP_NOT_FOUND})
+     * @param txn        Giao dịch cần chỉnh sửa
+     * @param operatorId ID người thực hiện chỉnh sửa
+     * @param authInfo   Thông tin quyền hạn của người thực hiện trong nhóm
      */
-    public Group validateAndGetGroup(UUID groupId) {
-        return groupRepository.findById(groupId)
-                .filter(g -> g.getStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-    }
-
-    /**
-     * Tìm và xác thực nhóm tồn tại, chưa bị xóa và chưa bị lưu trữ (ARCHIVED).
-     *
-     * @param groupId ID nhóm
-     * @return {@link Group} đang hoạt động
-     * @throws BusinessException nếu nhóm không tồn tại/đã xóa ({@link ErrorCode#GROUP_NOT_FOUND})
-     *                           hoặc đã bị lưu trữ ({@link ErrorCode#GROUP_ARCHIVED})
-     */
-    public Group validateAndGetActiveGroup(UUID groupId) {
-        Group group = validateAndGetGroup(groupId);
-        if (group.getStatus() == GroupStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
+    public void verifyTransactionEditPermission(GTransaction txn, UUID operatorId, MemberAuthInfo authInfo) {
+        // trưởng nhóm và thủ quỹ có toàn quyền sửa mọi giao dịch
+        if (authInfo.isOwner() || authInfo.isTreasurer()) {
+            return;
         }
-        return group;
+
+        // thành viên thường chỉ được sửa giao dịch do chính mình tạo
+        boolean isCreator = txn.getCreatedBy().equals(operatorId);
+        if (!isCreator) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_EDIT);
+        }
+
+        // thành viên thường không được sửa giao dịch can thiệp trực tiếp vào quỹ
+        if (txn.getType() != TransactionType.EXPENSE && txn.getType() != TransactionType.CONTRIBUTION) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
+        }
     }
 }

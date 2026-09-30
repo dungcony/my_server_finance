@@ -14,6 +14,9 @@ spring:
       hibernate:
         format_sql: false
         ddl-auto: validate
+        jdbc:
+          batch_size: 25
+        order_inserts: true
     open-in-view: false
 
   flyway:
@@ -26,3 +29,4 @@ logging:
     com.datn.financeapp: DEBUG
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.springframework.transaction: DEBUG

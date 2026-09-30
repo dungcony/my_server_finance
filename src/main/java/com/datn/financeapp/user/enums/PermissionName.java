@@ -66,7 +66,6 @@ public enum PermissionName {
     }
 
     @Getter
-    @RequiredArgsConstructor
     public enum Resource {
         USERS("users"),
         ROLES("roles"),
@@ -76,10 +75,13 @@ public enum PermissionName {
         SYSTEM("system");
 
         private final String key;
+
+        Resource(String key) {
+            this.key = key;
+        }
     }
 
     @Getter
-    @RequiredArgsConstructor
     public enum Action {
         READ("read"),
         UPDATE("update"),
@@ -88,6 +90,10 @@ public enum PermissionName {
         VIEW_STATS("view_stats");
 
         private final String key;
+
+        Action(String key) {
+            this.key = key;
+        }
     }
 
     @jakarta.persistence.Converter(autoApply = true)

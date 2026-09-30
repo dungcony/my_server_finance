@@ -18,6 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -86,5 +90,25 @@ public class ProfileServiceImpl implements ProfileService {
 //                "UPDATE group_members SET is_active = FALSE WHERE user_id = ? AND is_active", uid);
 
         eventPublisher.publishEvent(new UserDeletedEvent(uid));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Map<UUID, String> getDisplayNames(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<User> users = userRepository.findAllById(userIds);
+        Map<UUID, String> result = new HashMap<>();
+        for (User u : users) {
+            String first = u.getFirstName() != null ? u.getFirstName().trim() : "";
+            String last = u.getLastName() != null ? u.getLastName().trim() : "";
+            String name = (last + " " + first).trim();
+            if (name.isEmpty()) {
+                name = u.getEmail() != null ? u.getEmail() : "Người dùng";
+            }
+            result.put(u.getId(), name);
+        }
+        return result;
     }
 }

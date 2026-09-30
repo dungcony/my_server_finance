@@ -3,121 +3,114 @@ package com.datn.financeapp.group.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
-import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
-import com.datn.financeapp.group.dto.response.group.GroupInviteCodeRes;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
-import com.datn.financeapp.group.dto.response.group.GroupMemberRes;
-import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
-import com.datn.financeapp.group.dto.response.wallet.GroupWalletRes;
+import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.Group;
-import com.datn.financeapp.group.entity.GroupMember;
-import com.datn.financeapp.group.entity.GroupWallet;
-import com.datn.financeapp.group.enums.GroupRole;
+import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.GroupTransactionStatus;
-import com.datn.financeapp.group.enums.GroupWalletStatus;
+import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.repository.GroupMemberRepository;
-import com.datn.financeapp.group.repository.GroupRepository;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.GroupWalletRepository;
-import com.datn.financeapp.group.helper.GroupInviteCodeHelper;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.mapper.GroupMapper;
-import com.datn.financeapp.group.mapper.GroupMemberMapper;
-import com.datn.financeapp.group.mapper.GroupWalletMapper;
-import com.datn.financeapp.group.service.GroupMemberService;
+import com.datn.financeapp.group.repository.GroupRepository;
+import com.datn.financeapp.group.service.FundService;
 import com.datn.financeapp.group.service.GroupService;
+import com.datn.financeapp.group.service.GTransactionService;
+import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
-    private final GroupWalletRepository groupWalletRepository;
-    private final GroupTransactionRepository groupTransactionRepository;
-    private final GroupWalletMapper groupWalletMapper;
-    private final GroupInviteCodeHelper inviteCodeHelper;
-    private final GroupMemberService groupMemberService;
-
-    private final GroupMemberRepository groupMemberRepository;
-    private final GroupMemberMapper groupMemberMapper;
+    private final GTransactionService gTransactionService;
+    private final MemberService memberService;
+    private final FundService fundService;
     private final GroupPermissionValidator permissionValidator;
     private final GroupMapper groupMapper;
+    private final FundMapper fundMapper;
+
+
+    private static final int inviteCodeLength = 8;
+
     @Override
-    public GroupDetailRes findNotDeletedById(UUID id) {
-        Group group = groupRepository.findById(id)
-                .filter(g -> g.getStatus() != GroupStatus.DELETED)
+    public GroupDetailRes findNotDeletedById(UUID groupId) {
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        return buildGroupDetailRes(group, null);
+        GroupFundRes fundRes = (group.getFund() != null)
+                ? fundMapper.toResponse(group.getFund())
+                : null;
+        List<MemberRes> members = memberService.findMembers(groupId);
+
+        return groupMapper.toDetailResponse(group, null, fundRes, members);
     }
 
     @Override
     @Transactional
-    public GroupDetailRes create(UUID userId, GroupCreateReq req) {
+    public GroupDetailRes create(UUID operatorId, GroupCreateReq req) {
         Instant now = Instant.now();
         UUID groupId = UUID.randomUUID();
 
-        Group group = groupMapper.toEntity(
-                req,
-                groupId,
-                inviteCodeHelper.generateUniqueInviteCode(),
-                now
-        );
+        // 1. Lưu thông tin Nhóm
+        Group group = groupMapper.toEntity(req, groupId, generateUniqueInviteCode(inviteCodeLength), now);
         group = groupRepository.save(group);
 
-        var  member = groupMemberService.addMember(
-                groupId,
-                userId,
-                GroupRole.OWNER,
-                now
-        );
+        // 2. Tạo Quỹ cho nhóm qua Service chuyên trách (Đảm bảo lưu đúng vào DB và nhận về DTO chuẩn)
+        var fundRes = fundService.addFund(groupId, operatorId, now);
 
-        GroupWallet wallet = GroupWallet.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .heldByUserId(userId)
-                .currentBalance(0L)
-                .status(GroupWalletStatus.ACTIVE)
-                .createdAt(now)
-                .build();
-        wallet = groupWalletRepository.save(wallet);
+        // 3. Thêm chủ nhóm (OWNER)
+        var own = memberService.addOwner(groupId, operatorId, now);
 
-        GroupWalletRes walletRes = groupWalletMapper.toResponse(wallet);
+        // 4. Lọc bỏ operatorId của OWNER khỏi danh sách mời (tránh trùng)
+        List<UUID> memberIds = (req.members() == null) ? List.of() :
+                req.members().stream()
+                        .filter(id -> id != null && !id.equals(operatorId))
+                        .distinct()
+                        .toList();
+
+        var members = memberService.addMembers(operatorId, groupId, memberIds, now);
+
+        // 5. Ghép OWNER lên đầu danh sách thành viên trả về
+        List<MemberRes> allMembers = new ArrayList<>();
+        allMembers.add(own);
+        allMembers.addAll(members);
 
         return groupMapper.toDetailResponse(
                 group,
-                GroupRole.OWNER,
-                walletRes,
-                List.of(member)
+                MemberRole.OWNER,
+                fundRes,
+                allMembers
         );
     }
 
     @Override
-    public List<GroupSummaryRes> groupsByUser(UUID userId) {
-        List<Group> groups = groupRepository.findAllActiveByUserId(userId);
+    public List<GroupSummaryRes> list(UUID operatorId) {
+        List<Group> groups = groupRepository.findAllActiveByUserId(operatorId);
         List<GroupSummaryRes> result = new ArrayList<>();
-
         for (Group group : groups) {
-            long memberCount = groupMemberService.countActiveMembers(group.getId());
-            Long fundBalance = groupWalletRepository.findByGroupId(group.getId())
-                    .map(GroupWallet::getCurrentBalance)
-                    .orElse(0L);
-
-            var currentMember = groupMemberService.findMemberById(group.getId(), userId);
-
-            GroupRole myRole = currentMember != null ? currentMember.role() : GroupRole.MEMBER;
-
+            long memberCount = memberService.countActiveMembers(group.getId());
+            Long fundBalance = (group.getFund() != null) ? group.getFund().getCurrentBalance() : 0L;
+            var currentMember = memberService.findMember(group.getId(), operatorId);
+            MemberRole myRole = currentMember != null ? currentMember.role() : MemberRole.MEMBER;
             result.add(groupMapper.toSummaryResponse(
                     group,
                     myRole,
@@ -125,38 +118,31 @@ public class GroupServiceImpl implements GroupService {
                     fundBalance
             ));
         }
-
         return result;
     }
 
     @Override
-    public GroupDetailRes detail(UUID userId, UUID groupId) {
-        Group group = findActiveGroupAndVerifyMember(groupId, userId);
+    public GroupDetailRes detail(UUID operatorId, UUID groupId) {
 
-        GroupMember currentMember = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, userId, List.of(MemberStatus.ACTIVE)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+        MemberRes mem = memberService.findMember(groupId, operatorId, MemberStatus.ACTIVE);
 
-        return buildGroupDetailRes(group, currentMember.getRole());
-    }
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-    private GroupDetailRes buildGroupDetailRes(Group group, GroupRole role) {
-        GroupWallet fund = groupWalletRepository.findByGroupId(group.getId()).orElse(null);
-        GroupWalletRes fundRes = fund != null ? groupWalletMapper.toResponse(fund) : null;
-
-        List<GroupMemberRes> members = groupMemberRepository.findByGroupIdOrderByJoinedAtDesc(group.getId())
-                .stream()
-                .map(groupMemberMapper::toResponse)
-                .toList();
-
-        return groupMapper.toDetailResponse(group, role, fundRes, members);
+        return buildGroupDetailRes(group, operatorId, mem.role());
     }
 
     @Override
     @Transactional
-    public GroupDetailRes update(UUID userId, UUID groupId, GroupUpdateReq req) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-        Group group = permissionValidator.validateAndGetActiveGroup(groupId);
+    public GroupDetailRes update(UUID operatorId, UUID groupId, GroupUpdateReq req) {
+        MemberAuthInfo memberRole = permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (group.getStatus().equals(GroupStatus.ARCHIVED)) {
+            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
+        }
 
         if (req.name() != null && !req.name().isBlank()) {
             group.setName(req.name().trim());
@@ -176,21 +162,18 @@ public class GroupServiceImpl implements GroupService {
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
 
-        return detail(userId, groupId);
+        return buildGroupDetailRes(group, operatorId, memberRole.memberRole());
     }
 
     @Override
     @Transactional
-    public void archive(UUID userId, UUID groupId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-        Group group = permissionValidator.validateAndGetGroup(groupId);
+    public void archive(UUID operatorId, UUID groupId) {
+        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        Group group = groupRepository.findActivatedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        long pendingTxnCount = groupTransactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(
-                groupId, GroupTransactionStatus.PENDING
-        );
-        if (pendingTxnCount > 0) {
+        if (gTransactionService.countPendingForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
-        }
 
         group.setStatus(GroupStatus.ARCHIVED);
         group.setUpdatedAt(Instant.now());
@@ -199,9 +182,10 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void unarchive(UUID userId, UUID groupId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-        Group group = permissionValidator.validateAndGetGroup(groupId);
+    public void unarchive(UUID operatorId, UUID groupId) {
+        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        Group group = groupRepository.findArchivedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_ARCHIVED));
 
         group.setStatus(GroupStatus.ACTIVE);
         group.setUpdatedAt(Instant.now());
@@ -210,89 +194,75 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void transferOwnership(UUID userId, UUID groupId, UUID newOwnerUserId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-
-        if (userId.equals(newOwnerUserId)) {
-            return;
+    public void transferOwnership(
+            UUID operatorId,
+            UUID groupId,
+            UUID memberId
+    ) {
+        if (operatorId.equals(memberId)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
 
-        GroupMember currentOwner = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, userId, List.of(MemberStatus.ACTIVE)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED));
+        groupRepository.findByIdAndStatus(groupId, GroupStatus.ACTIVE)
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        GroupMember newOwner = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, newOwnerUserId, List.of(MemberStatus.ACTIVE)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND));
+        List<Member> members = memberService.findMembers(
+                groupId,
+                List.of(operatorId, memberId)
+        );
 
-        currentOwner.setRole(GroupRole.MEMBER);
-        newOwner.setRole(GroupRole.OWNER);
+        Map<UUID, Member> memberMap = members.stream()
+                .collect(Collectors.toMap(
+                        Member::getUserId,
+                        Function.identity()
+                ));
 
-        groupMemberRepository.save(currentOwner);
-        groupMemberRepository.save(newOwner);
+        Member currentOwner = Optional.ofNullable(memberMap.get(operatorId))
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+
+        Member newOwner = Optional.ofNullable(memberMap.get(memberId))
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCode.NEW_OWNER_NOT_MEMBER));
+
+        if (currentOwner.getRole() != MemberRole.OWNER) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+        }
+
+        currentOwner.setRole(MemberRole.MEMBER);
+        newOwner.setRole(MemberRole.OWNER);
+
+        log.info("group {} is transfered owner. The new owner is {}", groupId, memberId);
     }
 
     @Override
     @Transactional
-    public void delete(UUID userId, UUID groupId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-        Group group = permissionValidator.validateAndGetGroup(groupId);
+    public void delete(UUID operatorId, UUID groupId) {
+        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        GroupWallet wallet = groupWalletRepository.findByGroupId(groupId).orElse(null);
-        if (wallet != null && wallet.getCurrentBalance() != 0) {
+        if (group.getFund().getCurrentBalance() != null && group.getFund().getCurrentBalance() != 0)
             throw new BusinessException(ErrorCode.CANNOT_DELETE_GROUP_WITH_BALANCE);
-        }
 
-        long pendingTxnCount = groupTransactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(
-                groupId, GroupTransactionStatus.PENDING
-        );
-        if (pendingTxnCount > 0) {
+        if (gTransactionService.countPendingForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
-        }
+
 
         group.setStatus(GroupStatus.DELETED);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
 
-        // Đóng quỹ duy nhất
-        if (wallet != null) {
-            wallet.setStatus(GroupWalletStatus.CLOSED);
-            groupWalletRepository.save(wallet);
-        }
+        log.info("deleted {} is completed", group.getId());
     }
 
     @Override
     @Transactional
-    public GroupInviteCodeRes getInviteCode(UUID userId, UUID groupId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-        Group group = permissionValidator.validateAndGetGroup(groupId);
+    public void join(UUID operatorId, GroupJoinReq req) {
 
-        if (group.getInviteCode() == null || group.getInviteCode().isBlank()) {
-            group.setInviteCode(inviteCodeHelper.generateUniqueInviteCode());
-            group.setUpdatedAt(Instant.now());
-            groupRepository.save(group);
-        }
+        Instant now = null;
 
-        return new GroupInviteCodeRes(group.getInviteCode());
-    }
-
-    @Override
-    @Transactional
-    public GroupInviteCodeRes regenerateInviteCode(UUID userId, UUID groupId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-        Group group = permissionValidator.validateAndGetGroup(groupId);
-
-        Instant now = Instant.now();
-        group.setInviteCode(inviteCodeHelper.generateUniqueInviteCode());
-        group.setUpdatedAt(now);
-        groupRepository.save(group);
-
-        return new GroupInviteCodeRes(group.getInviteCode());
-    }
-
-    @Override
-    @Transactional
-    public GroupDetailRes join(UUID userId, GroupJoinReq req) {
         Group group = groupRepository.findByInviteCodeAndStatusNot(req.inviteCode().trim(), GroupStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVITE_CODE_INVALID));
 
@@ -300,140 +270,59 @@ public class GroupServiceImpl implements GroupService {
             throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
         }
 
-        // Kiểm tra xem đã là thành viên ACTIVE hoặc PENDING chưa
-        boolean alreadyMember = groupMemberRepository.findCurrentMember(group.getId(), userId).isPresent();
-        if (alreadyMember) {
-            throw new BusinessException(ErrorCode.ALREADY_IN_GROUP);
+        MemberStatus status = MemberStatus.PENDING;
+
+        if (group.getIsJoinWithoutConfirm() == Boolean.TRUE) {
+            status = MemberStatus.ACTIVE;
+            now = Instant.now();
         }
-
-        Instant now = Instant.now();
-        boolean autoApprove = Boolean.TRUE.equals(group.getIsJoinWithoutConfirm());
-        MemberStatus memberStatus = autoApprove ? MemberStatus.ACTIVE : MemberStatus.PENDING;
-        Instant joinedAt = autoApprove ? now : null;
-
-        GroupMember member = GroupMember.builder()
-                .id(UUID.randomUUID())
-                .groupId(group.getId())
-                .userId(userId)
-                .role(GroupRole.MEMBER)
-                .status(memberStatus)
-                .joinedAt(joinedAt)
-                .build();
-        groupMemberRepository.save(member);
-
-        return detail(userId, group.getId());
-    }
-
-    @Override
-    public List<GroupMemberRes> listMembers(UUID userId, UUID groupId) {
-        findActiveGroupAndVerifyMember(groupId, userId);
-        return groupMemberRepository.findByGroupIdOrderByJoinedAtDesc(groupId)
-                .stream()
-                .map(groupMemberMapper::toResponse)
-                .toList();
-    }
-
-    @Override
-    @Transactional
-    public void approveMember(UUID userId, UUID groupId, UUID memberUserId) {
-
-        permissionValidator.verifyOwnerRole(groupId, userId);
-
-        GroupMember member = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, memberUserId, List.of(MemberStatus.PENDING)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND));
-
-        member.setStatus(MemberStatus.ACTIVE);
-        member.setJoinedAt(Instant.now());
-        groupMemberRepository.save(member);
-    }
-
-    @Override
-    @Transactional
-    public void updateMemberRole(UUID userId, UUID groupId, UUID memberUserId, GroupRole role) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-
-        GroupMember member = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, memberUserId, List.of(MemberStatus.ACTIVE)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND));
-
-        member.setRole(role);
-        groupMemberRepository.save(member);
-    }
-
-    @Override
-    @Transactional
-    public void removeMember(UUID userId, UUID groupId, UUID memberUserId) {
-        permissionValidator.verifyOwnerRole(groupId, userId);
-
-        GroupMember member = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, memberUserId, List.of(MemberStatus.ACTIVE, MemberStatus.PENDING)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND));
-
-        if (member.getRole() == GroupRole.OWNER) {
-            throw new BusinessException(ErrorCode.CANNOT_REMOVE_OWNER);
-        }
-
-        long pendingCount = groupTransactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(
-                groupId, GroupTransactionStatus.PENDING
+        memberService.addMember(
+                operatorId,
+                group.getId(),
+                status,
+                now
         );
-        if (pendingCount > 0) {
-            throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
+
+        log.info("Join group {} with status {}", group.getId(), status);
+
+    }
+
+    private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId, MemberRole role) {
+        List<MemberRes> members;
+        if (role == MemberRole.MEMBER)
+            members = memberService.findMembers(group.getId(), MemberStatus.ACTIVE);
+        else
+            members = memberService.findMembers(group.getId());
+
+        MemberRes currentMember = members.stream()
+                .filter(m -> m.userId().equals(operatorId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+
+        GroupFundRes fund = (group.getFund() != null)
+                ? fundMapper.toResponse(group.getFund())
+                : null;
+
+        return groupMapper.toDetailResponse(group, currentMember.role(), fund, members);
+    }
+
+    //----------------------------------------PRIVATE------------------------------------------//
+
+
+    /**
+     * Sinh chuỗi mã mời ngẫu nhiên gồm {@param length} ký tự.
+     */
+    public static String generateUniqueInviteCode(int length) {
+
+        String INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        SecureRandom RANDOM = new SecureRandom();
+
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < 8; i++) {
+            sb.append(INVITE_CHARS.charAt(RANDOM.nextInt(INVITE_CHARS.length())));
         }
+        return sb.toString();
 
-        // Bàn giao quỹ về chủ nhóm nếu người bị mời rời là thủ quỹ
-        reassignWalletToOwnerIfHeldBy(groupId, memberUserId, userId);
-
-        member.setStatus(MemberStatus.REMOVED);
-        member.setLeftAt(Instant.now());
-        groupMemberRepository.save(member);
     }
 
-    @Override
-    @Transactional
-    public void leave(UUID userId, UUID groupId) {
-        GroupMember member = groupMemberRepository.findByGroupIdAndUserIdAndStatusIn(
-                groupId, userId, List.of(MemberStatus.ACTIVE)
-        ).orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
-
-        if (member.getRole() == GroupRole.OWNER) {
-            long ownerCount = groupMemberRepository.findByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)
-                    .stream()
-                    .filter(m -> m.getRole() == GroupRole.OWNER)
-                    .count();
-            if (ownerCount <= 1) {
-                throw new BusinessException(ErrorCode.CANNOT_REMOVE_OWNER);
-            }
-        }
-
-        long pendingCount = groupTransactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(
-                groupId, GroupTransactionStatus.PENDING
-        );
-        if (pendingCount > 0) {
-            throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
-        }
-
-        // Bàn giao quỹ về chủ nhóm nếu người rời là thủ quỹ
-        groupMemberRepository.findByGroupIdAndRoleAndStatus(groupId, GroupRole.OWNER, MemberStatus.ACTIVE)
-                .ifPresent(owner -> reassignWalletToOwnerIfHeldBy(groupId, userId, owner.getUserId()));
-
-        member.setStatus(MemberStatus.LEFT);
-        member.setLeftAt(Instant.now());
-        groupMemberRepository.save(member);
-    }
-
-    private void reassignWalletToOwnerIfHeldBy(UUID groupId, UUID targetUserId, UUID ownerUserId) {
-        groupWalletRepository.findFirstByGroupId(groupId).ifPresent(wallet -> {
-            if (wallet.getHeldByUserId().equals(targetUserId)) {
-                wallet.setHeldByUserId(ownerUserId);
-                groupWalletRepository.save(wallet);
-            }
-        });
-    }
-
-    private Group findActiveGroupAndVerifyMember(UUID groupId, UUID userId) {
-        Group group = permissionValidator.validateAndGetGroup(groupId);
-        permissionValidator.verifyActiveMember(groupId, userId);
-        return group;
-    }
 }
