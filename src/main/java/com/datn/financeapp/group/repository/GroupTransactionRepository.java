@@ -48,4 +48,16 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
             @Param("type") TransactionType type,
             @Param("fromTime") Instant fromTime,
             @Param("toTime") Instant toTime);
+
+    @Query("""
+                SELECT COALESCE(SUM(gt.amount), 0)
+                FROM GTransaction gt
+                WHERE gt.groupId = :groupId
+                  AND gt.type = :type
+                  AND gt.status = TransactionStatus.CONFIRMED
+                  AND gt.deletedAt IS NULL
+            """)
+    Long sumAmountByGroupIdAndType(
+            @Param("groupId") UUID groupId,
+            @Param("type") TransactionType type);
 }

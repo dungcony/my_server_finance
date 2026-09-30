@@ -111,7 +111,7 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 |                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`  | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                                                   |
 |                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`   | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                                                    |
 | **4. Kiểm kê Quỹ**         |  `POST`  | `/v1/groups/{id}/fund/reconcile`             | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                                                                         |
-| **5. Tổng quan & Báo cáo** |  `GET`   | `/v1/groups/{id}/summary`                    | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`)                                                                                                                                                                |
+| **5. Tổng quan & Báo cáo** |  `GET`   | `/v1/groups/{id}/summary`                    | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                                                                     |
 |                            |  `GET`   | `/v1/groups/{id}/balances`                   | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                                                                         |
 
 ---
@@ -940,14 +940,14 @@ Hiển thị thẻ tổng quan ở màn hình chính của nhóm:
 - **Phân quyền:** Thành viên `ACTIVE` của nhóm.
 - **Query Parameters:**
     - `month` (chuỗi `YYYY-MM`, tùy chọn): Kỳ tháng thống kê chi tiêu và góp quỹ (theo múi giờ Việt Nam UTC+7). Nếu
-      không truyền: mặc định là tháng hiện tại (ví dụ: `2026-09`).
+      không truyền: hệ thống tính toán **toàn thời gian** và trường `period` trong response sẽ có giá trị `null`.
 - **Response (`HTTP 200 OK` - `GroupFinanceSummaryRes`):**
     - `target`: Quỹ mục tiêu hiện tại của nhóm (NULL nếu không đặt mục tiêu).
     - `fund`: Quỹ duy nhất của nhóm và số dư thực tế hiện tại (`current_balance`).
-    - `period`: Chu kỳ tháng thống kê áp dụng (`YYYY-MM`).
-    - `total_expense`: Tổng chi tiêu (`EXPENSE` đã xác nhận, chưa xoá) diễn ra trong tháng.
+    - `period`: Chu kỳ tháng thống kê áp dụng (`YYYY-MM`, hoặc `null` nếu lấy toàn thời gian).
+    - `total_expense`: Tổng chi tiêu (`EXPENSE` đã xác nhận, chưa xoá) diễn ra trong kỳ thống kê.
     - `total_contribution`: Tổng số tiền thành viên góp vào quỹ (`CONTRIBUTION` đã xác nhận, chưa xoá) diễn ra trong
-      tháng.
+      kỳ thống kê.
 
 ```json
 {

@@ -54,7 +54,7 @@ public enum ErrorCode {
      * khi bean validation trượt, kèm danh sách lỗi theo từng trường.
      */
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "Dữ liệu gửi lên không hợp lệ."),
-
+    CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "Dữ liệu vừa được người khác thay đổi, vui lòng tải lại và thử lại."),
     // Thiếu thẻ truy cập. Do {@code GlobalExceptionHandler} phát, không ném từ
     // service.
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để tiếp tục."),

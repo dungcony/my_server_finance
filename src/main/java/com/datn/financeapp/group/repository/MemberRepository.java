@@ -49,6 +49,15 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
             """)
     int deletePending(@Param("groupId") UUID groupId, @Param("memberId") UUID memberId);
 
+    // Xóa toàn bộ thành viên đang PENDING của nhóm, trả về số dòng đã xóa
+    @Modifying
+    @Query("""
+                DELETE FROM Member m
+                 WHERE m.groupId = :groupId
+                   AND m.status = MemberStatus.PENDING
+            """)
+    int deleteAllPending(@Param("groupId") UUID groupId);
+
     /**
      * Thành viên có mặt tại thời điểm giao dịch (theo pipeline.md mục 1).
      * Dùng khi giao dịch không có participants -> chia cho tất cả thành viên có mặt

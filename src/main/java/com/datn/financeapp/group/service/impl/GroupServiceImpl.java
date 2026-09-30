@@ -218,7 +218,7 @@ public class GroupServiceImpl implements GroupService {
 
         MemberStatus status = MemberStatus.PENDING;
 
-        if (group.getIsJoinWithoutConfirm() == Boolean.TRUE) {
+        if (Boolean.TRUE.equals(group.getIsSettlementEnabled())) {
             status = MemberStatus.ACTIVE;
             now = Instant.now();
         }

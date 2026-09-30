@@ -39,16 +39,6 @@ public class GroupController {
         return ApiResponse.of(groupService.list(userId));
     }
 
-    @PutMapping("/{groupId}/owner-role/{memberUserId}/")
-    public ApiResponse<Void> updateMemberRole(
-            @PathVariable UUID groupId,
-            @PathVariable UUID memberUserId) {
-        UUID userId = SecurityContextUtil.currentUserId();
-
-        groupService.transferOwnership(userId, groupId, memberUserId);
-
-        return ApiResponse.of(null);
-    }
 
     @GetMapping("/{id}")
     public ApiResponse<GroupDetailRes> detail(@PathVariable UUID id) {
@@ -92,12 +82,4 @@ public class GroupController {
         return ApiResponse.of(null);
     }
 
-    @PostMapping("/{id}/transfer-ownership")
-    public ApiResponse<Void> transferOwnership(
-            @PathVariable UUID id,
-            @Valid @RequestBody GroupTransferOwnershipReq req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        groupService.transferOwnership(userId, id, req.newOwnerId());
-        return ApiResponse.of(null);
-    }
 }

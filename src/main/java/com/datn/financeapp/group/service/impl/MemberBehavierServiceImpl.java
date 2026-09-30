@@ -99,6 +99,20 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     }
 
     @Override
+    public int rejectAll(UUID operatorId, UUID groupId) {
+        // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
+        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+
+        // một câu DELETE xóa toàn bộ người đang PENDING
+        int rejectedCount = memberRepository.deleteAllPending(groupId);
+
+        log.info("Chủ nhóm {} đã từ chối toàn bộ {} thành viên chờ vào nhóm {}",
+                operatorId, rejectedCount, groupId);
+
+        return rejectedCount;
+    }
+
+    @Override
     public void removeMember(UUID operatorId, UUID groupId, UUID memberId) {
 
         if (Objects.equals(operatorId, memberId)) {

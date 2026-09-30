@@ -10,12 +10,12 @@ import java.util.UUID;
  * Các hàm trong interface:
  * <ul>
  * <li>{@link #leave}: Rời nhóm. Input: operatorId, groupId. Output: void.</li>
- * <li>{@link #approve}: Duyệt 1 thành viên. Input: operatorId, groupId,
- * memberId. Output: void.</li>
- * <li>{@link #approveAll}: Duyệt tất cả. Input: operatorId, groupId. Output: số
- * lượng được duyệt (int).</li>
- * <li>{@link #removeMember}: Xóa/Mời ra khỏi nhóm. Input: operatorId, groupId,
- * memberId. Output: void.</li>
+ * <li>{@link #approve}: Duyệt 1 thành viên. Input: operatorId, groupId, memberId. Output: void.</li>
+ * <li>{@link #approveAll}: Duyệt tất cả. Input: operatorId, groupId. Output: số lượng được duyệt (int).</li>
+ * <li>{@link #reject(UUID, UUID, UUID)}: Từ chối 1 thành viên Input: operatorId, groupId. Output: void
+ * <li>{@link #rejectAll(UUID, UUID)}: Từ chối tất cả. Input: operatorId, groupId. Output: số lượng bị từ chối (int).</li>
+ * <li>{@link #removeMember}: Xóa/Mời ra khỏi nhóm. Input: operatorId, groupId,memberId. Output: void.</li>
+ * <li>{@link #transferOwnership(UUID, UUID, UUID)}: chuyển quyền trưởng nhóm Input: operatorId, groupId, memberId. Output: void.</li>
  * </ul>
  * </p>
  */
@@ -41,7 +41,7 @@ public interface MemberBehavierService {
     void approve(UUID operatorId, UUID groupId, UUID memberId);
 
     /**
-     * Duyệt một thành viên đang chờ duyệt ({@code PENDING}) vào nhóm chính thức
+     * Duyệt toàn bộ thành viên đang chờ duyệt ({@code PENDING}) vào nhóm chính thức
      * ({@code ACTIVE}).
      * <p>
      * Yêu cầu quyền: Trưởng nhóm ({@code OWNER}).
@@ -69,6 +69,21 @@ public interface MemberBehavierService {
      *                           hoặc thành viên không ở trạng thái PENDING
      */
     void reject(UUID operatorId, UUID groupId, UUID memberId);
+
+    /**
+     * Xóa toàn bộ thành viên đang chờ duyệt ({@code PENDING}) vào nhóm chính thức
+     * ({@code ACTIVE}).
+     * <p>
+     * Yêu cầu quyền: Trưởng nhóm ({@code OWNER}).
+     * </p>
+     *
+     * @param operatorId ID người thực hiện (phải là Owner)
+     * @param groupId    ID nhóm
+     * @return số thành viên đã bị từ chối (0 nếu không có ai đang chờ duyệt)
+     * @throws BusinessException nếu không phải Owner
+     *                           ({@code FORBIDDEN_OWNER_REQUIRED})
+     */
+    int rejectAll(UUID operatorId, UUID groupId);
 
     /**
      * Xóa / Mời một thành viên rời khỏi nhóm (chuyển trạng thái sang
