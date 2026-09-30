@@ -14,7 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
-import com.datn.financeapp.group.dto.request.group.GroupTransferOwnershipReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
@@ -108,7 +107,7 @@ class GroupControllerTest {
     void listGroups_success() throws Exception {
         GroupSummaryRes summary = new GroupSummaryRes(
                 groupId, "Nhóm Gia Đình", MemberRole.OWNER, GroupStatus.ACTIVE,
-                "GRP12345", 3, 500000L, 1000000L, Instant.now()
+                "GRP12345", 3L, 500000L, 1000000L, Instant.now()
         );
         when(groupService.list(userId)).thenReturn(List.of(summary));
 
@@ -178,7 +177,7 @@ class GroupControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(groupService).join(userId, req);
+        verify(groupService).joinByCode(userId, req);
     }
 
     @Test
@@ -199,20 +198,5 @@ class GroupControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(groupService).unarchive(userId, groupId);
-    }
-
-    @Test
-    @DisplayName("POST /groups/{id}/transfer-ownership - Chuyển giao quyền chủ nhóm")
-    void transferOwnership_success() throws Exception {
-        UUID newOwnerId = UUID.randomUUID();
-        GroupTransferOwnershipReq req = new GroupTransferOwnershipReq(newOwnerId);
-
-        mockMvc.perform(post("/groups/{id}/transfer-ownership", groupId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
-
-        verify(groupService).transferOwnership(userId, groupId, newOwnerId);
     }
 }

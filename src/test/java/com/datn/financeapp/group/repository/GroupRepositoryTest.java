@@ -131,7 +131,7 @@ class GroupRepositoryTest {
         fundRepository.save(Fund.builder()
                 .id(UUID.randomUUID())
                 .groupId(testGroup.getId())
-                .heldByUserId(testUser.getId())
+                .keepperId(testUser.getId())
                 .currentBalance(300_000L)
                 .createdAt(Instant.now())
                 .build());
@@ -143,7 +143,7 @@ class GroupRepositoryTest {
         assertThat(authInfo.myId()).isEqualTo(testUser.getId());
         assertThat(authInfo.memberRole()).isEqualTo(MemberRole.OWNER);
         assertThat(authInfo.memberStatus()).isEqualTo(MemberStatus.ACTIVE);
-        assertThat(authInfo.fundHeldByUserId()).isEqualTo(testUser.getId());
+        assertThat(authInfo.keepperId()).isEqualTo(testUser.getId());
         assertThat(authInfo.isOwner()).isTrue();
         assertThat(authInfo.isTreasurer()).isTrue();
     }
@@ -171,7 +171,7 @@ class GroupRepositoryTest {
         fundRepository.save(Fund.builder()
                 .id(UUID.randomUUID())
                 .groupId(testGroup.getId())
-                .heldByUserId(testUser.getId())
+                .keepperId(testUser.getId())
                 .currentBalance(500_000L)
                 .createdAt(Instant.now())
                 .build());

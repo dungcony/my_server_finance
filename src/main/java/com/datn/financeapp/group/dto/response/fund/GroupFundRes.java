@@ -6,7 +6,7 @@ import java.util.UUID;
 public record GroupFundRes(
         UUID id,
         UUID groupId,
-        UUID heldByUserId,
+        UUID keepperId,
         Long currentBalance,
         Instant createdAt) {
 }

@@ -1,11 +1,10 @@
 package com.datn.financeapp.group.service;
 
-import com.datn.financeapp.group.dto.request.fund.GroupFundReconcileReq;
-import com.datn.financeapp.group.dto.request.fund.GroupFundUpdateReq;
+import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
+import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
 
-import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -13,34 +12,13 @@ import java.util.UUID;
  * <p>
  * Các hàm trong interface:
  * <ul>
- *   <li>{@link #addFund}: Tạo quỹ mới. Input: groupId, heldByUserId, createdAt. Output: GroupFundRes.</li>
- *   <li>{@link #getFund}: Lấy thông tin quỹ (cả 2 overload). Input: operatorId (optional), groupId. Output: GroupFundRes.</li>
- *   <li>{@link #updateFund}: Cập nhật người giữ quỹ. Input: operatorId, groupId, req. Output: GroupFundRes.</li>
+ *   <li>{@link #updateFundKeepper}: Cập nhật người giữ quỹ. Input: operatorId, groupId, req. Output: GroupFundRes.</li>
  *   <li>{@link #reconcileFund}: Kiểm kê/đối soát quỹ. Input: operatorId, groupId, req. Output: GroupFundReconcileRes.</li>
  *   <li>{@link #adjustBalance}: Điều chỉnh số dư trực tiếp. Input: fundId, delta. Output: void.</li>
  * </ul>
  * </p>
  */
 public interface FundService {
-
-    GroupFundRes addFund(UUID groupId, UUID heldByUserId, Instant createdAt);
-
-    /**
-     * Lấy thông tin quỹ chung của nhóm.
-     *
-     * @param operatorId ID thành viên yêu cầu
-     * @param groupId    ID nhóm
-     * @return Thông tin chi tiết quỹ nhóm (ID quỹ, người giữ quỹ, số dư hiện tại, trạng thái)
-     */
-    GroupFundRes getFund(UUID operatorId, UUID groupId);
-
-    /**
-     * Admin Lấy thông tin quỹ chung của nhóm.
-     *
-     * @param groupId ID nhóm
-     * @return Thông tin chi tiết quỹ nhóm (ID quỹ, người giữ quỹ, số dư hiện tại, trạng thái)
-     */
-    GroupFundRes getFund(UUID groupId);
 
     /**
      * Cập nhật thông tin quỹ nhóm (chuyển giao người giữ quỹ/thủ quỹ).
@@ -51,7 +29,7 @@ public interface FundService {
      * @param req        Dữ liệu cập nhật (ID thành viên giữ quỹ mới...)
      * @return Thông tin quỹ sau khi cập nhật
      */
-    GroupFundRes updateFund(UUID operatorId, UUID groupId, GroupFundUpdateReq req);
+    GroupFundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req);
 
     /**
      * Thực hiện kiểm kê/đối soát số dư quỹ (Reconciliation).
@@ -61,7 +39,7 @@ public interface FundService {
      * @param req        Dữ liệu kiểm kê chứa số dư thực tế và ghi chú
      * @return Kết quả đối soát
      */
-    GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, GroupFundReconcileReq req);
+    GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, FundReconcileReq req);
 
     /**
      * Cộng hoặc trừ một lượng tiền trực tiếp vào số dư quỹ (Dùng nội bộ khi giao dịch nhóm CONFIRMED/ROLLBACK).

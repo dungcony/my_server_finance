@@ -186,7 +186,7 @@ class TransactionServiceTest {
     @Test
     @DisplayName("Thủ quỹ xác nhận khoản chi PENDING -> chuyển CONFIRMED và trừ tiền quỹ")
     void testConfirm_PendingTransaction_AdjustsBalance() {
-        Fund fund = Fund.builder().id(fundId).groupId(groupId).heldByUserId(ownerId).currentBalance(5000000L).build();
+        Fund fund = Fund.builder().id(fundId).groupId(groupId).keepperId(ownerId).currentBalance(5000000L).build();
         MemberAuthInfo authInfo = new MemberAuthInfo(
                 groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, ownerId
         );
@@ -245,7 +245,7 @@ class TransactionServiceTest {
     @DisplayName("Chủ nhóm xóa khoản chi CONFIRMED -> Hoàn tác số dư quỹ")
     void testDelete_ConfirmedTransaction_RollsBackBalance() {
         Group group = Group.builder().id(groupId).status(GroupStatus.ACTIVE).build();
-        Fund fund = Fund.builder().id(fundId).groupId(groupId).heldByUserId(ownerId).currentBalance(5000000L).build();
+        Fund fund = Fund.builder().id(fundId).groupId(groupId).keepperId(ownerId).currentBalance(5000000L).build();
         UUID txnId = UUID.randomUUID();
 
         GTransaction txn = GTransaction.builder()

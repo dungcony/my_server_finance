@@ -1,12 +1,18 @@
 package com.datn.financeapp.group.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.MemberRole;
@@ -47,6 +53,82 @@ class MemberServiceImplTest {
     private MemberServiceImpl groupMemberService;
 
     @Nested
+    @DisplayName("create tests")
+    class CreateTests {
+
+        private final UUID groupId = UUID.randomUUID();
+        private final UUID userId = UUID.randomUUID();
+
+        private void stubMapperAndSave(MemberCreateReq req) {
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of());
+            when(memberMapper.toEntity(req)).thenReturn(Member.builder()
+                    .groupId(groupId)
+                    .userId(userId)
+                    .role(req.role())
+                    .status(req.status())
+                    .build());
+            when(memberRepository.save(any(Member.class))).thenAnswer(inv -> inv.getArgument(0));
+        }
+
+        @Test
+        @DisplayName("Không truyền role và status thì mặc định MEMBER, PENDING và chưa có joinedAt")
+        void create_defaultsToMemberPending() {
+            MemberCreateReq req = new MemberCreateReq(groupId, userId, null, null);
+            stubMapperAndSave(req);
+
+            Member result = groupMemberService.create(req).orElseThrow();
+
+            assertThat(result.getId()).isNotNull();
+            assertThat(result.getRole()).isEqualTo(MemberRole.MEMBER);
+            assertThat(result.getStatus()).isEqualTo(MemberStatus.PENDING);
+            assertThat(result.getJoinedAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("Trạng thái ACTIVE thì ghi joinedAt và giữ nguyên role được truyền vào")
+        void create_activeSetsJoinedAt() {
+            MemberCreateReq req = new MemberCreateReq(groupId, userId, MemberRole.OWNER, MemberStatus.ACTIVE);
+            stubMapperAndSave(req);
+
+            Member result = groupMemberService.create(req).orElseThrow();
+
+            assertThat(result.getRole()).isEqualTo(MemberRole.OWNER);
+            assertThat(result.getStatus()).isEqualTo(MemberStatus.ACTIVE);
+            assertThat(result.getJoinedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Ném PENDING_IN_GROUP khi người dùng đang chờ duyệt trong nhóm")
+        void create_throwsWhenAlreadyPending() {
+            MemberCreateReq req = new MemberCreateReq(groupId, userId, null, null);
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of(Member.builder().groupId(groupId).userId(userId)
+                            .status(MemberStatus.PENDING).build()));
+
+            assertThatThrownBy(() -> groupMemberService.create(req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.PENDING_IN_GROUP.getCode());
+            verify(memberRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Ném VALIDATION_ERROR khi tạo thẳng với trạng thái LEFT hoặc REMOVED")
+        void create_rejectsLeftAndRemoved() {
+            for (MemberStatus status : List.of(MemberStatus.LEFT, MemberStatus.REMOVED)) {
+                MemberCreateReq req = new MemberCreateReq(groupId, userId, null, status);
+
+                assertThatThrownBy(() -> groupMemberService.create(req))
+                        .isInstanceOf(BusinessException.class)
+                        .extracting("code")
+                        .isEqualTo(ErrorCode.VALIDATION_ERROR.getCode());
+            }
+            verify(memberRepository, never()).save(any());
+        }
+    }
+
+    @Nested
     @DisplayName("addMember tests")
     class AddMemberTests {
 
@@ -74,7 +156,9 @@ class MemberServiceImplTest {
                     now
             );
 
-            when(memberRepository.save(any(Member.class))).thenReturn(savedMember);
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of());
+            when(memberRepository.saveAll(any())).thenReturn(List.of(savedMember));
             when(memberMapper.toResponse(savedMember)).thenReturn(expectedRes);
 
             MemberRes result = groupMemberService.addMember(userId, groupId, MemberStatus.ACTIVE, now);
@@ -82,13 +166,16 @@ class MemberServiceImplTest {
             assertThat(result).isNotNull();
             assertThat(result.userId()).isEqualTo(userId);
             assertThat(result.role()).isEqualTo(MemberRole.MEMBER);
-            verify(memberRepository).save(argThat(m ->
-                    m.getGroupId().equals(groupId)
-                            && m.getUserId().equals(userId)
-                            && m.getRole() == MemberRole.MEMBER
-                            && m.getStatus() == MemberStatus.ACTIVE
-                            && m.getJoinedAt().equals(now)
-            ));
+            verify(memberRepository).saveAll(argThat(iterable -> {
+                List<Member> list = new ArrayList<>();
+                iterable.forEach(list::add);
+                return list.size() == 1
+                        && list.get(0).getGroupId().equals(groupId)
+                        && list.get(0).getUserId().equals(userId)
+                        && list.get(0).getRole() == MemberRole.MEMBER
+                        && list.get(0).getStatus() == MemberStatus.ACTIVE
+                        && list.get(0).getJoinedAt().equals(now);
+            }));
         }
     }
 
@@ -97,34 +184,87 @@ class MemberServiceImplTest {
     class AddMembersTests {
 
         @Test
-        @DisplayName("Trả về danh sách rỗng khi input null hoặc rỗng")
-        void addMembers_NullOrEmptyList_ReturnsEmpty() {
+        @DisplayName("Ném VALIDATION_ERROR khi danh sách memberIds rỗng")
+        void addMembers_EmptyList_ThrowsException() {
             UUID operatorId = UUID.randomUUID();
             UUID groupId = UUID.randomUUID();
-            Instant now = Instant.now();
+            MemberAddReq req = new MemberAddReq(List.of(), MemberStatus.ACTIVE, MemberRole.MEMBER, Instant.now());
 
-            List<MemberRes> resNull = groupMemberService.addMembers(operatorId, groupId, null, now);
-            List<MemberRes> resEmpty = groupMemberService.addMembers(operatorId, groupId, List.of(), now);
+            assertThatThrownBy(() -> groupMemberService.addMembers(operatorId, groupId, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.VALIDATION_ERROR.getCode());
 
-            assertThat(resNull).isEmpty();
-            assertThat(resEmpty).isEmpty();
             verify(memberRepository, never()).saveAll(any());
         }
 
         @Test
-        @DisplayName("Trả về danh sách rỗng khi input chỉ chứa phần tử null")
-        void addMembers_OnlyNullElements_ReturnsEmpty() {
+        @DisplayName("Ném VALIDATION_ERROR khi danh sách memberIds chỉ chứa phần tử null")
+        void addMembers_OnlyNullElements_ThrowsException() {
             UUID operatorId = UUID.randomUUID();
             UUID groupId = UUID.randomUUID();
-            Instant now = Instant.now();
-
             List<UUID> input = new ArrayList<>();
             input.add(null);
             input.add(null);
+            MemberAddReq req = new MemberAddReq(input, MemberStatus.ACTIVE, MemberRole.MEMBER, Instant.now());
 
-            List<MemberRes> res = groupMemberService.addMembers(operatorId, groupId, input, now);
+            assertThatThrownBy(() -> groupMemberService.addMembers(operatorId, groupId, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.VALIDATION_ERROR.getCode());
 
-            assertThat(res).isEmpty();
+            verify(memberRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("Ném ALREADY_IN_GROUP khi thành viên đã có trạng thái ACTIVE trong nhóm")
+        void addMembers_MemberAlreadyActive_ThrowsAlreadyInGroup() {
+            UUID operatorId = UUID.randomUUID();
+            UUID groupId = UUID.randomUUID();
+            UUID user1 = UUID.randomUUID();
+            MemberAddReq req = new MemberAddReq(List.of(user1), MemberStatus.ACTIVE, MemberRole.MEMBER, Instant.now());
+
+            Member existingMember = Member.builder()
+                    .id(UUID.randomUUID())
+                    .groupId(groupId)
+                    .userId(user1)
+                    .status(MemberStatus.ACTIVE)
+                    .build();
+
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of(existingMember));
+
+            assertThatThrownBy(() -> groupMemberService.addMembers(operatorId, groupId, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.ALREADY_IN_GROUP.getCode());
+
+            verify(memberRepository, never()).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("Ném PENDING_IN_GROUP khi thành viên đang ở trạng thái PENDING trong nhóm")
+        void addMembers_MemberPending_ThrowsPendingInGroup() {
+            UUID operatorId = UUID.randomUUID();
+            UUID groupId = UUID.randomUUID();
+            UUID user1 = UUID.randomUUID();
+            MemberAddReq req = new MemberAddReq(List.of(user1), MemberStatus.ACTIVE, MemberRole.MEMBER, Instant.now());
+
+            Member existingMember = Member.builder()
+                    .id(UUID.randomUUID())
+                    .groupId(groupId)
+                    .userId(user1)
+                    .status(MemberStatus.PENDING)
+                    .build();
+
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of(existingMember));
+
+            assertThatThrownBy(() -> groupMemberService.addMembers(operatorId, groupId, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.PENDING_IN_GROUP.getCode());
+
             verify(memberRepository, never()).saveAll(any());
         }
 
@@ -137,6 +277,7 @@ class MemberServiceImplTest {
             Instant now = Instant.now();
 
             List<UUID> input = Arrays.asList(user1, user2, user1, null);
+            MemberAddReq req = new MemberAddReq(input, MemberStatus.ACTIVE, MemberRole.MEMBER, now);
 
             Member member1 = Member.builder()
                     .id(UUID.randomUUID())
@@ -161,12 +302,14 @@ class MemberServiceImplTest {
             MemberRes res1 = new MemberRes(member1.getId(), user1, MemberRole.MEMBER, MemberStatus.ACTIVE, now);
             MemberRes res2 = new MemberRes(member2.getId(), user2, MemberRole.MEMBER, MemberStatus.ACTIVE, now);
 
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of());
             when(memberRepository.saveAll(any())).thenReturn(savedMembers);
             when(memberMapper.toResponse(member1)).thenReturn(res1);
             when(memberMapper.toResponse(member2)).thenReturn(res2);
 
             UUID operatorId = UUID.randomUUID();
-            List<MemberRes> result = groupMemberService.addMembers(operatorId, groupId, input, now);
+            List<MemberRes> result = groupMemberService.addMembers(operatorId, groupId, req);
 
             assertThat(result).hasSize(2);
             assertThat(result).containsExactly(res1, res2);
@@ -181,12 +324,15 @@ class MemberServiceImplTest {
         }
 
         @Test
-        @DisplayName("Thêm danh sách khi now là null thì tự gán Instant hiện tại")
+        @DisplayName("Thêm danh sách khi addAt là null thì tự gán Instant hiện tại")
         void addMembers_WithNullNow_UsesCurrentInstant() {
             UUID operatorId = UUID.randomUUID();
             UUID groupId = UUID.randomUUID();
             UUID user1 = UUID.randomUUID();
+            MemberAddReq req = new MemberAddReq(List.of(user1), MemberStatus.ACTIVE, MemberRole.MEMBER, null);
 
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of());
             when(memberRepository.saveAll(any())).thenAnswer(invocation -> {
                 List<Member> list = invocation.getArgument(0);
                 return list;
@@ -196,7 +342,7 @@ class MemberServiceImplTest {
                 return new MemberRes(gm.getId(), gm.getUserId(), gm.getRole(), gm.getStatus(), gm.getJoinedAt());
             });
 
-            List<MemberRes> result = groupMemberService.addMembers(operatorId, groupId, List.of(user1), null);
+            List<MemberRes> result = groupMemberService.addMembers(operatorId, groupId, req);
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).joinedAt()).isNotNull();
@@ -205,6 +351,24 @@ class MemberServiceImplTest {
                 iterable.forEach(list::add);
                 return list.size() == 1 && list.get(0).getJoinedAt() != null;
             }));
+        }
+
+        @Test
+        @DisplayName("Khi operatorId khác null thì phải xác thực quyền Owner")
+        void addMembers_WithOperatorId_VerifiesOwnerPermission() {
+            UUID operatorId = UUID.randomUUID();
+            UUID groupId = UUID.randomUUID();
+            UUID user1 = UUID.randomUUID();
+            Instant now = Instant.now();
+            MemberAddReq req = new MemberAddReq(List.of(user1), MemberStatus.ACTIVE, MemberRole.MEMBER, now);
+
+            when(memberRepository.findByGroupIdAndUserIdInAndStatusIn(eq(groupId), any(), any()))
+                    .thenReturn(List.of());
+            when(memberRepository.saveAll(any())).thenReturn(List.of());
+
+            groupMemberService.addMembers(operatorId, groupId, req);
+
+            verify(permissionValidator).verifyOwnerInGroupActive(groupId, operatorId);
         }
     }
 

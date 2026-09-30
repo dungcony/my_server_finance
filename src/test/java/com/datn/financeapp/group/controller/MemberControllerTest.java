@@ -4,17 +4,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
-import com.datn.financeapp.group.dto.request.group.GroupMemberRoleReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.service.GroupService;
+import com.datn.financeapp.group.service.MemberBehavierService;
 import com.datn.financeapp.group.service.MemberService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -31,7 +30,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
@@ -48,7 +46,7 @@ class MemberControllerTest {
             .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
     @Mock
-    private GroupService groupService;
+    private MemberBehavierService memberBehavierService;
 
     @Mock
     private MemberService memberService;
@@ -99,18 +97,15 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /groups/{id}/members/{memberUserId}/role - Chuyển quyền owner khi role là OWNER")
+    @DisplayName("PUT /groups/{id}/owner-role/{memberUserId}/ - Chuyển quyền owner")
     void updateMemberRole_transferOwner() throws Exception {
         UUID targetMemberId = UUID.randomUUID();
-        GroupMemberRoleReq req = new GroupMemberRoleReq(MemberRole.OWNER);
 
-        mockMvc.perform(patch("/groups/{id}/members/{memberUserId}/role", groupId, targetMemberId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+        mockMvc.perform(put("/groups/{id}/owner-role/{memberUserId}/", groupId, targetMemberId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(groupService).transferOwnership(userId, groupId, targetMemberId);
+        verify(memberBehavierService).transferOwnership(userId, groupId, targetMemberId);
     }
 
     @Test
@@ -122,7 +117,39 @@ class MemberControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(memberService).approve(userId, groupId, targetMemberId);
+        verify(memberBehavierService).approve(userId, groupId, targetMemberId);
+    }
+
+    @Test
+    @DisplayName("POST /groups/{groupId}/approves - Duyệt tất cả thành viên chờ")
+    void approveMembers_success() throws Exception {
+        mockMvc.perform(post("/groups/{groupId}/approves", groupId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(memberBehavierService).approveAll(userId, groupId);
+    }
+
+    @Test
+    @DisplayName("POST /groups/{groupId}/members/{memberUserId}/reject - Từ chối thành viên")
+    void rejectMember_success() throws Exception {
+        UUID targetMemberId = UUID.randomUUID();
+
+        mockMvc.perform(post("/groups/{groupId}/members/{memberUserId}/reject", groupId, targetMemberId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(memberBehavierService).reject(userId, groupId, targetMemberId);
+    }
+
+    @Test
+    @DisplayName("POST /groups/{groupId}/rejects - Từ chối tất cả thành viên chờ")
+    void rejectMembers_success() throws Exception {
+        mockMvc.perform(post("/groups/{groupId}/rejects", groupId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(memberBehavierService).rejectAll(userId, groupId);
     }
 
     @Test
@@ -134,7 +161,7 @@ class MemberControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(memberService).removeMember(userId, groupId, targetMemberId);
+        verify(memberBehavierService).removeMember(userId, groupId, targetMemberId);
     }
 
     @Test
@@ -144,6 +171,6 @@ class MemberControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(memberService).leave(userId, groupId);
+        verify(memberBehavierService).leave(userId, groupId);
     }
 }

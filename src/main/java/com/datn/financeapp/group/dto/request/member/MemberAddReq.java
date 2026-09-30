@@ -10,16 +10,10 @@ import java.util.UUID;
 
 /**
  *
- * @param memberIds danh sách member đc thêm
- * @param status    trạng thái
- * @param role      quyền
- * @param addAt     thời gian thêm
+ * @param memberIds danh sách member đc thêm  thời gian thêm
  */
 public record MemberAddReq(
-        @NotNull(message = "phải có id người được thêm vào") List<UUID> memberIds,
-        @NotNull(message = "cần phải có trạng thái member") MemberStatus status,
-        MemberRole role,
-        Instant addAt
+        @NotNull(message = "phải có id người được thêm vào") List<UUID> memberIds
 ) {
 
 }

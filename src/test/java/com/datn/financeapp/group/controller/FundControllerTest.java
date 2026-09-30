@@ -11,18 +11,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
-import com.datn.financeapp.group.dto.request.fund.GroupFundReconcileReq;
-import com.datn.financeapp.group.dto.request.fund.GroupFundUpdateReq;
+import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
+import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
 import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.service.FundService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.UUID;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,7 +43,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @ExtendWith(MockitoExtension.class)
-class GroupFundControllerTest {
+class FundControllerTest {
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -52,7 +54,7 @@ class GroupFundControllerTest {
     private FundService fundService;
 
     @InjectMocks
-    private GroupFundController groupFundController;
+    private FundController fundController;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID groupId = UUID.randomUUID();
@@ -62,7 +64,7 @@ class GroupFundControllerTest {
     void setUp() {
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(objectMapper);
 
-        mockMvc = MockMvcBuilders.standaloneSetup(groupFundController)
+        mockMvc = MockMvcBuilders.standaloneSetup(fundController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(converter)
                 .build();
@@ -96,31 +98,31 @@ class GroupFundControllerTest {
     @Test
     @DisplayName("PATCH /groups/{groupId}/fund - Cập nhật thủ quỹ thành công")
     void updateFund_success() throws Exception {
-        UUID newHeldByUserId = UUID.randomUUID();
-        GroupFundUpdateReq req = new GroupFundUpdateReq(newHeldByUserId);
-        GroupFundRes res = new GroupFundRes(fundId, groupId, newHeldByUserId, 500_000L, Instant.now());
+        UUID newKeepperId = UUID.randomUUID();
+        FundKepperUpdateReq req = new FundKepperUpdateReq(newKeepperId);
+        GroupFundRes res = new GroupFundRes(fundId, groupId, newKeepperId, 500_000L, Instant.now());
 
-        when(fundService.updateFund(eq(userId), eq(groupId), any(GroupFundUpdateReq.class))).thenReturn(res);
+        when(fundService.updateFundKeepper(eq(userId), eq(groupId), any(FundKepperUpdateReq.class))).thenReturn(res);
 
-        mockMvc.perform(patch("/groups/{groupId}/fund", groupId)
+        mockMvc.perform(put("/groups/{groupId}/fund-kepper", groupId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.held_by_user_id").value(newHeldByUserId.toString()));
+                .andExpect(jsonPath("$.data.keepper_id").value(newKeepperId.toString()));
 
-        verify(fundService).updateFund(eq(userId), eq(groupId), any(GroupFundUpdateReq.class));
+        verify(fundService).updateFundKeepper(eq(userId), eq(groupId), any(FundKepperUpdateReq.class));
     }
 
     @Test
     @DisplayName("POST /groups/{groupId}/fund/reconcile - Kiểm kê số dư quỹ thành công")
     void reconcileFund_success() throws Exception {
-        GroupFundReconcileReq req = new GroupFundReconcileReq(600_000L, LocalDate.now(), "Kiểm quỹ tháng", null);
+        FundReconcileReq req = new FundReconcileReq(600_000L, LocalDate.now(), "Kiểm quỹ tháng", null);
         GroupFundReconcileRes res = new GroupFundReconcileRes(
                 fundId, 500_000L, 600_000L, 100_000L, TransactionType.ADJUSTMENT_UP, UUID.randomUUID()
         );
 
-        when(fundService.reconcileFund(eq(userId), eq(groupId), any(GroupFundReconcileReq.class))).thenReturn(res);
+        when(fundService.reconcileFund(eq(userId), eq(groupId), any(FundReconcileReq.class))).thenReturn(res);
 
         mockMvc.perform(post("/groups/{groupId}/fund/reconcile", groupId)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,6 +131,6 @@ class GroupFundControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.difference").value(100000L));
 
-        verify(fundService).reconcileFund(eq(userId), eq(groupId), any(GroupFundReconcileReq.class));
+        verify(fundService).reconcileFund(eq(userId), eq(groupId), any(FundReconcileReq.class));
     }
 }

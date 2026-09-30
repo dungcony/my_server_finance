@@ -1,7 +1,12 @@
 package com.datn.financeapp.group.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
+import com.datn.financeapp.group.enums.MemberStatus;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -21,6 +26,10 @@ import java.util.UUID;
  */
 public interface MemberBehavierService {
 
+
+    MemberRes ownerAddMember(UUID memberId, UUID groupId);
+
+    List<MemberRes> ownerAddMembers(UUID operatorId, UUID groupId, MemberAddReq req);
 
     void leave(UUID operatorId, UUID groupId);
 

@@ -80,16 +80,16 @@ public class GroupPermissionValidator {
      * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ
      * quỹ).
      *
-     * @param groupId      ID nhóm
-     * @param operatorId   ID người dùng đang thực hiện thao tác
-     * @param heldByUserId ID người dùng đang giữ quỹ
+     * @param groupId    ID nhóm
+     * @param operatorId ID người dùng đang thực hiện thao tác
+     * @param keepperId  ID người dùng đang giữ quỹ
      * @throws BusinessException nếu không phải Owner và không phải Thủ quỹ
      *                           ({@link ErrorCode#FORBIDDEN_TREASURER_REQUIRED})
      */
-    public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID heldByUserId) {
+    public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID keepperId) {
         var info = verifyActiveMemberInGroupActive(groupId, operatorId);
         boolean isOwner = info.memberRole() == MemberRole.OWNER;
-        boolean isTreasurer = heldByUserId != null && heldByUserId.equals(operatorId);
+        boolean isTreasurer = keepperId != null && keepperId.equals(operatorId);
         if (!isOwner && !isTreasurer) {
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
         }

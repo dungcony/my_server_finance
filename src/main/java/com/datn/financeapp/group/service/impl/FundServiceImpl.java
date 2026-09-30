@@ -2,11 +2,15 @@ package com.datn.financeapp.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.request.fund.GroupFundReconcileReq;
-import com.datn.financeapp.group.dto.request.fund.GroupFundUpdateReq;
+import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
+import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionParticipantReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.entity.Fund;
+import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.events.MemberLeaveEvent;
@@ -38,51 +42,25 @@ public class FundServiceImpl implements FundService {
 
     @Override
     @Transactional
-    public GroupFundRes addFund(UUID groupId, UUID heldByUserId, Instant createdAt) {
-        Fund fund = Fund.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .heldByUserId(heldByUserId)
-                .currentBalance(0L)
-                .createdAt(createdAt)
-                .build();
-        fund = fundRepository.save(fund);
-        return fundMapper.toResponse(fund);
-    }
-
-    @Override
-    public GroupFundRes getFund(UUID operatorId, UUID groupId) {
-        permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
-        return getFund(groupId);
-    }
-
-    @Override
-    public GroupFundRes getFund(UUID groupId) {
-        Fund fund = fundRepository.findByGroupId(groupId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
-        return fundMapper.toResponse(fund);
-    }
-
-    @Override
-    @Transactional
-    public GroupFundRes updateFund(UUID operatorId, UUID groupId, GroupFundUpdateReq req) {
+    public GroupFundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req) {
         permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
 
         Fund fund = fundRepository.findByGroupId(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
-        if (req.heldByUserId() != null) {
-            permissionValidator.verifyActiveMemberInGroupActive(groupId, req.heldByUserId());
-            fund.setHeldByUserId(req.heldByUserId());
+        if (req.keepperId() != null) {
+            permissionValidator.verifyActiveMemberInGroupActive(groupId, req.keepperId());
+            fund.setKeepperId(req.keepperId());
         }
 
         fund = fundRepository.save(fund);
         return fundMapper.toResponse(fund);
     }
 
+    //đối chiếu quỹ
     @Override
     @Transactional
-    public GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, GroupFundReconcileReq req) {
+    public GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, FundReconcileReq req) {
         Fund fund = fundRepository.findByGroupId(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
@@ -92,12 +70,14 @@ public class FundServiceImpl implements FundService {
     @Override
     @Transactional
     public void adjustBalance(UUID fundId, Long delta) {
+
         fundRepository.adjustBalance(fundId, delta);
+
     }
 
     private GroupFundReconcileRes executeReconcile(UUID operatorId, UUID groupId, Fund fund,
-                                                   GroupFundReconcileReq req) {
-        permissionValidator.verifyOwnerOrTreasurer(groupId, operatorId, fund.getHeldByUserId());
+                                                   FundReconcileReq req) {
+        permissionValidator.verifyOwnerOrTreasurer(groupId, operatorId, fund.getKeepperId());
 
         long previousBalance = fund.getCurrentBalance();
         long actualBalance = req.actualBalance();
@@ -105,7 +85,6 @@ public class FundServiceImpl implements FundService {
 
         if (difference == 0) {
             return new GroupFundReconcileRes(
-                    fund.getId(),
                     previousBalance,
                     actualBalance,
                     0L,
@@ -119,37 +98,35 @@ public class FundServiceImpl implements FundService {
         long amount = Math.abs(difference);
 
         Instant now = Instant.now();
-        List<com.datn.financeapp.group.dto.request.transaction.GroupTransactionParticipantReq> participantReqs = null;
+        List<GroupTransactionParticipantReq> participantReqs = null;
         if (req.excludedUserIds() != null && !req.excludedUserIds().isEmpty()) {
             List<UUID> allMemberIds = memberService.findIdAllMember(groupId);
             participantReqs = allMemberIds.stream()
                     .filter(id -> !req.excludedUserIds().contains(id))
-                    .map(id -> new com.datn.financeapp.group.dto.request.transaction.GroupTransactionParticipantReq(id, null))
+                    .map(id -> new GroupTransactionParticipantReq(id, null))
                     .toList();
         }
 
-        com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq createReq = new com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq(
+        GroupTransactionCreateReq createReq = new GroupTransactionCreateReq(
                 adjustmentType,
-                com.datn.financeapp.group.enums.MoneySource.FUND,
+                MoneySource.FUND,
                 amount,
                 now,
                 null,
                 null,
-                fund.getHeldByUserId(),
+                fund.getKeepperId(),
                 req.note(),
                 participantReqs
         );
 
-        com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes transactionDetail = gTransactionService.create(operatorId, groupId, createReq);
-        UUID transactionId = transactionDetail.id();
+        GroupTransactionDetailRes transactionDetail = gTransactionService.create(operatorId, groupId, createReq);
 
         return new GroupFundReconcileRes(
-                fund.getId(),
                 previousBalance,
                 actualBalance,
                 difference,
                 adjustmentType,
-                transactionId);
+                transactionDetail.id());
     }
 
     /**
@@ -159,8 +136,8 @@ public class FundServiceImpl implements FundService {
     @Transactional
     public void onMemberLeave(MemberLeaveEvent event) {
         fundRepository.findByGroupId(event.groupId()).ifPresent(fund -> {
-            if (fund.getHeldByUserId().equals(event.memberId())) {
-                fund.setHeldByUserId(event.ownerId());
+            if (fund.getKeepperId().equals(event.memberId())) {
+                fund.setKeepperId(event.ownerId());
                 fundRepository.save(fund);
             }
         });

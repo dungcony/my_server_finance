@@ -11,7 +11,7 @@ khảo:** [rule.md](rule.md) · [api.md](api.md) · [lop-thuc-the.md](lop-thuc-t
 - [2. Phân định vai trò User ID](#2-phan-dinh-vai-tro-user-id)
     - [2.1 Người gọi hàm / Người thực hiện thao tác (operatorId)](#21-nguoi-goi-ham-operatorid)
     - [2.2 Người tham gia / Người bị tác động (userId / memberId)](#22-nguoi-tham-gia-userid-memberid)
-    - [2.3 Người giữ quỹ (heldByUserId)](#23-nguoi-giu-quy-heldbyuserid)
+    - [2.3 Người giữ quỹ (keepperId)](#23-nguoi-giu-quy-keepperid)
 - [3. Chuẩn hóa Naming tại các Service](#3-chuan-hoa-naming-tai-cac-service)
     - [3.1 GroupService](#31-groupservice)
     - [3.2 GroupMemberService](#32-groupmemberservice)
@@ -48,7 +48,7 @@ cảnh. Phải phân định rạch ròi giữa **Chủ thể hành động (`op
 | `operatorId`          |    `UUID`    | **Người gọi hàm / Chủ thể thực thi:** ID của user đang đăng nhập và gửi request (lấy từ Security Context qua Controller truyền xuống). Đóng vai trò kiểm tra quyền (Owner/Treasurer/Active Member). | Owner duyệt đơn, Member tự tạo chi tiêu, Member tự rời nhóm... |
 | `memberId` / `userId` |    `UUID`    | **Đối tượng tham gia / Bị tác động:** ID của người dùng được thêm vào nhóm, được duyệt, bị xóa, được nhận bàn giao quyền Owner, hoặc người thụ hưởng tiền hoàn.                                 | Người được duyệt vào nhóm, Người được chuyển giao Owner...     |
 | `memberIds`           | `List<UUID>` | Danh sách ID các thành viên được thêm hoặc tham gia phân bổ.                                                                                                                                        | Danh sách thêm thành viên theo lô, lọc danh sách thành viên... |
-| `heldByUserId`        |    `UUID`    | ID của thành viên đang giữ quỹ nhóm (Thủ quỹ).                                                                                                                                                      | Người chịu trách nhiệm đối soát quỹ, giữ số dư thực tế...      |
+| `keepperId`           |    `UUID`    | ID của thành viên đang giữ quỹ nhóm (Thủ quỹ).                                                                                                                                                      | Người chịu trách nhiệm đối soát quỹ, giữ số dư thực tế...      |
 
 ---
 
@@ -82,10 +82,10 @@ cảnh. Phải phân định rạch ròi giữa **Chủ thể hành động (`op
 
 ---
 
-## 2.3 Người giữ quỹ (heldByUserId) <a id="23-nguoi-giu-quy-heldbyuserid"></a>
+## 2.3 Người giữ quỹ (keepperId) <a id="23-nguoi-giu-quy-keepperid"></a>
 
 - Quỹ nhóm gắn liền với một người giữ tiền thực tế (Thủ quỹ).
-- Tên biến luôn là `heldByUserId` để phân biệt rõ với `operatorId` (người đang gọi API kiểm kê/cập nhật) và `ownerId`
+- Tên biến luôn là `keepperId` để phân biệt rõ với `operatorId` (người đang gọi API kiểm kê/cập nhật) và `ownerId`
   (chủ nhóm).
 
 ---
@@ -162,8 +162,8 @@ public interface GroupMemberService {
 
 ```java
 public interface FundService {
-    // heldByUserId: Thành viên được gán giữ quỹ ban đầu
-    GroupFundRes addFund(UUID groupId, UUID heldByUserId, Instant createdAt);
+    // keepperId: Thành viên được gán giữ quỹ ban đầu
+    GroupFundRes addFund(UUID groupId, UUID keepperId, Instant createdAt);
 
     // operatorId: Người gọi xem quỹ
     GroupFundRes getFund(UUID operatorId, UUID groupId);
@@ -248,8 +248,8 @@ public class GroupPermissionValidator {
     // operatorId: Kiểm tra người gửi request có phải Owner không
     public MemberAuthInfo verifyOwnerInGroupActive(UUID groupId, UUID operatorId);
 
-    // operatorId: Người thao tác; heldByUserId: Thủ quỹ giữ quỹ
-    public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID heldByUserId);
+    // operatorId: Người thao tác; keepperId: Thủ quỹ giữ quỹ
+    public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID keepperId);
 
     // Xác thực quyền chỉnh sửa giao dịch (Owner, Treasurer hoặc Creator)
     public void verifyTransactionEditPermission(GTransaction txn, UUID operatorId, MemberAuthInfo authInfo);

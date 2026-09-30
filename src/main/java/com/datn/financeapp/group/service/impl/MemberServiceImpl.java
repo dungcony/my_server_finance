@@ -2,7 +2,7 @@ package com.datn.financeapp.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.MemberRole;
@@ -10,15 +10,15 @@ import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.mapper.MemberMapper;
 import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.service.MemberService;
-import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -27,58 +27,62 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class MemberServiceImpl implements MemberService {
 
-    // trạng thái hiển thị mặc định khi không lọc, bỏ qua LEFT và REMOVED
-    private static final List<MemberStatus> VISIBLE_STATUSES = List.of(MemberStatus.ACTIVE, MemberStatus.PENDING);
-
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
-    private final GroupPermissionValidator permissionValidator;
 
     @Override
     @Transactional
-    public MemberRes addOwner(UUID memberId, UUID groupId, Instant now) {
-        Instant joinedAt = now != null ? now : Instant.now();
-        Member member = buildGroupMember(groupId, memberId, joinedAt);
-        member = memberRepository.save(member);
+    public Optional<MemberRes> create(MemberCreateReq req) {
+        MemberStatus status = req.status() != null ? req.status() : MemberStatus.PENDING;
 
-        log.info("thêm trưởng nhóm thành công");
-        return memberMapper
-                .toResponse(member);
-    }
-
-    @Override
-    @Transactional
-    public MemberRes addMember(UUID memberId, UUID groupId, MemberStatus status, Instant now) {
-        return addMembers(null, groupId, new MemberAddReq(List.of(memberId), status, MemberRole.MEMBER, now)).get(0);
-    }
-
-    @Override
-    @Transactional
-    public List<MemberRes> addMembers(UUID operatorId, UUID groupId, MemberAddReq req) {
-        List<UUID> memberIds = req.memberIds().stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-
-        if (memberIds.isEmpty())
+        // LEFT và REMOVED cần left_at, không thể là trạng thái khi tạo mới
+        if (status == MemberStatus.LEFT || status == MemberStatus.REMOVED)
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
 
-        // operatorId null là tự vào nhóm, còn lại phải là chủ nhóm
-        if (operatorId != null)
-            permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        Member member = memberMapper.toEntity(req);
+        member.setId(UUID.randomUUID());
+        member.setRole(req.role() != null ? req.role() : MemberRole.MEMBER);
+        member.setStatus(status);
 
-        MemberRole role = req.role() != null ? req.role() : MemberRole.MEMBER;
+        // PENDING chưa có joined_at, chỉ ACTIVE mới ghi thời điểm vào nhóm
+        if (status == MemberStatus.ACTIVE)
+            member.setJoinedAt(Instant.now());
 
-        assertNoneInGroup(groupId, memberIds);
-
-        List<Member> members = memberIds.stream()
-                .map(uid -> buildGroupMember(groupId, uid, role, req.status(), req.addAt()))
-                .toList();
-
-        log.info("thêm {} thành viên vào nhóm {}", members.size(), groupId);
-        return toResponses(memberRepository.saveAll(members));
+        log.info("tạo thành viên {} trong nhóm {} với trạng thái {}", req.userId(), req.groupId(), status);
+        return Optional.of(memberMapper.toResponse(memberRepository.save(member)));
     }
 
+    @Override
+    @Transactional
+    public List<MemberRes> creates(List<MemberCreateReq> req) {
+
+        List<Member> result = new ArrayList<>();
+
+        if (req.isEmpty())
+            return List.of();
+
+        for (MemberCreateReq req1 : req) {
+
+            Member member = memberMapper.toEntity(req1);
+            member.setId(UUID.randomUUID());
+            member.setRole(req1.role() != null ? req1.role() : MemberRole.MEMBER);
+            member.setStatus(req1.status());
+
+            // PENDING chưa có joined_at, chỉ ACTIVE mới ghi thời điểm vào nhóm
+            if (req1.status() == MemberStatus.ACTIVE)
+                member.setJoinedAt(Instant.now());
+
+            result.add(member);
+
+        }
+        result = memberRepository.saveAll(result);
+
+        log.info("tạo danh sách thành viên thành công");
+
+        return result.stream()
+                .map(memberMapper::toResponse)
+                .toList();
+    }
 
     @Override
     public long countActiveMembers(UUID groupId) {
@@ -99,33 +103,22 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
-    public List<MemberRes> findMembers(UUID groupId, List<UUID> memberIds, MemberStatus memberStatus) {
+    public List<MemberRes> getActivateMembers(UUID groupId) {
 
-        if (groupId == null)
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        return memberRepository.findAllByGroupIdAndStatus(groupId, MemberStatus.ACTIVE)
+                .stream()
+                .map(memberMapper::toResponse)
+                .toList();
 
-        // không lọc theo id thì chỉ lọc theo trạng thái, không truyền trạng thái thì chỉ lấy thành viên ACTIVE và PENDING
-        if (memberIds == null) {
-            List<Member> members = memberStatus == null
-                    ? memberRepository.findByGroupIdAndStatusInOrderByJoinedAtDesc(groupId, VISIBLE_STATUSES)
-                    : memberRepository.findByGroupIdAndStatusOrderByJoinedAtDesc(groupId, memberStatus);
-            return toResponses(members);
-        }
-
-        // danh sách id rỗng thì không có ai để tìm, tránh câu IN rỗng
-        if (memberIds.isEmpty())
-            return List.of();
-
-        // id null hoặc trùng lặp là dữ liệu đầu vào sai
-        if (memberIds.stream().filter(Objects::nonNull).distinct().count() != memberIds.size())
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
-
-        List<Member> members = memberStatus == null
-                ? memberRepository.findByGroupIdAndUserIdInAndStatusIn(groupId, memberIds, VISIBLE_STATUSES)
-                : memberRepository.findByGroupIdAndUserIdInAndStatus(groupId, memberIds, memberStatus);
-        return toResponses(members);
     }
 
+    @Override
+    public List<MemberRes> getMembersWithStatusIn(UUID groupId, List<MemberStatus> statuses) {
+        return memberRepository.findAllByGroupIdAndStatusIn(groupId, statuses)
+                .stream()
+                .map(memberMapper::toResponse)
+                .toList();
+    }
 
     @Override
     public List<UUID> findIdAllMember(UUID groupId) {
@@ -139,40 +132,6 @@ public class MemberServiceImpl implements MemberService {
     public boolean allMemberInGroup(UUID groupId, List<UUID> memberIds) {
         return memberRepository.allMemberInGroup(groupId, memberIds);
     }
-
-
-    // --------------------------------------------- PRIVATE--------------------------------------------//
-    private Member buildGroupMember(UUID groupId, UUID userId, Instant joinedAt) {
-        return buildGroupMember(groupId, userId, MemberRole.OWNER, MemberStatus.ACTIVE, joinedAt);
-    }
-
-    private Member buildGroupMember(UUID groupId, UUID userId, MemberRole role, MemberStatus status, Instant joinedAt) {
-        return Member.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .userId(userId)
-                .role(role)
-                .status(status)
-                .joinedAt(joinedAt)
-                .build();
-    }
-
-    // chặn người đã ACTIVE hoặc đang PENDING
-    private void assertNoneInGroup(UUID groupId, List<UUID> userIds) {
-        memberRepository.findByGroupIdAndUserIdInAndStatusIn(groupId, userIds, VISIBLE_STATUSES)
-                .stream()
-                .findFirst()
-                .ifPresent(m -> {
-                    throw new BusinessException(m.getStatus() == MemberStatus.PENDING
-                            ? ErrorCode.PENDING_IN_GROUP
-                            : ErrorCode.ALREADY_IN_GROUP);
-                });
-    }
-
-    private List<MemberRes> toResponses(List<Member> members) {
-        return members.stream()
-                .map(memberMapper::toResponse)
-                .toList();
-    }
+    
 
 }

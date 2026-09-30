@@ -2,20 +2,17 @@ package com.datn.financeapp.group.controller;
 
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
+import com.datn.financeapp.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.group.service.MemberBehavierService;
-import com.datn.financeapp.group.service.MemberService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
  * API quản lý thành viên trong nhóm, giữ nguyên tiền tố {@code /groups/{groupId}}.
- * <ul>
- * <li>{@link #listMembers}: danh sách thành viên (trừ người đã bị xoá).</li>
- * quyền OWNER).</li>
+ * <ul>*
  * <li>{@link #approveMember}: duyệt thành viên đang chờ.</li>
  * <li>{@link #removeMember}: mời thành viên ra khỏi nhóm.</li>
  * <li>{@link #leave}: người dùng hiện tại rời nhóm.</li>
@@ -26,15 +23,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MemberController {
 
-    private final MemberService memberService;
     private final MemberBehavierService memberBehavierService;
 
-    // từ từ sửa
-    @GetMapping("/members")
-    public ApiResponse<List<MemberRes>> listMembers(@PathVariable UUID groupId) {
-        return ApiResponse.of(memberService.findMembers(groupId));
-    }
 
+    @PostMapping("/members")
+    public ApiResponse<?> addMembers(
+            @PathVariable UUID groupId,
+            @RequestBody @Valid MemberAddReq req
+    ) {
+        return ApiResponse.of(
+                memberBehavierService.ownerAddMembers(SecurityContextUtil.currentUserId(), groupId, req)
+        );
+    }
 
     @PutMapping("/owner-role/{memberUserId}/")
     public ApiResponse<Void> updateMemberRole(

@@ -42,8 +42,8 @@ public class Fund {
     @Setter(AccessLevel.NONE)
     private Group group;
 
-    @Column(name = "held_by_user_id", nullable = false)
-    private UUID heldByUserId;
+    @Column(name = "keepper_id", nullable = false)
+    private UUID keepperId;
 
     @Column(name = "current_balance", nullable = false)
     @Builder.Default

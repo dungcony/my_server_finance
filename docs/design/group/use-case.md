@@ -47,7 +47,7 @@
 |:------------------------|:-----------:|:-----------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Người dùng hệ thống** |   `User`    | Tài khoản đã xác thực (`JWT`)                        | Bất kỳ người dùng nào đã đăng nhập, chưa tham gia nhóm hoặc đang tìm kiếm tham gia nhóm.                                                                                                                                      |
 | **Thành viên Nhóm**     |  `Member`   | `group_members.role = 'MEMBER'`, `status = 'ACTIVE'` | Thành viên chính thức trong nhóm. Có quyền xem thông tin, ghi nhận chi tiêu/đóng góp, xem bảng phân bổ số dư và tự rời nhóm.                                                                                                  |
-| **Thủ quỹ Nhóm**        | `Treasurer` | `group_funds.held_by_user_id = user.id`              | Thành viên `ACTIVE` được chỉ định cầm tiền quỹ (mỗi nhóm đúng 1 thủ quỹ). Kế thừa toàn bộ quyền của `Member`, cộng thêm quyền: duyệt giao dịch, trả tiền cho thành viên (`REFUND`), kiểm kê quỹ.                              |
+| **Thủ quỹ Nhóm**        | `Treasurer` | `group_funds.keepper_id = user.id`                  | Thành viên `ACTIVE` được chỉ định cầm tiền quỹ (mỗi nhóm đúng 1 thủ quỹ). Kế thừa toàn bộ quyền của `Member`, cộng thêm quyền: duyệt giao dịch, trả tiền cho thành viên (`REFUND`), kiểm kê quỹ.                              |
 | **Chủ nhóm**            |   `Owner`   | `group_members.role = 'OWNER'`, `status = 'ACTIVE'`  | Người sáng lập hoặc nhận chuyển nhượng quyền quản trị nhóm (mỗi nhóm đúng 1 chủ nhóm). Kế thừa toàn bộ quyền của `Member` và `Treasurer`, cộng thêm toàn quyền quản trị cấu hình nhóm, thành viên, và xoá giao dịch/xoá nhóm. |
 
 > 💡 **Bản chất kiến trúc:** Toàn hệ thống chỉ có **duy nhất 1 thực thể tài khoản người dùng** (`User` từ bảng `users`).
@@ -193,7 +193,7 @@ flowchart LR
 - **Hậu điều kiện:**
     - Bản ghi `groups` được tạo với mã mời 8 ký tự (không thời hạn).
     - Bản ghi `group_members` được tạo với `role = 'OWNER'`, `status = 'ACTIVE'`, `joined_at = now()`.
-    - Bản ghi `group_funds` được tạo với `current_balance = 0`, `status = 'ACTIVE'`, `held_by_user_id` là người tạo.
+    - Bản ghi `group_funds` được tạo với `current_balance = 0`, `status = 'ACTIVE'`, `keepper_id` là người tạo.
 - **Luồng chính (Success Flow):**
     1. Người dùng nhập tên nhóm, mô tả (tuỳ chọn), mục tiêu quỹ (tuỳ chọn), cờ tính thừa thiếu
        (`is_settlement_enabled`), cờ duyệt tự động (`is_join_without_confirm`), và tên quỹ.
@@ -289,9 +289,9 @@ flowchart LR
 - **Tác nhân:** `Owner`
 - **Mô tả:** Chủ nhóm đổi người giữ quỹ nhóm sang một thành viên `ACTIVE` khác, hoặc đổi tên quỹ.
 - **Luồng chính (Success Flow):**
-    1. `Owner` gọi `PATCH /v1/groups/{id}/fund` kèm `held_by_user_id`.
+    1. `Owner` gọi `PATCH /v1/groups/{id}/fund` kèm `keepper_id`.
     2. Hệ thống xác thực người được giao quyền là thành viên `ACTIVE` của nhóm.
-    3. Cập nhật `group_funds.held_by_user_id`.
+    3. Cập nhật `group_funds.keepper_id`.
     4. Trả về `200 OK` kèm thông tin quỹ mới.
 - **Luồng ngoại lệ (Exception Flows):**
     - `400 HOLDER_NOT_MEMBER`: Người được bàn giao không phải thành viên `ACTIVE`.

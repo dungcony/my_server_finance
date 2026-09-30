@@ -178,7 +178,7 @@ erDiagram
     groups ||--o{ group_members: "group_id"
     users ||--o{ group_members: "user_id"
     groups ||--|| group_funds: "group_id (UNIQUE)"
-    users ||--o{ group_funds: "held_by_user_id"
+    users ||--o{ group_funds: "keepper_id"
     groups ||--o{ group_transactions: "group_id"
     users ||--o{ group_transactions: "user_id / created_by / reviewed_by"
     categories ||--o{ group_transactions: "category_id"
@@ -211,7 +211,7 @@ erDiagram
     group_funds {
         UUID id PK
         UUID group_id FK "UNIQUE — mỗi nhóm một quỹ"
-        UUID held_by_user_id FK "thủ quỹ"
+        UUID keepper_id FK "thủ quỹ"
         BIGINT current_balance "được phép âm"
         TIMESTAMPTZ created_at
     }
@@ -412,7 +412,7 @@ public class GroupMemberEntity {
 }
 ```
 
-`role` chỉ có `OWNER` và `MEMBER` — người giữ tiền được lưu ở `group_funds.held_by_user_id`, không phải một vai trò
+`role` chỉ có `OWNER` và `MEMBER` — người giữ tiền được lưu ở `group_funds.keepper_id`, không phải một vai trò
 thành viên. Truy vấn "những ai có mặt tại một thời điểm" ở [pipeline.md](pipeline.md) mục 1.
 
 ---
@@ -420,9 +420,9 @@ thành viên. Truy vấn "những ai có mặt tại một thời điểm" ở [
 #### 3. Thực thể `GroupFundEntity` (Bảng `group_funds`) <a id="223-group-fund-entity"></a>
 
 - **Khóa chính (PK):** `id` (UUID).
-- **Khóa ngoại (FK):** `group_id` → `groups.id` (bắt buộc, **duy nhất** — mỗi nhóm một quỹ); `held_by_user_id` →
+- **Khóa ngoại (FK):** `group_id` → `groups.id` (bắt buộc, **duy nhất** — mỗi nhóm một quỹ); `keepper_id` →
   `users.id` (bắt buộc).
-- **Không có cột `type`:** quỹ duy nhất gắn trực tiếp với nhóm và người giữ tiền (`held_by_user_id`).
+- **Không có cột `type`:** quỹ duy nhất gắn trực tiếp với nhóm và người giữ tiền (`keepper_id`).
 - **`current_balance` được phép âm:** nhóm chi vượt quỹ là trường hợp hợp lệ.
 - **Không có cột `initial_balance`:** quỹ luôn bắt đầu từ 0. Tiền có sẵn lúc lập nhóm được ghi thành khoản `CONTRIBUTION` của đúng người đã đưa, nên `current_balance` luôn bằng tổng ảnh hưởng của các khoản đã xác nhận.
 - **Không có cột `status`:** Quỹ gắn liền với vòng đời của nhóm (đã loại bỏ theo migration `V12__remove_group_fund_status.sql`).
@@ -451,8 +451,8 @@ public class GroupFundEntity {
     private GroupEntity group;
 
     // Phải là thành viên ACTIVE của chính nhóm này.
-    @Column(name = "held_by_user_id", nullable = false)
-    private UUID heldByUserId;
+    @Column(name = "keepper_id", nullable = false)
+    private UUID keepperId;
 
     // Được phép ÂM: nhóm chi vượt quỹ là chuyện có thật.
     @Column(name = "current_balance", nullable = false)
@@ -741,7 +741,7 @@ xem [rule.md](rule.md) quyết định 4.
 | `group_members`                  | `group_id`             | `groups`             | RESTRICT    | Nhóm chỉ xoá mềm                 |
 | `group_members`                  | `user_id`              | `users`              | RESTRICT    | Định danh thành viên             |
 | `group_funds`                    | `group_id` (UNIQUE)    | `groups`             | RESTRICT    | Mỗi nhóm đúng một quỹ            |
-| `group_funds`                    | `held_by_user_id`      | `users`              | RESTRICT    | Thủ quỹ đang cầm tiền            |
+| `group_funds`                    | `keepper_id`           | `users`              | RESTRICT    | Thủ quỹ đang cầm tiền            |
 | `group_transactions`             | `group_id`             | `groups`             | RESTRICT    | Thuộc nhóm nào                   |
 | `group_transactions`             | `transactor_id`        | `users`              | RESTRICT    | Người trả / góp / nhận / thủ quỹ |
 | `group_transactions`             | `created_by`           | `users`              | RESTRICT    | Người bấm ghi                    |

@@ -22,9 +22,7 @@ import java.util.UUID;
  *   <li>{@link #detail}: Xem chi tiết nhóm. Input: operatorId, groupId. Output: GroupDetailRes.</li>
  *   <li>{@link #update}: Cập nhật cấu hình. Input: operatorId, groupId, req. Output: GroupDetailRes.</li>
  *   <li>{@link #archive}, {@link #unarchive}: Lưu trữ/Mở lại nhóm. Input: operatorId, groupId. Output: void.</li>
- *   <li>{@link #transferOwnership}: Đổi trưởng nhóm. Input: operatorId, groupId, memberId. Output: void.</li>
  *   <li>{@link #delete}: Xóa nhóm. Input: operatorId, groupId. Output: void.</li>
- *   <li>{@link #join}: Tham gia bằng mã. Input: operatorId, req. Output: void.</li>
  * </ul>
  * </p>
  */

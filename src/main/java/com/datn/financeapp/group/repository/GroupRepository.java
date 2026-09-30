@@ -26,7 +26,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
                     g.isSettlementEnabled,
                     gm.status,
                     gm.role,
-                    f.heldByUserId
+                    f.keepperId
                 )
                 FROM Group g
                 LEFT JOIN Member gm ON gm.groupId = g.id AND gm.userId = :userId

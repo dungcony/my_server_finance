@@ -26,13 +26,11 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
 
     List<Member> findByGroupIdAndStatusOrderByJoinedAtDesc(UUID groupId, MemberStatus status);
 
+    List<Member> findAllByGroupIdAndStatus(UUID groupId, MemberStatus status);
+
+    List<Member> findAllByGroupIdAndStatusIn(UUID groupId, List<MemberStatus> status);
+
     long countByGroupIdAndStatus(UUID groupId, MemberStatus status);
-
-    // Lấy các thành viên đang ACTIVE theo danh sách userId
-    List<Member> findByGroupIdAndUserIdInAndStatus(UUID groupId, Collection<UUID> userIds, MemberStatus status);
-
-    // Lấy các thành viên của nhóm có trạng thái nằm trong danh sách, mới vào nhóm xếp trước
-    List<Member> findByGroupIdAndStatusInOrderByJoinedAtDesc(UUID groupId, Collection<MemberStatus> statuses);
 
     // Lấy các thành viên theo danh sách userId có trạng thái nằm trong danh sách
     List<Member> findByGroupIdAndUserIdInAndStatusIn(UUID groupId, Collection<UUID> userIds, Collection<MemberStatus> statuses);

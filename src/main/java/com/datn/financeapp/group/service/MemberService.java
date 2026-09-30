@@ -1,11 +1,14 @@
 package com.datn.financeapp.group.service;
 
 import com.datn.financeapp.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
+import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.MemberStatus;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -13,43 +16,30 @@ import java.util.UUID;
  * <p>
  * Các hàm trong interface:
  * <ul>
- * <li>{@link #addOwner}: Thêm trưởng nhóm. Input: memberId, groupId,  now.
- * Output: MemberRes.</li>
- * <li>{@link #addMembers}: Thêm nhiều thành viên. Input: operatorId, groupId,
- * memberIds, now. Output: danh sách MemberRes.</li>
- * <li>{@link #countActiveMembers}: Đếm thành viên active. Input: groupId.
+ * <li>{@link #create(MemberCreateReq)}: Tạo 1 bản ghi thành viên.</li>
+ * <li>{@link #creates(List)} : Tạo 1 danh sách bản ghi thành viên.</li>
+ * <li>{@link #getActivateMembers(UUID)} : Lấy danh sách user active của group.</li>
+ * <li>{@link #getMembersWithStatusIn(UUID, List)}  Lấy danh sách user có 1 trong các trạng thái của group.</li>
+ * <li>{@link #findIdAllMember(UUID)}  Lấy danh sách id active của group.</li>
+ * <li>{@link #countActiveMembers}: Đếm thành viên active. Input: groupId.</li>
+ * <li>{@link #allMemberInGroup(UUID, List)}: kiểm tra tất cả mem đều thuộc group
  * Output: số lượng (long).</li>
  * </ul>
  * </p>
  */
 public interface MemberService {
-    MemberRes addOwner(UUID memberId, UUID groupId, Instant now);
 
-    MemberRes addMember(UUID memberId, UUID groupId, MemberStatus status, Instant now);
+    Optional<MemberRes> create(MemberCreateReq req);
 
-    List<MemberRes> addMembers(UUID operatorId, UUID groupId, MemberAddReq req);
+    List<MemberRes> creates(List<MemberCreateReq> req);
 
     long countActiveMembers(UUID groupId);
 
     MemberRes getMember(UUID groupId, UUID memberId, MemberStatus status);
 
-    default MemberRes getMember(UUID groupId, UUID memberId) {
-        return getMember(groupId, memberId, null);
-    }
+    List<MemberRes> getActivateMembers(UUID groupId);
 
-    List<MemberRes> findMembers(UUID groupId, List<UUID> memberIds, MemberStatus memberStatus);
-
-    default List<MemberRes> findMembers(UUID groupId, List<UUID> memberIds) {
-        return findMembers(groupId, memberIds, null);
-    }
-
-    default List<MemberRes> findMembers(UUID groupId) {
-        return findMembers(groupId, null, null);
-    }
-
-    default List<MemberRes> findMembers(UUID groupId, MemberStatus memberStatus) {
-        return findMembers(groupId, null, memberStatus);
-    }
+    List<MemberRes> getMembersWithStatusIn(UUID groupId, List<MemberStatus> statuses);
 
     // danh sách id người dùng (userId) của các thành viên ACTIVE trong nhóm
     List<UUID> findIdAllMember(UUID groupId);

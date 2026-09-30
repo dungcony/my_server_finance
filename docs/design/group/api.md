@@ -83,36 +83,36 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 
 ## 2. Danh mục Điểm cuối API (Endpoints Summary) <a id="2-endpoints-summary"></a>
 
-| Nhóm chức năng             |  Method  | Endpoint URL                                 | Mục đích & Phân quyền                                                                                                                                                                                                                         |
-|:---------------------------|:--------:|:---------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **1. Nhóm & Thành viên**   |  `POST`  | `/v1/groups`                                 | Tạo nhóm mới (khởi tạo cấu hình, quỹ duy nhất và tự động sinh mã mời `invite_code`)                                                                                                                                                           |
-|                            |  `GET`   | `/v1/groups`                                 | Danh sách các nhóm user đang là thành viên `ACTIVE`, kèm mã mời và số dư quỹ                                                                                                                                                                 |
-|                            |  `GET`   | `/v1/groups/{id}`                            | Chi tiết nhóm (thông tin, mã mời, quỹ, danh sách thành viên)                                                                                                                                                                                  |
-|                            | `PATCH`  | `/v1/groups/{id}`                            | Sửa thông tin nhóm (Tên, mô tả, mục tiêu, cờ tính thừa thiếu) — *Owner*                                                                                                                                                                       |
-|                            | `DELETE` | `/v1/groups/{id}`                            | Xóa nhóm — *Owner*. Quỹ = 0, không còn khoản chờ; bật tính thừa thiếu thì phần mọi thành viên = 0                                                                                                                                             |
-|                            |  `POST`  | `/v1/groups/{id}/archive`                    | Lưu trữ nhóm (chỉ xem) — *Owner*. Không còn khoản chờ                                                                                                                                                                                         |
-|                            |  `POST`  | `/v1/groups/{id}/unarchive`                  | Mở lại nhóm đã lưu trữ — *Owner*                                                                                                                                                                                                              |
-|                            |  `POST`  | `/v1/groups/join`                            | Tham gia nhóm bằng mã mời (`invite_code`). Trả về kết quả thành công (`data = null`), trạng thái duyệt tự động hoặc chờ duyệt tùy cấu hình nhóm                                                                                              |
-|                            |  `GET`   | `/v1/groups/{id}/members`                    | Danh sách thành viên hiện tại và lịch sử tham gia                                                                                                                                                                                             |
-|                            |  `POST`  | `/v1/groups/{id}/members/{userId}/approve`   | Duyệt thành viên `PENDING` vào nhóm — *Owner*                                                                                                                                                                                                 |
-|                            | `DELETE` | `/v1/groups/{id}/members/{userId}`           | Mời thành viên rời nhóm, hoặc từ chối người đang `PENDING` — *Owner*. Bật tính thừa thiếu thì người bị mời rời phải tất toán về 0 trước. Người đó đang giữ quỹ thì quỹ chuyển về chủ nhóm                                                     |
-|                            |  `POST`  | `/v1/groups/{id}/leave`                      | Thành viên tự rời nhóm. Chủ nhóm phải chuyển quyền trước. Bật tính thừa thiếu thì phải tất toán về 0 trước. Người đó đang giữ quỹ thì quỹ chuyển về chủ nhóm                                                                                  |
-|                            |  `POST`  | `/v1/groups/{id}/transfer-ownership`         | Chuyển quyền chủ nhóm cho một thành viên `ACTIVE` khác (body `new_owner_id`) — *Owner*                                                                                                                                                         |
-|                            | `PATCH`  | `/v1/groups/{id}/members/{userId}/role`      | Cập nhật vai trò thành viên (tương thích: nếu role = OWNER thì chuyển quyền chủ nhóm) — *Owner*                                                                                                                                                |
-| **2. Quỹ Nhóm (`Fund`)**   |  `GET`   | `/v1/groups/{id}/fund`                       | Xem quỹ duy nhất của nhóm: người giữ quỹ, số dư                                                                                                                                                                                               |
-|                            | `PATCH`  | `/v1/groups/{id}/fund`                       | Bàn giao người giữ quỹ (body `held_by_user_id`) — *Owner*. Không có đóng/mở trạng thái quỹ                                                                                                                                                    |
-| **3. Giao dịch Nhóm**      |  `POST`  | `/v1/groups/{id}/transactions`               | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên thường ghi sẽ ở `PENDING`, Thủ quỹ / Owner ghi được duyệt ngay `CONFIRMED`      |
-|                            |  `GET`   | `/v1/groups/{id}/transactions`               | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                                                                            |
-|                            |  `GET`   | `/v1/groups/{id}/transactions/{tId}`         | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                                                                               |
-|                            |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`         | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                                                                            |
-|                            | `DELETE` | `/v1/groups/{id}/transactions/{tId}`         | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                                                                             |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm` | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                                                  |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`  | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                                                   |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`  | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                                                   |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`   | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                                                    |
-| **4. Kiểm kê Quỹ**         |  `POST`  | `/v1/groups/{id}/fund/reconcile`             | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                                                                         |
-| **5. Tổng quan & Báo cáo** |  `GET`   | `/v1/groups/{id}/summary`                    | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                                                                     |
-|                            |  `GET`   | `/v1/groups/{id}/balances`                   | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                                                                         |
+| Nhóm chức năng             |  Method  | Endpoint URL                                 | Mục đích & Phân quyền                                                                                                                                                                                            |
+|:---------------------------|:--------:|:---------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **1. Nhóm & Thành viên**   |  `POST`  | `/v1/groups`                                 | Tạo nhóm mới (khởi tạo cấu hình, quỹ duy nhất và tự động sinh mã mời `invite_code`)                                                                                                                              |
+|                            |  `GET`   | `/v1/groups`                                 | Danh sách các nhóm user đang là thành viên `ACTIVE`, kèm mã mời và số dư quỹ                                                                                                                                     |
+|                            |  `GET`   | `/v1/groups/{id}`                            | Chi tiết nhóm (thông tin, mã mời, quỹ, danh sách thành viên)                                                                                                                                                     |
+|                            | `PATCH`  | `/v1/groups/{id}`                            | Sửa thông tin nhóm (Tên, mô tả, mục tiêu, cờ tính thừa thiếu) — *Owner*                                                                                                                                          |
+|                            | `DELETE` | `/v1/groups/{id}`                            | Xóa nhóm — *Owner*. Quỹ = 0, không còn khoản chờ; bật tính thừa thiếu thì phần mọi thành viên = 0                                                                                                                |
+|                            |  `POST`  | `/v1/groups/{id}/archive`                    | Lưu trữ nhóm (chỉ xem) — *Owner*. Không còn khoản chờ                                                                                                                                                            |
+|                            |  `POST`  | `/v1/groups/{id}/unarchive`                  | Mở lại nhóm đã lưu trữ — *Owner*                                                                                                                                                                                 |
+|                            |  `POST`  | `/v1/groups/join`                            | Tham gia nhóm bằng mã mời (`invite_code`). Trả về kết quả thành công (`data = null`), trạng thái duyệt tự động hoặc chờ duyệt tùy cấu hình nhóm                                                                  |
+|                            |  `GET`   | `/v1/groups/{id}/members`                    | Danh sách thành viên hiện tại và lịch sử tham gia                                                                                                                                                                |
+|                            |  `POST`  | `/v1/groups/{id}/members/{userId}/approve`   | Duyệt thành viên `PENDING` vào nhóm — *Owner*                                                                                                                                                                    |
+|                            | `DELETE` | `/v1/groups/{id}/members/{userId}`           | Mời thành viên rời nhóm, hoặc từ chối người đang `PENDING` — *Owner*. Bật tính thừa thiếu thì người bị mời rời phải tất toán về 0 trước. Người đó đang giữ quỹ thì quỹ chuyển về chủ nhóm                        |
+|                            |  `POST`  | `/v1/groups/{id}/leave`                      | Thành viên tự rời nhóm. Chủ nhóm phải chuyển quyền trước. Bật tính thừa thiếu thì phải tất toán về 0 trước. Người đó đang giữ quỹ thì quỹ chuyển về chủ nhóm                                                     |
+|                            |  `POST`  | `/v1/groups/{id}/transfer-ownership`         | Chuyển quyền chủ nhóm cho một thành viên `ACTIVE` khác (body `new_owner_id`) — *Owner*                                                                                                                           |
+|                            | `PATCH`  | `/v1/groups/{id}/members/{userId}/role`      | Cập nhật vai trò thành viên (tương thích: nếu role = OWNER thì chuyển quyền chủ nhóm) — *Owner*                                                                                                                  |
+| **2. Quỹ Nhóm (`Fund`)**   |  `GET`   | `/v1/groups/{id}/fund`                       | Xem quỹ duy nhất của nhóm: người giữ quỹ, số dư                                                                                                                                                                  |
+|                            | `PATCH`  | `/v1/groups/{id}/fund`                       | Bàn giao người giữ quỹ (body `keepper_id`) — *Owner*. Không có đóng/mở trạng thái quỹ                                                                                                                       |
+| **3. Giao dịch Nhóm**      |  `POST`  | `/v1/groups/{id}/transactions`               | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên thường ghi sẽ ở `PENDING`, Thủ quỹ / Owner ghi được duyệt ngay `CONFIRMED` |
+|                            |  `GET`   | `/v1/groups/{id}/transactions`               | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                                               |
+|                            |  `GET`   | `/v1/groups/{id}/transactions/{tId}`         | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                                                  |
+|                            |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`         | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                                               |
+|                            | `DELETE` | `/v1/groups/{id}/transactions/{tId}`         | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                                                |
+|                            |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm` | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                     |
+|                            |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`  | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                      |
+|                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`  | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                      |
+|                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`   | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                       |
+| **4. Kiểm kê Quỹ**         |  `POST`  | `/v1/groups/{id}/fund/reconcile`             | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                                            |
+| **5. Tổng quan & Báo cáo** |  `GET`   | `/v1/groups/{id}/summary`                    | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                                        |
+|                            |  `GET`   | `/v1/groups/{id}/balances`                   | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                                            |
 
 ---
 
@@ -167,7 +167,7 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
     "my_role": "OWNER",
     "fund": {
       "id": "w1000000-0000-0000-0000-000000000001",
-      "held_by_user_id": "u1000000-0000-0000-0000-000000000001",
+      "keepper_id": "u1000000-0000-0000-0000-000000000001",
       "current_balance": 0
     },
     "members": [
@@ -248,8 +248,10 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 #### Mã mời tham gia nhóm (`invite_code`) <a id="314-ma-moi"></a>
 
 - **Cơ chế hoạt động:**
-    - Mã mời gồm **8 ký tự** viết hoa ngẫu nhiên, chữ và số dễ đọc (bỏ `0`/`O`, `1`/`I`), được tự động sinh ngay khi tạo nhóm mới.
-    - Mã mời được trả trực tiếp trong đối tượng phản hồi của API chi tiết nhóm (`GroupDetailRes`) và danh sách nhóm (`GroupSummaryRes`) qua thuộc tính `invite_code`.
+    - Mã mời gồm **8 ký tự** viết hoa ngẫu nhiên, chữ và số dễ đọc (bỏ `0`/`O`, `1`/`I`), được tự động sinh ngay khi tạo
+      nhóm mới.
+    - Mã mời được trả trực tiếp trong đối tượng phản hồi của API chi tiết nhóm (`GroupDetailRes`) và danh sách nhóm
+      (`GroupSummaryRes`) qua thuộc tính `invite_code`.
     - Không cần endpoint riêng để lấy mã mời; chủ nhóm và thành viên có thể copy mã này để mời thành viên khác.
 
 ---
@@ -268,11 +270,13 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
     - `invite_code`: `@NotBlank`, `@Size(min = 8, max = 8)`
 
 - **Nghiệp vụ:**
-    - Kiểm tra tính hợp lệ của mã mời: Đối chiếu `invite_code` trong bảng `groups` (trừ nhóm trạng thái `DELETED`). Nếu mã không tồn tại hoặc sai ký tự, hệ thống trả về lỗi `404 INVITE_CODE_INVALID` (*"Mã mời không chính xác"*).
+    - Kiểm tra tính hợp lệ của mã mời: Đối chiếu `invite_code` trong bảng `groups` (trừ nhóm trạng thái `DELETED`). Nếu
+      mã không tồn tại hoặc sai ký tự, hệ thống trả về lỗi `404 INVITE_CODE_INVALID` (*"Mã mời không chính xác"*).
     - Kiểm tra người dùng đã là thành viên (`ACTIVE` hoặc `PENDING`) chưa: nếu rồi trả về lỗi `409 ALREADY_IN_GROUP`.
     - Nhóm đang lưu trữ → `409 GROUP_ARCHIVED`.
     - Nếu nhóm có `is_join_without_confirm = true`: Tạo `group_members` với `status = ACTIVE`, `joined_at = now()`.
-    - Nếu `is_join_without_confirm = false`: Tạo `group_members` với `status = PENDING`, `joined_at = NULL`. Thành viên chưa thấy nội dung nhóm cho đến khi được chủ nhóm duyệt.
+    - Nếu `is_join_without_confirm = false`: Tạo `group_members` với `status = PENDING`, `joined_at = NULL`. Thành viên
+      chưa thấy nội dung nhóm cho đến khi được chủ nhóm duyệt.
     - Người từng `LEFT` / `REMOVED` quay lại: **tạo bản ghi mới**, không sửa bản ghi cũ ([rule.md](rule.md) quy tắc 4).
 
 - **Response (`HTTP 200 OK` - `ApiResponse<Void>`):**
@@ -394,7 +398,8 @@ hoặc có nhiều chủ.
 | 1 | Nhóm không còn khoản `PENDING`            | `409 HAS_PENDING_TRANSACTIONS`                                        |
 | 2 | Phần của người rời (`net_balance`) bằng 0 | `409 MEMBER_SHARE_NOT_ZERO`, `details` ghi phần hiện tại của người đó |
 
-Phần dương → thủ quỹ ghi loại `REFUND` qua `POST /transactions` trả đúng số đó. Phần âm → người đó góp thêm (`POST /transactions`, loại `CONTRIBUTION`) rồi thủ quỹ xác nhận. Người còn
+Phần dương → thủ quỹ ghi loại `REFUND` qua `POST /transactions` trả đúng số đó. Phần âm → người đó góp thêm
+(`POST /transactions`, loại `CONTRIBUTION`) rồi thủ quỹ xác nhận. Người còn
 nợ mà không góp thì chủ nhóm cũng không mời ra được ([pipeline.md](pipeline.md) mục 10).
 
 - **Nghiệp vụ chung** — trong **một** transaction CSDL ([pipeline.md](pipeline.md) mục 10):
@@ -447,7 +452,7 @@ xem [pipeline.md](pipeline.md) mục 10 & 14).
 
 #### 3.2 Quỹ Nhóm (`Fund`) — mỗi nhóm một quỹ <a id="32-quan-ly-quy"></a>
 
-Mỗi nhóm có **đúng một quỹ**, tạo cùng lúc với nhóm và giao cho một thành viên giữ (`held_by_user_id`) — gọi là thủ quỹ.
+Mỗi nhóm có **đúng một quỹ**, tạo cùng lúc với nhóm và giao cho một thành viên giữ (`keepper_id`) — gọi là thủ quỹ.
 **Không có** endpoint tạo thêm quỹ, chuyển tiền giữa hai quỹ hay đóng quỹ; quỹ đi theo vòng đời của nhóm
 ([rule.md](rule.md) quy tắc 14). Quỹ **không có thuộc tính loại ví** (`type`), **không có trường `status`** và **được
 phép âm**.
@@ -463,7 +468,7 @@ phép âm**.
   "data": {
     "id": "w1000000-0000-0000-0000-000000000001",
     "group_id": "a1000000-0000-0000-0000-000000000001",
-    "held_by_user_id": "u1000000-0000-0000-0000-000000000001",
+    "keepper_id": "u1000000-0000-0000-0000-000000000001",
     "current_balance": 2400000,
     "created_at": "2026-09-16T10:00:00Z"
   }
@@ -475,19 +480,19 @@ phép âm**.
 #### Bàn giao thủ quỹ (`PATCH /v1/groups/{id}/fund`) <a id="322-sua-quy"></a>
 
 - **Phân quyền:** Chỉ `OWNER`.
-- **Request Body (`GroupFundUpdateReq`):**
+- **Request Body (`FundKepperUpdateReq`):**
 
 ```json
 {
-  "held_by_user_id": "u3000000-0000-0000-0000-000000000003"
+  "keepper_id": "u3000000-0000-0000-0000-000000000003"
 }
 ```
 
 - **Nghiệp vụ:**
 
-| Trường            | Kiểm tra                             | Lỗi                     |
-|:------------------|:-------------------------------------|:------------------------|
-| `held_by_user_id` | Phải là thành viên `ACTIVE` của nhóm | `400 HOLDER_NOT_MEMBER` |
+| Trường        | Kiểm tra                             | Lỗi                     |
+|:--------------|:-------------------------------------|:------------------------|
+| `keepper_id`  | Phải là thành viên `ACTIVE` của nhóm | `400 HOLDER_NOT_MEMBER` |
 
 Quỹ đi theo vòng đời của nhóm, không có trường `status`.
 
@@ -497,14 +502,22 @@ Quỹ đi theo vòng đời của nhóm, không có trường `status`.
 
 ### 3.3 Giao dịch Nhóm (`GTransaction`) <a id="33-giao-dich-nhom"></a>
 
-Giao dịch gắn với nhóm qua `group_id`. Mỗi nhóm có duy nhất một quỹ tiền, nên việc dòng tiền có đi qua quỹ nhóm hay không phụ thuộc vào **`money_source`**: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền túi cá nhân) — [rule.md](rule.md) quy tắc 24.
+Giao dịch gắn với nhóm qua `group_id`. Mỗi nhóm có duy nhất một quỹ tiền, nên việc dòng tiền có đi qua quỹ nhóm hay
+không phụ thuộc vào **`money_source`**: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền túi cá nhân) — [rule.md](rule.md) quy
+tắc 24.
 
 Toàn bộ các loại giao dịch được quản lý và tạo lập tập trung qua endpoint thống nhất:
-- `POST /v1/groups/{id}/transactions` và cập nhật qua `PUT /v1/groups/{id}/transactions/{tId}` sử dụng **Strategy Pattern** tương ứng theo từng loại giao dịch (`TransactionType`):
-  - `EXPENSE` (Chi tiêu): Trả bằng tiền quỹ (`FUND`) hoặc tiền túi (`PERSONAL`), bắt buộc có `category_id`. Phân bổ chi phí qua `participants`.
-  - `CONTRIBUTION` (Nộp quỹ): Tiền túi (`PERSONAL`) nộp vào quỹ (`FUND`), `category_id = null`, `participants = []`.
-  - `REFUND` (Quỹ trả tiền cho thành viên): Quỹ (`FUND`) chi trả cho thành viên, để hoàn tiền túi họ đã chi hộ nhóm hoặc trả lại tiền họ đã góp. `transactor_id` là người nhận tiền, `category_id = null`, `participants = []`. Chỉ Owner hoặc Thủ quỹ được tạo, tự động duyệt `CONFIRMED`.
-- `ADJUSTMENT_UP` / `ADJUSTMENT_DOWN`: Chỉ sinh tự động thông qua API kiểm kê quỹ thực tế `POST /v1/groups/{id}/fund/reconcile`.
+
+- `POST /v1/groups/{id}/transactions` và cập nhật qua `PUT /v1/groups/{id}/transactions/{tId}` sử dụng **Strategy
+  Pattern** tương ứng theo từng loại giao dịch (`TransactionType`):
+    - `EXPENSE` (Chi tiêu): Trả bằng tiền quỹ (`FUND`) hoặc tiền túi (`PERSONAL`), bắt buộc có `category_id`. Phân bổ
+      chi phí qua `participants`.
+    - `CONTRIBUTION` (Nộp quỹ): Tiền túi (`PERSONAL`) nộp vào quỹ (`FUND`), `category_id = null`, `participants = []`.
+    - `REFUND` (Quỹ trả tiền cho thành viên): Quỹ (`FUND`) chi trả cho thành viên, để hoàn tiền túi họ đã chi hộ nhóm
+      hoặc trả lại tiền họ đã góp. `transactor_id` là người nhận tiền, `category_id = null`, `participants = []`. Chỉ
+      Owner hoặc Thủ quỹ được tạo, tự động duyệt `CONFIRMED`.
+- `ADJUSTMENT_UP` / `ADJUSTMENT_DOWN`: Chỉ sinh tự động thông qua API kiểm kê quỹ thực tế
+  `POST /v1/groups/{id}/fund/reconcile`.
 
 **Trạng thái xác nhận** ([rule.md](rule.md) quy tắc 17–21):
 
@@ -713,9 +726,11 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 
 ##### Giao dịch quỹ trả tiền cho thành viên (`REFUND`) <a id="333a-tra-lai-tien"></a>
 
-Một loại giao dịch cho mọi trường hợp tiền quỹ đi ra cho một thành viên ([pipeline.md](pipeline.md) mục 12): hoàn tiền túi người đó đã trả hộ nhóm, hoặc trả lại tiền người đó đã góp (góp dư, rời nhóm, giải tán). Nguồn tiền luôn là `FUND`.
+Một loại giao dịch cho mọi trường hợp tiền quỹ đi ra cho một thành viên ([pipeline.md](pipeline.md) mục 12): hoàn tiền
+túi người đó đã trả hộ nhóm, hoặc trả lại tiền người đó đã góp (góp dư, rời nhóm, giải tán). Nguồn tiền luôn là `FUND`.
 
-Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/groups/{id}/transactions`** và chỉnh sửa qua **`PUT /v1/groups/{id}/transactions/{tId}`**.
+Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/groups/{id}/transactions`** và chỉnh sửa qua **
+`PUT /v1/groups/{id}/transactions/{tId}`**.
 
 - **Phân quyền:** Chỉ thủ quỹ hoặc `OWNER` mới có quyền tạo `REFUND` → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
 - **Request Body khi tạo (`GroupTransactionCreateReq`):**
@@ -736,8 +751,10 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 - **Kiểm tra nghiệp vụ (xử lý bởi `RefundTransactionStrategy`):**
     - `money_source` bắt buộc là `FUND`.
     - `transactor_id` (người nhận tiền) phải là thành viên trong nhóm.
-    - Hạn mức: số tiền không vượt quá phần còn lại của người nhận trong quỹ (`net_balance`), dù bật hay tắt tính thừa thiếu (`validRefundLimit`) → nếu vượt: `400 CANNOT_REFUND_EXCEED_BALANCE`.
-    - Khi **sửa** (`RefundUpdateStrategy`): chỉ kiểm lại hạn mức khi số tiền tăng hoặc đổi người nhận, tính trên số dư hiện tại bỏ chính khoản đang sửa.
+    - Hạn mức: số tiền không vượt quá phần còn lại của người nhận trong quỹ (`net_balance`), dù bật hay tắt tính thừa
+      thiếu (`validRefundLimit`) → nếu vượt: `400 CANNOT_REFUND_EXCEED_BALANCE`.
+    - Khi **sửa** (`RefundUpdateStrategy`): chỉ kiểm lại hạn mức khi số tiền tăng hoặc đổi người nhận, tính trên số dư
+      hiện tại bỏ chính khoản đang sửa.
     - Tự động gán trạng thái `status = CONFIRMED`, trừ trực tiếp vào số dư quỹ nhóm (`FundBalanceChangedEvent`).
 - **Response:** `HTTP 201 Created` - `GroupTransactionDetailRes`.
 
@@ -803,7 +820,9 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 
 - **`PUT /v1/groups/{id}/transactions/{tId}`**:
     - **Phân quyền:** người ghi khoản đó (`created_by`) hoặc `OWNER` → nếu không: `403 FORBIDDEN_TRANSACTION_EDIT`.
-    - Hỗ trợ sửa các loại giao dịch `EXPENSE`, `CONTRIBUTION`, `REFUND` thông qua bộ chiến lược cập nhật (`GTransactionUpdateStrategy`). `ADJUSTMENT_*` không được sửa trực tiếp — nếu kiểm kê sai thì thực hiện phiên kiểm kê mới.
+    - Hỗ trợ sửa các loại giao dịch `EXPENSE`, `CONTRIBUTION`, `REFUND` thông qua bộ chiến lược cập nhật
+      (`GTransactionUpdateStrategy`). `ADJUSTMENT_*` không được sửa trực tiếp — nếu kiểm kê sai thì thực hiện phiên kiểm
+      kê mới.
     - **Không đổi được `type`** của giao dịch. Muốn đổi loại, người dùng xóa và tạo khoản mới.
     - **Request Body (`GroupTransactionUpdateReq`):**
 
@@ -836,12 +855,15 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
     - `category_id`: Bắt buộc với `EXPENSE`, `NULL` với `CONTRIBUTION`, `REFUND`
     - `user_id`: `@NotNull` (người chi trả / người nộp / người nhận)
     - `note`: `@Size(max = 255)`
-    - `participants`: Với `EXPENSE`: rỗng = cả nhóm có mặt; có danh sách = chỉ chia người được chọn. Với các loại khác: bắt buộc rỗng `[]`
-- **Kiểm tra nghiệp vụ:** Áp dụng đầy đủ bảng kiểm tra như khi tạo `POST` (thành viên có mặt tại thời điểm giao dịch, danh mục hợp lệ, kiểm tra hạn mức hoàn trả, nhóm không lưu trữ,...).
+    - `participants`: Với `EXPENSE`: rỗng = cả nhóm có mặt; có danh sách = chỉ chia người được chọn. Với các loại khác:
+      bắt buộc rỗng `[]`
+- **Kiểm tra nghiệp vụ:** Áp dụng đầy đủ bảng kiểm tra như khi tạo `POST` (thành viên có mặt tại thời điểm giao dịch,
+  danh mục hợp lệ, kiểm tra hạn mức hoàn trả, nhóm không lưu trữ,...).
 - **Nghiệp vụ** — trong một transaction CSDL:
     1. Khoản đang `CONFIRMED` → hoàn tác số dư quỹ cũ.
     2. Điều phối tới `GTransactionUpdateStrategy` tương ứng để cập nhật dữ liệu.
-    3. Nếu người sửa là Owner / Thủ quỹ → giữ nguyên trạng thái `CONFIRMED` và áp dụng số tiền mới vào quỹ. Nếu người sửa là thành viên thường → chuyển về `PENDING` chờ duyệt lại.
+    3. Nếu người sửa là Owner / Thủ quỹ → giữ nguyên trạng thái `CONFIRMED` và áp dụng số tiền mới vào quỹ. Nếu người
+       sửa là thành viên thường → chuyển về `PENDING` chờ duyệt lại.
     4. Gửi sự kiện `FundBalanceChangedEvent` nếu có chênh lệch delta số dư quỹ.
 - **Response (`HTTP 200 OK` - `GroupTransactionDetailRes`).**
 
@@ -855,12 +877,12 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 
 ### 3.4 Kiểm kê Quỹ (`Reconciliation`) <a id="34-kiem-ke-quy"></a>
 
-Dành cho thủ quỹ (`held_by_user_id`) hoặc chủ nhóm (`OWNER`) đếm tiền thực tế và điều chỉnh số dư app cho khớp thực tế
+Dành cho thủ quỹ (`keepper_id`) hoặc chủ nhóm (`OWNER`) đếm tiền thực tế và điều chỉnh số dư app cho khớp thực tế
 mà không làm sai lệch báo cáo chi tiêu.
 
 #### Kiểm kê số dư thực tế (`POST /v1/groups/{id}/fund/reconcile`) <a id="341-kiem-ke-thuc-te"></a>
 
-- **Request Body (`GroupFundReconcileReq`):**
+- **Request Body (`FundReconcileReq`):**
 
 ```json
 {
@@ -872,7 +894,7 @@ mà không làm sai lệch báo cáo chi tiêu.
 ```
 
 - **Xử lý nghiệp vụ — thực hiện trong một transaction CSDL:**
-    1. **Kiểm tra:** Người gọi API phải là thủ quỹ (`held_by_user_id`) hoặc `OWNER`(`403 FORBIDDEN_TREASURER_REQUIRED`).
+    1. **Kiểm tra:** Người gọi API phải là thủ quỹ (`keepper_id`) hoặc `OWNER`(`403 FORBIDDEN_TREASURER_REQUIRED`).
        `occurred_at` tuỳ chọn, bỏ trống thì lấy lúc nhận request; có gửi thì không được ở tương lai
        (`400 DATE_IN_FUTURE`). Nhóm không đang lưu trữ (`409 GROUP_ARCHIVED`).
     2. **Khóa bi quan dòng quỹ (`PESSIMISTIC_WRITE` / `FOR UPDATE`):**
@@ -892,7 +914,7 @@ mà không làm sai lệch báo cáo chi tiêu.
     4. **Tạo giao dịch điều chỉnh:**
         - Nếu `difference > 0`: Tạo `group_transactions` loại **`ADJUSTMENT_UP`** với `amount = difference`.
         - Nếu `difference < 0`: Tạo `group_transactions` loại **`ADJUSTMENT_DOWN`** với `amount = abs(difference)`.
-        - Gán `money_source = FUND`, `user_id = held_by_user_id`, `created_by = userId` (người kiểm kê), **
+        - Gán `money_source = FUND`, `user_id = keepper_id`, `created_by = userId` (người kiểm kê), **
           `status = CONFIRMED`**, `reviewed_by = userId`, `reviewed_at = now()`.
     5. **Cộng chênh lệch vào số dư quỹ (không ghi đè):**
         - Cập nhật số dư bằng câu UPDATE nguyên tử:
@@ -959,7 +981,7 @@ Hiển thị thẻ tổng quan ở màn hình chính của nhóm:
     "period": "2026-09",
     "fund": {
       "id": "w1000000-0000-0000-0000-000000000001",
-      "held_by_user_id": "u1000000-0000-0000-0000-000000000001",
+      "keepper_id": "u1000000-0000-0000-0000-000000000001",
       "current_balance": 2300000
     },
     "total_expense": 600000,
@@ -980,10 +1002,10 @@ Chỉ tính các khoản **`CONFIRMED`, chưa xoá**. Chi tiết ở [pipeline.m
 
 **Response đổi theo cờ tính thừa thiếu** (`is_settlement_enabled`, [rule.md](rule.md) mục 3.1):
 
-| Cờ                            | Mỗi thành viên có                                                                                                                                | Cấp nhóm có                                           |
-|:------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------|
-| **Bật**                       | `total_paid_out_of_pocket`, `total_refunded`, `total_share_amount`, `net_balance`, `needed_contribution` | `target`, `fund_balance`, `total_needed_contribution` |
-| **Tắt** — không ai cần trả ai | Cùng các trường như khi bật; ứng dụng chỉ hiển thị `net_balance` (số còn lại của mỗi người trong quỹ)   | `target`, `fund_balance`; `total_needed_contribution` là `null` |
+| Cờ                            | Mỗi thành viên có                                                                                        | Cấp nhóm có                                                     |
+|:------------------------------|:---------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------|
+| **Bật**                       | `total_paid_out_of_pocket`, `total_refunded`, `total_share_amount`, `net_balance`, `needed_contribution` | `target`, `fund_balance`, `total_needed_contribution`           |
+| **Tắt** — không ai cần trả ai | Cùng các trường như khi bật; ứng dụng chỉ hiển thị `net_balance` (số còn lại của mỗi người trong quỹ)    | `target`, `fund_balance`; `total_needed_contribution` là `null` |
 
 Không còn trường `total_contributed` và `total_withdrawn`: mỗi người chỉ có một con số là `net_balance`, số họ còn trong
 quỹ. `total_refunded` là tổng tiền quỹ đã trả lại cho người đó.
@@ -1130,7 +1152,7 @@ quỹ. `total_refunded` là tổng tiền quỹ đã trả lại cho người đ
 |    `401`    | `UNAUTHORIZED`                     | Token đăng nhập không hợp lệ hoặc đã hết hạn                                                                                                                                                          |
 |    `403`    | `FORBIDDEN_NOT_GROUP_MEMBER`       | Nhóm có thật nhưng người dùng không phải thành viên `ACTIVE` (gồm cả người đang `PENDING` và người đã rời nhóm). **Cố ý trả 403, không trả 404** — ngoại lệ đã chốt, xem [rule.md](rule.md) quy tắc 8 |
 |    `403`    | `FORBIDDEN_OWNER_REQUIRED`         | Thao tác chỉ dành cho Chủ nhóm (`OWNER`)                                                                                                                                                              |
-|    `403`    | `FORBIDDEN_TREASURER_REQUIRED`     | Kiểm kê, ghi hoặc sửa khoản quỹ trả lại tiền (`REFUND`), xác nhận hoặc từ chối giao dịch — chỉ thủ quỹ hoặc Chủ nhóm                                                                                       |
+|    `403`    | `FORBIDDEN_TREASURER_REQUIRED`     | Kiểm kê, ghi hoặc sửa khoản quỹ trả lại tiền (`REFUND`), xác nhận hoặc từ chối giao dịch — chỉ thủ quỹ hoặc Chủ nhóm                                                                                  |
 |    `403`    | `FORBIDDEN_TRANSACTION_EDIT`       | Sửa giao dịch không phải do mình ghi, và không phải Chủ nhóm                                                                                                                                          |
 |    `404`    | `GROUP_NOT_FOUND`                  | Nhóm không tồn tại hoặc người dùng không có quyền xem                                                                                                                                                 |
 |    `404`    | `INVITE_CODE_INVALID`              | Mã mời không đúng hoặc nhóm đã đóng (bị xóa)                                                                                                                                                          |

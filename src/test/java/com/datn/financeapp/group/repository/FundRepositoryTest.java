@@ -91,7 +91,7 @@ class FundRepositoryTest {
         testFund = fundRepository.save(Fund.builder()
                 .id(UUID.randomUUID())
                 .groupId(testGroup.getId())
-                .heldByUserId(testUser.getId())
+                .keepperId(testUser.getId())
                 .currentBalance(200_000L)
                 .createdAt(Instant.now())
                 .build());

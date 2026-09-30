@@ -5,11 +5,12 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
-import com.datn.financeapp.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
+import com.datn.financeapp.group.entity.Fund;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
@@ -18,7 +19,6 @@ import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.mapper.GroupMapper;
 import com.datn.financeapp.group.repository.GroupRepository;
-import com.datn.financeapp.group.service.FundService;
 import com.datn.financeapp.group.service.GTransactionService;
 import com.datn.financeapp.group.service.GroupService;
 import com.datn.financeapp.group.service.MemberService;
@@ -43,7 +43,6 @@ public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepository;
     private final GTransactionService gTransactionService;
     private final MemberService memberService;
-    private final FundService fundService;
     private final GroupPermissionValidator permissionValidator;
     private final GroupMapper groupMapper;
     private final FundMapper fundMapper;
@@ -53,15 +52,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupDetailRes findNotDeletedById(UUID groupId) {
-        Group group = groupRepository.findNotDeletedWithFundById(groupId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-
-        GroupFundRes fundRes = (group.getFund() != null)
-                ? fundMapper.toResponse(group.getFund())
-                : null;
-        List<MemberRes> members = memberService.findMembers(groupId);
-
-        return groupMapper.toDetailResponse(group, null, fundRes, members);
+        return null;
     }
 
     @Override
@@ -77,25 +68,45 @@ public class GroupServiceImpl implements GroupService {
         Instant now = Instant.now();
         UUID groupId = UUID.randomUUID();
 
-        // 1. Lưu thông tin Nhóm
         Group group = groupMapper.toEntity(req, groupId, generateUniqueInviteCode(inviteCodeLength), now);
+        var fund = Fund.builder()
+                .id(UUID.randomUUID())
+                .groupId(groupId)
+                .keepperId(operatorId)
+                .currentBalance(0L)
+                .createdAt(now)
+                .build();
+        group.setFund(fund);
+
         group = groupRepository.save(group);
 
-        // 2. Tạo Quỹ cho nhóm qua Service chuyên trách (Đảm bảo lưu đúng vào DB và nhận về DTO chuẩn)
-        var fundRes = fundService.addFund(groupId, operatorId, now);
+        var own = memberService.create(
+                new MemberCreateReq(
+                        groupId,
+                        operatorId,
+                        MemberRole.OWNER,
+                        MemberStatus.ACTIVE
+                )
+        ).orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR));
 
-        // 3. Thêm chủ nhóm (OWNER)
-        var own = memberService.addOwner(operatorId, groupId, now);
-
-        // 4. Lọc bỏ operatorId của OWNER khỏi danh sách mời (tránh trùng)
         List<UUID> memberIds = req.members().stream()
                 .filter(id -> id != null && !id.equals(operatorId))
                 .distinct()
                 .toList();
 
-        var members = memberService.addMembers(operatorId, groupId, new MemberAddReq(memberIds, MemberStatus.ACTIVE, MemberRole.MEMBER, now));
+        List<MemberCreateReq> memberCreateReqs = new ArrayList<>();
+        for (UUID memberId : memberIds) {
+            MemberCreateReq mem = new MemberCreateReq(
+                    memberId,
+                    groupId,
+                    MemberRole.MEMBER,
+                    MemberStatus.ACTIVE
+            );
+            memberCreateReqs.add(mem);
+        }
 
-        // 5. Ghép OWNER lên đầu danh sách thành viên trả về
+        var members = memberService.creates(memberCreateReqs);
+
         List<MemberRes> allMembers = new ArrayList<>();
         allMembers.add(own);
         allMembers.addAll(members);
@@ -103,7 +114,7 @@ public class GroupServiceImpl implements GroupService {
         return groupMapper.toDetailResponse(
                 group,
                 MemberRole.OWNER,
-                fundRes,
+                fundMapper.toResponse(fund),
                 allMembers
         );
     }
@@ -207,8 +218,6 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void joinByCode(UUID operatorId, GroupJoinReq req) {
 
-        Instant now = null;
-
         Group group = groupRepository.findByInviteCodeAndStatusNot(req.inviteCode().trim(), GroupStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVITE_CODE_INVALID));
 
@@ -218,16 +227,16 @@ public class GroupServiceImpl implements GroupService {
 
         MemberStatus status = MemberStatus.PENDING;
 
-        if (Boolean.TRUE.equals(group.getIsSettlementEnabled())) {
+        if (Boolean.TRUE.equals(group.getIsSettlementEnabled()))
             status = MemberStatus.ACTIVE;
-            now = Instant.now();
-        }
 
-        memberService.addMember(
-                operatorId,
-                group.getId(),
-                status,
-                now
+        memberService.create(
+                new MemberCreateReq(
+                        group.getId(),
+                        operatorId,
+                        MemberRole.MEMBER,
+                        status
+                )
         );
 
         log.info("Join group {} with status {}", group.getId(), status);
@@ -237,9 +246,9 @@ public class GroupServiceImpl implements GroupService {
     private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId, MemberRole role) {
         List<MemberRes> members;
         if (role == MemberRole.MEMBER)
-            members = memberService.findMembers(group.getId(), MemberStatus.ACTIVE);
+            members = memberService.getActivateMembers(group.getId());
         else
-            members = memberService.findMembers(group.getId());
+            members = memberService.getMembersWithStatusIn(group.getId(), List.of(MemberStatus.PENDING, MemberStatus.ACTIVE));
 
         MemberRes currentMember = members.stream()
                 .filter(m -> m.userId().equals(operatorId))

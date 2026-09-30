@@ -26,7 +26,7 @@ import java.util.UUID;
  * @param isSettlementEnabled Trạng thái nhóm đã bật tính năng quyết toán hay chưa
  * @param memberStatus        Trạng thái thành viên trong nhóm ({@link MemberStatus})
  * @param memberRole          Vai trò của thành viên trong nhóm ({@link MemberRole})
- * @param fundHeldByUserId    ID của thành viên đang chịu trách nhiệm giữ quỹ nhóm (Thủ quỹ), có thể null
+ * @param keepperId            ID của thành viên đang chịu trách nhiệm giữ quỹ nhóm (Thủ quỹ), có thể null
  */
 public record MemberAuthInfo(
         UUID groupId,
@@ -35,7 +35,7 @@ public record MemberAuthInfo(
         Boolean isSettlementEnabled,
         MemberStatus memberStatus,
         MemberRole memberRole,
-        UUID fundHeldByUserId
+        UUID keepperId
 ) {
     /**
      * Constructor thuận tiện khi nhóm chưa xác định hoặc không chỉ định người giữ quỹ.
@@ -70,9 +70,9 @@ public record MemberAuthInfo(
     /**
      * Kiểm tra xem thành viên hiện tại có đang nắm giữ quỹ nhóm (Thủ quỹ) hay không.
      *
-     * @return {@code true} nếu {@code myId} khớp với {@code fundHeldByUserId}, ngược lại {@code false}
+     * @return {@code true} nếu {@code myId} khớp với {@code keepperId}, ngược lại {@code false}
      */
     public boolean isTreasurer() {
-        return fundHeldByUserId != null && fundHeldByUserId.equals(myId);
+        return keepperId != null && keepperId.equals(myId);
     }
 }

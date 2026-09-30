@@ -2,6 +2,7 @@ package com.datn.financeapp.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.MemberRole;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -28,11 +30,49 @@ import java.util.UUID;
 @Transactional
 public class MemberBehavierServiceImpl implements MemberBehavierService {
 
+    // trạng thái hiển thị mặc định khi không lọc, bỏ qua LEFT và REMOVED
+    private static final List<MemberStatus> VISIBLE_STATUSES = List.of(MemberStatus.ACTIVE, MemberStatus.PENDING);
+
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final GroupPermissionValidator permissionValidator;
     private final ApplicationEventPublisher applicationEventPublisher;
 
+    @Override
+    @Transactional
+    public List<MemberRes> ownerAddMembers(UUID operatorId, UUID groupId, MemberAddReq req) {
+
+        List<UUID> memberIds = req.memberIds().stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (memberIds.isEmpty())
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+
+        // operatorId null là tự vào nhóm, còn lại phải là chủ nhóm
+        if (operatorId != null)
+            permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+
+        //không cho thêm đã active hoặc pending
+        assertNoneInGroup(groupId, memberIds);
+
+        // danh sách member được thêm luôn là member và activate
+        List<Member> members = memberIds.stream()
+                .map(uid -> buildMember(groupId, uid))
+                .toList();
+
+        log.info("thêm {} thành viên vào nhóm {}", members.size(), groupId);
+
+        return toResponses(memberRepository.saveAll(members));
+    }
+
+
+    @Override
+    @Transactional
+    public MemberRes ownerAddMember(UUID memberId, UUID groupId) {
+        return ownerAddMembers(null, groupId, new MemberAddReq(List.of(memberId))).get(0);
+    }
 
     @Override
     public void leave(UUID operatorId, UUID groupId) {
@@ -165,5 +205,33 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
                 });
     }
 
+    // chặn người đã ACTIVE hoặc đang PENDING
+    private void assertNoneInGroup(UUID groupId, List<UUID> userIds) {
+        memberRepository.findByGroupIdAndUserIdInAndStatusIn(groupId, userIds, VISIBLE_STATUSES)
+                .stream()
+                .findFirst()
+                .ifPresent(m -> {
+                    throw new BusinessException(m.getStatus() == MemberStatus.PENDING
+                            ? ErrorCode.PENDING_IN_GROUP
+                            : ErrorCode.ALREADY_IN_GROUP);
+                });
+    }
+
+    private Member buildMember(UUID groupId, UUID userId) {
+        return Member.builder()
+                .id(UUID.randomUUID())
+                .groupId(groupId)
+                .userId(userId)
+                .role(MemberRole.MEMBER)
+                .status(MemberStatus.ACTIVE)
+                .joinedAt(Instant.now())
+                .build();
+    }
+
+    private List<MemberRes> toResponses(List<Member> members) {
+        return members.stream()
+                .map(memberMapper::toResponse)
+                .toList();
+    }
 
 }

@@ -149,7 +149,7 @@ Trong **một** transaction CSDL:
 
 1. Tạo `groups`, sinh `invite_code` (không thời hạn). `target` không nhập thì để `NULL`.
 2. Tạo `group_members` cho người tạo: `role = OWNER`, `status = ACTIVE`, `joined_at = now()`.
-3. Tạo **quỹ duy nhất** của nhóm trong `group_funds`, `held_by_user_id` = người tạo; số dư bắt đầu từ **0**.
+3. Tạo **quỹ duy nhất** của nhóm trong `group_funds`, `keepper_id` = người tạo; số dư bắt đầu từ **0**.
 
 Quỹ đã có sẵn tiền thì sau khi tạo nhóm, ghi mỗi người đã đưa tiền một khoản **góp quỹ** (mục 8). Không ghi thành số dư ban đầu, vì số đó không thuộc phần của ai: tổng phần lệch số dư quỹ ngay từ đầu, và khi bật tính thừa thiếu thì không trả lại được cho ai.
 
