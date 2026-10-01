@@ -7,6 +7,7 @@ import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.group.GroupPendingCountRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.service.GroupService;
 import jakarta.validation.Valid;
@@ -66,6 +67,12 @@ public class GroupController {
         UUID userId = SecurityContextUtil.currentUserId();
         groupService.joinByCode(userId, req);
         return ApiResponse.of(null);
+    }
+
+    @GetMapping("/{id}/pending-count")
+    public ApiResponse<GroupPendingCountRes> pendingCount(@PathVariable UUID id) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(groupService.pendingCount(userId, id));
     }
 
     @PostMapping("/{id}/archive")

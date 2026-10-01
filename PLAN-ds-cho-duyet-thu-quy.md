@@ -85,17 +85,40 @@ public record MemberRes(UUID id, UUID userId, MemberRole role, MemberStatus stat
 
 Mặc định `status` bỏ trống → trả `ACTIVE + PENDING` (owner) / `ACTIVE` (member), giống `buildGroupDetailRes`.
 
-## 4. Câu hỏi cần bạn quyết
+## 4. Đã chốt (theo trả lời của bạn)
 
-1. **"Danh sách chờ duyệt" là gì?** (a) thành viên xin vào nhóm, (b) giao dịch `PENDING`, hay (c) cả hai? Plan trên mới
-   làm (a); (b) đã lọc được bằng `?status=PENDING`, nếu cần thêm thì tôi bổ sung endpoint đếm/badge.
-2. **"Chưa có đổi thủ quỹ"** — ý bạn là *API chưa có* (thực tế đã có `PUT /fund-kepper`, có thể bạn chưa thấy vì tên
-   viết sai chính tả `kepper`), hay *chưa dùng được* (thiếu kiểm tra, thiếu hiển thị)? Muốn tôi **đổi tên** URL thành
-   `/fund-keeper` / `PATCH /fund` theo doc không? (đổi URL là đổi API contract nên cần bạn đồng ý).
-3. `MemberRes` có cần thêm **tên + email** của thành viên không? Hiện chỉ có `userId`; làm vậy phải gọi sang
-   `UserService` (đúng quy tắc 2.2, không import repository của `user`) — tốn thêm một lượt truy vấn.
-4. Sau khi làm xong, bạn có muốn tôi chạy test nhóm liên quan (`MemberBehavier*`, `FundServiceImpl*`) không?
+| # | Quyết định |
+|---|---|
+| 1 | Làm **cả hai**: danh sách thành viên chờ duyệt **và** danh sách giao dịch chờ duyệt |
+| 2 | Hiển thị thủ quỹ ở danh sách member — cách làm ở mục 5 (không khó) |
+| 3 | `MemberRes` thêm **tên hiển thị**, lấy bằng `ProfileService.getDisplayNames(...)` (đã có sẵn, 1 query cho cả danh sách) |
+| 4 | Tôi **không chạy test**, bạn tự chạy |
+
+Còn **chưa chốt**: có đổi tên URL `fund-kepper` → `fund-keeper` không? Plan này mặc định **giữ nguyên** (không đụng API contract).
+
+## 5. Hiển thị thủ quỹ ở danh sách member — làm thế nào
+
+Thủ quỹ không nằm trong bảng `group_members` mà nằm ở `group_funds.keepper_id`. Nên chỉ cần **so sánh `userId` của từng member với `keepperId`** lúc dựng response:
+
+```java
+// GroupServiceImpl.buildGroupDetailRes: đã có sẵn group.getFund() nên không tốn query
+UUID keeperId = group.getFund() != null ? group.getFund().getKeepperId() : null;
+Map<UUID, String> names = profileService.getDisplayNames(members.stream().map(MemberRes::userId).toList());
+List<MemberRes> enriched = members.stream()
+        .map(m -> m.withDisplay(names.get(m.userId()), m.userId().equals(keeperId)))
+        .toList();
+```
+
+`MemberRes` thêm 2 trường: `displayName` (String), `isTreasurer` (boolean). Dùng cho **cả** `GET /groups/{id}` lẫn `GET /groups/{id}/members`. Riêng `GET /members` cần lấy `Fund` qua `FundService` (thêm `getKeeperId(groupId)`), vì không có sẵn `group`.
+
+## 6. Bổ sung phần giao dịch chờ duyệt (câu 1b)
+
+- `GroupTransactionController`: thêm `GET /groups/{groupId}/transactions/pending` — chỉ **thủ quỹ / OWNER** xem được (cùng quyền với confirm/reject), trả `GroupTransactionListRes` đã lọc `status = PENDING`, có phân trang `page`, `size`.
+- Thêm `GET /groups/{groupId}/transactions/pending-count` → `{ "pending_transactions": n, "pending_members": m }` để FE hiện badge (member count chỉ trả cho OWNER, người khác trả 0).
+- Tái sử dụng `gTransactionService.list` với filter `status = PENDING`, và `countPendingForGroup` đã có — không thêm query.
+
+File thêm vào danh sách ở mục 1: `GroupTransactionController`, `GTransactionService`/`GTransactionServiceImpl` (hàm `listPending`, `countPending`), `FundService` (`getKeeperId`), `MemberRes` + hai mapper, `group-test.html/js` (hai khối danh sách + badge).
 
 ---
-**Bạn comment ở đây / bấm process:**
+**Bạn comment ở đây / bấm process (viết chữ `process` bên dưới để tôi bắt đầu code):**
 

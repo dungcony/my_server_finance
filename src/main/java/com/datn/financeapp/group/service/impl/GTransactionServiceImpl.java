@@ -122,20 +122,18 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // xác thực người thực hiện và lấy thông tin quyền hạn
         permissionValidator.getAuthInfo(groupId, operatorId);
 
-        Page<GTransaction> txnPage = getPage(groupId, filter);
+        return buildListRes(groupId, filter);
+    }
 
-        List<GroupTransactionDetailRes> items = txnPage.getContent()
-                .stream()
-                .map(transactionHelper::buildDetailRes)
-                .toList();
+    @Override
+    @Transactional(readOnly = true)
+    public GroupTransactionListRes listPending(UUID operatorId, UUID groupId, Integer page, Integer size) {
+        requireReviewer(groupId, operatorId);
 
-        PageMeta meta = new PageMeta(
-                filter.getPageNumber(),
-                filter.getPageSize(),
-                txnPage.getTotalElements(),
-                txnPage.getTotalPages());
+        GroupTransactionFilterReq filter = new GroupTransactionFilterReq(
+                null, null, TransactionStatus.PENDING, null, null, null, null, null, page, size);
 
-        return GroupTransactionListRes.of(items, meta);
+        return buildListRes(groupId, filter);
     }
 
     @Override
@@ -298,6 +296,23 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         if (delta != 0)
             eventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, delta));
 
+    }
+
+    private GroupTransactionListRes buildListRes(UUID groupId, GroupTransactionFilterReq filter) {
+        Page<GTransaction> txnPage = getPage(groupId, filter);
+
+        List<GroupTransactionDetailRes> items = txnPage.getContent()
+                .stream()
+                .map(transactionHelper::buildDetailRes)
+                .toList();
+
+        PageMeta meta = new PageMeta(
+                filter.getPageNumber(),
+                filter.getPageSize(),
+                txnPage.getTotalElements(),
+                txnPage.getTotalPages());
+
+        return GroupTransactionListRes.of(items, meta);
     }
 
     private Page<GTransaction> getPage(UUID groupId, GroupTransactionFilterReq filter) {

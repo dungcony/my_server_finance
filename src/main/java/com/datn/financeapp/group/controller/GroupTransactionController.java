@@ -68,6 +68,15 @@ public class GroupTransactionController {
         return ApiResponse.of(gTransactionService.list(userId, groupId, filter));
     }
 
+    @GetMapping("/transactions/pending")
+    public ApiResponse<GroupTransactionListRes> listPending(
+            @PathVariable UUID groupId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(gTransactionService.listPending(userId, groupId, page, size));
+    }
+
     @GetMapping("/transactions/{txnId}")
     public ApiResponse<GroupTransactionDetailRes> detail(
             @PathVariable UUID groupId,

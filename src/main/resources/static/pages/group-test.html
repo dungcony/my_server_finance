@@ -316,6 +316,15 @@
             <div style="font-size: 13px; color: var(--text-muted);">
                 <strong>Mô tả:</strong> <span id="detailGroupDesc" style="color: var(--text);">Không có mô tả</span>
             </div>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); flex-wrap: wrap;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Việc cần xử lý:</span>
+                <span id="pendingMembersBadge" class="status-badge status-idle" style="cursor: pointer;" onclick="switchTab('tab-members'); filterMembersByStatus('PENDING');">
+                    👤 0 thành viên chờ duyệt
+                </span>
+                <span id="pendingTransactionsBadge" class="status-badge status-idle" style="cursor: pointer;" onclick="switchTab('tab-fund'); loadPendingTransactions();">
+                    ⏳ 0 giao dịch chờ duyệt
+                </span>
+            </div>
         </div>
     </div>
 
@@ -328,14 +337,22 @@
                     <span>👥 Danh Sách Thành Viên Trong Nhóm</span>
                     <span id="memberCountBadge" class="status-badge status-idle">0 thành viên</span>
                 </div>
-                <button class="btn btn-secondary" onclick="detailGroup()">Tải Lại Thành Viên</button>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <select id="memberStatusFilter" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px;" onchange="filterMembersByStatus(this.value)">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="ACTIVE">Đang hoạt động (ACTIVE)</option>
+                        <option value="PENDING">Chờ duyệt (PENDING)</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="filterMembersByStatus(document.getElementById('memberStatusFilter').value)">Lọc / Tải Lại</button>
+                </div>
             </div>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
+                            <th>Họ Tên</th>
                             <th>User ID</th>
-                            <th>Vai Trò</th>
+                            <th>Vai Trò & Chức Vụ</th>
                             <th>Trạng Thái</th>
                             <th>Ngày Tham Gia</th>
                             <th>Hành Động Nhanh</th>
@@ -343,8 +360,8 @@
                     </thead>
                     <tbody id="memberTableBody">
                         <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted);">
-                                Chưa chọn nhóm hoặc bấm "Tải Lại Thành Viên" để xem
+                            <td colspan="6" style="text-align: center; color: var(--text-muted);">
+                                Chưa chọn nhóm hoặc bấm "Lọc / Tải Lại" để xem
                             </td>
                         </tr>
                     </tbody>
@@ -395,6 +412,21 @@
             <div class="card">
                 <div class="action-box">
                     <div class="action-title">
+                        <span>Danh sách chờ duyệt</span>
+                        <span class="api-badge get">GET /members?status=PENDING</span>
+                    </div>
+                    <p id="pendingCountBadge" style="font-size: 13px; color: var(--text-muted); margin: 0 0 10px;">
+                        Bấm "Đếm chờ duyệt" để xem số việc đang chờ.
+                    </p>
+                    <div class="form-row">
+                        <button class="btn btn-secondary" onclick="listPendingMembers()">Thành viên chờ</button>
+                        <button class="btn btn-secondary" onclick="listPendingTransactions()">Giao dịch chờ</button>
+                        <button class="btn btn-secondary" onclick="loadPendingCount()">Đếm chờ duyệt</button>
+                    </div>
+                </div>
+
+                <div class="action-box">
+                    <div class="action-title">
                         <span>Duyệt / Từ chối thành viên chờ (Pending)</span>
                     </div>
                     <div class="form-group">
@@ -438,6 +470,43 @@
 
     <!-- NỘI DUNG TAB QUỸ NHÓM -->
     <div id="tab-fund" class="tab-content">
+        <!-- Bảng Giao Dịch Chờ Duyệt (Thủ quỹ / Owner duyệt) -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <span>⏳ Danh Sách Giao Dịch Chờ Duyệt</span>
+                    <span id="pendingTxnCountBadge" class="status-badge status-idle">0 giao dịch</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-success" style="padding: 4px 10px; font-size: 12px;" onclick="bulkConfirmPendingTxns()">Duyệt Tất Cả</button>
+                    <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="bulkRejectPendingTxns()">Từ Chối Tất Cả</button>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="loadPendingTransactions()">Tải Lại</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã Giao Dịch</th>
+                            <th>Người Tạo</th>
+                            <th>Số Tiền</th>
+                            <th>Nguồn Tiền</th>
+                            <th>Mục Đích</th>
+                            <th>Ngày Tạo</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingTxnTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted);">
+                                Chưa có giao dịch chờ duyệt hoặc bấm "Tải Lại" để xem
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="grid-2">
             <!-- Đổi thủ quỹ -->
             <div class="card">

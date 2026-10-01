@@ -31,6 +31,8 @@ import java.util.UUID;
  * GroupTransactionDetailRes (tùy hàm).</li>
  * <li>{@link #list}: Lấy danh sách giao dịch. Input: operatorId, groupId,
  * filter. Output: List&lt;GroupTransactionDetailRes&gt;.</li>
+ * <li>{@link #listPending}: Lấy giao dịch chờ duyệt. Input: operatorId, groupId, page, size. Output:
+ * GroupTransactionListRes.</li>
  * <li>{@link #detail}: Lấy chi tiết. Input: operatorId, groupId, transactionId.
  * Output: GroupTransactionDetailRes.</li>
  * operatorId, treasurerUserId, type, amount, note, excludedUserIds, occurredAt.
@@ -53,6 +55,19 @@ public interface GTransactionService {
      * @return Danh sách giao dịch thỏa mãn điều kiện kèm metadata phân trang
      */
     GroupTransactionListRes list(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter);
+
+    /**
+     * Danh sách giao dịch đang chờ duyệt ({@code PENDING}) của nhóm, dành cho người duyệt.
+     *
+     * @param operatorId ID người gọi (phải là Owner hoặc Thủ quỹ)
+     * @param groupId    ID nhóm
+     * @param page       trang (bắt đầu từ 1), có thể null
+     * @param size       số dòng mỗi trang, có thể null
+     * @return giao dịch chờ duyệt kèm metadata phân trang
+     * @throws com.datn.financeapp.common.exception.BusinessException nếu không phải Owner/Thủ quỹ
+     *                                                               ({@code FORBIDDEN_TREASURER_REQUIRED})
+     */
+    GroupTransactionListRes listPending(UUID operatorId, UUID groupId, Integer page, Integer size);
 
     /**
      * Xem thông tin chi tiết của một giao dịch cụ thể kèm danh sách phân bổ chi

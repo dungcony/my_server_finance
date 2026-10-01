@@ -90,6 +90,11 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    public long countPendingMembers(UUID groupId) {
+        return memberRepository.countByGroupIdAndStatus(groupId, MemberStatus.PENDING);
+    }
+
+    @Override
     public MemberRes getMember(UUID groupId, UUID memberId, MemberStatus status) {
 
         if (status == null)

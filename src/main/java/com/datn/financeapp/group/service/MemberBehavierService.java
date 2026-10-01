@@ -27,6 +27,21 @@ import java.util.UUID;
 public interface MemberBehavierService {
 
 
+    /**
+     * Danh sách thành viên của nhóm kèm tên hiển thị và cờ thủ quỹ.
+     * <p>
+     * Yêu cầu: người gọi là thành viên {@code ACTIVE}. Lọc {@code PENDING} chỉ dành cho Trưởng nhóm.
+     * Bỏ trống {@code status}: Trưởng nhóm thấy {@code ACTIVE} + {@code PENDING}, thành viên thường chỉ thấy
+     * {@code ACTIVE}.
+     * </p>
+     *
+     * @param operatorId ID người gọi
+     * @param groupId    ID nhóm
+     * @param status     trạng thái cần lọc, có thể null
+     * @throws BusinessException nếu lọc {@code PENDING} mà không phải Owner ({@code FORBIDDEN_OWNER_REQUIRED})
+     */
+    List<MemberRes> listMembers(UUID operatorId, UUID groupId, MemberStatus status);
+
     MemberRes ownerAddMember(UUID memberId, UUID groupId);
 
     List<MemberRes> ownerAddMembers(UUID operatorId, UUID groupId, MemberAddReq req);

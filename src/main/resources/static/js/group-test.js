@@ -388,10 +388,12 @@ async function detailGroup() {
     const res = await callApi(`/v1/groups/${groupId}`, 'GET');
     if (res.ok && res.data && res.data.data) {
         renderGroupDetail(res.data.data);
+        loadPendingCount(groupId);
+        loadPendingTransactions();
     }
 }
 
-// Hiển thị chi tiết nhóm và danh sách thành viên lên giao diện
+// Hiển thị chi tiết nhóm lên giao diện
 function renderGroupDetail(group) {
     if (!group) return;
 
@@ -451,60 +453,260 @@ function renderGroupDetail(group) {
     if (updateSettlement) updateSettlement.checked = group.is_settlement_enabled ?? group.isSettlementEnabled ?? true;
 
     // Hiển thị danh sách thành viên vào bảng ở tab Thành viên
-    const members = group.members || [];
+    renderMemberList(group.members || []);
+}
+
+// Hiển thị danh sách thành viên lên bảng
+function renderMemberList(members) {
     const countBadge = document.getElementById('memberCountBadge');
     if (countBadge) countBadge.innerText = `${members.length} thành viên`;
 
     const memberTbody = document.getElementById('memberTableBody');
-    if (memberTbody) {
-        memberTbody.innerHTML = '';
-        if (members.length === 0) {
-            memberTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Nhóm chưa có thành viên nào</td></tr>';
-            return;
+    if (!memberTbody) return;
+
+    memberTbody.innerHTML = '';
+    if (members.length === 0) {
+        memberTbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Không có thành viên nào phù hợp</td></tr>';
+        return;
+    }
+
+    members.forEach(m => {
+        const userId = m.user_id || m.userId || '';
+        const role = m.role || 'MEMBER';
+        const status = m.status || 'ACTIVE';
+        const rawDate = m.joined_at || m.joinedAt;
+        const joinedText = rawDate ? new Date(rawDate).toLocaleString('vi-VN') : '-';
+        const displayName = m.display_name || m.displayName || '';
+        const isTreasurer = m.is_treasurer ?? m.isTreasurer ?? false;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <div style="font-weight: 600; color: #0f172a;">${displayName || '<i>(Chưa đặt tên)</i>'}</div>
+            </td>
+            <td>
+                <code style="font-weight: 600;">${userId}</code>
+                <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px; margin-left: 4px;" onclick="copyText('${userId}')">Copy</button>
+            </td>
+            <td>
+                <span class="status-badge ${role === 'OWNER' ? 'status-warning' : 'status-idle'}">${role}</span>
+                ${isTreasurer ? '<span class="status-badge status-warning" style="margin-left: 4px;">💰 Thủ Quỹ</span>' : ''}
+            </td>
+            <td>
+                <span class="status-badge ${status === 'ACTIVE' ? 'status-success' : 'status-error'}">${status}</span>
+            </td>
+            <td>${joinedText}</td>
+            <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="fillMemberUserId('${userId}')">
+                    Điền ID
+                </button>
+                ${status === 'PENDING' ? `
+                    <button class="btn btn-success" style="padding: 3px 8px; font-size: 11px;" onclick="quickApproveMember('${userId}')">
+                        Duyệt
+                    </button>
+                    <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="quickRejectMember('${userId}')">
+                        Từ Chối
+                    </button>
+                ` : ''}
+                ${status === 'ACTIVE' && role !== 'OWNER' ? `
+                    <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="quickRemoveMember('${userId}')">
+                        Kick
+                    </button>
+                ` : ''}
+                ${status === 'ACTIVE' && !isTreasurer ? `
+                    <button class="btn btn-warning" style="padding: 3px 8px; font-size: 11px;" onclick="selectMemberAsTreasurer('${userId}')">
+                        Đặt Thủ Quỹ
+                    </button>
+                ` : ''}
+            </td>
+        `;
+        memberTbody.appendChild(tr);
+    });
+}
+
+// Lọc danh sách thành viên theo trạng thái
+async function filterMembersByStatus(status) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    if (!status) {
+        detailGroup();
+        return;
+    }
+
+    const res = await callApi(`/v1/groups/${groupId}/members?status=${status}`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        renderMemberList(res.data.data);
+    }
+}
+
+// Đếm số việc đang chờ duyệt để hiện badge
+async function loadPendingCount(groupId) {
+    if (!groupId) {
+        groupId = getCurrentGroupId();
+        if (!groupId) return;
+    }
+    const res = await callApi(`/v1/groups/${groupId}/pending-count`);
+    if (res.ok && res.data && res.data.data) {
+        const d = res.data.data;
+        const pendingMembers = d.pending_members ?? 0;
+        const pendingTxns = d.pending_transactions ?? 0;
+
+        const mBadge = document.getElementById('pendingMembersBadge');
+        if (mBadge) {
+            mBadge.innerText = `👤 ${pendingMembers} thành viên chờ duyệt`;
+            mBadge.className = pendingMembers > 0 ? 'status-badge status-warning' : 'status-badge status-idle';
         }
 
-        members.forEach(m => {
-            const userId = m.user_id || m.userId || '';
-            const role = m.role || 'MEMBER';
-            const status = m.status || 'ACTIVE';
-            const rawDate = m.joined_at || m.joinedAt;
-            const joinedText = rawDate ? new Date(rawDate).toLocaleString('vi-VN') : '-';
+        const tBadge = document.getElementById('pendingTransactionsBadge');
+        if (tBadge) {
+            tBadge.innerText = `⏳ ${pendingTxns} giao dịch chờ duyệt`;
+            tBadge.className = pendingTxns > 0 ? 'status-badge status-warning' : 'status-badge status-idle';
+        }
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <code style="font-weight: 600;">${userId}</code>
-                    <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px; margin-left: 6px;" onclick="copyText('${userId}')">Copy</button>
-                </td>
-                <td>
-                    <span class="status-badge ${role === 'OWNER' ? 'status-warning' : 'status-idle'}">${role}</span>
-                </td>
-                <td>
-                    <span class="status-badge ${status === 'ACTIVE' ? 'status-success' : 'status-error'}">${status}</span>
-                </td>
-                <td>${joinedText}</td>
-                <td style="display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="fillMemberUserId('${userId}')">
-                        Điền ID
-                    </button>
-                    ${status === 'PENDING' ? `
-                        <button class="btn btn-success" style="padding: 3px 8px; font-size: 11px;" onclick="quickApproveMember('${userId}')">
-                            Duyệt
-                        </button>
-                        <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="quickRejectMember('${userId}')">
-                            Từ Chối
-                        </button>
-                    ` : ''}
-                    ${status === 'ACTIVE' && role !== 'OWNER' ? `
-                        <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="quickRemoveMember('${userId}')">
-                            Kick
-                        </button>
-                    ` : ''}
-                </td>
-            `;
-            memberTbody.appendChild(tr);
-        });
+        const cBadge = document.getElementById('pendingTxnCountBadge');
+        if (cBadge) {
+            cBadge.innerText = `${pendingTxns} giao dịch`;
+            cBadge.className = pendingTxns > 0 ? 'status-badge status-warning' : 'status-badge status-idle';
+        }
     }
+}
+
+// Lấy danh sách giao dịch đang chờ duyệt
+async function loadPendingTransactions() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/pending?page=1&size=50`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        const listData = res.data.data.items || res.data.data || [];
+        renderPendingTransactions(listData);
+    }
+}
+
+// Hiển thị danh sách giao dịch chờ duyệt lên bảng
+function renderPendingTransactions(items) {
+    const tbody = document.getElementById('pendingTxnTableBody');
+    const badge = document.getElementById('pendingTxnCountBadge');
+    if (badge) {
+        badge.innerText = `${items.length} giao dịch`;
+        badge.className = items.length > 0 ? 'status-badge status-warning' : 'status-badge status-idle';
+    }
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    if (!Array.isArray(items) || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Không có giao dịch nào đang chờ duyệt</td></tr>';
+        return;
+    }
+
+    items.forEach(tx => {
+        const txnId = tx.id || '';
+        const transactor = tx.transactor_name || tx.transactor_id || '-';
+        const amount = Number(tx.amount || 0).toLocaleString('vi-VN') + ' đ';
+        const moneySource = tx.money_source || '-';
+        const desc = tx.description || '-';
+        const createdAt = tx.created_at ? new Date(tx.created_at).toLocaleString('vi-VN') : '-';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><code>${txnId}</code></td>
+            <td><strong>${transactor}</strong></td>
+            <td style="font-weight: 600; color: var(--primary);">${amount}</td>
+            <td><span class="status-badge status-idle">${moneySource}</span></td>
+            <td>${desc}</td>
+            <td>${createdAt}</td>
+            <td style="display: flex; gap: 6px;">
+                <button class="btn btn-success" style="padding: 3px 8px; font-size: 11px;" onclick="confirmPendingTxn('${txnId}')">
+                    Duyệt
+                </button>
+                <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="rejectPendingTxn('${txnId}')">
+                    Từ Chối
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Duyệt từng giao dịch chờ duyệt
+async function confirmPendingTxn(txnId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/${txnId}/confirm`, 'POST');
+    if (res.ok) {
+        loadPendingTransactions();
+        loadPendingCount(groupId);
+        detailGroup();
+    }
+}
+
+// Từ chối từng giao dịch chờ duyệt
+async function rejectPendingTxn(txnId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/${txnId}/reject`, 'POST');
+    if (res.ok) {
+        loadPendingTransactions();
+        loadPendingCount(groupId);
+        detailGroup();
+    }
+}
+
+// Duyệt tất cả giao dịch chờ duyệt
+async function bulkConfirmPendingTxns() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/pending?page=1&size=50`, 'GET');
+    if (!res.ok || !res.data || !res.data.data) return;
+
+    const items = res.data.data.items || res.data.data || [];
+    const txnIds = items.map(tx => tx.id).filter(Boolean);
+    if (txnIds.length === 0) {
+        alert('Không có giao dịch nào đang chờ duyệt!');
+        return;
+    }
+
+    const confirmRes = await callApi(`/v1/groups/${groupId}/transactions/bulk-confirm`, 'POST', { transaction_ids: txnIds });
+    if (confirmRes.ok) {
+        loadPendingTransactions();
+        loadPendingCount(groupId);
+        detailGroup();
+    }
+}
+
+// Từ chối tất cả giao dịch chờ duyệt
+async function bulkRejectPendingTxns() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/pending?page=1&size=50`, 'GET');
+    if (!res.ok || !res.data || !res.data.data) return;
+
+    const items = res.data.data.items || res.data.data || [];
+    const txnIds = items.map(tx => tx.id).filter(Boolean);
+    if (txnIds.length === 0) {
+        alert('Không có giao dịch nào đang chờ duyệt!');
+        return;
+    }
+
+    const rejectRes = await callApi(`/v1/groups/${groupId}/transactions/bulk-reject`, 'POST', { transaction_ids: txnIds });
+    if (rejectRes.ok) {
+        loadPendingTransactions();
+        loadPendingCount(groupId);
+        detailGroup();
+    }
+}
+
+// Chọn thành viên làm thủ quỹ
+function selectMemberAsTreasurer(userId) {
+    const input = document.getElementById('newKeepperUserId');
+    if (input) input.value = userId;
+    switchTab('tab-fund');
+    alert(`Đã điền User ID: ${userId} vào ô Thủ Quỹ. Bấm "Cập Nhật Thủ Quỹ" để xác nhận.`);
 }
 
 // Sao chép mã mời
@@ -546,6 +748,7 @@ async function quickApproveMember(memberUserId) {
     const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}/approve`, 'POST');
     if (res.ok) {
         detailGroup();
+        loadPendingCount(groupId);
     }
 }
 
@@ -556,6 +759,7 @@ async function quickRejectMember(memberUserId) {
     const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}/reject`, 'POST');
     if (res.ok) {
         detailGroup();
+        loadPendingCount(groupId);
     }
 }
 
@@ -786,7 +990,10 @@ async function updateFundKeepper() {
         keepper_id: newKeepperId
     };
 
-    await callApi(`/v1/groups/${groupId}/fund-kepper`, 'PUT', payload);
+    const res = await callApi(`/v1/groups/${groupId}/fund-kepper`, 'PUT', payload);
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Kiểm kê và đối soát số dư quỹ

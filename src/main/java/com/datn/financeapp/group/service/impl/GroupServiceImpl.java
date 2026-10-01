@@ -8,6 +8,7 @@ import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.group.GroupPendingCountRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.Group;
@@ -15,6 +16,7 @@ import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.helper.MemberViewEnricher;
 import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.mapper.GroupMapper;
 import com.datn.financeapp.group.repository.GroupRepository;
@@ -48,6 +50,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupPermissionValidator permissionValidator;
     private final GroupMapper groupMapper;
     private final FundMapper fundMapper;
+    private final MemberViewEnricher memberViewEnricher;
 
 
     private static final int inviteCodeLength = 8;
@@ -106,6 +109,7 @@ public class GroupServiceImpl implements GroupService {
         List<MemberRes> allMembers = new ArrayList<>();
         allMembers.add(own);
         allMembers.addAll(members);
+        allMembers = memberViewEnricher.enrich(allMembers, fund.keepperId());
 
         return groupMapper.toDetailResponse(
                 group,
@@ -246,14 +250,25 @@ public class GroupServiceImpl implements GroupService {
 
     }
 
+    @Override
+    public GroupPendingCountRes pendingCount(UUID operatorId, UUID groupId) {
+        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId);
+
+        // chỉ người có quyền duyệt mới thấy số việc đang chờ
+        long pendingTransactions = (info.isOwner() || info.isTreasurer())
+                ? gTransactionService.countPendingForGroup(groupId)
+                : 0L;
+        long pendingMembers = info.isOwner()
+                ? memberService.countPendingMembers(groupId)
+                : 0L;
+
+        return new GroupPendingCountRes(pendingTransactions, pendingMembers);
+    }
+
     //----------------------------------------PRIVATE------------------------------------------//
 
     private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId, MemberRole role) {
-        List<MemberRes> members;
-        if (role == MemberRole.MEMBER)
-            members = memberService.getActivateMembers(group.getId());
-        else
-            members = memberService.getMembersWithStatusIn(group.getId(), List.of(MemberStatus.PENDING, MemberStatus.ACTIVE));
+        List<MemberRes> members = memberService.getActivateMembers(group.getId());
 
         MemberRes currentMember = members.stream()
                 .filter(m -> m.userId().equals(operatorId))
@@ -263,6 +278,9 @@ public class GroupServiceImpl implements GroupService {
         FundRes fund = (group.getFund() != null)
                 ? fundMapper.toResponse(group.getFund())
                 : null;
+
+        UUID keeperId = fund != null ? fund.keepperId() : null;
+        members = memberViewEnricher.enrich(members, keeperId);
 
         return groupMapper.toDetailResponse(group, currentMember.role(), fund, members);
     }

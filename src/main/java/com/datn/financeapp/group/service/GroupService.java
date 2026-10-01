@@ -5,6 +5,7 @@ import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.group.GroupPendingCountRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 
 import java.util.List;
@@ -137,4 +138,17 @@ public interface GroupService {
      *                           hoặc đã là thành viên trong nhóm ({@code ALREADY_IN_GROUP})
      */
     void joinByCode(UUID operatorId, GroupJoinReq req);
+
+    /**
+     * Đếm số việc đang chờ duyệt để hiện badge.
+     * <p>
+     * Giao dịch {@code PENDING} chỉ trả cho Trưởng nhóm / Thủ quỹ, thành viên {@code PENDING} chỉ trả cho
+     * Trưởng nhóm; người không có quyền duyệt nhận 0 ở mục tương ứng.
+     * </p>
+     *
+     * @param operatorId ID người dùng yêu cầu (phải là thành viên {@code ACTIVE})
+     * @param groupId    ID nhóm
+     * @return số giao dịch chờ duyệt và số thành viên chờ duyệt
+     */
+    GroupPendingCountRes pendingCount(UUID operatorId, UUID groupId);
 }

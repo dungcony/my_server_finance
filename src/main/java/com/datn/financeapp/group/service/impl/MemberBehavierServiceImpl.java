@@ -8,6 +8,8 @@ import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.events.MemberLeaveEvent;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.helper.MemberViewEnricher;
 import com.datn.financeapp.group.mapper.MemberMapper;
 import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.service.MemberBehavierService;
@@ -37,6 +39,22 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     private final MemberMapper memberMapper;
     private final GroupPermissionValidator permissionValidator;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final MemberViewEnricher memberViewEnricher;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MemberRes> listMembers(UUID operatorId, UUID groupId, MemberStatus status) {
+        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId);
+
+        // người chờ duyệt chỉ chủ nhóm được xem
+        if (status == MemberStatus.PENDING && !info.isOwner())
+            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+
+        List<MemberStatus> statuses = resolveStatuses(status, info.isOwner());
+        List<MemberRes> members = toResponses(memberRepository.findAllByGroupIdAndStatusIn(groupId, statuses));
+
+        return memberViewEnricher.enrich(members, info.keepperId());
+    }
 
     @Override
     @Transactional
@@ -196,6 +214,13 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     }
 
     //-----------------------------PRIVATE------------------------------------------//
+    // không lọc thì chủ nhóm thấy cả người chờ duyệt, thành viên thường chỉ thấy người đã vào nhóm
+    private List<MemberStatus> resolveStatuses(MemberStatus status, boolean isOwner) {
+        if (status != null)
+            return List.of(status);
+        return isOwner ? VISIBLE_STATUSES : List.of(MemberStatus.ACTIVE);
+    }
+
     private MemberRes findOwner(UUID groupId) {
         return memberRepository.findByGroupIdAndRoleAndStatus(groupId, MemberRole.OWNER, MemberStatus.ACTIVE)
                 .map(memberMapper::toResponse)

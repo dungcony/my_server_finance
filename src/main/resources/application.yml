@@ -40,7 +40,7 @@ google:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiry-seconds: 3600
+  access-token-expiry-seconds: 36000
   refresh-token-expiry-days: 30
 
 rate-limit:

@@ -3,16 +3,20 @@ package com.datn.financeapp.group.controller;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
+import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.service.MemberBehavierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
  * API quản lý thành viên trong nhóm, giữ nguyên tiền tố {@code /groups/{groupId}}.
  * <ul>*
+ * <li>{@link #listMembers}: danh sách thành viên, lọc theo trạng thái (vd. {@code PENDING} để duyệt).</li>
  * <li>{@link #approveMember}: duyệt thành viên đang chờ.</li>
  * <li>{@link #removeMember}: mời thành viên ra khỏi nhóm.</li>
  * <li>{@link #leave}: người dùng hiện tại rời nhóm.</li>
@@ -25,6 +29,14 @@ public class MemberController {
 
     private final MemberBehavierService memberBehavierService;
 
+
+    @GetMapping("/members")
+    public ApiResponse<List<MemberRes>> listMembers(
+            @PathVariable UUID groupId,
+            @RequestParam(required = false) MemberStatus status) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(memberBehavierService.listMembers(userId, groupId, status));
+    }
 
     @PostMapping("/members")
     public ApiResponse<?> addMembers(

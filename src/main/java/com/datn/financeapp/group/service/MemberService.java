@@ -32,6 +32,9 @@ public interface MemberService {
 
     long countActiveMembers(UUID groupId);
 
+    // số thành viên đang chờ chủ nhóm duyệt
+    long countPendingMembers(UUID groupId);
+
     MemberRes getMember(UUID groupId, UUID memberId, MemberStatus status);
 
     List<MemberRes> getActivateMembers(UUID groupId);

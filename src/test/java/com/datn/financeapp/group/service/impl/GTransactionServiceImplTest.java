@@ -20,6 +20,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -253,6 +256,31 @@ class GTransactionServiceImplTest {
         assertThat(first.getStatus()).isEqualTo(TransactionStatus.REJECTED);
         assertThat(second.getStatus()).isEqualTo(TransactionStatus.REJECTED);
         verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Thành viên thường xem danh sách giao dịch chờ duyệt thì bị chặn FORBIDDEN_TREASURER_REQUIRED")
+    void listPending_ByNormalMember_Forbidden() {
+        assertThatThrownBy(() -> service.listPending(memberId, groupId, 1, 20))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode());
+
+        verify(transactionRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Chủ nhóm xem giao dịch chờ duyệt thì trả đúng các khoản PENDING kèm metadata phân trang")
+    void listPending_ByOwner_ReturnsPendingItems() {
+        GTransaction pending = pendingTxn(100_000L);
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(pending)));
+
+        var res = service.listPending(ownerId, groupId, 1, 20);
+
+        assertThat(res.items()).hasSize(1);
+        assertThat(res.meta().totalItems()).isEqualTo(1);
+        verify(transactionHelper).buildDetailRes(pending);
     }
 
     private List<Object> capturePublishedEvents() {

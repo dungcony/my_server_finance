@@ -4,10 +4,13 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
+import com.datn.financeapp.group.dto.response.group.GroupPendingCountRes;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.helper.MemberViewEnricher;
 import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.mapper.GroupMapper;
 import com.datn.financeapp.group.repository.GroupRepository;
@@ -59,6 +62,9 @@ class GroupServiceImplTest {
 
     @Mock
     private FundMapper fundMapper;
+
+    @Mock
+    private MemberViewEnricher memberViewEnricher;
 
     @InjectMocks
     private GroupServiceImpl groupService;
@@ -174,6 +180,55 @@ class GroupServiceImplTest {
                     .isEqualTo(ErrorCode.PENDING_IN_GROUP.getCode());
 
             verify(memberService, never()).create(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("pendingCount")
+    class PendingCountTests {
+
+        private MemberAuthInfo info(MemberRole role, UUID keeperId) {
+            return new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, role, keeperId);
+        }
+
+        @Test
+        @DisplayName("Chủ nhóm thấy cả số giao dịch lẫn số thành viên đang chờ duyệt")
+        void pendingCount_owner_seesBoth() {
+            when(permissionValidator.getAuthInfo(groupId, userId)).thenReturn(info(MemberRole.OWNER, UUID.randomUUID()));
+            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(3L);
+            when(memberService.countPendingMembers(groupId)).thenReturn(2L);
+
+            GroupPendingCountRes res = groupService.pendingCount(userId, groupId);
+
+            assertThat(res.pendingTransactions()).isEqualTo(3L);
+            assertThat(res.pendingMembers()).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("Thủ quỹ không phải chủ nhóm chỉ thấy số giao dịch, số thành viên chờ là 0")
+        void pendingCount_treasurer_seesOnlyTransactions() {
+            when(permissionValidator.getAuthInfo(groupId, userId)).thenReturn(info(MemberRole.MEMBER, userId));
+            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(3L);
+
+            GroupPendingCountRes res = groupService.pendingCount(userId, groupId);
+
+            assertThat(res.pendingTransactions()).isEqualTo(3L);
+            assertThat(res.pendingMembers()).isZero();
+            verify(memberService, never()).countPendingMembers(any());
+        }
+
+        @Test
+        @DisplayName("Thành viên thường không có quyền duyệt nên cả hai số đều là 0 và không truy vấn đếm")
+        void pendingCount_normalMember_seesZero() {
+            when(permissionValidator.getAuthInfo(groupId, userId))
+                    .thenReturn(info(MemberRole.MEMBER, UUID.randomUUID()));
+
+            GroupPendingCountRes res = groupService.pendingCount(userId, groupId);
+
+            assertThat(res.pendingTransactions()).isZero();
+            assertThat(res.pendingMembers()).isZero();
+            verify(gTransactionService, never()).countPendingForGroup(any());
+            verify(memberService, never()).countPendingMembers(any());
         }
     }
 }

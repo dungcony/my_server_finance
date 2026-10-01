@@ -11,6 +11,9 @@ import org.mapstruct.ReportingPolicy;
         unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface MemberMapper {
 
+    // tên hiển thị và cờ thủ quỹ do MemberViewEnricher gắn sau
+    @Mapping(target = "displayName", ignore = true)
+    @Mapping(target = "isTreasurer", ignore = true)
     MemberRes toResponse(Member member);
 
     @Mapping(target = "id", ignore = true)

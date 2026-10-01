@@ -65,7 +65,9 @@ public class FundServiceImpl implements FundService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
         if (req.keepperId() != null) {
-            permissionValidator.getAuthInfo(groupId, req.keepperId());
+            // thủ quỹ mới phải đang là thành viên ACTIVE, nếu không quỹ rơi vào tay người đã rời nhóm
+            if (!memberService.allMemberInGroup(groupId, List.of(req.keepperId())))
+                throw new BusinessException(ErrorCode.HOLDER_NOT_MEMBER);
             fund.setKeepperId(req.keepperId());
         }
 
