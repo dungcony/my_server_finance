@@ -60,6 +60,7 @@ public class GroupController {
         return ApiResponse.of(null);
     }
 
+    @Idempotent
     @PostMapping("/join")
     public ApiResponse<Void> join(@Valid @RequestBody GroupJoinReq req) {
         UUID userId = SecurityContextUtil.currentUserId();

@@ -180,7 +180,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     public void transferOwnership(UUID operatorId, UUID groupId, UUID memberId) {
         // không thể chuyển quyền cho chính mình
         if (Objects.equals(operatorId, memberId))
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+            throw new BusinessException(ErrorCode.CANNOT_TRANSFER_TO_SELF);
 
         // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
         permissionValidator.verifyOwner(groupId, operatorId);

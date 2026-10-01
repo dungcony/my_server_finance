@@ -25,6 +25,7 @@ import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -162,7 +163,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void archive(UUID operatorId, UUID groupId) {
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
         Group group = groupRepository.findActivatedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
@@ -172,13 +173,14 @@ public class GroupServiceImpl implements GroupService {
         group.setStatus(GroupStatus.ARCHIVED);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
+        log.info("nhóm đã được lưu trữ");
     }
 
     @Override
     @Transactional
     public void unarchive(UUID operatorId, UUID groupId) {
 
-        permissionValidator.verifyOwner(groupId, operatorId);
+        permissionValidator.verifyOwnerAllowArchived(groupId, operatorId);
 
         Group group = groupRepository.findArchivedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_ARCHIVED));
@@ -186,6 +188,8 @@ public class GroupServiceImpl implements GroupService {
         group.setStatus(GroupStatus.ACTIVE);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
+
+        log.info("nhóm đã được hoạt động trở lại");
     }
 
     @Override
@@ -225,16 +229,21 @@ public class GroupServiceImpl implements GroupService {
         if (Boolean.TRUE.equals(group.getIsJoinWithoutConfirm()))
             status = MemberStatus.ACTIVE;
 
-        memberService.create(
-                new MemberCreateReq(
-                        group.getId(),
-                        operatorId,
-                        MemberRole.MEMBER,
-                        status
-                )
-        );
 
-        log.info("Successfully joined the group.");
+        try {
+            memberService.create(
+                    new MemberCreateReq(
+                            group.getId(),
+                            operatorId,
+                            MemberRole.MEMBER,
+                            status
+                    )
+            );
+            log.info("Successfully joined the group.");
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.ALREADY_IN_GROUP);
+        }
+
     }
 
     //----------------------------------------PRIVATE------------------------------------------//

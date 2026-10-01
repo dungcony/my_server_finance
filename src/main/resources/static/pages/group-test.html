@@ -281,10 +281,77 @@
                 </div>
             </div>
         </div>
+
+        <!-- Khối hiển thị chi tiết nhóm đang chọn -->
+        <div class="card" id="groupDetailCard" style="margin-top: 16px; display: none;">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <span>🔍 Chi Tiết Nhóm: <strong id="detailGroupName"></strong></span>
+                    <span id="detailGroupRoleBadge" class="status-badge status-idle">MEMBER</span>
+                    <span id="detailGroupStatusBadge" class="status-badge status-success">ACTIVE</span>
+                </div>
+                <button class="btn btn-secondary" onclick="detailGroup()">Tải Lại</button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 12px; color: var(--text-muted);">Mã mời tham gia</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+                        <code id="detailGroupInviteCode" style="font-size: 15px; font-weight: bold; color: var(--primary);">-</code>
+                        <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="copyInviteCode()">Copy Mã</button>
+                    </div>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 12px; color: var(--text-muted);">Số dư quỹ hiện tại</div>
+                    <div style="font-size: 16px; font-weight: bold; color: var(--success); margin-top: 4px;" id="detailGroupBalance">0 đ</div>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 12px; color: var(--text-muted);">Mục tiêu tiết kiệm</div>
+                    <div style="font-size: 16px; font-weight: bold; color: var(--info); margin-top: 4px;" id="detailGroupTarget">-</div>
+                </div>
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 12px; color: var(--text-muted);">Cài đặt nhóm</div>
+                    <div style="font-size: 13px; margin-top: 4px;" id="detailGroupSettings">-</div>
+                </div>
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted);">
+                <strong>Mô tả:</strong> <span id="detailGroupDesc" style="color: var(--text);">Không có mô tả</span>
+            </div>
+        </div>
     </div>
 
     <!-- NỘI DUNG TAB THÀNH VIÊN -->
     <div id="tab-members" class="tab-content">
+        <!-- Bảng danh sách thành viên trong nhóm -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <span>👥 Danh Sách Thành Viên Trong Nhóm</span>
+                    <span id="memberCountBadge" class="status-badge status-idle">0 thành viên</span>
+                </div>
+                <button class="btn btn-secondary" onclick="detailGroup()">Tải Lại Thành Viên</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Vai Trò</th>
+                            <th>Trạng Thái</th>
+                            <th>Ngày Tham Gia</th>
+                            <th>Hành Động Nhanh</th>
+                        </tr>
+                    </thead>
+                    <tbody id="memberTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted);">
+                                Chưa chọn nhóm hoặc bấm "Tải Lại Thành Viên" để xem
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="grid-2">
             <!-- Thêm thành viên & Chuyển quyền Owner -->
             <div class="card">

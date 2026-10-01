@@ -227,6 +227,7 @@ function switchTab(tabId) {
 function setCurrentGroupId(groupId) {
     document.getElementById('currentGroupId').value = groupId;
     localStorage.setItem(STORAGE_KEY_GROUP_ID, groupId);
+    detailGroup();
 }
 
 // Lấy thông tin Group ID hiện tại
@@ -384,7 +385,189 @@ async function createGroup() {
 async function detailGroup() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
-    await callApi(`/v1/groups/${groupId}`, 'GET');
+    const res = await callApi(`/v1/groups/${groupId}`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        renderGroupDetail(res.data.data);
+    }
+}
+
+// Hiển thị chi tiết nhóm và danh sách thành viên lên giao diện
+function renderGroupDetail(group) {
+    if (!group) return;
+
+    // Hiển thị thẻ chi tiết nhóm ở tab Quản lý nhóm
+    const detailCard = document.getElementById('groupDetailCard');
+    if (detailCard) detailCard.style.display = 'block';
+
+    const nameEl = document.getElementById('detailGroupName');
+    if (nameEl) nameEl.innerText = group.name || 'Không có tên';
+
+    const roleBadge = document.getElementById('detailGroupRoleBadge');
+    if (roleBadge) {
+        const role = group.my_role || group.myRole || 'MEMBER';
+        roleBadge.innerText = role;
+        roleBadge.className = 'status-badge ' + (role === 'OWNER' ? 'status-warning' : 'status-idle');
+    }
+
+    const statusBadge = document.getElementById('detailGroupStatusBadge');
+    if (statusBadge) {
+        const status = group.status || 'ACTIVE';
+        statusBadge.innerText = status;
+        statusBadge.className = 'status-badge ' + (status === 'ACTIVE' ? 'status-success' : 'status-error');
+    }
+
+    const inviteCodeEl = document.getElementById('detailGroupInviteCode');
+    if (inviteCodeEl) inviteCodeEl.innerText = group.invite_code || group.inviteCode || '-';
+
+    const balanceEl = document.getElementById('detailGroupBalance');
+    if (balanceEl) {
+        const bal = group.fund?.current_balance ?? group.fund?.currentBalance ?? 0;
+        balanceEl.innerText = Number(bal).toLocaleString('vi-VN') + ' đ';
+    }
+
+    const targetEl = document.getElementById('detailGroupTarget');
+    if (targetEl) {
+        targetEl.innerText = group.target ? Number(group.target).toLocaleString('vi-VN') + ' đ' : 'Không đặt mục tiêu';
+    }
+
+    const settingsEl = document.getElementById('detailGroupSettings');
+    if (settingsEl) {
+        const settlement = (group.is_settlement_enabled ?? group.isSettlementEnabled) ? 'Quyết toán: Bật' : 'Quyết toán: Tắt';
+        const joinDirect = (group.is_join_without_confirm ?? group.isJoinWithoutConfirm) ? 'Vào thẳng: Bật' : 'Vào thẳng: Tắt';
+        settingsEl.innerText = `${settlement} | ${joinDirect}`;
+    }
+
+    const descEl = document.getElementById('detailGroupDesc');
+    if (descEl) descEl.innerText = group.description || 'Không có mô tả';
+
+    // Điền trước thông tin vào form Cập nhật nhóm
+    const updateName = document.getElementById('updateGroupName');
+    if (updateName) updateName.value = group.name || '';
+    const updateDesc = document.getElementById('updateGroupDesc');
+    if (updateDesc) updateDesc.value = group.description || '';
+    const updateTarget = document.getElementById('updateGroupTarget');
+    if (updateTarget) updateTarget.value = group.target ?? '';
+    const updateSettlement = document.getElementById('updateGroupSettlement');
+    if (updateSettlement) updateSettlement.checked = group.is_settlement_enabled ?? group.isSettlementEnabled ?? true;
+
+    // Hiển thị danh sách thành viên vào bảng ở tab Thành viên
+    const members = group.members || [];
+    const countBadge = document.getElementById('memberCountBadge');
+    if (countBadge) countBadge.innerText = `${members.length} thành viên`;
+
+    const memberTbody = document.getElementById('memberTableBody');
+    if (memberTbody) {
+        memberTbody.innerHTML = '';
+        if (members.length === 0) {
+            memberTbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Nhóm chưa có thành viên nào</td></tr>';
+            return;
+        }
+
+        members.forEach(m => {
+            const userId = m.user_id || m.userId || '';
+            const role = m.role || 'MEMBER';
+            const status = m.status || 'ACTIVE';
+            const rawDate = m.joined_at || m.joinedAt;
+            const joinedText = rawDate ? new Date(rawDate).toLocaleString('vi-VN') : '-';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <code style="font-weight: 600;">${userId}</code>
+                    <button class="btn btn-secondary" style="padding: 2px 6px; font-size: 11px; margin-left: 6px;" onclick="copyText('${userId}')">Copy</button>
+                </td>
+                <td>
+                    <span class="status-badge ${role === 'OWNER' ? 'status-warning' : 'status-idle'}">${role}</span>
+                </td>
+                <td>
+                    <span class="status-badge ${status === 'ACTIVE' ? 'status-success' : 'status-error'}">${status}</span>
+                </td>
+                <td>${joinedText}</td>
+                <td style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="fillMemberUserId('${userId}')">
+                        Điền ID
+                    </button>
+                    ${status === 'PENDING' ? `
+                        <button class="btn btn-success" style="padding: 3px 8px; font-size: 11px;" onclick="quickApproveMember('${userId}')">
+                            Duyệt
+                        </button>
+                        <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="quickRejectMember('${userId}')">
+                            Từ Chối
+                        </button>
+                    ` : ''}
+                    ${status === 'ACTIVE' && role !== 'OWNER' ? `
+                        <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="quickRemoveMember('${userId}')">
+                            Kick
+                        </button>
+                    ` : ''}
+                </td>
+            `;
+            memberTbody.appendChild(tr);
+        });
+    }
+}
+
+// Sao chép mã mời
+function copyInviteCode() {
+    const code = document.getElementById('detailGroupInviteCode')?.innerText;
+    if (code && code !== '-') {
+        copyText(code);
+    }
+}
+
+// Sao chép chuỗi bất kỳ
+function copyText(text) {
+    if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Đã sao chép: ' + text);
+        });
+    }
+}
+
+// Điền User ID thành viên vào các ô thao tác
+function fillMemberUserId(userId) {
+    const targetOwner = document.getElementById('targetOwnerUserId');
+    const approveInput = document.getElementById('approveMemberUserId');
+    const rejectInput = document.getElementById('rejectMemberUserId');
+    const kickInput = document.getElementById('removeMemberUserId');
+
+    if (targetOwner) targetOwner.value = userId;
+    if (approveInput) approveInput.value = userId;
+    if (rejectInput) rejectInput.value = userId;
+    if (kickInput) kickInput.value = userId;
+
+    alert('Đã điền User ID: ' + userId + ' vào các ô thao tác thành viên.');
+}
+
+// Duyệt nhanh thành viên từ bảng
+async function quickApproveMember(memberUserId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+    const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}/approve`, 'POST');
+    if (res.ok) {
+        detailGroup();
+    }
+}
+
+// Từ chối nhanh thành viên từ bảng
+async function quickRejectMember(memberUserId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+    const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}/reject`, 'POST');
+    if (res.ok) {
+        detailGroup();
+    }
+}
+
+// Mời nhanh thành viên ra khỏi nhóm từ bảng
+async function quickRemoveMember(memberUserId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+    if (!confirm(`Bạn có chắc chắn muốn kick thành viên ${memberUserId} khỏi nhóm không?`)) return;
+    const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}`, 'DELETE');
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Cập nhật thông tin nhóm
@@ -404,7 +587,11 @@ async function updateGroup() {
         is_settlement_enabled: isSettlement
     };
 
-    await callApi(`/v1/groups/${groupId}`, 'PATCH', payload);
+    const res = await callApi(`/v1/groups/${groupId}`, 'PATCH', payload);
+    if (res.ok) {
+        detailGroup();
+        listMyGroups();
+    }
 }
 
 // Xóa nhóm
@@ -412,8 +599,10 @@ async function deleteGroup() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
     if (!confirm('Bạn có chắc chắn muốn xóa nhóm này không?')) return;
-    await callApi(`/v1/groups/${groupId}`, 'DELETE');
-    listMyGroups();
+    const res = await callApi(`/v1/groups/${groupId}`, 'DELETE');
+    if (res.ok) {
+        listMyGroups();
+    }
 }
 
 // Tham gia nhóm bằng mã mời
@@ -424,24 +613,30 @@ async function joinGroupByCode() {
         return;
     }
 
-    await callApi('/v1/groups/join', 'POST', { invite_code: inviteCode });
-    listMyGroups();
+    const res = await callApi('/v1/groups/join', 'POST', { invite_code: inviteCode });
+    if (res.ok) {
+        listMyGroups();
+    }
 }
 
 // Lưu trữ nhóm
 async function archiveGroup() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
-    await callApi(`/v1/groups/${groupId}/archive`, 'POST');
-    listMyGroups();
+    const res = await callApi(`/v1/groups/${groupId}/archive`, 'POST');
+    if (res.ok) {
+        listMyGroups();
+    }
 }
 
 // Hủy lưu trữ nhóm
 async function unarchiveGroup() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
-    await callApi(`/v1/groups/${groupId}/unarchive`, 'POST');
-    listMyGroups();
+    const res = await callApi(`/v1/groups/${groupId}/unarchive`, 'POST');
+    if (res.ok) {
+        listMyGroups();
+    }
 }
 
 // ----------------- MEMBER APIS -----------------
@@ -463,7 +658,10 @@ async function addMembers() {
         member_ids: memberIds
     };
 
-    await callApi(`/v1/groups/${groupId}/members`, 'POST', payload);
+    const res = await callApi(`/v1/groups/${groupId}/members`, 'POST', payload);
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Chuyển quyền chủ nhóm (Owner)
@@ -478,10 +676,14 @@ async function transferOwnership() {
     }
 
     // Mapping PUT có dấu / ở cuối theo controller
-    await callApi(`/v1/groups/${groupId}/owner-role/${targetUserId}/`, 'PUT');
+    const res = await callApi(`/v1/groups/${groupId}/owner-role/${targetUserId}/`, 'PUT');
+    if (res.ok) {
+        detailGroup();
+        listMyGroups();
+    }
 }
 
-// Duyệt 1 thành viên
+// Duyệt từng thành viên
 async function approveMember() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
@@ -492,17 +694,23 @@ async function approveMember() {
         return;
     }
 
-    await callApi(`/v1/groups/${groupId}/members/${memberUserId}/approve`, 'POST');
+    const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}/approve`, 'POST');
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Duyệt toàn bộ thành viên đang chờ
 async function approveAllMembers() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
-    await callApi(`/v1/groups/${groupId}/approves`, 'POST');
+    const res = await callApi(`/v1/groups/${groupId}/approves`, 'POST');
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
-// Từ chối 1 thành viên
+// Từ chối từng thành viên
 async function rejectMember() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
@@ -513,14 +721,20 @@ async function rejectMember() {
         return;
     }
 
-    await callApi(`/v1/groups/${groupId}/members/${memberUserId}/reject`, 'POST');
+    const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}/reject`, 'POST');
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Từ chối tất cả thành viên đang chờ
 async function rejectAllMembers() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
-    await callApi(`/v1/groups/${groupId}/rejects`, 'POST');
+    const res = await callApi(`/v1/groups/${groupId}/rejects`, 'POST');
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Xóa thành viên khỏi nhóm
@@ -536,7 +750,10 @@ async function removeMember() {
 
     if (!confirm(`Bạn có chắc muốn xóa thành viên ${memberUserId} khỏi nhóm?`)) return;
 
-    await callApi(`/v1/groups/${groupId}/members/${memberUserId}`, 'DELETE');
+    const res = await callApi(`/v1/groups/${groupId}/members/${memberUserId}`, 'DELETE');
+    if (res.ok) {
+        detailGroup();
+    }
 }
 
 // Tự rời khỏi nhóm
@@ -546,8 +763,10 @@ async function leaveGroup() {
 
     if (!confirm('Bạn có chắc chắn muốn rời khỏi nhóm này không?')) return;
 
-    await callApi(`/v1/groups/${groupId}/leave`, 'POST');
-    listMyGroups();
+    const res = await callApi(`/v1/groups/${groupId}/leave`, 'POST');
+    if (res.ok) {
+        listMyGroups();
+    }
 }
 
 // ----------------- FUND APIS -----------------

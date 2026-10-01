@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.controller;
 
+import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
@@ -53,6 +54,7 @@ public class UserController {
         return ApiResponse.of(null);
     }
 
+    @Idempotent
     @PostMapping("/me/password")
     public ApiResponse<Void> generatePassword() {
         UUID userId = SecurityContextUtil.currentUserId();

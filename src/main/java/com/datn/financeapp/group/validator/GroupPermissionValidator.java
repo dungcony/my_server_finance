@@ -83,6 +83,16 @@ public class GroupPermissionValidator {
 
     }
 
+    public void verifyOwnerAllowArchived(UUID groupId, UUID operatorId) {
+        if (groupId == null || operatorId == null)
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+
+        MemberAuthInfo info = requireNotDeleted(groupRepository.findAuthInfo(groupId, operatorId));
+
+        if (info.memberRole() != MemberRole.OWNER)
+            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+    }
+
     /**
      * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ quỹ).
      *
@@ -134,14 +144,17 @@ public class GroupPermissionValidator {
     }
 
     private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo) {
-        MemberAuthInfo info = authInfo
-                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+        MemberAuthInfo info = requireNotDeleted(authInfo);
 
-        if (info.groupStatus() == GroupStatus.ARCHIVED) {
+        if (info.groupStatus() == GroupStatus.ARCHIVED)
             throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
-        }
 
         return info;
+    }
+
+    private MemberAuthInfo requireNotDeleted(Optional<MemberAuthInfo> authInfo) {
+        return authInfo
+                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
     }
 }

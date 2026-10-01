@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -273,6 +274,51 @@ class MemberServiceImplTest {
             boolean result = groupMemberService.allMemberInGroup(groupId, userIds);
             assertThat(result).isTrue();
             verify(memberRepository).allMemberInGroup(groupId, userIds);
+        }
+    }
+
+    @Nested
+    @DisplayName("assertNotInGroup tests")
+    class AssertNotInGroupTests {
+
+        private final List<MemberStatus> currentStatuses = List.of(MemberStatus.ACTIVE, MemberStatus.PENDING);
+
+        @Test
+        @DisplayName("Chưa có dòng ACTIVE/PENDING nào thì không ném lỗi, kể cả khi từng rời nhóm")
+        void assertNotInGroup_noCurrentRow_passes() {
+            when(memberRepository.findByGroupIdAndUserIdAndStatusIn(groupId, userId, currentStatuses))
+                    .thenReturn(Optional.empty());
+
+            assertThatCode(() -> groupMemberService.assertNotInGroup(groupId, userId))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("Đang ACTIVE thì ném ALREADY_IN_GROUP")
+        void assertNotInGroup_active_throwsAlreadyInGroup() {
+            Member active = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userId)
+                    .status(MemberStatus.ACTIVE).build();
+            when(memberRepository.findByGroupIdAndUserIdAndStatusIn(groupId, userId, currentStatuses))
+                    .thenReturn(Optional.of(active));
+
+            assertThatThrownBy(() -> groupMemberService.assertNotInGroup(groupId, userId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.ALREADY_IN_GROUP.getCode());
+        }
+
+        @Test
+        @DisplayName("Đang PENDING thì ném PENDING_IN_GROUP")
+        void assertNotInGroup_pending_throwsPendingInGroup() {
+            Member pending = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userId)
+                    .status(MemberStatus.PENDING).build();
+            when(memberRepository.findByGroupIdAndUserIdAndStatusIn(groupId, userId, currentStatuses))
+                    .thenReturn(Optional.of(pending));
+
+            assertThatThrownBy(() -> groupMemberService.assertNotInGroup(groupId, userId))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("code")
+                    .isEqualTo(ErrorCode.PENDING_IN_GROUP.getCode());
         }
     }
 }
