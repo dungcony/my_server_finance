@@ -68,7 +68,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     public GroupTransactionDetailRes create(UUID operatorId, UUID groupId, GroupTransactionCreateReq req) {
         // xác thực người thực hiện và lấy thông tin quyền hạn
-        MemberAuthInfo authInfo = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
         // validate thời gian giao dịch không ở tương lai
         transactionValidator.timeNotFuture(req.resolveOccurredAt());
@@ -109,7 +109,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Transactional(readOnly = true)
     public GroupTransactionDetailRes detail(UUID operatorId, UUID groupId, UUID transactionId) {
         // xác thực người thực hiện đang trong group
-        permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        permissionValidator.getAuthInfo(groupId, operatorId);
 
         GTransaction txn = findActiveTransaction(transactionId, groupId);
 
@@ -120,7 +120,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Transactional(readOnly = true)
     public GroupTransactionListRes list(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter) {
         // xác thực người thực hiện và lấy thông tin quyền hạn
-        permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        permissionValidator.getAuthInfo(groupId, operatorId);
 
         Page<GTransaction> txnPage = getPage(groupId, filter);
 
@@ -142,7 +142,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     public GroupTransactionDetailRes update(UUID operatorId, UUID groupId, UUID transactionId,
                                             GroupTransactionUpdateReq req) {
         // xác thực người thực hiện có mặt trong nhóm
-        MemberAuthInfo authInfo = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
         // tìm giao dịch hợp lệ
         GTransaction txn = transactionRepository.findByIdAndGroupIdAndDeletedAtIsNull(transactionId, groupId)
@@ -179,7 +179,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     public void delete(UUID operatorId, UUID groupId, UUID transactionId) {
         // xác thực người thực hiện và lấy thông tin quyền hạn
-        MemberAuthInfo authInfo = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
         if (!authInfo.isOwner())
             throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
@@ -264,7 +264,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
     // xác thực người thực hiện đang trong nhóm và là chủ nhóm hoặc thủ quỹ
     private void requireReviewer(UUID groupId, UUID operatorId) {
-        MemberAuthInfo info = permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId);
         if (!info.isOwner() && !info.isTreasurer())
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
     }

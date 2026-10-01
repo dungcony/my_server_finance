@@ -1,5 +1,7 @@
 package com.datn.financeapp.group.entity;
 
+import jakarta.annotation.Generated;
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -28,9 +30,9 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Fund {
+public class Fund extends AssignedIdEntity {
 
-    @Id
+    @Id()
     private UUID id;
 
     @Column(name = "group_id", nullable = false, unique = true)

@@ -122,7 +122,7 @@ class TransactionDeleteDebtLinkIntegrationTest {
 
     private UUID currentUserId(String token) throws Exception {
         String response = mockMvc.perform(
-                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/auth/me")
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/users/me")
                                 .header("Authorization", "Bearer " + token))
                 .andReturn()
                 .getResponse()

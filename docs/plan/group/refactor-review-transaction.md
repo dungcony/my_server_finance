@@ -3,8 +3,11 @@
 - **Phạm vi:** `GTransactionServiceImpl` (phần REVIEWING: `confirm`, `reject`, `bulkConfirm`, `bulkReject`)
 - **Trạng thái:** ✅ ĐÃ LÀM (chưa commit; chưa chạy được test Testcontainers vì máy không có Docker)
 - **Xác nhận:** `[x] PROCESS`
-- **Quyết định đã chốt:** (1) bỏ `save`/`saveAll`; (2) làm Phần B; (3) chấp nhận `CONCURRENT_MODIFICATION` 409 toàn hệ thống; (4) không commit, để người dùng tự làm
-- **Lệch so với plan:** test handler 409 đặt ở file mới `OptimisticLockHandlingTest` (MockMvc độc lập) thay vì thêm vào `GlobalExceptionHandlerTest`, vì file này đã hỏng sẵn ở HEAD (thiếu bean `RateLimitProperties`, cả 4 test lỗi nạp context)
+- **Quyết định đã chốt:** (1) bỏ `save`/`saveAll`; (2) làm Phần B; (3) chấp nhận `CONCURRENT_MODIFICATION` 409 toàn hệ
+  thống; (4) không commit, để người dùng tự làm
+- **Lệch so với plan:** test handler 409 đặt ở file mới `OptimisticLockHandlingTest` (MockMvc độc lập) thay vì thêm vào
+  `GlobalExceptionHandlerTest`, vì file này đã hỏng sẵn ở HEAD (thiếu bean `RateLimitProperties`, cả 4 test lỗi nạp
+  context)
 
 Plan gồm **hai phần độc lập**, có thể làm và commit riêng:
 
@@ -163,14 +166,14 @@ Chạy test: chỉ `mvn test -Dtest=GTransactionServiceImplTest` (theo `test-rul
 
 ### 1. File sẽ thay đổi
 
-| File                                                                            | Thay đổi                                                         |
-|---------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `src/main/resources/db/migration/V13__group_transactions_version.sql` (**mới**) | Thêm cột `version`                                               |
-| `.../group/entity/GTransaction.java`                                            | Thêm trường `@Version`                                           |
-| `.../common/exception/ErrorCode.java`                                           | Thêm mã lỗi `CONCURRENT_MODIFICATION` (409)                      |
-| `.../common/exception/GlobalExceptionHandler.java`                              | Thêm handler cho `ObjectOptimisticLockingFailureException` → 409 |
-| `.../group/repository/GroupTransactionRepositoryTest.java`                      | Test khoá lạc quan ở tầng repository                             |
-| `docs/design/group/...` hoặc `api` liên quan                                    | Ghi mã lỗi mới nếu tài liệu API nhóm có liệt kê mã lỗi           |
+| File                                                       | Thay đổi                                                         |
+|------------------------------------------------------------|------------------------------------------------------------------|
+| `../../../src/main/resources/db/migration` (**mới**)       | Thêm cột `version`                                               |
+| `.../group/entity/GTransaction.java`                       | Thêm trường `@Version`                                           |
+| `.../common/exception/ErrorCode.java`                      | Thêm mã lỗi `CONCURRENT_MODIFICATION` (409)                      |
+| `.../common/exception/GlobalExceptionHandler.java`         | Thêm handler cho `ObjectOptimisticLockingFailureException` → 409 |
+| `.../group/repository/GroupTransactionRepositoryTest.java` | Test khoá lạc quan ở tầng repository                             |
+| `docs/design/group/...` hoặc `api` liên quan               | Ghi mã lỗi mới nếu tài liệu API nhóm có liệt kê mã lỗi           |
 
 > Trước khi tạo migration phải `ls src/main/resources/db/migration/` kiểm tra lại: hiện cao nhất là `V12`. Nhánh `group`
 > đang mở, nếu nhánh khác đã lấy `V13` thì dời số (bài học trùng số đã từng vấp ở dự án).

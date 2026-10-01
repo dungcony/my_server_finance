@@ -52,7 +52,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
         // operatorId null là tự vào nhóm, còn lại phải là chủ nhóm
         if (operatorId != null)
-            permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+            permissionValidator.verifyOwner(groupId, operatorId);
 
         //không cho thêm đã active hoặc pending
         assertNoneInGroup(groupId, memberIds);
@@ -95,7 +95,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
     @Override
     public void approve(UUID operatorId, UUID groupId, UUID memberId) {
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         // Chạy thẳng 1 câu UPDATE, không cần SELECT trước
         int rowsUpdated = memberRepository.updateStatusAndJoinedAt(
@@ -115,7 +115,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     @Override
     public int approveAll(UUID operatorId, UUID groupId) {
         // 1. Kiểm tra quyền Owner và nhóm phải đang ACTIVE
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         // 2. Chạy đúng 1 câu UPDATE toàn bộ những người PENDING -> ACTIVE
         int approvedCount = memberRepository.approvePending(
@@ -131,7 +131,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     // MemberBehavierServiceImpl
     @Override
     public void reject(UUID operatorId, UUID groupId, UUID memberId) {
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         // không có dòng PENDING nào khớp thì báo không tìm thấy
         if (memberRepository.deletePending(groupId, memberId) == 0)
@@ -141,7 +141,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     @Override
     public int rejectAll(UUID operatorId, UUID groupId) {
         // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         // một câu DELETE xóa toàn bộ người đang PENDING
         int rejectedCount = memberRepository.deleteAllPending(groupId);
@@ -160,7 +160,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
 
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         Member member = memberRepository.findByGroupIdAndUserIdAndStatus(
                         groupId,
@@ -183,7 +183,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
 
         // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         if (memberRepository.swapOwner(groupId, operatorId, memberId) == 2)
             return;

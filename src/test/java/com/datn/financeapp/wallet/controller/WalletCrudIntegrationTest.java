@@ -217,7 +217,7 @@ class WalletCrudIntegrationTest {
         createWallet(token, "Ví Dự Phòng", "cash", 0);
 
         Map<?, ?> parsed = objectMapper.readValue(
-                mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + token))
+                mockMvc.perform(get("/users/me").header("Authorization", "Bearer " + token))
                         .andReturn()
                         .getResponse()
                         .getContentAsString(),

@@ -1,15 +1,8 @@
 package com.datn.financeapp.group.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
@@ -17,12 +10,7 @@ import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
@@ -42,6 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 /**
  * Lớp kiểm thử cho {@link ReportServiceImpl}.
@@ -94,7 +88,7 @@ class GroupReportServiceTest {
     @DisplayName("Kiểm tra công thức bất biến: Tổng phần mọi người = Tổng số dư quỹ")
     void testGetBalances_InvariantHolds() {
         // thiết lập dữ liệu ban đầu
-        GroupFundRes fund = new GroupFundRes(
+        FundRes fund = new FundRes(
                 UUID.randomUUID(),
                 groupId,
                 userA,
@@ -234,6 +228,7 @@ class GroupReportServiceTest {
     @DisplayName("Nhóm có mục tiêu: người góp đủ nhưng bị chia chi tiêu nhiều thì cần nộp thêm đúng bằng số dư âm")
     void testGetBalances_TargetGroup_NeededFollowsNegativeNet() {
         stubGroupWithThreeMembers(3000000L, 0L);
+        stubThreeMembersWithNames();
 
         // A góp 1tr rồi một mình chịu khoản chi 1.2tr từ quỹ
         GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1000000L, List.of());
@@ -252,6 +247,7 @@ class GroupReportServiceTest {
     @DisplayName("Nhóm có mục tiêu: tiền túi trả hộ không làm giảm số cần nộp, chỉ số dư quyết định")
     void testGetBalances_TargetGroup_PaidOutOfPocketDoesNotReduceNeededDirectly() {
         stubGroupWithThreeMembers(3000000L, 0L);
+        stubThreeMembersWithNames();
 
         // B trả hộ 300k chia đều cho cả nhóm, mỗi người chịu 100k
         GTransaction expense = txn(TransactionType.EXPENSE, MoneySource.PERSONAL, userB, 300000L, List.of());
@@ -270,6 +266,7 @@ class GroupReportServiceTest {
     @DisplayName("Quỹ trả lại 400k tiền đã góp cho A thì số còn lại của A giảm xuống 600k")
     void testGetBalances_RefundReturningContribution_ReducesNetBalance() {
         stubGroupWithThreeMembers(null, 600000L);
+        stubThreeMembersWithNames();
 
         GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1000000L, List.of());
         GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 400000L, List.of());
@@ -332,12 +329,12 @@ class GroupReportServiceTest {
         assertThatThrownBy(() -> reportService.getSummary(userA, groupId, "2026-13"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+                .isEqualTo(ErrorCode.VALIDATION_ERROR.getCode());
 
         assertThatThrownBy(() -> reportService.getSummary(userA, groupId, "invalid-date"))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+                .isEqualTo(ErrorCode.VALIDATION_ERROR.getCode());
     }
 
     @Test
@@ -346,7 +343,7 @@ class GroupReportServiceTest {
         UUID userD = UUID.randomUUID();
         Instant now = Instant.now();
 
-        GroupFundRes fund = new GroupFundRes(UUID.randomUUID(), groupId, userA, 1000000L, now);
+        FundRes fund = new FundRes(UUID.randomUUID(), groupId, userA, 1000000L, now);
         GroupDetailRes group = new GroupDetailRes(groupId, "Nhóm thử", null, GroupStatus.ACTIVE, "CODE", null,
                 true, true, now, MemberRole.OWNER, fund, List.of());
         when(groupService.findNotDeletedById(groupId)).thenReturn(group);
@@ -384,7 +381,7 @@ class GroupReportServiceTest {
         UUID userD = UUID.randomUUID();
         Instant now = Instant.now();
 
-        GroupFundRes fund = new GroupFundRes(UUID.randomUUID(), groupId, userA, 0L, now);
+        FundRes fund = new FundRes(UUID.randomUUID(), groupId, userA, 0L, now);
         GroupDetailRes group = new GroupDetailRes(groupId, "Nhóm thử", null, GroupStatus.ACTIVE, "CODE", null,
                 true, true, now, MemberRole.OWNER, fund, List.of());
         when(groupService.findNotDeletedById(groupId)).thenReturn(group);
@@ -417,7 +414,7 @@ class GroupReportServiceTest {
         UUID userD = UUID.randomUUID();
         Instant now = Instant.now();
 
-        GroupFundRes fund = new GroupFundRes(UUID.randomUUID(), groupId, userA, 0L, now);
+        FundRes fund = new FundRes(UUID.randomUUID(), groupId, userA, 0L, now);
         GroupDetailRes group = new GroupDetailRes(groupId, "Nhóm thử", null, GroupStatus.ACTIVE, "CODE", null,
                 true, true, now, MemberRole.OWNER, fund, List.of());
         when(groupService.findNotDeletedById(groupId)).thenReturn(group);
@@ -462,15 +459,18 @@ class GroupReportServiceTest {
         assertThat(itemA.netBalance()).isEqualTo(200000L);
     }
 
-    // dựng nhóm bật tính thừa thiếu có ba thành viên A (chủ nhóm), B, C
+    // dựng nhóm bật tính thừa thiếu của chủ nhóm A cùng quyền truy cập
     private void stubGroupWithThreeMembers(Long target, long fundBalance) {
-        GroupFundRes fund = new GroupFundRes(UUID.randomUUID(), groupId, userA, fundBalance, Instant.now());
+        FundRes fund = new FundRes(UUID.randomUUID(), groupId, userA, fundBalance, Instant.now());
         GroupDetailRes group = new GroupDetailRes(groupId, "Nhóm thử", null, GroupStatus.ACTIVE, "CODE", target,
                 true, true, Instant.now(), MemberRole.OWNER, fund, List.of());
         when(groupService.findNotDeletedById(groupId)).thenReturn(group);
         when(groupRepository.findAuthInfo(groupId, userA)).thenReturn(Optional.of(
                 new MemberAuthInfo(groupId, userA, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, userA)));
+    }
 
+    // dựng danh sách ba thành viên và tên hiển thị, chỉ báo cáo cân đối mới dùng
+    private void stubThreeMembersWithNames() {
         Instant joinedAt = Instant.now().minusSeconds(3600);
         Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER)
                 .status(MemberStatus.ACTIVE).joinedAt(joinedAt).build();

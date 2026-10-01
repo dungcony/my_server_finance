@@ -2,19 +2,18 @@ package com.datn.financeapp.group.validator;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.helper.MemberAuthInfo;
-import com.datn.financeapp.group.repository.MemberRepository;
-import com.datn.financeapp.group.repository.GroupRepository;
-
-import java.util.UUID;
-
 import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.enums.GroupStatus;
+import com.datn.financeapp.group.enums.MemberRole;
+import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.repository.GroupRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Validator kiểm tra tư cách thành viên, phân quyền thao tác và tính hợp lệ của
@@ -33,29 +32,38 @@ public class GroupPermissionValidator {
     private final GroupRepository groupRepository;
 
     /**
-     * Xác thực cả trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE) chỉ bằng
-     * 1 DB roundtrip duy nhất.
+     * Lấy thông tin auth và xác thực trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE)
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng
-     * @return {@link MemberAuthInfo} chứa trạng thái và role để tái sử dụng mà
-     * không cần query lại
+     * @return {@link MemberAuthInfo} chứa trạng thái và role
      */
-    public MemberAuthInfo verifyActiveMemberInGroupActive(UUID groupId, UUID operatorId) {
-        MemberAuthInfo info = groupRepository.findAuthInfo(groupId, operatorId)
-                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-
-        if (info.groupStatus() == GroupStatus.ARCHIVED) {
-            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
+    public MemberAuthInfo getAuthInfo(UUID groupId, UUID operatorId) {
+        if (groupId == null || operatorId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
 
-        // Kiểm tra trạng thái Thành viên
-        if (info.memberStatus() != MemberStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER);
+        return validateAuthInfo(
+                groupRepository.findAuthInfo(groupId, operatorId)
+        );
+    }
+
+    /**
+     * Lấy thông tin auth và xác thực trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE)
+     *
+     * @param inviteCode mã mời nhóm
+     * @param operatorId ID người dùng
+     * @return {@link MemberAuthInfo} chứa trạng thái và role
+     */
+    public MemberAuthInfo getAuthInfo(String inviteCode, UUID operatorId) {
+        if (inviteCode == null || operatorId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
 
-        return info;
+
+        return validateAuthInfo(
+                groupRepository.findAuthInfo(inviteCode, operatorId)
+        );
     }
 
     /**
@@ -66,19 +74,17 @@ public class GroupPermissionValidator {
      * @throws BusinessException nếu không phải Owner
      *                           ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
      */
-    public MemberAuthInfo verifyOwnerInGroupActive(UUID groupId, UUID operatorId) {
+    public void verifyOwner(UUID groupId, UUID operatorId) {
 
-        var info = verifyActiveMemberInGroupActive(groupId, operatorId);
+        var info = getAuthInfo(groupId, operatorId);
 
-        if (info.memberRole() != MemberRole.OWNER) {
+        if (info.memberRole() != MemberRole.OWNER)
             throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
-        }
-        return info;
+
     }
 
     /**
-     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ
-     * quỹ).
+     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ quỹ).
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng đang thực hiện thao tác
@@ -87,22 +93,11 @@ public class GroupPermissionValidator {
      *                           ({@link ErrorCode#FORBIDDEN_TREASURER_REQUIRED})
      */
     public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID keepperId) {
-        var info = verifyActiveMemberInGroupActive(groupId, operatorId);
+        var info = getAuthInfo(groupId, operatorId);
         boolean isOwner = info.memberRole() == MemberRole.OWNER;
         boolean isTreasurer = keepperId != null && keepperId.equals(operatorId);
-        if (!isOwner && !isTreasurer) {
+        if (!isOwner && !isTreasurer)
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
-        }
-    }
-
-    public void verifyOwner(UUID groupId, UUID operatorId) {
-        MemberAuthInfo info = groupRepository.findAuthInfo(groupId, operatorId)
-                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
-
-        if (info.memberRole() != MemberRole.OWNER) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
-        }
     }
 
     /**
@@ -136,5 +131,17 @@ public class GroupPermissionValidator {
         if (txn.getType() != TransactionType.EXPENSE && txn.getType() != TransactionType.CONTRIBUTION) {
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
         }
+    }
+
+    private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo) {
+        MemberAuthInfo info = authInfo
+                .filter(i -> i.groupStatus() != GroupStatus.DELETED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (info.groupStatus() == GroupStatus.ARCHIVED) {
+            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
+        }
+
+        return info;
     }
 }

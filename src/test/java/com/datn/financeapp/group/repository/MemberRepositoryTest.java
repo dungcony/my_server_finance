@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,7 +43,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestRedisConfig.class)
-@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class MemberRepositoryTest {
 
     @Container
@@ -180,6 +180,7 @@ class MemberRepositoryTest {
         assertThat(rows).isEqualTo(1);
         entityManager.flush();
         entityManager.clear();
+        Assertions.assertNotNull(pendingMember.getId());
         Optional<Member> reloaded = memberRepository.findById(pendingMember.getId());
         assertThat(reloaded).isPresent();
         assertThat(reloaded.get().getStatus()).isEqualTo(MemberStatus.ACTIVE);

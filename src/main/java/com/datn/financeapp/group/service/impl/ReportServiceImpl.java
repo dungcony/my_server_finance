@@ -2,7 +2,7 @@ package com.datn.financeapp.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
@@ -60,9 +60,9 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public GroupSummaryReportRes getSummary(UUID operatorId, UUID groupId, String month) {
         // xác thực thành viên đang hoạt động trong nhóm
-        permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        permissionValidator.getAuthInfo(groupId, operatorId);
         GroupDetailRes group = groupService.findNotDeletedById(groupId);
-        GroupFundRes fundRes = group.fund();
+        FundRes fundRes = group.fund();
         if (fundRes == null) {
             throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
         }
@@ -103,9 +103,9 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public GroupBalanceReportRes getBalances(UUID operatorId, UUID groupId) {
         // xác thực thành viên đang hoạt động trong nhóm
-        permissionValidator.verifyActiveMemberInGroupActive(groupId, operatorId);
+        permissionValidator.getAuthInfo(groupId, operatorId);
         GroupDetailRes group = groupService.findNotDeletedById(groupId);
-        GroupFundRes fund = group.fund();
+        FundRes fund = group.fund();
         if (fund == null) {
             throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
         }

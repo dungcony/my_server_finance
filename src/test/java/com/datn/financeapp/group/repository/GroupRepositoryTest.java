@@ -3,6 +3,7 @@ package com.datn.financeapp.group.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
+import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.entity.Fund;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.entity.Member;
@@ -149,8 +150,8 @@ class GroupRepositoryTest {
     }
 
     @Test
-    @DisplayName("Lấy tất cả nhóm ACTIVE mà user tham gia")
-    void findAllActiveByUserId_success() {
+    @DisplayName("Lấy tóm tắt các nhóm ACTIVE mà user tham gia")
+    void findSummariesByUserId_success() {
         memberRepository.save(Member.builder()
                 .id(UUID.randomUUID())
                 .groupId(testGroup.getId())
@@ -160,9 +161,48 @@ class GroupRepositoryTest {
                 .joinedAt(Instant.now())
                 .build());
 
-        List<Group> activeGroups = groupRepository.findAllActiveByUserId(testUser.getId());
+        List<GroupSummaryRes> activeGroups = groupRepository.findSummariesByUserId(testUser.getId());
         assertThat(activeGroups).hasSize(1);
-        assertThat(activeGroups.get(0).getId()).isEqualTo(testGroup.getId());
+        GroupSummaryRes res = activeGroups.get(0);
+        assertThat(res.id()).isEqualTo(testGroup.getId());
+        assertThat(res.myRole()).isEqualTo(MemberRole.MEMBER);
+        assertThat(res.memberCount()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Loại bỏ các nhóm có trạng thái DELETED khỏi danh sách tóm tắt")
+    void findSummariesByUserId_excludesDeletedGroups() {
+        memberRepository.save(Member.builder()
+                .id(UUID.randomUUID())
+                .groupId(testGroup.getId())
+                .userId(testUser.getId())
+                .role(MemberRole.MEMBER)
+                .status(MemberStatus.ACTIVE)
+                .joinedAt(Instant.now())
+                .build());
+
+        Group deletedGroup = groupRepository.save(Group.builder()
+                .id(UUID.randomUUID())
+                .name("Nhóm Đã Xóa")
+                .status(GroupStatus.DELETED)
+                .inviteCode("GRP88888")
+                .isSettlementEnabled(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+
+        memberRepository.save(Member.builder()
+                .id(UUID.randomUUID())
+                .groupId(deletedGroup.getId())
+                .userId(testUser.getId())
+                .role(MemberRole.MEMBER)
+                .status(MemberStatus.ACTIVE)
+                .joinedAt(Instant.now())
+                .build());
+
+        List<GroupSummaryRes> activeGroups = groupRepository.findSummariesByUserId(testUser.getId());
+        assertThat(activeGroups).hasSize(1);
+        assertThat(activeGroups.get(0).id()).isEqualTo(testGroup.getId());
     }
 
     @Test

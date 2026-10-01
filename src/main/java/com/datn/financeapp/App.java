@@ -19,18 +19,7 @@ public class App {
 
     public static void main(String[] args) {
         loadDotenvIfPresent();
-        configureFlywayLocationsIfPresent();
         SpringApplication.run(App.class, args);
-    }
-
-    private static void configureFlywayLocationsIfPresent() {
-        if (System.getProperty("spring.flyway.locations") == null && System.getenv("SPRING_FLYWAY_LOCATIONS") == null) {
-            if (new File("db/migration").isDirectory()) {
-                System.setProperty("spring.flyway.locations", "filesystem:db/migration");
-            } else if (new File("../../db/migration").isDirectory()) {
-                System.setProperty("spring.flyway.locations", "filesystem:../../db/migration");
-            }
-        }
     }
 
     private static void loadDotenvIfPresent() {

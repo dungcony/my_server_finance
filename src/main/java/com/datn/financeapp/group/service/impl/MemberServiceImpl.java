@@ -132,6 +132,21 @@ public class MemberServiceImpl implements MemberService {
     public boolean allMemberInGroup(UUID groupId, List<UUID> memberIds) {
         return memberRepository.allMemberInGroup(groupId, memberIds);
     }
-    
+
+    @Override
+    public void assertNotInGroup(UUID groupId, UUID memberId) {
+
+        Member mem = memberRepository.findByGroupIdAndUserIdAndStatusIn(groupId, memberId, List.of(MemberStatus.ACTIVE, MemberStatus.PENDING))
+                .orElse(null);
+
+        if (mem == null)
+            return;
+
+        if (mem.getStatus() == MemberStatus.ACTIVE)
+            throw new BusinessException(ErrorCode.ALREADY_IN_GROUP);
+
+        throw new BusinessException(ErrorCode.PENDING_IN_GROUP);
+    }
+
 
 }

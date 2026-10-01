@@ -16,6 +16,7 @@ import java.util.Set;
 @Mapper(componentModel = "spring")
 public interface UserMapper {
 
+    @Mapping(target = "hasPassword", expression = "java(user.getPassword() != null)")
     UserProfileResponse toProfile(User user);
 
     @Mapping(target = "password", source = "password")

@@ -6,6 +6,7 @@ import com.datn.financeapp.user.dto.request.UpdateMeRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.response.UserProfileResponse;
 import com.datn.financeapp.user.enums.UserPlan;
+import com.datn.financeapp.user.exception.PasswordAlreadySetException;
 import com.datn.financeapp.user.service.AccountService;
 import com.datn.financeapp.user.service.ProfileService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,11 +31,13 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,7 +80,7 @@ class UserControllerTest {
     @DisplayName("GET /users/me: Lấy thông tin hồ sơ của user hiện tại -> 200 OK")
     void getMe_Success_ReturnsUserProfile() throws Exception {
         UserProfileResponse response = new UserProfileResponse(
-                currentUserId, "test@example.com", "Nam", "Nguyen", "avatar.png", UserPlan.FREE
+                currentUserId, "test@example.com", "Nam", "Nguyen", "avatar.png", UserPlan.FREE, true
         );
         when(userProfileService.getMe(currentUserId)).thenReturn(response);
 
@@ -86,7 +89,32 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.id").value(currentUserId.toString()))
                 .andExpect(jsonPath("$.data.email").value("test@example.com"))
-                .andExpect(jsonPath("$.data.firstName").value("Nam"));
+                .andExpect(jsonPath("$.data.firstName").value("Nam"))
+                .andExpect(jsonPath("$.data.hasPassword").value(true));
+    }
+
+    @Test
+    @DisplayName("POST /users/me/password: Không body, chỉ cần token -> gọi sinh mật khẩu cho user hiện tại -> 200 OK")
+    void generatePassword_Success_Returns200() throws Exception {
+        doNothing().when(userAccountService).generatePassword(currentUserId);
+
+        mockMvc.perform(post("/users/me/password"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.msg").value("Mật khẩu đã được gửi về email của bạn."));
+
+        verify(userAccountService).generatePassword(currentUserId);
+    }
+
+    @Test
+    @DisplayName("POST /users/me/password: Tài khoản đã có mật khẩu -> 409 PASSWORD_ALREADY_SET")
+    void generatePassword_AlreadyHasPassword_Returns409() throws Exception {
+        doThrow(new PasswordAlreadySetException()).when(userAccountService).generatePassword(currentUserId);
+
+        mockMvc.perform(post("/users/me/password"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("PASSWORD_ALREADY_SET"));
     }
 
     @Test
@@ -94,7 +122,7 @@ class UserControllerTest {
     void updateProfile_Success_ReturnsUpdatedProfile() throws Exception {
         UpdateMeRequest req = new UpdateMeRequest("Minh", "Tran", "new-avatar.png");
         UserProfileResponse updated = new UserProfileResponse(
-                currentUserId, "test@example.com", "Minh", "Tran", "new-avatar.png", UserPlan.FREE
+                currentUserId, "test@example.com", "Minh", "Tran", "new-avatar.png", UserPlan.FREE, true
         );
         when(userProfileService.updateMe(eq(currentUserId), any(UpdateMeRequest.class))).thenReturn(updated);
 

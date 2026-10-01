@@ -100,7 +100,7 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 |                            |  `POST`  | `/v1/groups/{id}/transfer-ownership`         | Chuyển quyền chủ nhóm cho một thành viên `ACTIVE` khác (body `new_owner_id`) — *Owner*                                                                                                                           |
 |                            | `PATCH`  | `/v1/groups/{id}/members/{userId}/role`      | Cập nhật vai trò thành viên (tương thích: nếu role = OWNER thì chuyển quyền chủ nhóm) — *Owner*                                                                                                                  |
 | **2. Quỹ Nhóm (`Fund`)**   |  `GET`   | `/v1/groups/{id}/fund`                       | Xem quỹ duy nhất của nhóm: người giữ quỹ, số dư                                                                                                                                                                  |
-|                            | `PATCH`  | `/v1/groups/{id}/fund`                       | Bàn giao người giữ quỹ (body `keepper_id`) — *Owner*. Không có đóng/mở trạng thái quỹ                                                                                                                       |
+|                            | `PATCH`  | `/v1/groups/{id}/fund`                       | Bàn giao người giữ quỹ (body `keepper_id`) — *Owner*. Không có đóng/mở trạng thái quỹ                                                                                                                            |
 | **3. Giao dịch Nhóm**      |  `POST`  | `/v1/groups/{id}/transactions`               | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên thường ghi sẽ ở `PENDING`, Thủ quỹ / Owner ghi được duyệt ngay `CONFIRMED` |
 |                            |  `GET`   | `/v1/groups/{id}/transactions`               | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                                               |
 |                            |  `GET`   | `/v1/groups/{id}/transactions/{tId}`         | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                                                  |
@@ -460,7 +460,7 @@ phép âm**.
 #### Xem quỹ (`GET /v1/groups/{id}/fund`) <a id="321-xem-quy"></a>
 
 - **Phân quyền:** Thành viên `ACTIVE` của nhóm.
-- **Response (`HTTP 200 OK` - `GroupFundRes`):**
+- **Response (`HTTP 200 OK` - `FundRes`):**
 
 ```json
 {
@@ -490,13 +490,13 @@ phép âm**.
 
 - **Nghiệp vụ:**
 
-| Trường        | Kiểm tra                             | Lỗi                     |
-|:--------------|:-------------------------------------|:------------------------|
-| `keepper_id`  | Phải là thành viên `ACTIVE` của nhóm | `400 HOLDER_NOT_MEMBER` |
+| Trường       | Kiểm tra                             | Lỗi                     |
+|:-------------|:-------------------------------------|:------------------------|
+| `keepper_id` | Phải là thành viên `ACTIVE` của nhóm | `400 HOLDER_NOT_MEMBER` |
 
 Quỹ đi theo vòng đời của nhóm, không có trường `status`.
 
-- **Response (`HTTP 200 OK` - `GroupFundRes`).**
+- **Response (`HTTP 200 OK` - `FundRes`).**
 
 ---
 
@@ -1154,8 +1154,7 @@ quỹ. `total_refunded` là tổng tiền quỹ đã trả lại cho người đ
 |    `403`    | `FORBIDDEN_OWNER_REQUIRED`         | Thao tác chỉ dành cho Chủ nhóm (`OWNER`)                                                                                                                                                              |
 |    `403`    | `FORBIDDEN_TREASURER_REQUIRED`     | Kiểm kê, ghi hoặc sửa khoản quỹ trả lại tiền (`REFUND`), xác nhận hoặc từ chối giao dịch — chỉ thủ quỹ hoặc Chủ nhóm                                                                                  |
 |    `403`    | `FORBIDDEN_TRANSACTION_EDIT`       | Sửa giao dịch không phải do mình ghi, và không phải Chủ nhóm                                                                                                                                          |
-|    `404`    | `GROUP_NOT_FOUND`                  | Nhóm không tồn tại hoặc người dùng không có quyền xem                                                                                                                                                 |
-|    `404`    | `INVITE_CODE_INVALID`              | Mã mời không đúng hoặc nhóm đã đóng (bị xóa)                                                                                                                                                          |
+|    `404`    | `GROUP_NOT_FOUND`                  | Nhóm không tồn tại hoặc người dùng không có quyền xem                                                                                                                                                 ||
 |    `404`    | `CATEGORY_NOT_FOUND`               | Danh mục chi tiêu không tồn tại trong hệ thống                                                                                                                                                        |
 |    `404`    | `TRANSACTION_NOT_FOUND`            | Giao dịch không tồn tại trong nhóm                                                                                                                                                                    |
 |    `409`    | `ALREADY_IN_GROUP`                 | Người dùng đã là thành viên trong nhóm                                                                                                                                                                |

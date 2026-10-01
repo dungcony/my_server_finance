@@ -1,39 +1,17 @@
 package com.datn.financeapp.group.service.impl;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionBulkReviewReq;
 import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
-import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
-
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +20,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Kiểm thử {@link GTransactionServiceImpl}:
@@ -82,10 +70,10 @@ class GTransactionServiceImplTest {
         ownerId = UUID.randomUUID();
         memberId = UUID.randomUUID();
 
-        lenient().when(permissionValidator.verifyActiveMemberInGroupActive(groupId, ownerId)).thenReturn(
+        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId)).thenReturn(
                 new MemberAuthInfo(groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
                         MemberRole.OWNER, ownerId));
-        lenient().when(permissionValidator.verifyActiveMemberInGroupActive(groupId, memberId)).thenReturn(
+        lenient().when(permissionValidator.getAuthInfo(groupId, memberId)).thenReturn(
                 new MemberAuthInfo(groupId, memberId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
                         MemberRole.MEMBER, ownerId));
         // delta giả lập đúng chiều cộng: bằng số tiền giao dịch
@@ -96,7 +84,7 @@ class GTransactionServiceImplTest {
     @Test
     @DisplayName("Chủ nhóm xoá khoản góp thì đánh dấu xoá mềm và lưu lại")
     void delete_Contribution_SoftDeletes() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, 1_000_000L);
+        GTransaction contribution = txn(1_000_000L);
         stubFind(contribution);
 
         service.delete(ownerId, groupId, contribution.getId());
@@ -135,7 +123,7 @@ class GTransactionServiceImplTest {
     @Test
     @DisplayName("Giao dịch không còn ở trạng thái chờ thì duyệt bị từ chối và quỹ không đổi")
     void confirm_WhenNotPending_ThrowsConflict() {
-        GTransaction confirmed = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, 100_000L);
+        GTransaction confirmed = txn(100_000L);
         stubFind(confirmed);
 
         assertThatThrownBy(() -> service.confirm(ownerId, groupId, confirmed.getId()))
@@ -161,7 +149,7 @@ class GTransactionServiceImplTest {
     @Test
     @DisplayName("Từ chối giao dịch không còn ở trạng thái chờ thì bị chặn")
     void reject_WhenNotPending_ThrowsConflict() {
-        GTransaction confirmed = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, 100_000L);
+        GTransaction confirmed = txn(100_000L);
         stubFind(confirmed);
 
         assertThatThrownBy(() -> service.reject(ownerId, groupId, confirmed.getId()))
@@ -279,7 +267,7 @@ class GTransactionServiceImplTest {
     }
 
     private GTransaction pendingTxn(long amount) {
-        GTransaction pending = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, amount);
+        GTransaction pending = txn(amount);
         pending.setStatus(TransactionStatus.PENDING);
         return pending;
     }
@@ -289,13 +277,13 @@ class GTransactionServiceImplTest {
                 .thenReturn(java.util.Optional.of(txn));
     }
 
-    private GTransaction txn(TransactionType type, MoneySource source, long amount) {
+    private GTransaction txn(long amount) {
         Instant now = Instant.now();
         return GTransaction.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
-                .type(type)
-                .moneySource(source)
+                .type(TransactionType.CONTRIBUTION)
+                .moneySource(MoneySource.PERSONAL)
                 .transactorId(memberId)
                 .createdBy(memberId)
                 .status(TransactionStatus.CONFIRMED)

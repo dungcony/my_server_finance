@@ -16,7 +16,64 @@
         <p>Trang kiểm thử xác thực Google OAuth & Tài khoản thường</p>
     </div>
 
-    <!-- KHỐI 1: GOOGLE SIGN-IN -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <a href="../index.html" style="color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 500;">← Quay lại Portal</a>
+        <a href="./group-test.html" style="color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 500;">Chuyển tới Test Group →</a>
+    </div>
+
+    <!-- ĐĂNG KÝ TÀI KHOẢN MỚI -->
+    <div class="card">
+        <div class="card-title">
+            <span>📝 Đăng Ký Tài Khoản & Kích Hoạt OTP</span>
+        </div>
+
+        <div class="form-group">
+            <label for="regEmail">Email:</label>
+            <input type="email" id="regEmail" placeholder="Ví dụ: user2@finance.ai...">
+        </div>
+
+        <div class="form-group">
+            <label for="regPassword">Mật khẩu (tối thiểu 8 ký tự):</label>
+            <input type="password" id="regPassword" placeholder="Nhập mật khẩu...">
+        </div>
+
+        <button class="btn" onclick="registerNewUser()">Gửi POST /v1/auth/register</button>
+
+        <div id="verifyOtpBox" style="display: none; margin-top: 16px; padding: 14px; background: #f8fafc; border: 1px dashed var(--border); border-radius: 8px;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--primary); margin-bottom: 8px;">
+                ✉️ Nhập mã xác thực gửi tới email <span id="verifyTargetEmail"></span>
+            </div>
+            <div class="form-group">
+                <label for="regOtpCode">Mã OTP (6 chữ số):</label>
+                <input type="text" id="regOtpCode" placeholder="Nhập mã 6 chữ số nhận được...">
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" style="background: var(--success);" onclick="verifyUserEmail()">Xác Thực (POST /v1/auth/verify-email)</button>
+                <button class="btn" style="background: #64748b;" onclick="resendUserOtp()">Gửi Lại OTP</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ĐĂNG NHẬP TÀI KHOẢN THƯỜNG -->
+    <div class="card">
+        <div class="card-title">
+            <span>🔑 Đăng Nhập Tài Khoản Thường</span>
+        </div>
+
+        <div class="form-group">
+            <label for="loginEmail">Email:</label>
+            <input type="email" id="loginEmail" placeholder="Ví dụ: user@finance.ai...">
+        </div>
+
+        <div class="form-group">
+            <label for="loginPassword">Mật khẩu:</label>
+            <input type="password" id="loginPassword" placeholder="Nhập mật khẩu...">
+        </div>
+
+        <button class="btn" onclick="loginWithEmailPassword()">Gửi POST /v1/auth/login</button>
+    </div>
+
+    <!-- GOOGLE SIGN-IN -->
     <div class="card">
         <div class="card-title">
             <span>🔐 Đăng Nhập Với Google</span>
@@ -54,9 +111,18 @@
         </div>
 
         <button class="btn" onclick="sendManualToken()">Gửi POST /v1/auth/google</button>
+
+        <div style="margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 14px;">
+            <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+                Dành cho tài khoản vừa đăng nhập Google chưa có mật khẩu:
+            </div>
+            <button class="btn" style="background: #0284c7;" onclick="generatePasswordForGoogle()">
+                🔑 Tạo Mật Khẩu (POST /v1/users/me/password)
+            </button>
+        </div>
     </div>
 
-    <!-- KHỐI 2: KẾT QUẢ TỪ SERVER -->
+    <!-- KẾT QUẢ TỪ SERVER -->
     <div class="card">
         <div class="card-title">
             <span>📡 Kết Quả Phản Hồi Từ Máy Chủ</span>

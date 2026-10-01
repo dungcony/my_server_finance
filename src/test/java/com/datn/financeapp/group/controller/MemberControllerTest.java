@@ -1,20 +1,21 @@
 package com.datn.financeapp.group.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
+import com.datn.financeapp.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.service.MemberBehavierService;
-import com.datn.financeapp.group.service.MemberService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
@@ -47,9 +49,6 @@ class MemberControllerTest {
 
     @Mock
     private MemberBehavierService memberBehavierService;
-
-    @Mock
-    private MemberService memberService;
 
     @InjectMocks
     private MemberController memberController;
@@ -79,21 +78,21 @@ class MemberControllerTest {
     }
 
     @Test
-    @DisplayName("GET /groups/{id}/members - Lấy danh sách thành viên nhóm")
-    void listMembers_success() throws Exception {
-        UUID memberId = UUID.randomUUID();
-        MemberRes member = new MemberRes(
-                memberId, userId, MemberRole.OWNER, MemberStatus.ACTIVE, Instant.now()
-        );
-        when(memberService.findMembers(groupId)).thenReturn(List.of(member));
+    @DisplayName("POST /groups/{groupId}/members - Thêm thành viên vào nhóm")
+    void addMembers_success() throws Exception {
+        UUID newUserId = UUID.randomUUID();
+        MemberAddReq req = new MemberAddReq(List.of(newUserId));
 
-        mockMvc.perform(get("/groups/{id}/members", groupId))
+        when(memberBehavierService.ownerAddMembers(eq(userId), eq(groupId), any(MemberAddReq.class)))
+                .thenReturn(List.of());
+
+        mockMvc.perform(post("/groups/{groupId}/members", groupId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data[0].id").value(memberId.toString()))
-                .andExpect(jsonPath("$.data[0].user_id").value(userId.toString()));
+                .andExpect(jsonPath("$.success").value(true));
 
-        verify(memberService).findMembers(groupId);
+        verify(memberBehavierService).ownerAddMembers(eq(userId), eq(groupId), any(MemberAddReq.class));
     }
 
     @Test

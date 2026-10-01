@@ -84,7 +84,7 @@ class GroupControllerTest {
     @Test
     @DisplayName("POST /groups - Tạo nhóm thành công trả về 201")
     void createGroup_success() throws Exception {
-        GroupCreateReq req = new GroupCreateReq("Nhóm Gia Đình", "Mô tả", 1000000L, true, true, null);
+        GroupCreateReq req = new GroupCreateReq("Nhóm Gia Đình", "Mô tả", 1000000L, true, true, Collections.emptyList());
         GroupDetailRes res = new GroupDetailRes(
                 groupId, "Nhóm Gia Đình", "Mô tả", GroupStatus.ACTIVE,
                 "GRP12345", 1000000L, true, true, Instant.now(), MemberRole.OWNER, null, Collections.emptyList()

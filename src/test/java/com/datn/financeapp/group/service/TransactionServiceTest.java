@@ -1,37 +1,23 @@
 package com.datn.financeapp.group.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import com.datn.financeapp.category.dto.response.CategoryRefResponse;
-import com.datn.financeapp.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
-import com.datn.financeapp.group.entity.*;
+import com.datn.financeapp.group.entity.Fund;
+import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.entity.Group;
+import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.mapper.GTransactionMapper;
-import com.datn.financeapp.group.repository.FundRepository;
-import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.service.impl.GTransactionServiceImpl;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
-import org.springframework.context.ApplicationEventPublisher;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +25,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 /**
  * Lớp kiểm thử cho {@link GTransactionServiceImpl}.
@@ -54,15 +52,6 @@ class TransactionServiceTest {
 
     @Mock
     private GroupRepository groupRepository;
-
-    @Mock
-    private MemberRepository memberRepository;
-
-    @Mock
-    private FundRepository fundRepository;
-
-    @Mock
-    private CategoryService categoryService;
 
     @Mock
     private MemberService memberService;
@@ -203,7 +192,6 @@ class TransactionServiceTest {
 
         when(groupRepository.findAuthInfo(groupId, ownerId)).thenReturn(Optional.of(authInfo));
         when(transactionRepository.findByIdAndGroupIdAndDeletedAtIsNull(txnId, groupId)).thenReturn(Optional.of(txn));
-        when(transactionRepository.save(any(GTransaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GroupTransactionDetailRes res = transactionService.confirm(ownerId, groupId, txnId);
 

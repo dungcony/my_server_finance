@@ -2,6 +2,11 @@ package com.datn.financeapp.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
@@ -11,6 +16,7 @@ import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.user.dto.request.UpdateMeRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.response.UserProfileResponse;
@@ -22,6 +28,7 @@ import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -29,9 +36,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.time.Instant;
 
 /**
  * Test tích hợp cho hồ sơ người dùng (User Profile) và đổi mật khẩu (Change Password).
@@ -77,6 +87,9 @@ class UserProfileIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @MockitoSpyBean
+    private EmailService emailService;
+
     @BeforeEach
     void cleanTables() {
         otpRepository.deleteAll();
@@ -104,6 +117,64 @@ class UserProfileIntegrationTest {
         assertThat(detail.id()).isEqualTo(user.getId());
         assertThat(detail.email()).isEqualTo("xem.ho.so@example.com");
         assertThat(detail.plan()).isEqualTo(UserPlan.FREE);
+    }
+
+    @Test
+    void getMe_emailAccount_hasPasswordTrue() {
+        User user = registerUser("co.mat.khau@example.com", "matkhaudung1", "Có Mật Khẩu");
+
+        assertThat(userProfileService.getMe(user.getId()).hasPassword()).isTrue();
+    }
+
+    @Test
+    void getMe_googleOnlyAccount_hasPasswordFalse() {
+        var google = userAccountService.createGoogleUser("chua.co.mk@example.com", "sub-chua-co-mk", Instant.now());
+
+        assertThat(userProfileService.getMe(google.id()).hasPassword()).isFalse();
+    }
+
+    @Test
+    void generatePassword_googleOnlyAccount_mailsPasswordThatLogsIn_andFlipsHasPassword() {
+        var google = userAccountService.createGoogleUser("tao.mat.khau@example.com", "sub-tao-mk", Instant.now());
+
+        userAccountService.generatePassword(google.id());
+
+        ArgumentCaptor<String> rawPassword = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendGeneratedPassword(eq("tao.mat.khau@example.com"), rawPassword.capture());
+        var login = authService.login(
+                new com.datn.financeapp.auth.dto.request.LoginRequest("tao.mat.khau@example.com", rawPassword.getValue()),
+                "127.0.0.1", "junit");
+        assertThat(login.user().id()).isEqualTo(google.id());
+        assertThat(userProfileService.getMe(google.id()).hasPassword()).isTrue();
+        // chỉ lưu bản băm, không lưu mật khẩu thô
+        User reload = userRepository.findById(google.id()).orElseThrow();
+        assertThat(reload.getPassword()).isNotEqualTo(rawPassword.getValue());
+        assertThat(passwordEncoder.matches(rawPassword.getValue(), reload.getPassword())).isTrue();
+    }
+
+    @Test
+    void generatePassword_calledTwice_secondCallThrowsPasswordAlreadySet() {
+        var google = userAccountService.createGoogleUser("goi.hai.lan@example.com", "sub-goi-hai-lan", Instant.now());
+        userAccountService.generatePassword(google.id());
+
+        assertThatThrownBy(() -> userAccountService.generatePassword(google.id()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("PASSWORD_ALREADY_SET"));
+        // mail chỉ gửi đúng một lần, mật khẩu đầu tiên vẫn còn hiệu lực
+        verify(emailService, times(1)).sendGeneratedPassword(eq("goi.hai.lan@example.com"), anyString());
+    }
+
+    @Test
+    void generatePassword_emailAccountWithPassword_throwsAndKeepsOldPassword() {
+        User user = registerUser("da.co.mk@example.com", "matkhaudung1", "Đã Có Mật Khẩu");
+
+        assertThatThrownBy(() -> userAccountService.generatePassword(user.getId()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("PASSWORD_ALREADY_SET"));
+
+        User reload = userRepository.findById(user.getId()).orElseThrow();
+        assertThat(passwordEncoder.matches("matkhaudung1", reload.getPassword())).isTrue();
+        verify(emailService, never()).sendGeneratedPassword(anyString(), anyString());
     }
 
     @Test

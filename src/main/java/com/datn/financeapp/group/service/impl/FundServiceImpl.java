@@ -7,7 +7,7 @@ import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionParticipantReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.entity.Fund;
 import com.datn.financeapp.group.enums.MoneySource;
@@ -40,16 +40,32 @@ public class FundServiceImpl implements FundService {
     private final FundMapper fundMapper;
     private final MemberService memberService;
 
+    @Transactional
+    @Override
+    public FundRes create(UUID groupId, UUID operatorId, Instant now) {
+        Fund fund = Fund.builder()
+                .id(UUID.randomUUID())
+                .groupId(groupId)
+                .keepperId(operatorId)
+                .currentBalance(0L)
+                .createdAt(now)
+                .build();
+
+        fund = fundRepository.save(fund);
+
+        return fundMapper.toResponse(fund);
+    }
+
     @Override
     @Transactional
-    public GroupFundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req) {
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+    public FundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req) {
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         Fund fund = fundRepository.findByGroupId(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
         if (req.keepperId() != null) {
-            permissionValidator.verifyActiveMemberInGroupActive(groupId, req.keepperId());
+            permissionValidator.getAuthInfo(groupId, req.keepperId());
             fund.setKeepperId(req.keepperId());
         }
 

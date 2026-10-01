@@ -17,6 +17,9 @@ public interface AccountService {
     // Đổi mật khẩu tài khoản.
     void changePassword(UUID userId, UpdatePassReq req);
 
+    // Sinh mật khẩu cho tài khoản chưa có mật khẩu (Google thuần) rồi gửi về email.
+    void generatePassword(UUID userId);
+
     // Tạo tài khoản người dùng mới qua đăng ký email.
     UserAccountResponse createEmailUser(String email, String rawPassword, Instant now);
 

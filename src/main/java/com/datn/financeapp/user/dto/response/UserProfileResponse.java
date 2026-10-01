@@ -11,5 +11,6 @@ public record UserProfileResponse(
         String firstName,
         String lastName,
         String avatarUrl,
-        UserPlan plan) {
+        UserPlan plan,
+        boolean hasPassword) {
 }

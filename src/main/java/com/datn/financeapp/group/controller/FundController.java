@@ -5,7 +5,7 @@ import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
 import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.service.FundService;
 import jakarta.validation.Valid;
 
@@ -22,7 +22,7 @@ public class FundController {
     private final FundService fundService;
 
     @PutMapping("/fund-kepper")
-    public ApiResponse<GroupFundRes> updateFund(
+    public ApiResponse<FundRes> updateFund(
             @PathVariable UUID groupId,
             @Valid @RequestBody FundKepperUpdateReq req) {
         UUID userId = SecurityContextUtil.currentUserId();

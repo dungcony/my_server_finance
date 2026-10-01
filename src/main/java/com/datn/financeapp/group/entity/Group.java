@@ -1,5 +1,6 @@
 package com.datn.financeapp.group.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.group.enums.GroupStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,7 +28,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Group {
+public class Group extends AssignedIdEntity {
 
     @Id
     private UUID id;

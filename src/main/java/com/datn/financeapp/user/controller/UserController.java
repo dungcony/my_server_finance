@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Hỗ trợ đồng thời prefix /users/me và /auth/me để tương thích 100% với client hiện tại.
  */
 @RestController
-@RequestMapping({"/users", "/auth"})
+@RequestMapping({"/users",})
 @RequiredArgsConstructor
 public class UserController {
 
@@ -50,6 +51,13 @@ public class UserController {
         UUID userId = SecurityContextUtil.currentUserId();
         userAccountService.changePassword(userId, req);
         return ApiResponse.of(null);
+    }
+
+    @PostMapping("/me/password")
+    public ApiResponse<Void> generatePassword() {
+        UUID userId = SecurityContextUtil.currentUserId();
+        userAccountService.generatePassword(userId);
+        return ApiResponse.of(null, "Mật khẩu đã được gửi về email của bạn.");
     }
 
     @DeleteMapping("/me")

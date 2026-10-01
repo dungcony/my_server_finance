@@ -57,7 +57,23 @@ public class SmtpEmailServiceImpl implements EmailService {
                 """.formatted(otpCode);
         sendEmail(email, subject, content);
     }
-    
+
+    @Override
+    public void sendGeneratedPassword(String email, String rawPassword) {
+        String subject = "Mật khẩu đăng nhập ứng dụng Quản lý tài chính";
+        String content = """
+                Chào bạn,
+
+                Bạn vừa yêu cầu tạo mật khẩu cho tài khoản đăng nhập bằng Google.
+
+                Mật khẩu của bạn là: %s
+
+                Bạn có thể dùng email này cùng mật khẩu trên để đăng nhập thường.
+                Vì lý do bảo mật, hãy đổi mật khẩu ngay sau khi đăng nhập và xoá email này.
+                """.formatted(rawPassword);
+        sendEmail(email, subject, content);
+    }
+
     @Override
     public void sendEmail(String to, String subject, String content) {
         SimpleMailMessage message = new SimpleMailMessage();

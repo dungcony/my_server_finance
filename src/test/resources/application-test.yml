@@ -2,7 +2,7 @@
 # spring.datasource.* được @ServiceConnection tự override lúc chạy test.
 spring:
   flyway:
-    locations: classpath:db/migrations,classpath:db/migration
+    locations: classpath:db/migration,classpath:db/migration
     encoding: UTF-8
     baseline-on-migrate: false
 

@@ -1,6 +1,6 @@
 package com.datn.financeapp.group.dto.response.group;
 
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.GroupStatus;
@@ -20,6 +20,6 @@ public record GroupDetailRes(
         Boolean isJoinWithoutConfirm,
         Instant createdAt,
         MemberRole myRole,
-        GroupFundRes fund,
+        FundRes fund,
         List<MemberRes> members) {
 }

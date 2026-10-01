@@ -6,11 +6,10 @@ import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
-import com.datn.financeapp.group.entity.Fund;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
@@ -19,6 +18,7 @@ import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.mapper.GroupMapper;
 import com.datn.financeapp.group.repository.GroupRepository;
+import com.datn.financeapp.group.service.FundService;
 import com.datn.financeapp.group.service.GTransactionService;
 import com.datn.financeapp.group.service.GroupService;
 import com.datn.financeapp.group.service.MemberService;
@@ -43,6 +43,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepository;
     private final GTransactionService gTransactionService;
     private final MemberService memberService;
+    private final FundService fundService;
     private final GroupPermissionValidator permissionValidator;
     private final GroupMapper groupMapper;
     private final FundMapper fundMapper;
@@ -69,16 +70,10 @@ public class GroupServiceImpl implements GroupService {
         UUID groupId = UUID.randomUUID();
 
         Group group = groupMapper.toEntity(req, groupId, generateUniqueInviteCode(inviteCodeLength), now);
-        var fund = Fund.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .keepperId(operatorId)
-                .currentBalance(0L)
-                .createdAt(now)
-                .build();
-        group.setFund(fund);
 
         group = groupRepository.save(group);
+
+        var fund = fundService.create(groupId, operatorId, now);
 
         var own = memberService.create(
                 new MemberCreateReq(
@@ -97,8 +92,8 @@ public class GroupServiceImpl implements GroupService {
         List<MemberCreateReq> memberCreateReqs = new ArrayList<>();
         for (UUID memberId : memberIds) {
             MemberCreateReq mem = new MemberCreateReq(
-                    memberId,
                     groupId,
+                    memberId,
                     MemberRole.MEMBER,
                     MemberStatus.ACTIVE
             );
@@ -114,7 +109,7 @@ public class GroupServiceImpl implements GroupService {
         return groupMapper.toDetailResponse(
                 group,
                 MemberRole.OWNER,
-                fundMapper.toResponse(fund),
+                fund,
                 allMembers
         );
     }
@@ -138,7 +133,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public GroupDetailRes update(UUID operatorId, UUID groupId, GroupUpdateReq req) {
-        MemberAuthInfo memberRole = permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        MemberAuthInfo memberRole = permissionValidator.getAuthInfo(groupId, operatorId);
 
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
@@ -167,7 +162,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void archive(UUID operatorId, UUID groupId) {
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.getAuthInfo(groupId, operatorId);
         Group group = groupRepository.findActivatedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
@@ -196,7 +191,7 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void delete(UUID operatorId, UUID groupId) {
-        permissionValidator.verifyOwnerInGroupActive(groupId, operatorId);
+        permissionValidator.getAuthInfo(groupId, operatorId);
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
@@ -217,17 +212,17 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void joinByCode(UUID operatorId, GroupJoinReq req) {
+        Group group = groupRepository.findByInviteCodeAndStatusNot(req.inviteCode(), GroupStatus.DELETED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        Group group = groupRepository.findByInviteCodeAndStatusNot(req.inviteCode().trim(), GroupStatus.DELETED)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVITE_CODE_INVALID));
-
-        if (group.getStatus() == GroupStatus.ARCHIVED) {
+        if (group.getStatus().equals(GroupStatus.ARCHIVED))
             throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
-        }
+
+        memberService.assertNotInGroup(group.getId(), operatorId);
 
         MemberStatus status = MemberStatus.PENDING;
 
-        if (Boolean.TRUE.equals(group.getIsSettlementEnabled()))
+        if (Boolean.TRUE.equals(group.getIsJoinWithoutConfirm()))
             status = MemberStatus.ACTIVE;
 
         memberService.create(
@@ -239,9 +234,10 @@ public class GroupServiceImpl implements GroupService {
                 )
         );
 
-        log.info("Join group {} with status {}", group.getId(), status);
-
+        log.info("Successfully joined the group.");
     }
+
+    //----------------------------------------PRIVATE------------------------------------------//
 
     private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId, MemberRole role) {
         List<MemberRes> members;
@@ -255,14 +251,12 @@ public class GroupServiceImpl implements GroupService {
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
 
-        GroupFundRes fund = (group.getFund() != null)
+        FundRes fund = (group.getFund() != null)
                 ? fundMapper.toResponse(group.getFund())
                 : null;
 
         return groupMapper.toDetailResponse(group, currentMember.role(), fund, members);
     }
-
-    //----------------------------------------PRIVATE------------------------------------------//
 
 
     /**

@@ -9,6 +9,12 @@ spring:
     name: financeapp
   jackson:
     property-naming-strategy: SNAKE_CASE
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
 
   mail:
     host: ${MAIL_HOST:}

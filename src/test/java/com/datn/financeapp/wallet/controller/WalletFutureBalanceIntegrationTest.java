@@ -122,7 +122,7 @@ class WalletFutureBalanceIntegrationTest {
     }
 
     private UUID currentUserId(String token) throws Exception {
-        String response = mockMvc.perform(get("/auth/me").header("Authorization", "Bearer " + token))
+        String response = mockMvc.perform(get("/users/me").header("Authorization", "Bearer " + token))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();

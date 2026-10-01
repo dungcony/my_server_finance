@@ -4,7 +4,7 @@ import com.datn.financeapp.group.dto.request.group.GroupCreateReq;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.dto.response.group.GroupSummaryRes;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.enums.MemberRole;
 
@@ -48,7 +48,7 @@ public interface GroupMapper {
     GroupDetailRes toDetailResponse(
             Group group,
             MemberRole myRole,
-            GroupFundRes fund,
+            FundRes fund,
             List<MemberRes> members);
 
     @Mapping(target = "id", source = "groupId")

@@ -4,20 +4,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
-import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
 import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
+import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.service.FundService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.Instant;
@@ -34,11 +34,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -82,25 +81,11 @@ class FundControllerTest {
     }
 
     @Test
-    @DisplayName("GET /groups/{groupId}/fund - Lấy thông tin quỹ nhóm thành công")
-    void getFund_success() throws Exception {
-        GroupFundRes res = new GroupFundRes(fundId, groupId, userId, 500_000L, Instant.now());
-        when(fundService.getFund(userId, groupId)).thenReturn(res);
-
-        mockMvc.perform(get("/groups/{groupId}/fund", groupId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.current_balance").value(500000L));
-
-        verify(fundService).getFund(userId, groupId);
-    }
-
-    @Test
-    @DisplayName("PATCH /groups/{groupId}/fund - Cập nhật thủ quỹ thành công")
+    @DisplayName("PUT /groups/{groupId}/fund-kepper - Cập nhật thủ quỹ thành công")
     void updateFund_success() throws Exception {
         UUID newKeepperId = UUID.randomUUID();
         FundKepperUpdateReq req = new FundKepperUpdateReq(newKeepperId);
-        GroupFundRes res = new GroupFundRes(fundId, groupId, newKeepperId, 500_000L, Instant.now());
+        FundRes res = new FundRes(fundId, groupId, newKeepperId, 500_000L, Instant.now());
 
         when(fundService.updateFundKeepper(eq(userId), eq(groupId), any(FundKepperUpdateReq.class))).thenReturn(res);
 
@@ -119,7 +104,7 @@ class FundControllerTest {
     void reconcileFund_success() throws Exception {
         FundReconcileReq req = new FundReconcileReq(600_000L, LocalDate.now(), "Kiểm quỹ tháng", null);
         GroupFundReconcileRes res = new GroupFundReconcileRes(
-                fundId, 500_000L, 600_000L, 100_000L, TransactionType.ADJUSTMENT_UP, UUID.randomUUID()
+                500_000L, 600_000L, 100_000L, TransactionType.ADJUSTMENT_UP, UUID.randomUUID()
         );
 
         when(fundService.reconcileFund(eq(userId), eq(groupId), any(FundReconcileReq.class))).thenReturn(res);

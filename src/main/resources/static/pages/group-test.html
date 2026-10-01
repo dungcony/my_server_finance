@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance AI — Kiểm Thử Module Group</title>
+    <!-- Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="../css/group-test.css">
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div>
+            <h1>👥 Finance AI — Test Module Group</h1>
+            <p>Trang kiểm thử tập trung cho toàn bộ API Nhóm, Thành viên, Quỹ và Báo cáo</p>
+        </div>
+        <a class="back-link" href="../index.html">← Quay lại Portal</a>
+    </div>
+
+    <!-- ĐĂNG NHẬP & PHIÊN LÀM VIỆC -->
+    <div class="card auth-panel">
+        <div class="card-title">
+            <div class="card-title-left">
+                <span>🔐 Đăng Nhập & Phiên Làm Việc</span>
+            </div>
+            <div id="authStatusText" style="font-size: 13px; font-weight: 500; color: var(--text-muted);">
+                Chưa đăng nhập
+            </div>
+        </div>
+
+        <!-- Trạng thái đã đăng nhập -->
+        <div id="loggedInBox" style="display: none;">
+            <div class="user-profile-bar">
+                <div class="user-profile-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div class="user-details">
+                        <span class="user-name" id="userName">User Name</span>
+                        <span class="user-email" id="userEmail">user@example.com</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span style="font-size: 12px; color: var(--text-muted);">ID: <code id="userIdShort">...</code></span>
+                    <button class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;" onclick="generatePasswordForGoogle()">🔑 Tạo Mật Khẩu (Google)</button>
+                    <button class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;" onclick="logout()">Đăng Xuất</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Đăng Nhập (khi chưa đăng nhập) -->
+        <div id="loginFormBox">
+            <div class="auth-subtabs">
+                <button class="auth-subtab-btn active" id="btnSubtabEmail" onclick="switchAuthSubtab('email')">✉️ Đăng nhập Email & Mật khẩu</button>
+                <button class="auth-subtab-btn" id="btnSubtabGoogle" onclick="switchAuthSubtab('google')">🌐 Google Sign-In</button>
+                <button class="auth-subtab-btn" id="btnSubtabRegister" onclick="switchAuthSubtab('register')">📝 Đăng Ký Tài Khoản</button>
+                <button class="auth-subtab-btn" id="btnSubtabManual" onclick="switchAuthSubtab('manual')">🔑 Dán Token Thủ Công</button>
+            </div>
+
+            <!-- Tab Email/Password -->
+            <div id="authSubtabEmail">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="loginEmail">Email:</label>
+                        <input type="email" id="loginEmail" placeholder="admin@finance.ai hoặc email của bạn...">
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label for="loginPassword">Mật khẩu:</label>
+                        <input type="password" id="loginPassword" placeholder="Nhập mật khẩu...">
+                    </div>
+                    <div class="form-group" style="flex: 1; justify-content: flex-end;">
+                        <button class="btn btn-primary" style="height: 40px;" onclick="loginWithEmail()">Đăng Nhập</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Google Sign-In -->
+            <div id="authSubtabGoogle" style="display: none;">
+                <div class="google-signin-box">
+                    <div id="g_id_onload"
+                         data-client_id="230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com"
+                         data-context="signin"
+                         data-ux_mode="popup"
+                         data-callback="handleGoogleLogin"
+                         data-auto_prompt="false">
+                    </div>
+                    <div class="g_id_signin"
+                         data-type="standard"
+                         data-shape="rectangular"
+                         data-theme="outline"
+                         data-text="signin_with"
+                         data-size="large"
+                         data-logo_alignment="left">
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-muted);">
+                        Bấm nút trên để đăng nhập Google OAuth (tự động nhận token và tải nhóm).
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Đăng Ký Tài Khoản -->
+            <div id="authSubtabRegister" style="display: none;">
+                <div id="registerFormStep">
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 2;">
+                            <label for="regEmail">Email đăng ký:</label>
+                            <input type="email" id="regEmail" placeholder="member2@finance.ai...">
+                        </div>
+                        <div class="form-group" style="flex: 2;">
+                            <label for="regPassword">Mật khẩu (tối thiểu 8 ký tự):</label>
+                            <input type="password" id="regPassword" placeholder="Mật khẩu tối thiểu 8 ký tự...">
+                        </div>
+                        <div class="form-group" style="flex: 1; justify-content: flex-end;">
+                            <button class="btn btn-primary" style="height: 40px;" onclick="registerAccount()">Đăng Ký</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="verifyOtpStep" style="display: none; background: #f8fafc; border: 1px dashed var(--border); border-radius: 8px; padding: 14px; margin-top: 10px;">
+                    <div style="font-size: 13px; font-weight: 600; color: var(--info); margin-bottom: 8px;">
+                        ✉️ Mã xác thực đã được gửi tới email <span id="verifyTargetEmail" style="color: var(--primary);"></span>
+                        <span style="font-size: 12px; font-weight: normal; color: var(--text-muted);">(Xem mã trong console log hoặc mail)</span>
+                    </div>
+                    <div class="form-row" style="align-items: center;">
+                        <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                            <input type="text" id="regOtpCode" placeholder="Nhập mã OTP 6 chữ số...">
+                        </div>
+                        <div class="form-group" style="flex: 2; margin-bottom: 0; display: flex; gap: 8px;">
+                            <button class="btn btn-success" style="height: 40px;" onclick="verifyEmailOtp()">Kích Hoạt & Đăng Nhập</button>
+                            <button class="btn btn-secondary" style="height: 40px;" onclick="resendVerificationOtp()">Gửi Lại OTP</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Dán Token Thủ Công -->
+            <div id="authSubtabManual" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 3;">
+                        <input type="text" id="manualBearerToken" placeholder="Dán Bearer token (JWT)...">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <button class="btn btn-secondary" style="height: 40px;" onclick="applyManualToken()">Áp Dụng Token</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nhóm đang chọn -->
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);">
+            <div class="form-row" style="align-items: center;">
+                <div class="form-group" style="flex: 3; margin-bottom: 0;">
+                    <label for="currentGroupId">🎯 Group ID Đang Chọn (Áp dụng cho mọi API nhóm/thành viên/quỹ bên dưới):</label>
+                    <input type="text" id="currentGroupId" placeholder="Chọn một nhóm ở bảng bên dưới hoặc dán UUID nhóm vào đây...">
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0; justify-content: flex-end;">
+                    <button class="btn btn-secondary" style="height: 40px;" onclick="listMyGroups()">Tải Lại Nhóm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- THANH ĐIỀU HƯỚNG TABS -->
+    <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="tab-groups" onclick="switchTab('tab-groups')">🏢 Quản Lý Nhóm</button>
+        <button class="nav-tab" data-tab="tab-members" onclick="switchTab('tab-members')">👥 Thành Viên</button>
+        <button class="nav-tab" data-tab="tab-fund" onclick="switchTab('tab-fund')">💰 Quỹ Nhóm</button>
+        <button class="nav-tab" data-tab="tab-report" onclick="switchTab('tab-report')">📊 Báo Cáo Tài Chính</button>
+    </div>
+
+    <!-- NỘI DUNG TAB QUẢN LÝ NHÓM -->
+    <div id="tab-groups" class="tab-content active">
+        <div class="grid-2">
+            <!-- Box: Danh sách nhóm -->
+            <div class="card">
+                <div class="card-title">
+                    <span>📋 Danh Sách Nhóm Của Tôi</span>
+                    <button class="btn btn-secondary" onclick="listMyGroups()">Lấy Danh Sách</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Group ID</th>
+                                <th>Tên Nhóm</th>
+                                <th>Vai Trò</th>
+                                <th>Trạng Thái</th>
+                                <th>Mã Mời</th>
+                                <th>Thành Viên</th>
+                                <th>Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="groupTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-muted);">Bấm "Lấy Danh Sách" để tải dữ liệu</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="divider" style="margin: 16px 0; border-top: 1px dashed var(--border);"></div>
+
+                <!-- Tham gia nhóm bằng mã mời -->
+                <div class="action-title">
+                    <span>Tham gia nhóm bằng mã mời</span>
+                    <span class="api-badge post">POST /v1/groups/join</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <input type="text" id="joinInviteCode" placeholder="Nhập mã mời (vd: GRP12345)...">
+                    </div>
+                    <button class="btn btn-primary" style="height: 40px;" onclick="joinGroupByCode()">Tham Gia</button>
+                </div>
+            </div>
+
+            <!-- Box: Tạo nhóm mới -->
+            <div class="card">
+                <div class="card-title">
+                    <span>➕ Tạo Nhóm Mới</span>
+                    <span class="api-badge post">POST /v1/groups</span>
+                </div>
+                <div class="form-group">
+                    <label for="createGroupName">Tên nhóm (*):</label>
+                    <input type="text" id="createGroupName" placeholder="Ví dụ: Nhóm Bạn Thân...">
+                </div>
+                <div class="form-group">
+                    <label for="createGroupDesc">Mô tả:</label>
+                    <textarea id="createGroupDesc" rows="2" placeholder="Mục đích sử dụng nhóm..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="createGroupTarget">Mục tiêu tiết kiệm (VNĐ):</label>
+                        <input type="number" id="createGroupTarget" placeholder="Ví dụ: 10000000">
+                    </div>
+                    <div class="form-group" style="justify-content: flex-end; gap: 8px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="createGroupSettlement" checked> Bật quyết toán tự động
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" id="createGroupJoinWithoutConfirm" checked> Vào thẳng không cần duyệt
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="createGroupMembers">Thành viên ban đầu (danh sách UUID, phân tách bằng dấu phẩy):</label>
+                    <input type="text" id="createGroupMembers" placeholder="Tùy chọn: uuid1, uuid2...">
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 6px;" onclick="createGroup()">Tạo Nhóm</button>
+
+                <div class="divider" style="margin: 16px 0; border-top: 1px dashed var(--border);"></div>
+
+                <!-- Thao tác trên nhóm đang chọn -->
+                <div class="action-title">
+                    <span>Thao tác trên nhóm đang chọn</span>
+                </div>
+                <div class="form-row" style="margin-bottom: 8px;">
+                    <button class="btn btn-secondary" onclick="detailGroup()">Xem Chi Tiết (GET)</button>
+                    <button class="btn btn-warning" onclick="archiveGroup()">Lưu Trữ (Archive)</button>
+                    <button class="btn btn-info" onclick="unarchiveGroup()">Hủy Lưu Trữ</button>
+                    <button class="btn btn-danger" onclick="deleteGroup()">Xóa Nhóm (DELETE)</button>
+                </div>
+
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Cập nhật nhóm (PATCH)</span>
+                        <span class="api-badge patch">PATCH /v1/groups/{id}</span>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="updateGroupName" placeholder="Tên nhóm mới (để trống nếu không đổi)...">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="updateGroupDesc" placeholder="Mô tả mới...">
+                    </div>
+                    <div class="form-row">
+                        <input type="number" id="updateGroupTarget" placeholder="Target mới...">
+                        <label style="display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="updateGroupSettlement" checked> Quyết toán
+                        </label>
+                    </div>
+                    <button class="btn btn-secondary" style="margin-top: 8px; width: 100%;" onclick="updateGroup()">Cập Nhật Nhóm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NỘI DUNG TAB THÀNH VIÊN -->
+    <div id="tab-members" class="tab-content">
+        <div class="grid-2">
+            <!-- Thêm thành viên & Chuyển quyền Owner -->
+            <div class="card">
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Thêm thành viên vào nhóm (Chủ nhóm)</span>
+                        <span class="api-badge post">POST /v1/groups/{id}/members</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="addMemberUserIds">Danh sách User ID cần thêm (mỗi dòng hoặc cách nhau bởi dấu phẩy):</label>
+                        <textarea id="addMemberUserIds" rows="3" placeholder="UUID_USER_1&#10;UUID_USER_2..."></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="addMembers()">Thêm Thành Viên</button>
+                </div>
+
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Chuyển giao quyền chủ nhóm (Transfer Ownership)</span>
+                        <span class="api-badge put">PUT /owner-role/{userId}/</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="targetOwnerUserId">User ID thành viên tiếp quản quyền Owner:</label>
+                        <input type="text" id="targetOwnerUserId" placeholder="UUID của thành viên...">
+                    </div>
+                    <button class="btn btn-warning" onclick="transferOwnership()">Chuyển Quyền Chủ Nhóm</button>
+                </div>
+
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Tự rời khỏi nhóm</span>
+                        <span class="api-badge post">POST /v1/groups/{id}/leave</span>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 10px;">
+                        Lưu ý: Chủ nhóm (Owner) phải chuyển giao quyền trước khi rời nhóm.
+                    </p>
+                    <button class="btn btn-danger" onclick="leaveGroup()">Rời Khỏi Nhóm</button>
+                </div>
+            </div>
+
+            <!-- Duyệt / Từ chối / Xóa thành viên -->
+            <div class="card">
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Duyệt / Từ chối thành viên chờ (Pending)</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="approveMemberUserId">User ID thành viên cần duyệt hoặc từ chối:</label>
+                        <input type="text" id="approveMemberUserId" placeholder="UUID thành viên...">
+                    </div>
+                    <div class="form-row">
+                        <button class="btn btn-success" onclick="approveMember()">Duyệt 1 Người</button>
+                        <button class="btn btn-success" onclick="approveAllMembers()">Duyệt Tất Cả</button>
+                    </div>
+                </div>
+
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Từ chối thành viên chờ</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="rejectMemberUserId">User ID thành viên từ chối:</label>
+                        <input type="text" id="rejectMemberUserId" placeholder="UUID thành viên...">
+                    </div>
+                    <div class="form-row">
+                        <button class="btn btn-danger" onclick="rejectMember()">Từ Chối 1 Người</button>
+                        <button class="btn btn-danger" onclick="rejectAllMembers()">Từ Chối Tất Cả</button>
+                    </div>
+                </div>
+
+                <div class="action-box">
+                    <div class="action-title">
+                        <span>Mời thành viên ra khỏi nhóm (Kick)</span>
+                        <span class="api-badge delete">DELETE /members/{userId}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="removeMemberUserId">User ID thành viên muốn xóa:</label>
+                        <input type="text" id="removeMemberUserId" placeholder="UUID thành viên cần mời ra...">
+                    </div>
+                    <button class="btn btn-danger" onclick="removeMember()">Mời Ra Khỏi Nhóm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NỘI DUNG TAB QUỸ NHÓM -->
+    <div id="tab-fund" class="tab-content">
+        <div class="grid-2">
+            <!-- Đổi thủ quỹ -->
+            <div class="card">
+                <div class="card-title">
+                    <span>👤 Chuyển Giao Người Giữ Quỹ (Thủ Quỹ)</span>
+                    <span class="api-badge put">PUT /fund-kepper</span>
+                </div>
+                <div class="form-group">
+                    <label for="newKeepperUserId">User ID thủ quỹ mới (*):</label>
+                    <input type="text" id="newKeepperUserId" placeholder="UUID của thành viên giữ quỹ mới...">
+                </div>
+                <p style="font-size: 13px; color: var(--text-muted);">
+                    Chỉ Trưởng nhóm (Owner) mới có quyền chỉ định người giữ quỹ.
+                </p>
+                <button class="btn btn-primary" onclick="updateFundKeepper()">Cập Nhật Thủ Quỹ</button>
+            </div>
+
+            <!-- Đối soát / Kiểm kê quỹ -->
+            <div class="card">
+                <div class="card-title">
+                    <span>⚖️ Kiểm Kê / Đối Soát Số Dư Quỹ</span>
+                    <span class="api-badge post">POST /fund/reconcile</span>
+                </div>
+                <div class="form-group">
+                    <label for="reconcileActualBalance">Số dư thực tế kiểm kê (VNĐ) (*):</label>
+                    <input type="number" id="reconcileActualBalance" placeholder="Ví dụ: 1200000">
+                </div>
+                <div class="form-group">
+                    <label for="reconcileDate">Ngày kiểm kê:</label>
+                    <input type="date" id="reconcileDate">
+                </div>
+                <div class="form-group">
+                    <label for="reconcileReason">Lý do điều chỉnh / Ghi chú kiểm quỹ:</label>
+                    <input type="text" id="reconcileReason" placeholder="Ví dụ: Kiểm kê định kỳ cuối tháng...">
+                </div>
+                <button class="btn btn-primary" onclick="reconcileFund()">Thực Hiện Đối Soát</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NỘI DUNG TAB BÁO CÁO NHÓM -->
+    <div id="tab-report" class="tab-content">
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title">
+                    <span>📊 Báo Cáo Tổng Quan (Summary Report)</span>
+                    <span class="api-badge get">GET /v1/groups/{id}/summary</span>
+                </div>
+                <div class="form-row" style="align-items: flex-end;">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="reportMonth">Tháng báo cáo (YYYY-MM, để trống để xem toàn thời gian):</label>
+                        <input type="month" id="reportMonth">
+                    </div>
+                    <button class="btn btn-primary" style="height: 40px; margin-bottom: 12px;" onclick="getGroupSummaryReport()">
+                        Xem Tổng Quan
+                    </button>
+                </div>
+                <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
+                    Biến động thu chi, số dư quỹ hiện tại, tổng chi, tổng đóng góp và phân loại theo nhóm chi tiêu.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>⚖️ Báo Cáo Cân Đối Thành Viên (Balances)</span>
+                    <span class="api-badge get">GET /v1/groups/{id}/balances</span>
+                </div>
+                <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 16px;">
+                    Chi tiết từng thành viên: tiền tự bỏ túi chi hộ, tiền đã được quỹ hoàn, phần chi tiêu phải chịu, và số dư ròng thừa/thiếu.
+                </p>
+                <button class="btn btn-info" style="height: 40px;" onclick="getGroupBalancesReport()">
+                    Xem Đối Soát Cân Đối
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSPECTOR PHẢN HỒI JSON -->
+    <div class="card">
+        <div class="card-title">
+            <div class="card-title-left">
+                <span>📡 Phản Hồi Từ Máy Chủ (Server Response)</span>
+                <span id="statusBadge" class="status-badge status-idle">Sẵn sàng</span>
+            </div>
+            <button class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;" onclick="copyResponse()">Sao Chép JSON</button>
+        </div>
+        <pre id="responseView" class="response-pre">// Kết quả JSON trả về từ API sẽ hiển thị tại đây...</pre>
+    </div>
+</div>
+
+<script src="../js/group-test.js"></script>
+</body>
+</html>

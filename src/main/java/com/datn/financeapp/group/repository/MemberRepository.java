@@ -18,6 +18,8 @@ import org.springframework.data.repository.query.Param;
 public interface MemberRepository extends JpaRepository<Member, UUID> {
     Optional<Member> findByGroupIdAndUserId(UUID groupId, UUID userId);
 
+    Optional<Member> findByGroupIdAndUserIdAndStatusIn(UUID groupId, UUID userId, List<MemberStatus> statuses);
+
     Optional<Member> findByGroupIdAndUserIdAndStatus(UUID groupId, UUID userId, MemberStatus status);
 
     Optional<Member> findByGroupIdAndRoleAndStatus(UUID groupId, MemberRole role, MemberStatus status);
@@ -121,8 +123,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                 UPDATE Member m
                    SET m.role = CASE
                                WHEN m.userId = :newOwnerId
-                               THEN MemberRole.OWNER
-                               ELSE MemberRole.MEMBER
+                               THEN com.datn.financeapp.group.enums.MemberRole.OWNER
+                               ELSE com.datn.financeapp.group.enums.MemberRole.MEMBER
                    END
                  WHERE m.groupId = :groupId
                    AND m.status = MemberStatus.ACTIVE

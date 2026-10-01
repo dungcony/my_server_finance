@@ -1,12 +1,9 @@
 package com.datn.financeapp.group.service;
 
-import com.datn.financeapp.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.group.dto.response.member.MemberRes;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.MemberStatus;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,4 +42,6 @@ public interface MemberService {
     List<UUID> findIdAllMember(UUID groupId);
 
     boolean allMemberInGroup(UUID groupId, List<UUID> memberIds);
+
+    void assertNotInGroup(UUID groupId, UUID memberId);
 }

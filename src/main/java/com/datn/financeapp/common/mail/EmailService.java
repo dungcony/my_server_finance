@@ -23,6 +23,14 @@ public interface EmailService {
     void sendVerificationOtp(String email, String otpCode);
 
     /**
+     * Gửi mật khẩu vừa được hệ thống sinh cho tài khoản Google chưa có mật khẩu.
+     *
+     * @param email địa chỉ email người nhận
+     * @param rawPassword mật khẩu thô vừa sinh
+     */
+    void sendGeneratedPassword(String email, String rawPassword);
+
+    /**
      * Gửi email chung (dự phòng cho xác thực email, thông báo...).
      *
      * @param to địa chỉ email người nhận

@@ -2,9 +2,10 @@ package com.datn.financeapp.group.service;
 
 import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
 import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
+import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
-import com.datn.financeapp.group.dto.response.fund.GroupFundRes;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -12,6 +13,7 @@ import java.util.UUID;
  * <p>
  * Các hàm trong interface:
  * <ul>
+ * li>{@link #create(UUID, UUID, Instant)}: tạo Fund ngay khi tạo group.</li>
  *   <li>{@link #updateFundKeepper}: Cập nhật người giữ quỹ. Input: operatorId, groupId, req. Output: GroupFundRes.</li>
  *   <li>{@link #reconcileFund}: Kiểm kê/đối soát quỹ. Input: operatorId, groupId, req. Output: GroupFundReconcileRes.</li>
  *   <li>{@link #adjustBalance}: Điều chỉnh số dư trực tiếp. Input: fundId, delta. Output: void.</li>
@@ -19,6 +21,8 @@ import java.util.UUID;
  * </p>
  */
 public interface FundService {
+
+    FundRes create(UUID groupId, UUID operatorId, Instant now);
 
     /**
      * Cập nhật thông tin quỹ nhóm (chuyển giao người giữ quỹ/thủ quỹ).
@@ -29,7 +33,7 @@ public interface FundService {
      * @param req        Dữ liệu cập nhật (ID thành viên giữ quỹ mới...)
      * @return Thông tin quỹ sau khi cập nhật
      */
-    GroupFundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req);
+    FundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req);
 
     /**
      * Thực hiện kiểm kê/đối soát số dư quỹ (Reconciliation).

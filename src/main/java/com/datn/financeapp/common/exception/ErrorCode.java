@@ -158,6 +158,9 @@ public enum ErrorCode {
     // mật khẩu được.
     NO_PASSWORD_SET(HttpStatus.BAD_REQUEST, "Tài khoản đăng nhập bằng Google, chưa đặt mật khẩu."),
 
+    // Tạo mật khẩu lần đầu nhưng tài khoản đã có mật khẩu — muốn đổi thì dùng đổi mật khẩu.
+    PASSWORD_ALREADY_SET(HttpStatus.CONFLICT, "Tài khoản đã có mật khẩu."),
+
     // {@code id_token} của Google không kiểm chứng được, hoặc máy chủ chưa cấu hình
     // client id.
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Đăng nhập bằng Google thất bại. Vui lòng thử lại."),
@@ -351,7 +354,6 @@ public enum ErrorCode {
     GROUP_TRANSACTION_NOT_BELONG_MEMBER(HttpStatus.BAD_REQUEST, "Chỉ ch nhóm và thủ quỹ mới được xem giao dịch của người khác"),
     GROUP_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thành viên trong nhóm."),
     GROUP_MEMBER_EXTSIS_NOT_IN(HttpStatus.BAD_REQUEST, "Tồn tại thành viên không trong group"),
-    INVITE_CODE_INVALID(HttpStatus.NOT_FOUND, "Mã mời không đúng."),
     ALREADY_IN_GROUP(HttpStatus.CONFLICT, "Bạn đã là thành viên của nhóm này."),
     PENDING_IN_GROUP(HttpStatus.CONFLICT, "Bạn đã xin vào nhóm này rồi."),
     FORBIDDEN_NOT_GROUP_MEMBER(HttpStatus.FORBIDDEN, "Bạn không phải thành viên của nhóm này."),

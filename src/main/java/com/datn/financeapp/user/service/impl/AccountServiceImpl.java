@@ -1,6 +1,8 @@
 package com.datn.financeapp.user.service.impl;
 
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.mail.EmailService;
+import com.datn.financeapp.user.helper.PasswordGenerator;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.response.UserAccountResponse;
 import com.datn.financeapp.user.entity.User;
@@ -38,6 +40,8 @@ public class AccountServiceImpl implements AccountService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
+    private final EmailService emailService;
+    private final PasswordGenerator passwordGenerator;
 
     @Override
     public UserAccountResponse findById(UUID userId) {
@@ -69,6 +73,24 @@ public class AccountServiceImpl implements AccountService {
         userRepository.save(user);
 
         eventPublisher.publishEvent(new UserPasswordChangedEvent(userId));
+    }
+
+    @Transactional
+    @Override
+    public void generatePassword(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        // chỉ tài khoản chưa có mật khẩu (đăng nhập Google thuần) mới được tạo
+        if (user.getPassword() != null) {
+            throw new PasswordAlreadySetException();
+        }
+
+        String rawPassword = passwordGenerator.generate();
+        user.setPassword(passwordEncoder.encode(rawPassword));
+        userRepository.save(user);
+
+        emailService.sendGeneratedPassword(user.getEmail(), rawPassword);
     }
 
     @Transactional

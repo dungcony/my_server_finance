@@ -17,6 +17,7 @@ import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.repository.UserRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -117,12 +118,12 @@ class GroupTransactionRepositoryTest {
                 .note("Mua sắm nhóm")
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
-                .participants(List.of(
+                .participants(new ArrayList<>(List.of(
                         TransactionParticipant.builder()
                                 .userId(testUser.getId())
                                 .shareAmount(100_000L)
                                 .build()
-                ))
+                )))
                 .build());
     }
 

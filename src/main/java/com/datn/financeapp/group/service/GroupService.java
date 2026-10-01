@@ -19,7 +19,8 @@ import java.util.UUID;
  *   <li>{@link #findNotDeletedById}: Tra cứu nhóm nội bộ. Input: groupId. Output: GroupDetailRes.</li>
  *   <li>{@link #create}: Tạo nhóm. Input: operatorId, req. Output: GroupDetailRes.</li>
  *   <li>{@link #list}: Xem ds nhóm của user. Input: operatorId. Output: ds GroupSummaryRes.</li>
- *   <li>{@link #detail}: Xem chi tiết nhóm. Input: operatorId, groupId. Output: GroupDetailRes.</li>
+ *   <li>{@link #detail(UUID, UUID)}: Xem chi tiết nhóm. Input: operatorId, groupId. Output: GroupDetailRes.</li>
+ *   <li>{@link #joinByCode(UUID, GroupJoinReq)}: xin vào nhóm.</li>
  *   <li>{@link #update}: Cập nhật cấu hình. Input: operatorId, groupId, req. Output: GroupDetailRes.</li>
  *   <li>{@link #archive}, {@link #unarchive}: Lưu trữ/Mở lại nhóm. Input: operatorId, groupId. Output: void.</li>
  *   <li>{@link #delete}: Xóa nhóm. Input: operatorId, groupId. Output: void.</li>
