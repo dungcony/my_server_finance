@@ -2,9 +2,9 @@ package com.datn.financeapp.group.service;
 
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 
 import java.time.Instant;
@@ -15,10 +15,10 @@ import java.util.UUID;
  * <p>
  * Định nghĩa các phương thức:
  * <ul>
- * <li>{@link #supports(TransactionType)}: Kiểm tra loại giao dịch hỗ trợ.</li>
- * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, TransactionStatus, boolean)}:
+ * <li>{@link #supports(GTransactionType)}: Kiểm tra loại giao dịch hỗ trợ.</li>
+ * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, GTransactionStatus, boolean)}:
  * Xây dựng thực thể giao dịch theo nghiệp vụ riêng.</li>
- * <li>{@link #baseBuilder(UUID, UUID, GroupTransactionCreateReq, MoneySource, TransactionStatus)}:
+ * <li>{@link #baseBuilder(UUID, UUID, GroupTransactionCreateReq, MoneySource, GTransactionStatus)}:
  * Khởi tạo builder dùng chung cho các trường cơ bản.</li>
  * </ul>
  * </p>
@@ -26,18 +26,18 @@ import java.util.UUID;
 public interface GTransactionBuilderStrategy {
 
     // kiểm tra strategy có phụ trách loại giao dịch truyền vào hay không
-    boolean supports(TransactionType type);
+    boolean supports(GTransactionType type);
 
     // mỗi strategy tự quyết định trạng thái giao dịch dựa vào quyền người thực hiện
-    TransactionStatus determineStatus(MemberAuthInfo authInfo);
+    GTransactionStatus determineStatus(MemberAuthInfo authInfo);
 
     // xây dựng entity giao dịch tương ứng theo nghiệp vụ riêng
     GTransaction build(UUID operatorId, UUID groupId, GroupTransactionCreateReq req,
-                       TransactionStatus status, boolean isSettlementEnabled);
+                       GTransactionStatus status, boolean isSettlementEnabled);
 
     // hàm dùng chung khởi tạo base builder cho các strategy tránh lặp code
     default GTransaction.GTransactionBuilder baseBuilder(UUID operatorId, UUID groupId,
-                                                         GroupTransactionCreateReq req, MoneySource moneySource, TransactionStatus status) {
+                                                         GroupTransactionCreateReq req, MoneySource moneySource, GTransactionStatus status) {
         Instant now = Instant.now();
         return GTransaction.builder()
                 .id(UUID.randomUUID())
@@ -52,7 +52,7 @@ public interface GTransactionBuilderStrategy {
                 .createdBy(operatorId)
                 .createdAt(now)
                 .updatedAt(now)
-                .reviewedBy(status == TransactionStatus.CONFIRMED ? operatorId : null)
-                .reviewedAt(status == TransactionStatus.CONFIRMED ? now : null);
+                .reviewedBy(status == GTransactionStatus.CONFIRMED ? operatorId : null)
+                .reviewedAt(status == GTransactionStatus.CONFIRMED ? now : null);
     }
 }

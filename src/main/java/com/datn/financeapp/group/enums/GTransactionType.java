@@ -1,6 +1,6 @@
 package com.datn.financeapp.group.enums;
 
-public enum TransactionType {
+public enum GTransactionType {
     EXPENSE,          // nhóm tiêu tiền
     CONTRIBUTION,     // thành viên góp tiền vào quỹ
     REFUND,           // quỹ trả tiền cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)

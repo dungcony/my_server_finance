@@ -1,7 +1,7 @@
 package com.datn.financeapp.group.entity;
 
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -28,7 +28,7 @@ import lombok.Setter;
 /**
  * Aggregate Root đại diện cho một giao dịch tài chính trong nhóm quỹ chung.
  * <p>
- * <b>Các loại giao dịch hỗ trợ ({@link TransactionType}):</b>
+ * <b>Các loại giao dịch hỗ trợ ({@link GTransactionType}):</b>
  * <ul>
  *   <li>{@code EXPENSE}: Khoản chi tiêu chung của nhóm (lấy từ quỹ nhóm {@code FUND} hoặc cá nhân tự trả {@code PERSONAL}).</li>
  *   <li>{@code CONTRIBUTION}: Thành viên nộp tiền đóng góp vào quỹ nhóm.</li>
@@ -96,7 +96,7 @@ public class GTransaction {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
-    private TransactionType type;
+    private GTransactionType type;
 
     /**
      * Trạng thái kiểm duyệt:
@@ -109,7 +109,7 @@ public class GTransaction {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private TransactionStatus status = TransactionStatus.PENDING;
+    private GTransactionStatus status = GTransactionStatus.PENDING;
 
     /**
      * ID của Trưởng nhóm hoặc Thủ quỹ thực hiện duyệt giao dịch.
@@ -192,12 +192,12 @@ public class GTransaction {
             UUID operatorId,
             UUID transactorId,
             UUID categoryId,
-            TransactionType type,
+            GTransactionType type,
             MoneySource moneySource,
             Long amount,
             Instant occurredAt,
             String note,
-            TransactionStatus status,
+            GTransactionStatus status,
             UUID reviewedBy,
             Instant reviewedAt,
             List<TransactionParticipant> participants
@@ -231,7 +231,7 @@ public class GTransaction {
             UUID groupId,
             UUID creatorId,
             UUID transactorId,
-            TransactionType type,
+            GTransactionType type,
             long amount,
             Instant occurredAt,
             String note
@@ -245,7 +245,7 @@ public class GTransaction {
                 .createdBy(creatorId)
                 .categoryId(null)
                 .type(type)
-                .status(TransactionStatus.CONFIRMED)
+                .status(GTransactionStatus.CONFIRMED)
                 .reviewedBy(creatorId)
                 .reviewedAt(now)
                 .amount(amount)

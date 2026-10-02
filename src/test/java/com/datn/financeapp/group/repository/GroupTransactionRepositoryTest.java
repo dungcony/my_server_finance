@@ -7,20 +7,19 @@ import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.repository.UserRepository;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -109,8 +108,8 @@ class GroupTransactionRepositoryTest {
                 .transactorId(testUser.getId())
                 .createdBy(testUser.getId())
                 .categoryId(testCategory.getId())
-                .type(TransactionType.EXPENSE)
-                .status(TransactionStatus.CONFIRMED)
+                .type(GTransactionType.EXPENSE)
+                .status(GTransactionStatus.CONFIRMED)
                 .reviewedBy(testUser.getId())
                 .reviewedAt(Instant.now())
                 .amount(100_000L)
@@ -136,7 +135,7 @@ class GroupTransactionRepositoryTest {
                 .setParameter("id", testTxn.getId())
                 .executeUpdate();
 
-        testTxn.setStatus(TransactionStatus.REJECTED);
+        testTxn.setStatus(GTransactionStatus.REJECTED);
 
         assertThatThrownBy(() -> groupTransactionRepository.saveAndFlush(testTxn))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
@@ -169,7 +168,7 @@ class GroupTransactionRepositoryTest {
     @DisplayName("Tìm danh sách theo ID, Group ID, chưa xoá và đúng status")
     void findByIdInAndGroupIdAndDeletedAtIsNullAndStatus_success() {
         List<GTransaction> list = groupTransactionRepository.findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(
-                List.of(testTxn.getId()), testGroup.getId(), TransactionStatus.CONFIRMED
+                List.of(testTxn.getId()), testGroup.getId(), GTransactionStatus.CONFIRMED
         );
         assertThat(list).hasSize(1);
         assertThat(list.get(0).getId()).isEqualTo(testTxn.getId());
@@ -179,12 +178,12 @@ class GroupTransactionRepositoryTest {
     @DisplayName("Đếm số lượng giao dịch theo trạng thái chưa bị xóa")
     void countByGroupIdAndStatusAndDeletedAtIsNull_success() {
         long count = groupTransactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(
-                testGroup.getId(), TransactionStatus.CONFIRMED
+                testGroup.getId(), GTransactionStatus.CONFIRMED
         );
         assertThat(count).isEqualTo(1L);
 
         long pendingCount = groupTransactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(
-                testGroup.getId(), TransactionStatus.PENDING
+                testGroup.getId(), GTransactionStatus.PENDING
         );
         assertThat(pendingCount).isEqualTo(0L);
     }
@@ -196,12 +195,12 @@ class GroupTransactionRepositoryTest {
         Instant to = Instant.now();
 
         Long sum = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
-                testGroup.getId(), TransactionType.EXPENSE, from, to
+                testGroup.getId(), GTransactionType.EXPENSE, from, to
         );
         assertThat(sum).isEqualTo(100_000L);
 
         Long zeroSum = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
-                testGroup.getId(), TransactionType.CONTRIBUTION, from, to
+                testGroup.getId(), GTransactionType.CONTRIBUTION, from, to
         );
         assertThat(zeroSum).isEqualTo(0L);
     }

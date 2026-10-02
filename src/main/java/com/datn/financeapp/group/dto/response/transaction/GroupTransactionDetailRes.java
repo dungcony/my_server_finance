@@ -1,7 +1,7 @@
 package com.datn.financeapp.group.dto.response.transaction;
 
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 
 import java.time.Instant;
@@ -15,8 +15,8 @@ public record GroupTransactionDetailRes(
         UUID createdBy,
         UUID categoryId,
         MoneySource moneySource,
-        TransactionType type,
-        TransactionStatus status,
+        GTransactionType type,
+        GTransactionStatus status,
         UUID reviewedBy,
         Instant reviewedAt,
         Long amount,

@@ -10,8 +10,8 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateR
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
@@ -86,7 +86,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED));
 
         // lấy trạng thái kiểm duyệt dựa vào quyền người thực hiện
-        TransactionStatus status = strategy.determineStatus(authInfo);
+        GTransactionStatus status = strategy.determineStatus(authInfo);
 
         // điều phối tới đúng strategy phụ trách loại giao dịch để xây dựng entity
         GTransaction gTransaction = strategy.build(operatorId, groupId, req, status, authInfo.isSettlementEnabled());
@@ -94,7 +94,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         transactionRepository.save(gTransaction);
 
         // cập nhật số dư quỹ nếu giao dịch được duyệt tự động
-        if (status == TransactionStatus.CONFIRMED) {
+        if (status == GTransactionStatus.CONFIRMED) {
             publishFundChangeEvent(
                     groupId, transactionHelper.calculateDelta(
                             gTransaction.getType(),
@@ -126,7 +126,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // member thường không được thấy giao dịch chờ duyệt trong danh sách chung
         boolean isReviewer = authInfo.isOwner() || authInfo.isTreasurer();
         if (!isReviewer && filter.status() == null) {
-            filter = filter.withExcludeStatus(TransactionStatus.PENDING);
+            filter = filter.withExcludeStatus(GTransactionStatus.PENDING);
         }
 
         return buildListRes(groupId, filter);
@@ -150,7 +150,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         requireReviewer(groupId, operatorId);
 
         GroupTransactionFilterReq filter = new GroupTransactionFilterReq(
-                null, null, TransactionStatus.PENDING, null, null, null, null, null, page, size);
+                null, null, GTransactionStatus.PENDING, null, null, null, null, null, page, size);
 
         return buildListRes(groupId, filter);
     }
@@ -166,7 +166,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND));
 
         // giao dịch điều chỉnh từ kiểm kê không được phép sửa
-        if (txn.getType() == TransactionType.ADJUSTMENT_UP || txn.getType() == TransactionType.ADJUSTMENT_DOWN) {
+        if (txn.getType() == GTransactionType.ADJUSTMENT_UP || txn.getType() == GTransactionType.ADJUSTMENT_DOWN) {
             throw new BusinessException(ErrorCode.ADJUSTMENT_NOT_EDITABLE);
         }
 
@@ -175,7 +175,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         transactionValidator.timeNotFuture(req.resolveOccurredAt());
 
         // tính delta hoàn tác số tiền cũ nếu trạng thái cũ là CONFIRMED
-        long delta = (txn.getStatus() == TransactionStatus.CONFIRMED)
+        long delta = (txn.getStatus() == GTransactionStatus.CONFIRMED)
                 ? transactionHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), true)
                 : 0L;
 
@@ -187,7 +187,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                 .update(txn, operatorId, groupId, req, authInfo);
 
         // cộng dồn delta mới nếu trạng thái mới là CONFIRMED
-        if (txn.getStatus() == TransactionStatus.CONFIRMED)
+        if (txn.getStatus() == GTransactionStatus.CONFIRMED)
             delta += transactionHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), false);
 
         // lưu cơ sở dữ liệu và gửi sự kiện biến động quỹ nếu có chênh lệch
@@ -209,7 +209,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         permissionValidator.verifyTransactionDeletePermission(txn, operatorId, authInfo);
 
         // hoàn tác số dư quỹ nếu giao dịch đã được xác nhận
-        if (txn.getStatus() == TransactionStatus.CONFIRMED) {
+        if (txn.getStatus() == GTransactionStatus.CONFIRMED) {
             long delta = transactionHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), true);
             publishFundChangeEvent(groupId, delta);
         }
@@ -223,7 +223,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
     @Override
     public long countPendingForGroup(UUID groupId) {
-        return transactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(groupId, TransactionStatus.PENDING);
+        return transactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(groupId, GTransactionStatus.PENDING);
     }
 
     // -----------------------------------REVIEWING-----------------------------------------//
@@ -232,7 +232,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         requireReviewer(groupId, operatorId);
         GTransaction txn = findPendingTransaction(transactionId, groupId);
 
-        updateReviewStatus(txn, TransactionStatus.CONFIRMED, operatorId, Instant.now());
+        updateReviewStatus(txn, GTransactionStatus.CONFIRMED, operatorId, Instant.now());
         publishFundChangeEvent(groupId, deltaOf(txn));
 
         return transactionHelper.buildDetailRes(txn);
@@ -243,7 +243,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         requireReviewer(groupId, operatorId);
         GTransaction txn = findPendingTransaction(transactionId, groupId);
 
-        updateReviewStatus(txn, TransactionStatus.REJECTED, operatorId, Instant.now());
+        updateReviewStatus(txn, GTransactionStatus.REJECTED, operatorId, Instant.now());
 
         return transactionHelper.buildDetailRes(txn);
     }
@@ -256,7 +256,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         long totalDelta = 0L;
         Instant now = Instant.now();
         for (GTransaction t : txns) {
-            updateReviewStatus(t, TransactionStatus.CONFIRMED, operatorId, now);
+            updateReviewStatus(t, GTransactionStatus.CONFIRMED, operatorId, now);
             totalDelta += deltaOf(t);
         }
 
@@ -272,7 +272,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         List<GTransaction> txns = findPendingBatch(groupId, req);
 
         Instant now = Instant.now();
-        txns.forEach(t -> updateReviewStatus(t, TransactionStatus.REJECTED, operatorId, now));
+        txns.forEach(t -> updateReviewStatus(t, GTransactionStatus.REJECTED, operatorId, now));
 
         return txns.size();
     }
@@ -293,7 +293,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
     private GTransaction findPendingTransaction(UUID transactionId, UUID groupId) {
         GTransaction txn = findActiveTransaction(transactionId, groupId);
-        if (txn.getStatus() != TransactionStatus.PENDING)
+        if (txn.getStatus() != GTransactionStatus.PENDING)
             throw new BusinessException(ErrorCode.TRANSACTION_NOT_PENDING);
         return txn;
     }
@@ -305,7 +305,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
         List<UUID> distinctIds = req.transactionIds().stream().distinct().toList();
         List<GTransaction> txns = transactionRepository
-                .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(distinctIds, groupId, TransactionStatus.PENDING);
+                .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(distinctIds, groupId, GTransactionStatus.PENDING);
 
         if (txns.size() != distinctIds.size())
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
@@ -352,7 +352,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         return transactionRepository.findAll(spec, pageable);
     }
 
-    private void updateReviewStatus(GTransaction txn, TransactionStatus status, UUID reviewerId, Instant timestamp) {
+    private void updateReviewStatus(GTransaction txn, GTransactionStatus status, UUID reviewerId, Instant timestamp) {
         txn.setStatus(status);
         txn.setReviewedBy(reviewerId);
         txn.setReviewedAt(timestamp);

@@ -5,9 +5,9 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.service.GTransactionBuilderStrategy;
 import com.datn.financeapp.group.service.MemberService;
@@ -23,9 +23,9 @@ import java.util.UUID;
  * <p>
  * Chi tiết các phương thức:
  * <ul>
- * <li>{@link #supports(TransactionType)}: Xác nhận hỗ trợ loại ADJUSTMENT_UP
+ * <li>{@link #supports(GTransactionType)}: Xác nhận hỗ trợ loại ADJUSTMENT_UP
  * hoặc ADJUSTMENT_DOWN.</li>
- * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, TransactionStatus, boolean)}:
+ * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, GTransactionStatus, boolean)}:
  * Kiểm tra nguồn tiền FUND, tự động phân bổ chia đều khoản chênh lệch cho thành
  * viên nhóm và hoàn thiện thực thể giao dịch.</li>
  * </ul>
@@ -39,21 +39,21 @@ public class AdjustmentTransactionStrategy implements GTransactionBuilderStrateg
     private final TransactionHelper transactionHelper;
 
     @Override
-    public boolean supports(TransactionType type) {
-        return type == TransactionType.ADJUSTMENT_UP || type == TransactionType.ADJUSTMENT_DOWN;
+    public boolean supports(GTransactionType type) {
+        return type == GTransactionType.ADJUSTMENT_UP || type == GTransactionType.ADJUSTMENT_DOWN;
     }
 
     @Override
-    public TransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
         if (authInfo.isOwner()) {
-            return TransactionStatus.CONFIRMED;
+            return GTransactionStatus.CONFIRMED;
         }
-        return TransactionStatus.PENDING;
+        return GTransactionStatus.PENDING;
     }
 
     @Override
     public GTransaction build(UUID operatorId, UUID groupId, GroupTransactionCreateReq req,
-                              TransactionStatus status, boolean isSettlementEnabled) {
+                              GTransactionStatus status, boolean isSettlementEnabled) {
         MoneySource source = req.resolveMoneySource();
         if (source != MoneySource.FUND) {
             throw new BusinessException(ErrorCode.MONEY_SOURCE_INVALID);

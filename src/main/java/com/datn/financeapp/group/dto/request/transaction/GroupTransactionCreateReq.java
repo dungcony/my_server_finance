@@ -1,6 +1,6 @@
 package com.datn.financeapp.group.dto.request.transaction;
 
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -34,7 +34,7 @@ import java.util.UUID;
  *                     Nếu để trống, hệ thống sẽ chia đều cho toàn bộ thành viên tại thời điểm giao dịch.
  */
 public record GroupTransactionCreateReq(
-        @NotNull(message = "chưa có loại giao dịch") TransactionType type,
+        @NotNull(message = "chưa có loại giao dịch") GTransactionType type,
         @NotNull(message = "phải chỉ định nguồn tiền") MoneySource moneySource,
         @NotNull @Positive @Max(999999999999L) Long amount,
         Instant occurredAt,
@@ -74,7 +74,7 @@ public record GroupTransactionCreateReq(
      * Xác định nguồn tiền của giao dịch khi client không truyền tường minh.
      * <ul>
      *     <li>Nếu có {@code moneySource}, giữ nguyên giá trị được truyền.</li>
-     *     <li>Nếu là {@link TransactionType#CONTRIBUTION} (nộp quỹ): Mặc định là {@link MoneySource#PERSONAL}.</li>
+     *     <li>Nếu là {@link GTransactionType#CONTRIBUTION} (nộp quỹ): Mặc định là {@link MoneySource#PERSONAL}.</li>
      *     <li>Các trường hợp còn lại (như EXPENSE): Mặc định là {@link MoneySource#FUND}.</li>
      * </ul>
      *
@@ -84,7 +84,7 @@ public record GroupTransactionCreateReq(
         if (moneySource != null) {
             return moneySource;
         }
-        if (type == TransactionType.CONTRIBUTION) {
+        if (type == GTransactionType.CONTRIBUTION) {
             return MoneySource.PERSONAL;
         }
         return MoneySource.FUND;

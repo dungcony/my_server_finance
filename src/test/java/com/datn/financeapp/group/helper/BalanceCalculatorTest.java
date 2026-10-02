@@ -8,8 +8,8 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.entity.Member;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 
 import java.time.Instant;
@@ -17,7 +17,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -52,12 +51,12 @@ class BalanceCalculatorTest {
             GTransaction tx1 = GTransaction.builder()
                     .id(tx1Id)
                     .transactorId(userA)
-                    .type(TransactionType.CONTRIBUTION)
+                    .type(GTransactionType.CONTRIBUTION)
                     .amount(600000L)
                     .moneySource(MoneySource.PERSONAL)
                     .occurredAt(now.minusSeconds(30))
                     .createdAt(now.minusSeconds(30))
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             // Giao dịch 2: B tự bỏ tiền túi chi tiêu 300,000đ, chia đều cho cả 3 người A, B, C (mỗi người 100k)
@@ -65,12 +64,12 @@ class BalanceCalculatorTest {
             GTransaction tx2 = GTransaction.builder()
                     .id(tx2Id)
                     .transactorId(userB)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(300000L)
                     .moneySource(MoneySource.PERSONAL)
                     .occurredAt(now.minusSeconds(20))
                     .createdAt(now.minusSeconds(20))
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             TransactionParticipant p2A = TransactionParticipant.builder().userId(userA).shareAmount(100000L).build();
@@ -82,12 +81,12 @@ class BalanceCalculatorTest {
             GTransaction tx3 = GTransaction.builder()
                     .id(tx3Id)
                     .transactorId(userB)
-                    .type(TransactionType.REFUND)
+                    .type(GTransactionType.REFUND)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(now.minusSeconds(10))
                     .createdAt(now.minusSeconds(10))
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             tx2.setParticipants(List.of(p2A, p2B, p2C));
@@ -134,11 +133,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(userA)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(500000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(now)
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             // A: shareAmount = 200,000; B: null; C: null
@@ -177,11 +176,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(userA)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(now)
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             // 3 người chia 100đ -> base = 33, remainder = 1
@@ -237,11 +236,11 @@ class BalanceCalculatorTest {
             GTransaction txDown = GTransaction.builder()
                     .id(txDownId)
                     .transactorId(userA)
-                    .type(TransactionType.ADJUSTMENT_DOWN)
+                    .type(GTransactionType.ADJUSTMENT_DOWN)
                     .amount(200000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(now.minusSeconds(10))
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             TransactionParticipant pDownA = TransactionParticipant.builder().userId(userA).shareAmount(100000L).build();
@@ -252,11 +251,11 @@ class BalanceCalculatorTest {
             GTransaction txUp = GTransaction.builder()
                     .id(txUpId)
                     .transactorId(userA)
-                    .type(TransactionType.ADJUSTMENT_UP)
+                    .type(GTransactionType.ADJUSTMENT_UP)
                     .amount(60000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(now)
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             TransactionParticipant pUpA = TransactionParticipant.builder().userId(userA).shareAmount(30000L).build();
@@ -306,11 +305,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(uActive)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(200000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(tOccurred)
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), members, null);
@@ -341,11 +340,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(user)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(tOccurredBeforeJoin)
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), members, null))
@@ -366,11 +365,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(userA)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             // Tổng share là 40k + 40k = 80k != 100k
@@ -397,11 +396,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(userA)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             // A gán 100k (= amount), B gán null -> tổng đã gán >= amount -> không hợp lý
@@ -427,11 +426,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(userA)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             TransactionParticipant pA = TransactionParticipant.builder().userId(userA).shareAmount(0L).build();
@@ -455,11 +454,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(txId)
                     .transactorId(userA)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             TransactionParticipant p1 = TransactionParticipant.builder().userId(userA).shareAmount(50000L).build();
@@ -482,11 +481,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(userA)
-                    .type(TransactionType.CONTRIBUTION)
+                    .type(GTransactionType.CONTRIBUTION)
                     .amount(0L)
                     .moneySource(MoneySource.PERSONAL)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(Member.builder().userId(UUID.randomUUID()).joinedAt(Instant.now().minusSeconds(100)).build()), null))
@@ -508,11 +507,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(null)
-                    .type(TransactionType.CONTRIBUTION)
+                    .type(GTransactionType.CONTRIBUTION)
                     .amount(50000L)
                     .moneySource(MoneySource.PERSONAL)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(Member.builder().userId(UUID.randomUUID()).joinedAt(Instant.now().minusSeconds(100)).build()), null))
@@ -530,11 +529,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(userA)
-                    .type(TransactionType.CONTRIBUTION)
+                    .type(GTransactionType.CONTRIBUTION)
                     .amount(250000L)
                     .moneySource(null)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), List.of(Member.builder().userId(UUID.randomUUID()).joinedAt(Instant.now().minusSeconds(100)).build()), null);
@@ -549,11 +548,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(userA)
-                    .type(TransactionType.CONTRIBUTION)
+                    .type(GTransactionType.CONTRIBUTION)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(Member.builder().userId(UUID.randomUUID()).joinedAt(Instant.now().minusSeconds(100)).build()), null))
@@ -570,11 +569,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(null)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(150000L)
                     .moneySource(MoneySource.PERSONAL)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             UUID userA = UUID.randomUUID();
@@ -596,11 +595,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(null)
-                    .type(TransactionType.EXPENSE)
+                    .type(GTransactionType.EXPENSE)
                     .amount(100000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             TransactionParticipant p = TransactionParticipant.builder().userId(userA).shareAmount(100000L).build();
@@ -617,11 +616,11 @@ class BalanceCalculatorTest {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(null)
-                    .type(TransactionType.REFUND)
+                    .type(GTransactionType.REFUND)
                     .amount(80000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(Instant.now())
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(Member.builder().userId(UUID.randomUUID()).joinedAt(Instant.now().minusSeconds(100)).build()), null))
@@ -640,22 +639,22 @@ class BalanceCalculatorTest {
             GTransaction contribution = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(userA)
-                    .type(TransactionType.CONTRIBUTION)
+                    .type(GTransactionType.CONTRIBUTION)
                     .amount(1_000_000L)
                     .moneySource(MoneySource.PERSONAL)
                     .occurredAt(now.minusSeconds(20))
                     .createdAt(now.minusSeconds(20))
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
             GTransaction refund = GTransaction.builder()
                     .id(UUID.randomUUID())
                     .transactorId(userA)
-                    .type(TransactionType.REFUND)
+                    .type(GTransactionType.REFUND)
                     .amount(400_000L)
                     .moneySource(MoneySource.FUND)
                     .occurredAt(now.minusSeconds(10))
                     .createdAt(now.minusSeconds(10))
-                    .status(TransactionStatus.CONFIRMED)
+                    .status(GTransactionStatus.CONFIRMED)
                     .build();
 
             MemberBalances result = BalanceCalculator.calculateBalances(List.of(contribution, refund),

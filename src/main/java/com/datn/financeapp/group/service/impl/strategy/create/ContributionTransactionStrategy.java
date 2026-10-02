@@ -2,9 +2,9 @@ package com.datn.financeapp.group.service.impl.strategy.create;
 
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.service.GTransactionBuilderStrategy;
 import com.datn.financeapp.group.validator.GroupTransactionTypeValidator;
 import org.springframework.stereotype.Component;
@@ -17,9 +17,9 @@ import java.util.UUID;
  * <p>
  * Chi tiết các phương thức:
  * <ul>
- * <li>{@link #supports(TransactionType)}: Xác nhận hỗ trợ loại
+ * <li>{@link #supports(GTransactionType)}: Xác nhận hỗ trợ loại
  * CONTRIBUTION.</li>
- * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, TransactionStatus, boolean)}:
+ * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, GTransactionStatus, boolean)}:
  * Kiểm tra nguồn tiền PERSONAL, xác nhận không có người chia tiền và hoàn thiện
  * thực thể giao dịch.</li>
  * </ul>
@@ -29,21 +29,21 @@ import java.util.UUID;
 public class ContributionTransactionStrategy implements GTransactionBuilderStrategy {
 
     @Override
-    public boolean supports(TransactionType type) {
-        return type == TransactionType.CONTRIBUTION;
+    public boolean supports(GTransactionType type) {
+        return type == GTransactionType.CONTRIBUTION;
     }
 
     @Override
-    public TransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
         if (authInfo.isOwner() || authInfo.isTreasurer()) {
-            return TransactionStatus.CONFIRMED;
+            return GTransactionStatus.CONFIRMED;
         }
-        return TransactionStatus.PENDING;
+        return GTransactionStatus.PENDING;
     }
 
     @Override
     public GTransaction build(UUID operatorId, UUID groupId, GroupTransactionCreateReq req,
-                              TransactionStatus status, boolean isSettlementEnabled) {
+                              GTransactionStatus status, boolean isSettlementEnabled) {
         MoneySource source = req.resolveMoneySource();
         // kiểm tra nguồn tiền cá nhân và đảm bảo không có người chia tiền
         GroupTransactionTypeValidator.validContribution(source, req.participants());

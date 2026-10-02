@@ -2,8 +2,8 @@ package com.datn.financeapp.group.service;
 
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 
 import java.time.Instant;
@@ -14,7 +14,7 @@ import java.util.UUID;
  * <p>
  * Chi tiết các phương thức:
  * <ul>
- *   <li>{@link #supports(TransactionType)}: Kiểm tra loại giao dịch hỗ trợ.</li>
+ *   <li>{@link #supports(GTransactionType)}: Kiểm tra loại giao dịch hỗ trợ.</li>
  *   <li>{@link #update(GTransaction, UUID, UUID, GroupTransactionUpdateReq, MemberAuthInfo)}: Cập nhật thực thể theo nghiệp vụ riêng.</li>
  *   <li>{@link #applyBaseUpdate(GTransaction, UUID, GroupTransactionUpdateReq, MemberAuthInfo)}: Cập nhật an toàn các trường chung và trạng thái duyệt.</li>
  * </ul>
@@ -23,7 +23,7 @@ import java.util.UUID;
 public interface GTransactionUpdateStrategy {
 
     // kiểm tra strategy có phụ trách loại giao dịch này hay không
-    boolean supports(TransactionType type);
+    boolean supports(GTransactionType type);
 
     // thực hiện cập nhật thực thể giao dịch theo nghiệp vụ riêng
     void update(GTransaction txn, UUID operatorId, UUID groupId, GroupTransactionUpdateReq req, MemberAuthInfo authInfo);
@@ -31,7 +31,7 @@ public interface GTransactionUpdateStrategy {
     // cập nhật an toàn các trường chung, tránh ghi đè dữ liệu cũ bằng null
     default void applyBaseUpdate(GTransaction txn, UUID operatorId, GroupTransactionUpdateReq req, MemberAuthInfo authInfo) {
         boolean isAutoApprove = authInfo.isOwner() || authInfo.isTreasurer();
-        TransactionStatus newStatus = isAutoApprove ? TransactionStatus.CONFIRMED : TransactionStatus.PENDING;
+        GTransactionStatus newStatus = isAutoApprove ? GTransactionStatus.CONFIRMED : GTransactionStatus.PENDING;
         Instant now = Instant.now();
 
         txn.setStatus(newStatus);

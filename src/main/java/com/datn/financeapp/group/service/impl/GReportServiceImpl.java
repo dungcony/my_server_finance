@@ -9,9 +9,9 @@ import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
 import com.datn.financeapp.group.helper.MemberBalances;
@@ -46,7 +46,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ReportServiceImpl implements ReportService {
+public class GReportServiceImpl implements ReportService {
 
     private final GroupService groupService;
     private final GroupTransactionRepository groupTransactionRepository;
@@ -80,14 +80,14 @@ public class ReportServiceImpl implements ReportService {
             Instant toTime = ym.plusMonths(1).atDay(1).atStartOfDay(VN_ZONE).toInstant();
 
             totalExpense = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
-                    groupId, TransactionType.EXPENSE, fromTime, toTime);
+                    groupId, GTransactionType.EXPENSE, fromTime, toTime);
             totalContribution = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
-                    groupId, TransactionType.CONTRIBUTION, fromTime, toTime);
+                    groupId, GTransactionType.CONTRIBUTION, fromTime, toTime);
         } else {
             totalExpense = groupTransactionRepository.sumAmountByGroupIdAndType(
-                    groupId, TransactionType.EXPENSE);
+                    groupId, GTransactionType.EXPENSE);
             totalContribution = groupTransactionRepository.sumAmountByGroupIdAndType(
-                    groupId, TransactionType.CONTRIBUTION);
+                    groupId, GTransactionType.CONTRIBUTION);
         }
 
         return new GroupSummaryReportRes(
@@ -113,7 +113,7 @@ public class ReportServiceImpl implements ReportService {
         // lấy danh sách toàn bộ giao dịch đã xác nhận để tính toán số dư
         List<GTransaction> allTxns = groupTransactionRepository
                 .findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                        groupId, TransactionStatus.CONFIRMED);
+                        groupId, GTransactionStatus.CONFIRMED);
 
         // lấy tất cả thành viên ngoại trừ trạng thái chờ duyệt
         List<Member> allMembers = memberRepository

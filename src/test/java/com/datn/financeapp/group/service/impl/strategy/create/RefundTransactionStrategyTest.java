@@ -9,17 +9,15 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.repository.MemberRepository;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,16 +55,16 @@ class RefundTransactionStrategyTest {
     @Test
     @DisplayName("Chỉ hỗ trợ loại giao dịch REFUND")
     void testSupports() {
-        assertThat(strategy.supports(TransactionType.REFUND)).isTrue();
-        assertThat(strategy.supports(TransactionType.EXPENSE)).isFalse();
-        assertThat(strategy.supports(TransactionType.CONTRIBUTION)).isFalse();
+        assertThat(strategy.supports(GTransactionType.REFUND)).isTrue();
+        assertThat(strategy.supports(GTransactionType.EXPENSE)).isFalse();
+        assertThat(strategy.supports(GTransactionType.CONTRIBUTION)).isFalse();
     }
 
     @Test
     @DisplayName("Chỉ Owner hoặc Treasurer mới có thể tạo trực tiếp thành CONFIRMED")
     void testDetermineStatus() {
         MemberAuthInfo ownerInfo = new MemberAuthInfo(groupId, operatorId, null, true, null, MemberRole.OWNER, operatorId);
-        assertThat(strategy.determineStatus(ownerInfo)).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(strategy.determineStatus(ownerInfo)).isEqualTo(GTransactionStatus.CONFIRMED);
 
         MemberAuthInfo memberInfo = new MemberAuthInfo(groupId, operatorId, null, true, null, MemberRole.MEMBER, UUID.randomUUID());
         assertThatThrownBy(() -> strategy.determineStatus(memberInfo))
@@ -79,12 +77,12 @@ class RefundTransactionStrategyTest {
     void testBuild_Success() {
         stubOneContribution(2000000L);
 
-        GTransaction txn = strategy.build(operatorId, groupId, refundReq(500000L), TransactionStatus.CONFIRMED, true);
+        GTransaction txn = strategy.build(operatorId, groupId, refundReq(500000L), GTransactionStatus.CONFIRMED, true);
 
         assertThat(txn.getAmount()).isEqualTo(500000L);
-        assertThat(txn.getType()).isEqualTo(TransactionType.REFUND);
+        assertThat(txn.getType()).isEqualTo(GTransactionType.REFUND);
         assertThat(txn.getMoneySource()).isEqualTo(MoneySource.FUND);
-        assertThat(txn.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(txn.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
     }
 
     @Test
@@ -93,7 +91,7 @@ class RefundTransactionStrategyTest {
         stubOneContribution(2000000L);
 
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, refundReq(2500000L),
-                TransactionStatus.CONFIRMED, true))
+                GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode());
     }
@@ -104,7 +102,7 @@ class RefundTransactionStrategyTest {
         stubOneContribution(2000000L);
 
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, refundReq(2500000L),
-                TransactionStatus.CONFIRMED, false))
+                GTransactionStatus.CONFIRMED, false))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode());
     }
@@ -115,19 +113,19 @@ class RefundTransactionStrategyTest {
         stubOneContribution(2000000L);
 
         GTransaction txn = strategy.build(operatorId, groupId, refundReq(500000L),
-                TransactionStatus.CONFIRMED, false);
+                GTransactionStatus.CONFIRMED, false);
 
         assertThat(txn.getAmount()).isEqualTo(500000L);
-        assertThat(txn.getType()).isEqualTo(TransactionType.REFUND);
+        assertThat(txn.getType()).isEqualTo(GTransactionType.REFUND);
     }
 
     @Test
     @DisplayName("Nguồn tiền không phải FUND thì bị từ chối")
     void testBuild_ThrowsException_WhenMoneySourceNotFund() {
-        GroupTransactionCreateReq req = new GroupTransactionCreateReq(TransactionType.REFUND, MoneySource.PERSONAL,
+        GroupTransactionCreateReq req = new GroupTransactionCreateReq(GTransactionType.REFUND, MoneySource.PERSONAL,
                 100000L, Instant.now(), null, null, transactorId, "Sai nguồn", List.of());
 
-        assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, TransactionStatus.CONFIRMED, true))
+        assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.MONEY_SOURCE_INVALID.getCode());
     }
@@ -136,11 +134,11 @@ class RefundTransactionStrategyTest {
     private void stubOneContribution(long amount) {
         GTransaction contribution = GTransaction.builder()
                 .id(UUID.randomUUID())
-                .type(TransactionType.CONTRIBUTION)
+                .type(GTransactionType.CONTRIBUTION)
                 .moneySource(MoneySource.PERSONAL)
                 .transactorId(transactorId)
                 .amount(amount)
-                .status(TransactionStatus.CONFIRMED)
+                .status(GTransactionStatus.CONFIRMED)
                 .participants(List.of())
                 .build();
         when(transactionRepository.findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId))
@@ -151,7 +149,7 @@ class RefundTransactionStrategyTest {
     }
 
     private GroupTransactionCreateReq refundReq(long amount) {
-        return new GroupTransactionCreateReq(TransactionType.REFUND, MoneySource.FUND, amount, Instant.now(), null,
+        return new GroupTransactionCreateReq(GTransactionType.REFUND, MoneySource.FUND, amount, Instant.now(), null,
                 null, transactorId, "Hoàn tiền", List.of());
     }
 }

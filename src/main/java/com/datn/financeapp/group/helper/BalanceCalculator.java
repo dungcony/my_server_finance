@@ -5,8 +5,8 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 
 import java.time.Instant;
@@ -54,7 +54,7 @@ public final class BalanceCalculator {
      * @param excludeTxnId ID của giao dịch muốn bỏ qua không tính (dùng khi đang
      *                     cập nhật hoặc xóa giao dịch)
      * @return Đối tượng chứa kết quả thống kê tiền bạc của từng người
-     *         (MemberBalances)
+     * (MemberBalances)
      */
     public static MemberBalances calculateBalances(
             List<GTransaction> allTxns,
@@ -77,8 +77,8 @@ public final class BalanceCalculator {
         List<GroupMemberPeriod> memberPeriods = (allMembers == null)
                 ? List.of()
                 : allMembers.stream()
-                        .map(m -> new GroupMemberPeriod(m.getUserId(), m.getJoinedAt(), m.getLeftAt()))
-                        .toList();
+                .map(m -> new GroupMemberPeriod(m.getUserId(), m.getJoinedAt(), m.getLeftAt()))
+                .toList();
 
         Map<UUID, List<TransactionParticipant>> participantsByTxnId = txns.stream()
                 .collect(Collectors.toMap(GTransaction::getId, GTransaction::getParticipants));
@@ -91,13 +91,13 @@ public final class BalanceCalculator {
 
         List<GTransaction> sortedTxns = txns.stream()
                 .filter(t -> t.getDeletedAt() == null
-                        && (t.getStatus() == null || t.getStatus() == TransactionStatus.CONFIRMED))
+                        && (t.getStatus() == null || t.getStatus() == GTransactionStatus.CONFIRMED))
                 .sorted(comparator)
                 .toList();
 
         // 2. Duyệt tuần tự qua danh sách giao dịch
         for (GTransaction txn : sortedTxns) {
-            TransactionType type = txn.getType();
+            GTransactionType type = txn.getType();
             if (type == null) {
                 throw new IllegalStateException(
                         "Loại giao dịch không được để trống (null). Transaction ID: " + txn.getId());
@@ -146,10 +146,10 @@ public final class BalanceCalculator {
                 }
                 case ADJUSTMENT_DOWN ->
                     // Quỹ hao hụt -> tăng share phải chịu (factor = +1)
-                    allocateShareAmongParticipants(txn, amount, 1L, memberMap, participantsByTxnId, memberPeriods);
+                        allocateShareAmongParticipants(txn, amount, 1L, memberMap, participantsByTxnId, memberPeriods);
                 case ADJUSTMENT_UP ->
                     // Quỹ dôi ra -> giảm share phải chịu (factor = -1)
-                    allocateShareAmongParticipants(txn, amount, -1L, memberMap, participantsByTxnId, memberPeriods);
+                        allocateShareAmongParticipants(txn, amount, -1L, memberMap, participantsByTxnId, memberPeriods);
                 default -> throw new IllegalStateException("Loại giao dịch chưa được hỗ trợ: " + type);
             }
         }
@@ -270,7 +270,7 @@ public final class BalanceCalculator {
      * @param txn           Giao dịch chứa thời điểm phát sinh (occurredAt)
      * @param memberPeriods Danh sách chu kỳ thời gian thành viên
      * @return Danh sách ID thành viên hợp lệ tại thời điểm giao dịch, đã được sắp
-     *         xếp tăng dần
+     * xếp tăng dần
      */
     private static List<UUID> getActiveMemberIdsAt(
             GTransaction txn,

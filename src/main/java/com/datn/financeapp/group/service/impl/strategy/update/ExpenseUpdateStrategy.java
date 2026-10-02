@@ -5,7 +5,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.events.ValidCategorySystemEvent;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
@@ -24,7 +24,7 @@ import java.util.UUID;
  * <p>
  * Chi tiết các phương thức:
  * <ul>
- * <li>{@link #supports(TransactionType)}: Kiểm tra loại EXPENSE.</li>
+ * <li>{@link #supports(GTransactionType)}: Kiểm tra loại EXPENSE.</li>
  * <li>{@link #update(GTransaction, UUID, UUID, GroupTransactionUpdateReq, MemberAuthInfo)}:
  * Cập nhật danh mục, người chi tiền và danh sách người tham gia chia tiền.</li>
  * </ul>
@@ -40,8 +40,8 @@ public class ExpenseUpdateStrategy implements GTransactionUpdateStrategy {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public boolean supports(TransactionType type) {
-        return type == TransactionType.EXPENSE;
+    public boolean supports(GTransactionType type) {
+        return type == GTransactionType.EXPENSE;
     }
 
     @Override

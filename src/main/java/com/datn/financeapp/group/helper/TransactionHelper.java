@@ -7,7 +7,7 @@ import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetail
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionParticipantRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.mapper.GTransactionMapper;
 import lombok.RequiredArgsConstructor;
@@ -69,13 +69,13 @@ public class TransactionHelper {
     /**
      * Tính toán mức biến động (delta) của số dư quỹ nhóm sinh ra bởi giao dịch.
      *
-     * @param type       Loại giao dịch ({@link TransactionType})
+     * @param type       Loại giao dịch ({@link GTransactionType})
      * @param source     Nguồn tiền sử dụng ({@link MoneySource}: {@code FUND} hoặc {@code PERSONAL})
      * @param amount     Số tiền giao dịch (phải &gt; 0)
      * @param isReversal Cờ đánh dấu có phải giao dịch đảo ngược (reversal/rollback) hay không
      * @return Mức biến động số dư quỹ (giá trị dương: quỹ tăng, âm: quỹ giảm, 0: quỹ không đổi)
      */
-    public long calculateDelta(TransactionType type, MoneySource source, long amount, boolean isReversal) {
+    public long calculateDelta(GTransactionType type, MoneySource source, long amount, boolean isReversal) {
         long factor = isReversal ? -1L : 1L;
         return switch (type) {
             case EXPENSE -> (source == MoneySource.FUND) ? -amount * factor : 0L;

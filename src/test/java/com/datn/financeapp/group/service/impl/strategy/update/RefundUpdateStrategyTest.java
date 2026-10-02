@@ -11,12 +11,7 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateR
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.repository.MemberRepository;
@@ -71,8 +66,8 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("REFUND 200k khi A còn 200k: sửa lên 300k vẫn hợp lệ vì khoản này đã được trừ sẵn trong số dư")
     void update_RefundRaisedWithinBalanceExcludingItself_Succeeds() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
         stubAllTxns(contribution, refund);
 
         assertThatCode(() -> strategy.update(refund, treasurerId, groupId, updateReq(300_000L, userA),
@@ -84,8 +79,8 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("REFUND 200k khi A còn 200k: sửa lên 500k vượt phần của A (400k nếu chưa có khoản này) thì bị từ chối")
     void update_RefundRaisedBeyondBalanceExcludingItself_ShouldBeRejected() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
         stubAllTxns(contribution, refund);
 
         assertThatThrownBy(() -> strategy.update(refund, treasurerId, groupId, updateReq(500_000L, userA),
@@ -99,8 +94,8 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("Nhóm tắt tính thừa thiếu vẫn chặn sửa REFUND vượt số còn lại của người nhận")
     void update_RefundRaisedBeyondBalance_SettlementDisabled_ShouldBeRejected() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
         stubAllTxns(contribution, refund);
         MemberAuthInfo settlementDisabled = new MemberAuthInfo(groupId, treasurerId, GroupStatus.ACTIVE, false,
                 MemberStatus.ACTIVE, MemberRole.MEMBER, treasurerId);
@@ -114,9 +109,9 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("Đổi người nhận REFUND sang B chỉ còn 100k thì bị từ chối")
     void update_RefundMovedToUserWithLowBalance_ShouldBeRejected() {
-        GTransaction contributionA = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction contributionB = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userB, 100_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction contributionA = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction contributionB = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userB, 100_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
         stubAllTxns(contributionA, contributionB, refund);
 
         assertThatThrownBy(() -> strategy.update(refund, treasurerId, groupId, updateReq(200_000L, userB),
@@ -127,9 +122,9 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("Số dư của A đã tụt âm vì chi tiêu: chỉ sửa ghi chú (giữ nguyên số tiền) vẫn được, không kiểm lại hạn mức")
     void update_RefundSameAmountAfterBalanceDropped_Succeeds() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
-        GTransaction expense = txn(TransactionType.EXPENSE, MoneySource.FUND, userA, 500_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction expense = txn(GTransactionType.EXPENSE, MoneySource.FUND, userA, 500_000L);
         expense.getParticipants().add(TransactionParticipant.builder().userId(userA).build());
         stubAllTxns(contribution, refund, expense);
 
@@ -140,9 +135,9 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("Giảm số tiền REFUND luôn được phép, kể cả khi số dư của A đã âm")
     void update_RefundLowered_AlwaysSucceeds() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
-        GTransaction expense = txn(TransactionType.EXPENSE, MoneySource.FUND, userA, 500_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction expense = txn(GTransactionType.EXPENSE, MoneySource.FUND, userA, 500_000L);
         expense.getParticipants().add(TransactionParticipant.builder().userId(userA).build());
         stubAllTxns(contribution, refund, expense);
 
@@ -155,8 +150,8 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("REFUND trả lại 400k tiền góp 1tr: sửa lên 900k được, lên 1,2tr vượt số còn lại thì bị từ chối")
     void update_RefundReturningContribution_RespectsBalanceExcludingItself() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1_000_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 400_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1_000_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 400_000L);
         stubAllTxns(contribution, refund);
 
         assertThatCode(() -> strategy.update(refund, treasurerId, groupId, updateReq(900_000L, userA),
@@ -173,20 +168,20 @@ class RefundUpdateStrategyTest {
     @Test
     @DisplayName("Thủ quỹ sửa REFUND vẫn giữ trạng thái CONFIRMED và nguồn tiền FUND")
     void update_Refund_StaysConfirmedFromFund() {
-        GTransaction contribution = txn(TransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
-        GTransaction refund = txn(TransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
+        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 400_000L);
+        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 200_000L);
         stubAllTxns(contribution, refund);
 
         strategy.update(refund, treasurerId, groupId, updateReq(200_000L, userA), treasurerAuth());
 
-        assertThat(refund.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(refund.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
         assertThat(refund.getMoneySource()).isEqualTo(MoneySource.FUND);
     }
 
     // dùng lenient vì ca giảm / giữ nguyên số tiền không cần đọc lịch sử
     private void stubAllTxns(GTransaction... txns) {
         lenient().when(transactionRepository
-                .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId))
+                        .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId))
                 .thenReturn(List.of(txns));
     }
 
@@ -195,7 +190,7 @@ class RefundUpdateStrategyTest {
                 .role(MemberRole.MEMBER).status(MemberStatus.ACTIVE).joinedAt(joinedAt).build();
     }
 
-    private GTransaction txn(TransactionType type, MoneySource source, UUID transactorId, long amount) {
+    private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount) {
         Instant now = Instant.now().minusSeconds(60);
         return GTransaction.builder()
                 .id(UUID.randomUUID())
@@ -204,7 +199,7 @@ class RefundUpdateStrategyTest {
                 .moneySource(source)
                 .transactorId(transactorId)
                 .createdBy(treasurerId)
-                .status(TransactionStatus.CONFIRMED)
+                .status(GTransactionStatus.CONFIRMED)
                 .amount(amount)
                 .participants(new ArrayList<>())
                 .occurredAt(now)

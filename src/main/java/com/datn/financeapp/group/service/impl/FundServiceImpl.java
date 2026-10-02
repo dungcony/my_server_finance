@@ -10,8 +10,8 @@ import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.entity.Fund;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.events.MemberLeaveEvent;
 import com.datn.financeapp.group.mapper.FundMapper;
@@ -115,9 +115,9 @@ public class FundServiceImpl implements FundService {
                     null);
         }
 
-        TransactionType adjustmentType = difference > 0
-                ? TransactionType.ADJUSTMENT_UP
-                : TransactionType.ADJUSTMENT_DOWN;
+        GTransactionType adjustmentType = difference > 0
+                ? GTransactionType.ADJUSTMENT_UP
+                : GTransactionType.ADJUSTMENT_DOWN;
         long amount = Math.abs(difference);
 
         Instant now = Instant.now();

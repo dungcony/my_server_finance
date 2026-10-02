@@ -86,6 +86,9 @@ current_balance = Σ ảnh hưởng của mọi khoản CONFIRMED, chưa xoá
 
 - Chỉ tính khoản **`CONFIRMED` và chưa xoá**.
 - `current_balance` được cập nhật **lúc khoản chuyển sang `CONFIRMED`** (và hoàn tác lúc khoản rời khỏi `CONFIRMED` hoặc bị xoá), cùng transaction, bằng câu cộng dồn `current_balance = current_balance + :delta` sau khi **khoá dòng quỹ**.
+- **Cơ chế khoá kết hợp bảo vệ tính nhất quán tài chính:**
+    - **Khoá bi quan (Pessimistic Lock - `SELECT ... FOR UPDATE`):** áp dụng trên bản ghi quỹ `group_funds` khi cập nhật số dư, phê duyệt giao dịch và kiểm kê đối soát, ngăn ngừa triệt để lỗi Lost Update và xung đột dòng tiền đồng thời.
+    - **Khoá lạc quan (Optimistic Lock - `@Version Long version`):** áp dụng trên bản ghi `group_transactions` để ngăn chặn xung đột khi hai người quản trị cùng duyệt hoặc chỉnh sửa một giao dịch tại cùng một thời điểm.
 - Quỹ **không có số dư ban đầu**, luôn bắt đầu từ 0. Nhờ vậy mọi đồng trong quỹ đều thuộc phần của một người (mục 4).
 
 ---
@@ -149,7 +152,7 @@ Trong **một** transaction CSDL:
 
 1. Tạo `groups`, sinh `invite_code` (không thời hạn). `target` không nhập thì để `NULL`.
 2. Tạo `group_members` cho người tạo: `role = OWNER`, `status = ACTIVE`, `joined_at = now()`.
-3. Tạo **quỹ duy nhất** của nhóm trong `group_funds`, `keepper_id` = người tạo; số dư bắt đầu từ **0**.
+3. Tạo **quỹ duy nhất** của nhóm trong `group_funds`, `keepper_id` = người tạo; số dư bắt đầu từ **0**. Bảng quỹ không có trường `status`.
 
 Quỹ đã có sẵn tiền thì sau khi tạo nhóm, ghi mỗi người đã đưa tiền một khoản **góp quỹ** (mục 8). Không ghi thành số dư ban đầu, vì số đó không thuộc phần của ai: tổng phần lệch số dư quỹ ngay từ đầu, và khi bật tính thừa thiếu thì không trả lại được cho ai.
 
@@ -207,14 +210,14 @@ Mục này dành cho `EXPENSE` / `CONTRIBUTION`, do người ghi hoặc chủ nh
 
 ## 8. Góp quỹ <a id="8-gop-quy"></a>
 
-B góp 1.000.000đ: ghi **một** dòng `CONTRIBUTION`, `money_source = PERSONAL`, `user_id = B`.
+B góp 1.000.000đ: ghi **một** dòng `CONTRIBUTION`, `money_source = PERSONAL`, `transactor_id = B`.
 
 - B tự ghi → `PENDING`; thủ quỹ hoặc chủ nhóm xác nhận khi đã **thật sự nhận tiền** → `CONFIRMED`, lúc đó quỹ mới `+ amount`.
 - Thủ quỹ tự ghi hộ B → `CONFIRMED` ngay, cộng quỹ ngay.
 
 Khoản góp chỉ tồn tại ở sổ nhóm; ví cá nhân của B không bị hệ thống tự động đụng tới ([rule.md](rule.md) quyết định 4).
 
-**Người đã rời góp bù tiền:** Cho phép tạo giao dịch `CONTRIBUTION` với `user_id` là thành viên đã rời (`LEFT` / `REMOVED`) nếu người đó đang có phần âm trong quỹ (để giải quyết nộp bù theo Cách A). Thao tác do thủ quỹ ghi hộ hoặc thành viên ghi và được xác nhận; khi nộp đủ, phần của người đó về 0 và tự động ẩn khỏi bảng tiền.
+**Người đã rời góp bù tiền:** Cho phép tạo giao dịch `CONTRIBUTION` với `transactor_id` là thành viên đã rời (`LEFT` / `REMOVED`) nếu người đó đang có phần âm trong quỹ (để giải quyết nộp bù theo Cách A). Thao tác do thủ quỹ ghi hộ hoặc thành viên ghi và được xác nhận; khi nộp đủ, phần của người đó về 0 và tự động ẩn khỏi bảng tiền.
 
 ---
 
@@ -241,7 +244,7 @@ Trong **một** transaction CSDL:
    | `difference < 0` | Sinh `ADJUSTMENT_DOWN`, `amount = abs(difference)` |
    | `difference > 0` | Sinh `ADJUSTMENT_UP`, `amount = difference` |
 
-   Dòng kiểm kê: `money_source = FUND`, `user_id` = thủ quỹ, `created_by` = người bấm, **`status = CONFIRMED`** ngay, `reviewed_by` = người bấm.
+   Dòng kiểm kê: `money_source = FUND`, `transactor_id` = thủ quỹ, `created_by` = người bấm, **`status = CONFIRMED`** ngay, `reviewed_by` = người bấm.
 3. Người bị bỏ tích (nếu có) → ghi các dòng người tham gia cho những người còn lại. Không bỏ tích ai → **không ghi dòng nào** (chia đều cả nhóm, vì thường không biết ai làm lệch).
 4. **Cộng chênh lệch**, không ghi đè:
 
@@ -272,7 +275,7 @@ Hệ quả: người còn nợ mà không chịu góp thì chủ nhóm **không 
 
 Qua kiểm tra thì, trong **một** transaction CSDL:
 
-1. Người đó đang giữ quỹ → **chặn**, báo `409 TREASURER_MUST_TRANSFER_FIRST`. Phải bàn giao quỹ (`PATCH /fund`) trước.
+1. Người đó đang giữ quỹ → **chặn**, báo `409 TREASURER_MUST_TRANSFER_FIRST`. Phải bàn giao quỹ (`PUT /v1/groups/{id}/fund-kepper`) trước.
 2. Đặt `status` và `left_at = now()` cho bản ghi thành viên.
 3. Hệ thống tự **`REJECTED`** mọi khoản `PENDING` có `created_by` = người rời: `reviewed_by` = người kích hoạt rời (chính mình hoặc chủ nhóm mời rời), `reviewed_at = now()`.
 
@@ -288,7 +291,7 @@ Lúc rời phần đã bằng 0, nhưng nếu sau đó chủ nhóm sửa/xoá kh
 
 - Bảng tiền `/balances` tự động hiển thị người đó kèm số tiền thừa/thiếu.
 - Nhóm giải quyết bằng cả 2 cách:
-  - **Cách A (Người cũ nộp bù):** Người đó chuyển khoản trả nhóm $\to$ thủ quỹ ghi nhận khoản `CONTRIBUTION` với `user_id` = người đó $\to$ phần về 0 $\to$ tự động ẩn khỏi bảng tiền.
+  - **Cách A (Người cũ nộp bù):** Người đó chuyển khoản trả nhóm $\to$ thủ quỹ ghi nhận khoản `CONTRIBUTION` với `transactor_id` = người đó $\to$ phần về 0 $\to$ tự động ẩn khỏi bảng tiền.
   - **Cách B (Nhóm tự gánh):** Người sửa mở khoản cũ ra và **bỏ tích người đã rời** khỏi danh sách người tham gia (`participants`) $\to$ khoản đó chỉ chia cho những người ở lại $\to$ phần của người đã rời về lại 0 $\to$ tự động ẩn.
   - Nếu phần **dương** (quỹ thừa tiền do xoá khoản chi cũ): Thủ quỹ trả lại cho người đó (`REFUND`).
 
@@ -324,8 +327,8 @@ Quỹ vẫn `3.000.000` ✅. **A không bị ảnh hưởng ở cả hai trườ
 
 **Kiểm kê tiếp theo trường hợp 1:** sổ báo 2.400.000đ, A đếm được 2.300.000đ.
 
-| type | money_source | user_id | created_by | category_id | amount | note |
-| :--- | :----------- | :------ | :--------- | :---------- | -----: | :--- |
+| type | money_source | transactor_id | created_by | category_id | amount | note |
+| :--- | :----------- | :------------ | :--------- | :---------- | -----: | :--- |
 | `ADJUSTMENT_DOWN` | `FUND` | A | A | _NULL_ | 100.000 | Kiểm kê: sổ 2.400.000, thực tế 2.300.000 |
 
 Không có dòng người tham gia. Lúc kiểm kê nhóm có A, B, C; sắp theo `user_id` rồi chia: A 33.334 · B 33.333 · C 33.333. Phần mới: **966.666 · 666.667 · 666.667**, tổng **2.300.000** ✅.
@@ -343,7 +346,7 @@ Trong **một** transaction CSDL:
 1. Người ghi phải là thủ quỹ hoặc chủ nhóm; nhóm không đang lưu trữ.
 2. Người nhận là thành viên có mặt tại thời điểm trả; thời điểm không ở tương lai.
 3. `amount` không vượt phần hiện có (`net_balance`) của người nhận, dù bật hay tắt tính thừa thiếu ([rule.md](rule.md) quy tắc 25).
-4. Ghi một dòng `REFUND`: `money_source = FUND`, `user_id` = người nhận, `created_by` = người ghi, **`status = CONFIRMED`**, không danh mục, không người tham gia.
+4. Ghi một dòng `REFUND`: `money_source = FUND`, `transactor_id` = người nhận, `created_by` = người ghi, **`status = CONFIRMED`**, không danh mục, không người tham gia.
 5. Khoá dòng quỹ, `current_balance = current_balance − amount`.
 
 **Sửa** — chỉ thủ quỹ hiện tại hoặc chủ nhóm, không đổi loại, trong **một** transaction CSDL:

@@ -109,16 +109,16 @@ class TransactionServiceTest {
 
         when(groupRepository.findAuthInfo(groupId, ownerId)).thenReturn(Optional.of(authInfo));
         when(memberService.allMemberInGroup(eq(groupId), any())).thenReturn(true);
-        when(expenseStrategy.supports(TransactionType.EXPENSE)).thenReturn(true);
-        when(expenseStrategy.determineStatus(any())).thenReturn(TransactionStatus.CONFIRMED);
+        when(expenseStrategy.supports(GTransactionType.EXPENSE)).thenReturn(true);
+        when(expenseStrategy.determineStatus(any())).thenReturn(GTransactionStatus.CONFIRMED);
 
-        GTransaction mockTxn = GTransaction.builder().id(UUID.randomUUID()).amount(1000000L).type(TransactionType.EXPENSE).moneySource(MoneySource.FUND).status(TransactionStatus.CONFIRMED).build();
-        when(expenseStrategy.build(eq(ownerId), eq(groupId), any(), eq(TransactionStatus.CONFIRMED), eq(true))).thenReturn(mockTxn);
+        GTransaction mockTxn = GTransaction.builder().id(UUID.randomUUID()).amount(1000000L).type(GTransactionType.EXPENSE).moneySource(MoneySource.FUND).status(GTransactionStatus.CONFIRMED).build();
+        when(expenseStrategy.build(eq(ownerId), eq(groupId), any(), eq(GTransactionStatus.CONFIRMED), eq(true))).thenReturn(mockTxn);
 
         when(transactionRepository.save(any(GTransaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
-                TransactionType.EXPENSE,
+                GTransactionType.EXPENSE,
                 MoneySource.FUND,
                 1000000L,
                 Instant.now(),
@@ -132,7 +132,7 @@ class TransactionServiceTest {
         GroupTransactionDetailRes res = transactionService.create(ownerId, groupId, req);
 
         assertThat(res).isNotNull();
-        assertThat(res.status()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(res.status()).isEqualTo(GTransactionStatus.CONFIRMED);
     }
 
     @Test
@@ -146,16 +146,16 @@ class TransactionServiceTest {
 
         when(groupRepository.findAuthInfo(groupId, memberId)).thenReturn(Optional.of(authInfo));
         when(memberService.allMemberInGroup(eq(groupId), any())).thenReturn(true);
-        when(expenseStrategy.supports(TransactionType.EXPENSE)).thenReturn(true);
-        when(expenseStrategy.determineStatus(any())).thenReturn(TransactionStatus.PENDING);
+        when(expenseStrategy.supports(GTransactionType.EXPENSE)).thenReturn(true);
+        when(expenseStrategy.determineStatus(any())).thenReturn(GTransactionStatus.PENDING);
 
-        GTransaction mockTxn = GTransaction.builder().id(UUID.randomUUID()).amount(500000L).type(TransactionType.EXPENSE).moneySource(MoneySource.FUND).status(TransactionStatus.PENDING).build();
-        when(expenseStrategy.build(eq(memberId), eq(groupId), any(), eq(TransactionStatus.PENDING), eq(true))).thenReturn(mockTxn);
+        GTransaction mockTxn = GTransaction.builder().id(UUID.randomUUID()).amount(500000L).type(GTransactionType.EXPENSE).moneySource(MoneySource.FUND).status(GTransactionStatus.PENDING).build();
+        when(expenseStrategy.build(eq(memberId), eq(groupId), any(), eq(GTransactionStatus.PENDING), eq(true))).thenReturn(mockTxn);
 
         when(transactionRepository.save(any(GTransaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
-                TransactionType.EXPENSE,
+                GTransactionType.EXPENSE,
                 MoneySource.FUND,
                 500000L,
                 Instant.now(),
@@ -169,7 +169,7 @@ class TransactionServiceTest {
         GroupTransactionDetailRes res = transactionService.create(memberId, groupId, req);
 
         assertThat(res).isNotNull();
-        assertThat(res.status()).isEqualTo(TransactionStatus.PENDING);
+        assertThat(res.status()).isEqualTo(GTransactionStatus.PENDING);
     }
 
     @Test
@@ -184,10 +184,10 @@ class TransactionServiceTest {
         GTransaction txn = GTransaction.builder()
                 .id(txnId)
                 .groupId(groupId)
-                .type(TransactionType.EXPENSE)
+                .type(GTransactionType.EXPENSE)
                 .moneySource(MoneySource.FUND)
                 .amount(500000L)
-                .status(TransactionStatus.PENDING)
+                .status(GTransactionStatus.PENDING)
                 .build();
 
         when(groupRepository.findAuthInfo(groupId, ownerId)).thenReturn(Optional.of(authInfo));
@@ -195,7 +195,7 @@ class TransactionServiceTest {
 
         GroupTransactionDetailRes res = transactionService.confirm(ownerId, groupId, txnId);
 
-        assertThat(res.status()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(res.status()).isEqualTo(GTransactionStatus.CONFIRMED);
     }
 
     @Test
@@ -207,13 +207,13 @@ class TransactionServiceTest {
 
         when(groupRepository.findAuthInfo(groupId, ownerId)).thenReturn(Optional.of(authInfo));
         when(memberService.allMemberInGroup(eq(groupId), any())).thenReturn(true);
-        when(refundStrategy.supports(TransactionType.REFUND)).thenReturn(true);
-        when(refundStrategy.determineStatus(any())).thenReturn(TransactionStatus.CONFIRMED);
-        when(refundStrategy.build(eq(ownerId), eq(groupId), any(), eq(TransactionStatus.CONFIRMED), eq(true)))
+        when(refundStrategy.supports(GTransactionType.REFUND)).thenReturn(true);
+        when(refundStrategy.determineStatus(any())).thenReturn(GTransactionStatus.CONFIRMED);
+        when(refundStrategy.build(eq(ownerId), eq(groupId), any(), eq(GTransactionStatus.CONFIRMED), eq(true)))
                 .thenThrow(new BusinessException(ErrorCode.CANNOT_REFUND_EXCEED_BALANCE));
 
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
-                TransactionType.REFUND,
+                GTransactionType.REFUND,
                 MoneySource.FUND,
                 500000L,
                 Instant.now(),
@@ -239,10 +239,10 @@ class TransactionServiceTest {
         GTransaction txn = GTransaction.builder()
                 .id(txnId)
                 .groupId(groupId)
-                .type(TransactionType.EXPENSE)
+                .type(GTransactionType.EXPENSE)
                 .moneySource(MoneySource.FUND)
                 .amount(800000L)
-                .status(TransactionStatus.CONFIRMED)
+                .status(GTransactionStatus.CONFIRMED)
                 .build();
 
         MemberAuthInfo authInfo = new MemberAuthInfo(

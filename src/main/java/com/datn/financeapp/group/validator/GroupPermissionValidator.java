@@ -3,11 +3,7 @@ package com.datn.financeapp.group.validator;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.enums.GroupStatus;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupRepository;
 import lombok.RequiredArgsConstructor;
@@ -139,12 +135,12 @@ public class GroupPermissionValidator {
         }
 
         // thành viên thường không được sửa giao dịch đã duyệt
-        if (txn.getStatus() == TransactionStatus.CONFIRMED) {
+        if (txn.getStatus() == GTransactionStatus.CONFIRMED) {
             throw new BusinessException(ErrorCode.FORBIDDEN_EDIT_CONFIRMED_TRANSACTION);
         }
 
         // thành viên thường không được sửa giao dịch can thiệp trực tiếp vào quỹ
-        if (txn.getType() != TransactionType.EXPENSE && txn.getType() != TransactionType.CONTRIBUTION) {
+        if (txn.getType() != GTransactionType.EXPENSE && txn.getType() != GTransactionType.CONTRIBUTION) {
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
         }
     }
@@ -176,7 +172,7 @@ public class GroupPermissionValidator {
             throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
 
         // và chỉ khi giao dịch còn chờ duyệt
-        if (txn.getStatus() != TransactionStatus.PENDING)
+        if (txn.getStatus() != GTransactionStatus.PENDING)
             throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
     }
 

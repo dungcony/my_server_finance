@@ -14,16 +14,18 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionParticipantReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
+import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -68,29 +70,29 @@ class ExpenseTransactionStrategyTest {
     @Test
     @DisplayName("Hỗ trợ đúng loại giao dịch EXPENSE")
     void testSupports_ReturnsTrueForExpense() {
-        assertThat(strategy.supports(TransactionType.EXPENSE)).isTrue();
-        assertThat(strategy.supports(TransactionType.CONTRIBUTION)).isFalse();
+        assertThat(strategy.supports(GTransactionType.EXPENSE)).isTrue();
+        assertThat(strategy.supports(GTransactionType.CONTRIBUTION)).isFalse();
     }
 
     @Test
     @DisplayName("Owner tạo giao dịch -> Trạng thái CONFIRMED")
     void testDetermineStatus_Owner_ReturnsConfirmed() {
         MemberAuthInfo authInfo = new MemberAuthInfo(groupId, operatorId, null, true, null, com.datn.financeapp.group.enums.MemberRole.OWNER, operatorId);
-        assertThat(strategy.determineStatus(authInfo)).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(strategy.determineStatus(authInfo)).isEqualTo(GTransactionStatus.CONFIRMED);
     }
 
     @Test
     @DisplayName("Member thường tạo giao dịch -> Trạng thái PENDING")
     void testDetermineStatus_Member_ReturnsPending() {
         MemberAuthInfo authInfo = new MemberAuthInfo(groupId, operatorId, null, true, null, com.datn.financeapp.group.enums.MemberRole.MEMBER, UUID.randomUUID());
-        assertThat(strategy.determineStatus(authInfo)).isEqualTo(TransactionStatus.PENDING);
+        assertThat(strategy.determineStatus(authInfo)).isEqualTo(GTransactionStatus.PENDING);
     }
 
     @Test
     @DisplayName("Xây dựng giao dịch chi tiêu thành công với việc chia tiền hợp lệ")
     void testBuild_Success() {
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
-                TransactionType.EXPENSE,
+                GTransactionType.EXPENSE,
                 MoneySource.FUND,
                 1000000L,
                 Instant.now(),
@@ -104,13 +106,13 @@ class ExpenseTransactionStrategyTest {
         when(helper.resolveParticipants(eq(1000000L), eq(req.participants()), any()))
                 .thenReturn(List.of(TransactionParticipant.builder().userId(operatorId).shareAmount(1000000L).build()));
 
-        GTransaction txn = strategy.build(operatorId, groupId, req, TransactionStatus.CONFIRMED, true);
+        GTransaction txn = strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true);
 
         assertThat(txn.getAmount()).isEqualTo(1000000L);
-        assertThat(txn.getType()).isEqualTo(TransactionType.EXPENSE);
-        assertThat(txn.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(txn.getType()).isEqualTo(GTransactionType.EXPENSE);
+        assertThat(txn.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
         assertThat(txn.getParticipants()).hasSize(1);
-        
+
         verify(validator).validTransactorAndParticipants(any(), any(), any(), anyLong());
     }
 
@@ -118,7 +120,7 @@ class ExpenseTransactionStrategyTest {
     @DisplayName("Ném lỗi khi tổng chia tiền không khớp số tiền chi")
     void testBuild_ThrowsException_WhenShareMismatch() {
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
-                TransactionType.EXPENSE,
+                GTransactionType.EXPENSE,
                 MoneySource.FUND,
                 1000000L,
                 Instant.now(),
@@ -132,7 +134,7 @@ class ExpenseTransactionStrategyTest {
         when(helper.resolveParticipants(eq(1000000L), eq(req.participants()), any()))
                 .thenThrow(new BusinessException(ErrorCode.PARTICIPANTS_SUM_MISMATCH));
 
-        assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, TransactionStatus.CONFIRMED, true))
+        assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.PARTICIPANTS_SUM_MISMATCH.getCode());
     }

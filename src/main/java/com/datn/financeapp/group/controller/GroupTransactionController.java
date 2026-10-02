@@ -9,8 +9,8 @@ import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetail
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.service.GTransactionReviewService;
 import com.datn.financeapp.group.service.GTransactionService;
@@ -54,8 +54,8 @@ public class GroupTransactionController {
     public ApiResponse<GroupTransactionListRes> list(
             @PathVariable UUID groupId,
             @RequestParam(name = "money_source", required = false) MoneySource moneySource,
-            @RequestParam(required = false) TransactionType type,
-            @RequestParam(required = false) TransactionStatus status,
+            @RequestParam(required = false) GTransactionType type,
+            @RequestParam(required = false) GTransactionStatus status,
             @RequestParam(name = "transactor_id", required = false) UUID transactorId,
             @RequestParam(name = "start_date", required = false) LocalDate startDate,
             @RequestParam(name = "end_date", required = false) LocalDate endDate,
@@ -72,8 +72,8 @@ public class GroupTransactionController {
     public ApiResponse<GroupTransactionListRes> myList(
             @PathVariable UUID groupId,
             @RequestParam(name = "money_source", required = false) MoneySource moneySource,
-            @RequestParam(required = false) TransactionType type,
-            @RequestParam(required = false) TransactionStatus status,
+            @RequestParam(required = false) GTransactionType type,
+            @RequestParam(required = false) GTransactionStatus status,
             @RequestParam(name = "start_date", required = false) LocalDate startDate,
             @RequestParam(name = "end_date", required = false) LocalDate endDate,
             @RequestParam(defaultValue = "1") int page,

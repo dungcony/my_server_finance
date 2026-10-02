@@ -50,24 +50,25 @@ classDiagram
         +Boolean isSettlementEnabled
         +Boolean isJoinWithoutConfirm
         +Instant createdAt
+        +Instant updatedAt
     }
 
-    class GroupMember {
-        +GroupRole role
+    class Member {
+        +MemberRole role
         +MemberStatus status
         +Instant joinedAt
         +Instant leftAt
     }
 
-    class GroupFund {
+    class Fund {
         +Money currentBalance
         +Instant createdAt
     }
 
-    class GroupTransaction {
-        +GroupTransactionType type
+    class GTransaction {
+        +GTransactionType type
         +MoneySource moneySource
-        +GroupTransactionStatus status
+        +GTransactionStatus status
         +Money amount
         +Instant occurredAt
         +String note
@@ -75,9 +76,11 @@ classDiagram
         +Instant createdAt
         +Instant updatedAt
         +Instant deletedAt
+        +Long version
     }
 
-    class GroupTransactionParticipant {
+    class TransactionParticipant {
+        <<embeddable>>
         +Money shareAmount
     }
 
@@ -89,17 +92,17 @@ classDiagram
         <<thamchiếu>>
     }
 
-    Group "1" --> "1..*" GroupMember: chứa thành viên
-    User "1" --> "0..*" GroupMember: định danh thành viên
-    Group "1" --> "1" GroupFund: sở hữu đúng một quỹ
-    User "1" --> "0..*" GroupFund: giữ quỹ (thủ quỹ)
-    Group "1" --> "0..*" GroupTransaction: ghi nhận
-    User "1" --> "0..*" GroupTransaction: người trả / góp / nhận / thủ quỹ
-    User "1" --> "0..*" GroupTransaction: người ghi
-    User "0..1" --> "0..*" GroupTransaction: người xác nhận / từ chối
-    Category "0..1" --> "0..*" GroupTransaction: phân loại khoản chi
-    GroupTransaction "1" --> "0..*" GroupTransactionParticipant: chia cho (vắng = cả nhóm)
-    User "1" --> "0..*" GroupTransactionParticipant: người cùng chịu
+    Group "1" --> "1..*" Member: chứa thành viên
+    User "1" --> "0..*" Member: định danh thành viên
+    Group "1" --> "1" Fund: sở hữu đúng một quỹ
+    User "1" --> "0..*" Fund: giữ quỹ (thủ quỹ)
+    Group "1" --> "0..*" GTransaction: ghi nhận
+    User "1" --> "0..*" GTransaction: người trả / góp / nhận / thủ quỹ
+    User "1" --> "0..*" GTransaction: người ghi
+    User "0..1" --> "0..*" GTransaction: người xác nhận / từ chối
+    Category "0..1" --> "0..*" GTransaction: phân loại khoản chi
+    GTransaction "1" *--> "0..*" TransactionParticipant: phân bổ chi phí (vắng = cả nhóm)
+    User "1" --> "0..*" TransactionParticipant: người cùng chịu
 ```
 
 ---
@@ -108,11 +111,11 @@ classDiagram
 
 |  STT  | Thực thể                                         | Thuộc tính bản chất                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Ý nghĩa nghiệp vụ                                                                                                                                       |
 |:-----:|:-------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **1** | **`Group`** (Nhóm chung)                         | - `name`: Tên nhóm<br>- `description`: Mô tả<br>- `status`: `ACTIVE`, `ARCHIVED` (lưu trữ, chỉ xem), `DELETED`<br>- `inviteCode`: Mã mời vào nhóm (không giới hạn thời gian)<br>- `target`: Số tiền quỹ mục tiêu cần gom<br>- `isSettlementEnabled`: **Bật tính thừa thiếu** — bật thì hệ thống tính phần của từng người; tắt thì không ai cần trả ai<br>- `isJoinWithoutConfirm`: Bật thì nhập mã là vào thẳng; tắt thì chờ chủ nhóm duyệt<br>- `createdAt`                                                                                                                                                                                                                                                                               | Gốc điều phối thành viên, quỹ và giao dịch chung. Mọi nhóm vận hành cùng một cơ chế, không phân loại.                                                   |
+| **1** | **`Group`** (Nhóm chung)                         | - `name`: Tên nhóm<br>- `description`: Mô tả<br>- `status`: `ACTIVE`, `ARCHIVED` (lưu trữ, chỉ xem), `DELETED`<br>- `inviteCode`: Mã mời vào nhóm (không giới hạn thời gian)<br>- `target`: Số tiền quỹ mục tiêu cần gom<br>- `isSettlementEnabled`: **Bật tính thừa thiếu** — bật thì hệ thống tính phần của từng người; tắt thì không ai cần trả ai<br>- `isJoinWithoutConfirm`: Bật thì nhập mã là vào thẳng; tắt thì chờ chủ nhóm duyệt<br>- `createdAt`, `updatedAt`                                                                                                                                                                                                                                                             | Gốc điều phối thành viên, quỹ và giao dịch chung. Mọi nhóm vận hành cùng một cơ chế, không phân loại.                                                   |
 | **2** | **`Member`** (Người trong nhóm)                  | - `role`: `OWNER`, `MEMBER`<br>- `status`: `PENDING`, `ACTIVE`, `LEFT`, `REMOVED`<br>- `joinedAt`: Lúc được duyệt vào<br>- `leftAt`: Lúc rời hoặc bị đuổi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ---------------------------------- | Tư cách của một người trong **một khoảng thời gian** ở một nhóm. Rời rồi quay lại là bản ghi mới, nhờ vậy biết được tại mỗi thời điểm nhóm có những ai. |
 | **3** | **`Fund`** (Quỹ nhóm)                            | - `currentBalance`: Tiền quỹ còn lại, **được phép âm**<br>- `createdAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Nơi giữ tiền chung. **Mỗi nhóm đúng một quỹ**, giao cho **một người giữ** (thủ quỹ). Quỹ đi theo vòng đời nhóm, không có trạng thái riêng.              |
-| **4** | **`GTransactionSpecification`** (Giao dịch nhóm) | - `type`:<br>&nbsp;&nbsp;· `EXPENSE` — chi tiêu<br>&nbsp;&nbsp;· `CONTRIBUTION` — góp quỹ<br>&nbsp;&nbsp;· `REFUND` — quỹ trả tiền cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)<br>&nbsp;&nbsp;· `ADJUSTMENT_UP` — kiểm kê, tiền thật **nhiều hơn** sổ<br>&nbsp;&nbsp;· `ADJUSTMENT_DOWN` — kiểm kê, tiền thật **ít hơn** sổ<br>- `moneySource`: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền bản thân)<br>- `status`: `PENDING` (chờ xác nhận), `CONFIRMED` (đã xác nhận), `REJECTED` (bị từ chối)<br>- `amount`: Luôn dương<br>- `occurredAt`: Thời điểm phát sinh (tới giây)<br>- `note`: Nội dung<br>- `reviewedAt`: Lúc được xác nhận hoặc từ chối<br>- `createdAt`, `updatedAt`, `deletedAt`   | Một lần tiền vào, ra, hoặc được điều chỉnh trong phạm vi nhóm.                                                                                          |
-| **5** | **`TransactionParticipant`** (Người cùng chịu)   | - `shareAmount`: Số tiền người này chịu (hoặc hưởng, với `ADJUSTMENT_UP`). **Để trống = chia đều** trong số người được chọn                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Chỉ xuất hiện khi khoản đó **không phải của cả nhóm**.                                                                                                  |
+| **4** | **`GTransaction`** (Giao dịch nhóm)              | - `type`:<br>&nbsp;&nbsp;· `EXPENSE` — chi tiêu<br>&nbsp;&nbsp;· `CONTRIBUTION` — góp quỹ<br>&nbsp;&nbsp;· `REFUND` — quỹ trả tiền cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)<br>&nbsp;&nbsp;· `ADJUSTMENT_UP` — kiểm kê, tiền thật **nhiều hơn** sổ<br>&nbsp;&nbsp;· `ADJUSTMENT_DOWN` — kiểm kê, tiền thật **ít hơn** sổ<br>- `moneySource`: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền bản thân)<br>- `status`: `PENDING` (chờ xác nhận), `CONFIRMED` (đã xác nhận), `REJECTED` (bị từ chối)<br>- `amount`: Luôn dương<br>- `occurredAt`: Thời điểm phát sinh (tới giây)<br>- `note`: Nội dung<br>- `reviewedAt`: Lúc được xác nhận hoặc từ chối<br>- `createdAt`, `updatedAt`, `deletedAt`<br>- `version`: Khóa lạc quan chống Lost Update   | Một lần tiền vào, ra, hoặc được điều chỉnh trong phạm vi nhóm.                                                                                          |
+| **5** | **`TransactionParticipant`** (Người cùng chịu)   | - `shareAmount`: Số tiền người này chịu (hoặc hưởng, với `ADJUSTMENT_UP`). **Để trống = chia đều** trong số người được chọn                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Value Object đại diện cho người cùng chịu khi khoản đó **không phải của cả nhóm**.                                                                       |
 
 **Thực thể tham chiếu** — thuộc module khác, phân hệ nhóm không định nghĩa lại:
 
@@ -220,7 +223,7 @@ erDiagram
         UUID id PK
         UUID group_id FK
         VARCHAR money_source "FUND | PERSONAL"
-        UUID user_id FK "người trả / góp / nhận / thủ quỹ"
+        UUID transactor_id FK "người trả / góp / nhận / thủ quỹ"
         UUID created_by FK "người bấm ghi"
         UUID category_id FK "chỉ với EXPENSE"
         VARCHAR type "EXPENSE | CONTRIBUTION | REFUND | ADJUSTMENT_UP | ADJUSTMENT_DOWN"
@@ -233,6 +236,7 @@ erDiagram
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at
+        BIGINT version "khóa lạc quan"
     }
 
     group_transaction_participants {
@@ -255,7 +259,7 @@ erDiagram
 
 ### 2.2 Chi tiết Thiết kế 5 Bảng & Lớp Thực thể JPA (`@Entity`) <a id="22-thiet-ke-5-bang"></a>
 
-#### 1. Thực thể `GroupEntity` (Bảng `groups`) <a id="221-group-entity"></a>
+#### 1. Thực thể `Group` (Bảng `groups`) <a id="221-group-entity"></a>
 
 - **Khóa chính (PK):** `id` (UUID).
 - **Khóa duy nhất (UK):** `invite_code`.
@@ -263,34 +267,31 @@ erDiagram
   sẽ có ngày lệch nhau.
 
 ```java
-
 @Entity
 @Table(name = "groups")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class GroupEntity {
+public class Group extends AssignedIdEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @Column(name = "description", length = 255)
+    @Column(name = "description")
     private String description;
+
+    @Column(name = "invite_code", nullable = false, length = 8)
+    private String inviteCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private GroupStatus status = GroupStatus.ACTIVE; // ACTIVE, ARCHIVED, DELETED
-
-    @Column(name = "invite_code", nullable = false, unique = true, length = 8)
-    private String inviteCode;
 
     // Quỹ mục tiêu cần gom. NULL = không đặt mục tiêu.
     @Column(name = "target")
@@ -300,21 +301,22 @@ public class GroupEntity {
     // FALSE = chỉ ghi chép. Người tham gia VẪN được ghi, để bật lại sau vẫn tính được khoản cũ.
     @Column(name = "is_settlement_enabled", nullable = false)
     @Builder.Default
-    private boolean isSettlementEnabled = true;
+    private Boolean isSettlementEnabled = true;
 
     // TRUE  = nhập mã là vào thẳng.
     // FALSE = thành viên mới nằm ở PENDING, chờ chủ nhóm duyệt.
     @Column(name = "is_join_without_confirm", nullable = false)
     @Builder.Default
-    private boolean joinWithoutConfirm = true;
+    private Boolean isJoinWithoutConfirm = true;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @OneToOne(mappedBy = "group")
+    private Fund fund;
 }
 ```
 
@@ -334,7 +336,7 @@ CREATE UNIQUE INDEX uq_groups_invite_code
 
 ---
 
-#### 2. Thực thể `GroupMemberEntity` (Bảng `group_members`) <a id="222-group-member-entity"></a>
+#### 2. Thực thể `Member` (Bảng `group_members`) <a id="222-group-member-entity"></a>
 
 - **Khóa chính (PK):** `id` (UUID).
 - **Khóa ngoại (FK):** `group_id` → `groups.id`; `user_id` → `users.id`.
@@ -369,27 +371,20 @@ CREATE INDEX idx_gm_group_user_active
 ```
 
 ```java
-
 @Entity
-@Table(name = "group_members", indexes = {
-        @Index(name = "idx_gm_group", columnList = "group_id"),
-        @Index(name = "idx_gm_user", columnList = "user_id")
-})
+@Table(name = "group_members")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class GroupMemberEntity {
+public class Member extends AssignedIdEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false)
-    private GroupEntity group;
+    @Column(name = "group_id", nullable = false)
+    private UUID groupId;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId; // module user: chỉ giữ id
@@ -397,7 +392,7 @@ public class GroupMemberEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 20)
     @Builder.Default
-    private GroupRole role = GroupRole.MEMBER; // OWNER, MEMBER
+    private MemberRole role = MemberRole.MEMBER; // OWNER, MEMBER
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -417,7 +412,7 @@ thành viên. Truy vấn "những ai có mặt tại một thời điểm" ở [
 
 ---
 
-#### 3. Thực thể `GroupFundEntity` (Bảng `group_funds`) <a id="223-group-fund-entity"></a>
+#### 3. Thực thể `Fund` (Bảng `group_funds`) <a id="223-group-fund-entity"></a>
 
 - **Khóa chính (PK):** `id` (UUID).
 - **Khóa ngoại (FK):** `group_id` → `groups.id` (bắt buộc, **duy nhất** — mỗi nhóm một quỹ); `keepper_id` →
@@ -429,26 +424,28 @@ thành viên. Truy vấn "những ai có mặt tại một thời điểm" ở [
 - Ràng buộc "người giữ quỹ phải là thành viên `ACTIVE`" do tầng Service chịu trách nhiệm xác thực, xem [rule.md](rule.md) mục 3.3.
 
 ```java
-
 @Entity
-@Table(name = "group_funds",
-        uniqueConstraints = @UniqueConstraint(name = "uq_group_funds_group", columnNames = "group_id"))
+@Table(name = "group_funds", uniqueConstraints = {
+        @UniqueConstraint(name = "uq_group_funds_group", columnNames = "group_id")
+})
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class GroupFundEntity {
+public class Fund extends AssignedIdEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    // Mỗi nhóm đúng một quỹ.
+    @Column(name = "group_id", nullable = false, unique = true)
+    private UUID groupId;
+
+    // liên kết phía sở hữu khóa ngoại cho Hibernate, chặn hoàn toàn setter
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false, unique = true)
-    private GroupEntity group;
+    @JoinColumn(name = "group_id", referencedColumnName = "id", insertable = false, updatable = false)
+    @Setter(AccessLevel.NONE)
+    private Group group;
 
     // Phải là thành viên ACTIVE của chính nhóm này.
     @Column(name = "keepper_id", nullable = false)
@@ -459,8 +456,7 @@ public class GroupFundEntity {
     @Builder.Default
     private Long currentBalance = 0L;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 }
 ```
@@ -472,7 +468,7 @@ ALTER TABLE group_funds
 
 ---
 
-#### 4. Thực thể `GroupTransactionEntity` (Bảng `group_transactions`) <a id="224-group-transaction-entity"></a>
+#### 4. Thực thể `GTransaction` (Bảng `group_transactions`) <a id="224-group-transaction-entity"></a>
 
 - **Khóa chính (PK):** `id` (UUID).
 - **Khóa ngoại (FK):** `group_id`, `transactor_id`, `created_by`, `reviewed_by`, `category_id`.
@@ -492,28 +488,20 @@ ALTER TABLE group_funds
 Ý nghĩa nghiệp vụ của từng loại, và loại nào vào báo cáo → [rule.md](rule.md) mục 3.4.
 
 ```java
-
 @Entity
-@Table(name = "group_transactions", indexes = {
-        @Index(name = "idx_gt_group_occurred", columnList = "group_id, occurred_at"),
-        @Index(name = "idx_gt_group_status", columnList = "group_id, status"),
-        @Index(name = "idx_gt_transactor", columnList = "transactor_id")
-})
+@Table(name = "group_transactions")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class GroupTransactionEntity {
+public class GTransaction {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false)
-    private GroupEntity group;
+    @Column(name = "group_id", nullable = false)
+    private UUID groupId;
 
     // FUND = tiền quỹ; PERSONAL = tiền bản thân. Khớp với type theo ck_gt_shape.
     @Enumerated(EnumType.STRING)
@@ -534,13 +522,13 @@ public class GroupTransactionEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 20)
-    private GroupTransactionType type;
+    private GTransactionType type;
 
     // PENDING = chờ xác nhận; CONFIRMED = đã xác nhận; REJECTED = bị từ chối.
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private GroupTransactionStatus status = GroupTransactionStatus.PENDING;
+    private GTransactionStatus status = GTransactionStatus.PENDING;
 
     // Người xác nhận hoặc từ chối. NULL khi còn PENDING.
     @Column(name = "reviewed_by")
@@ -556,29 +544,36 @@ public class GroupTransactionEntity {
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 
-    @Column(name = "note", length = 255)
+    @Column(name = "note")
     private String note;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    // Rỗng = cả nhóm cùng chịu.
-    @OneToMany(mappedBy = "groupTransaction", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Khóa lạc quan chống Lost Update khi hai request cùng duyệt / sửa đồng thời
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    // Rỗng = cả nhóm cùng chịu. Quản lý qua @ElementCollection (Value Object)
+    @ElementCollection
+    @CollectionTable(
+            name = "group_transaction_participants",
+            joinColumns = @JoinColumn(name = "group_transaction_id")
+    )
     @Builder.Default
-    private List<GroupTransactionParticipantEntity> participants = new ArrayList<>();
+    private List<TransactionParticipant> participants = new ArrayList<>();
 }
 ```
 
 ```java
-public enum GroupTransactionStatus {
+public enum GTransactionStatus {
     PENDING,     // chờ xác nhận
     CONFIRMED,   // đã xác nhận
     REJECTED     // bị từ chối
@@ -589,7 +584,7 @@ public enum MoneySource {
     PERSONAL     // tiền bản thân
 }
 
-public enum GroupTransactionType {
+public enum GTransactionType {
     EXPENSE,          // nhóm tiêu tiền
     CONTRIBUTION,     // thành viên góp tiền vào quỹ
     REFUND,           // quỹ trả tiền cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)
@@ -659,44 +654,23 @@ CREATE INDEX idx_gt_transactor
 
 ---
 
-#### 5. Thực thể `GroupTransactionParticipantEntity` (Bảng
-
-`group_transaction_participants`) <a id="225-group-transaction-participant-entity"></a>
+#### 5. Value Object `TransactionParticipant` (Bảng `group_transaction_participants`) <a id="225-group-transaction-participant-entity"></a>
 
 - **Khóa chính (PK):** tổ hợp `(group_transaction_id, user_id)`.
+- **Thiết kế kiến trúc DDD:** Được đánh dấu là `@Embeddable` và thuộc quyền quản lý của Aggregate Root `GTransaction` qua `@ElementCollection`. Không có ID độc lập và không chứa quan hệ ngược về cha (unidirectional).
 - **Vắng bản ghi = cả nhóm cùng chịu.** Bảng chỉ có dòng khi khoản đó không chia cho tất cả.
 - **`share_amount` trống = chia đều** trong số người được chọn. Trong một khoản, cột này trống hết hoặc có hết.
 - Các trường hợp cụ thể → [rule.md](rule.md) mục 3.5.
 
 ```java
-
+@Embeddable
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@EqualsAndHashCode
-public class GroupTransactionParticipantId implements Serializable {
-    private UUID groupTransaction;
-    private UUID userId;
-}
-
-@Entity
-@Table(name = "group_transaction_participants",
-        indexes = @Index(name = "idx_gtp_user", columnList = "user_id"))
-@IdClass(GroupTransactionParticipantId.class)
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-public class GroupTransactionParticipantEntity {
+@NoArgsConstructor
+@AllArgsConstructor
+public class TransactionParticipant {
 
-    @Id
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_transaction_id", nullable = false)
-    private GroupTransactionEntity groupTransaction;
-
-    @Id
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 

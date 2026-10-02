@@ -102,6 +102,9 @@ public interface GroupService {
     // Người gọi tạo nhóm -> operatorId
     GroupDetailRes create(UUID operatorId, GroupCreateReq req);
 
+    // Người gọi xem danh sách nhóm của mình -> operatorId
+    List<GroupSummaryRes> list(UUID operatorId);
+
     // Người gọi xem chi tiết -> operatorId
     GroupDetailRes detail(UUID operatorId, UUID groupId);
 
@@ -112,47 +115,59 @@ public interface GroupService {
     void archive(UUID operatorId, UUID groupId);
     void unarchive(UUID operatorId, UUID groupId);
 
-    // operatorId: Chủ nhóm hiện tại; memberId: Thành viên nhận quyền
-    void transferOwnership(UUID operatorId, UUID groupId, UUID memberId);
-
     // Người gọi xóa nhóm -> operatorId (phải là Owner)
     void delete(UUID operatorId, UUID groupId);
 
-    // Người gọi gửi yêu cầu tham gia -> operatorId
-    void join(UUID operatorId, GroupJoinReq req);
+    // Người gọi gửi yêu cầu tham gia bằng mã mời -> operatorId
+    void joinByCode(UUID operatorId, GroupJoinReq req);
+
+    // Đếm việc chờ duyệt (badge) -> operatorId
+    GroupPendingCountRes pendingCount(UUID operatorId, UUID groupId);
 }
 ```
 
 ---
 
-### 3.2 GroupMemberService <a id="32-groupmemberservice"></a>
+### 3.2 MemberBehavierService & MemberService <a id="32-memberservice"></a>
 
 ```java
-public interface GroupMemberService {
-    // Thêm owner khởi tạo (memberId: người nhận vai trò Owner)
-    MemberRes addOwner(UUID groupId, UUID memberId, Instant now);
+public interface MemberBehavierService {
+    // operatorId: Thành viên xem danh sách; status: Bộ lọc trạng thái (tuỳ chọn)
+    List<MemberRes> listMembers(UUID operatorId, UUID groupId, MemberStatus status);
 
-    // Thêm 1 thành viên (memberId: người được thêm)
-    MemberRes addMember(UUID memberId, UUID groupId, MemberStatus memberStatus, Instant now);
+    // operatorId: Chủ nhóm thêm trực tiếp thành viên; req: danh sách memberIds
+    List<MemberRes> ownerAddMembers(UUID operatorId, UUID groupId, MemberAddReq req);
 
-    // operatorId: Người thực hiện; memberIds: Danh sách người được thêm
-    List<MemberRes> addMembers(UUID operatorId, UUID groupId, List<UUID> memberIds, Instant now);
-
-    // Tra cứu thành viên theo memberId
-    MemberRes findMember(UUID groupId, UUID memberId);
-    MemberRes findMember(UUID groupId, UUID memberId, MemberStatus status);
-    List<GroupMember> findMembers(UUID groupId, List<UUID> memberIds);
-    List<MemberRes> findMembers(UUID groupId);
-
-    // Người gọi tự rời nhóm -> operatorId
+    // operatorId: Thành viên tự rời nhóm
     void leave(UUID operatorId, UUID groupId);
 
-    // operatorId: Người duyệt (Owner); memberId: Người được duyệt
+    // operatorId: Chủ nhóm duyệt / từ chối thành viên PENDING
     void approve(UUID operatorId, UUID groupId, UUID memberId);
     int approveAll(UUID operatorId, UUID groupId);
+    void reject(UUID operatorId, UUID groupId, UUID memberId);
+    int rejectAll(UUID operatorId, UUID groupId);
 
-    // operatorId: Người xóa (Owner); memberId: Người bị xóa
+    // operatorId: Chủ nhóm mời thành viên ra khỏi nhóm
     void removeMember(UUID operatorId, UUID groupId, UUID memberId);
+
+    // operatorId: Chủ nhóm chuyển quyền; memberId: Người nhận quyền Owner
+    void transferOwnership(UUID operatorId, UUID groupId, UUID memberId);
+}
+
+public interface MemberService {
+    // Thao tác bản ghi nội bộ
+    Optional<MemberRes> create(MemberCreateReq req);
+    List<MemberRes> creates(List<MemberCreateReq> req);
+
+    long countActiveMembers(UUID groupId);
+    long countPendingMembers(UUID groupId);
+
+    MemberRes getMember(UUID groupId, UUID memberId, MemberStatus status);
+    List<MemberRes> getActivateMembers(UUID groupId);
+    List<MemberRes> getMembersWithStatusIn(UUID groupId, List<MemberStatus> statuses);
+    List<UUID> findIdAllMember(UUID groupId);
+    boolean allMemberInGroup(UUID groupId, List<UUID> memberIds);
+    void assertNotInGroup(UUID groupId, UUID memberId);
 }
 ```
 
@@ -162,19 +177,16 @@ public interface GroupMemberService {
 
 ```java
 public interface FundService {
-    // keepperId: Thành viên được gán giữ quỹ ban đầu
-    GroupFundRes addFund(UUID groupId, UUID keepperId, Instant createdAt);
+    // operatorId: Chủ nhóm tạo nhóm và gán giữ quỹ ban đầu
+    FundRes create(UUID groupId, UUID operatorId, Instant now);
 
-    // operatorId: Người gọi xem quỹ
-    GroupFundRes getFund(UUID operatorId, UUID groupId);
-    GroupFundRes getFund(UUID groupId);
-
-    // operatorId: Người thực hiện sửa quỹ (phải là Owner)
-    GroupFundRes updateFund(UUID operatorId, UUID groupId, GroupFundUpdateReq req);
+    // operatorId: Chủ nhóm bàn giao thủ quỹ
+    FundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req);
 
     // operatorId: Người thực hiện kiểm kê (Owner hoặc Thủ quỹ)
-    GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, GroupFundReconcileReq req);
+    GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, FundReconcileReq req);
 
+    // Điều chỉnh số dư trực tiếp khi giao dịch hoàn tất / hoàn tác
     void adjustBalance(UUID fundId, Long delta);
 }
 ```
@@ -188,11 +200,19 @@ public interface GTransactionService {
     // operatorId: Người tạo giao dịch (Member/Owner)
     GroupTransactionDetailRes create(UUID operatorId, UUID groupId, GroupTransactionCreateReq req);
 
-    // operatorId: Người xem danh sách / chi tiết
+    // operatorId: Người xem danh sách giao dịch chung
     GroupTransactionListRes list(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter);
+
+    // operatorId: Người xem danh sách giao dịch do chính mình ghi nhận
+    GroupTransactionListRes myList(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter);
+
+    // operatorId: Người duyệt xem danh sách giao dịch chờ duyệt (Owner/Treasurer)
+    GroupTransactionListRes listPending(UUID operatorId, UUID groupId, Integer page, Integer size);
+
+    // operatorId: Người xem chi tiết giao dịch
     GroupTransactionDetailRes detail(UUID operatorId, UUID groupId, UUID transactionId);
 
-    // operatorId: Người sửa / xóa
+    // operatorId: Người sửa / xóa (Creator hoặc Owner)
     GroupTransactionDetailRes update(UUID operatorId, UUID groupId, UUID transactionId, GroupTransactionUpdateReq req);
     void delete(UUID operatorId, UUID groupId, UUID transactionId);
 
@@ -201,20 +221,20 @@ public interface GTransactionService {
 }
 
 public interface GTransactionReviewService {
-    // operatorId: Người duyệt / từ chối
+    // operatorId: Người duyệt / từ chối (Owner hoặc Treasurer)
     GroupTransactionDetailRes confirm(UUID operatorId, UUID groupId, UUID transactionId);
     GroupTransactionDetailRes reject(UUID operatorId, UUID groupId, UUID transactionId);
-    int bulkConfirm(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req);
-    int bulkReject(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req);
+    GroupTransactionBulkReviewRes bulkConfirm(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req);
+    GroupTransactionBulkReviewRes bulkReject(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req);
 }
 ```
 
 ---
 
-### 3.5 ReportService <a id="35-reportservice"></a>
+### 3.5 GReportService <a id="35-reportservice"></a>
 
 ```java
-public interface ReportService {
+public interface GReportService {
     // operatorId: Thành viên yêu cầu xem báo cáo
     GroupSummaryReportRes getSummary(UUID operatorId, UUID groupId, String month);
     GroupBalanceReportRes getBalances(UUID operatorId, UUID groupId);
@@ -262,19 +282,19 @@ public class GroupPermissionValidator {
 
 1. **Tại Controller:**
    ```java
-   @PostMapping("/{id}/transfer-ownership")
-   public ApiResponse<Void> transferOwnership(
-           @PathVariable UUID id,
-           @Valid @RequestBody GroupTransferOwnershipReq req) {
+   @PutMapping("/owner-role/{memberUserId}/")
+   public ApiResponse<Void> updateMemberRole(
+           @PathVariable UUID groupId,
+           @PathVariable UUID memberUserId) {
        UUID operatorId = SecurityContextUtil.currentUserId(); // Rõ ràng là operator
-       groupService.transferOwnership(operatorId, id, req.newOwnerId());
+       memberBehavierService.transferOwnership(operatorId, groupId, memberUserId);
        return ApiResponse.of(null);
    }
    ```
 2. **Tại Request DTO:**
-    - Trường đại diện người nhận: `memberId`, `newOwnerId`, `toUserId`.
-    - Trường đại diện người trả: `fromUserId`, `payerUserId`.
-    - Danh sách người tham gia: `participants`, `memberIds`, `excludedUserIds`.
+   - Trường đại diện người nhận: `memberId`, `memberUserId`, `toUserId`.
+   - Trường đại diện người thực hiện đối ứng / người chi: `transactorId`, `userId`.
+   - Danh sách người tham gia: `participants`, `memberIds`, `excludedUserIds`.
 
 ---
 
@@ -285,6 +305,6 @@ public class GroupPermissionValidator {
 | `transferOwnership(UUID userId, UUID groupId, UUID newOwnerUserId)` | `transferOwnership(UUID operatorId, UUID groupId, UUID memberId)` | Tránh nhầm lẫn giữa 2 ID người dùng (`userId` vs `newOwnerUserId`).               |
 | `approve(UUID userId, UUID groupId, UUID memberId)`                 | `approve(UUID operatorId, UUID groupId, UUID memberId)`           | Phân biệt rõ `operatorId` (người duyệt) và `memberId` (người được duyệt).         |
 | `removeMember(UUID userId, UUID groupId, UUID memberUserId)`        | `removeMember(UUID operatorId, UUID groupId, UUID memberId)`      | Ngắn gọn, chuẩn hóa `operatorId` và `memberId`.                                   |
-| `getFund(UUID userId, UUID groupId)`                                | `getFund(UUID operatorId, UUID groupId)`                          | Thống nhất `operatorId` cho toàn bộ các method đọc/ghi dữ liệu nhóm.              |
+| `updateFund(UUID userId, UUID groupId, FundKepperUpdateReq req)`    | `updateFundKeepper(UUID operatorId, UUID groupId, req)`           | Thống nhất `operatorId` cho toàn bộ các method đọc/ghi dữ liệu nhóm.              |
 | `findMembers(UUID groupId, List<UUID> uuids)`                       | `findMembers(UUID groupId, List<UUID> memberIds)`                 | Rõ ngữ nghĩa dữ liệu, không dùng tên chung chung `uuids`.                         |
 | `leave(UUID groupId, UUID memberId)`                                | `leave(UUID operatorId, UUID groupId)`                            | `operatorId` là người gọi hàm tự rời nhóm, đặt ở đầu đồng bộ với các method khác. |

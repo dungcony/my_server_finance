@@ -5,11 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.MemberRole;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -109,9 +105,9 @@ class FundSettlementScenarioTest {
         members.add(memC);
 
         // nộp quỹ ban đầu mỗi người 3.000.000 VNĐ
-        GTransaction contribA = buildTransaction(userA, TransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tGroupCreated.plusSeconds(60), null);
-        GTransaction contribB = buildTransaction(userB, TransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tGroupCreated.plusSeconds(120), null);
-        GTransaction contribC = buildTransaction(userC, TransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tGroupCreated.plusSeconds(180), null);
+        GTransaction contribA = buildTransaction(userA, GTransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tGroupCreated.plusSeconds(60), null);
+        GTransaction contribB = buildTransaction(userB, GTransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tGroupCreated.plusSeconds(120), null);
+        GTransaction contribC = buildTransaction(userC, GTransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tGroupCreated.plusSeconds(180), null);
 
         transactions.addAll(List.of(contribA, contribB, contribC));
 
@@ -123,7 +119,7 @@ class FundSettlementScenarioTest {
         assertThat(balancesPhase1.totalNet()).isEqualTo(9000000L);
 
         // thanh toán vé máy bay và phòng: 3.153.000 VNĐ từ quỹ chung, người tham gia A, B, C
-        GTransaction txFlightHotel = buildTransaction(userB, TransactionType.EXPENSE, 3153000L, MoneySource.FUND, tGroupCreated.plus(12, ChronoUnit.HOURS),
+        GTransaction txFlightHotel = buildTransaction(userB, GTransactionType.EXPENSE, 3153000L, MoneySource.FUND, tGroupCreated.plus(12, ChronoUnit.HOURS),
                 List.of(
                         TransactionParticipant.builder().userId(userA).shareAmount(1051000L).build(),
                         TransactionParticipant.builder().userId(userB).shareAmount(1051000L).build(),
@@ -132,7 +128,7 @@ class FundSettlementScenarioTest {
         transactions.add(txFlightHotel);
 
         // chi tiêu chơi chung 1.206.000 VNĐ từ quỹ chung, người tham gia A, B, C
-        GTransaction txDay1 = buildTransaction(userB, TransactionType.EXPENSE, 1206000L, MoneySource.FUND, tDay1,
+        GTransaction txDay1 = buildTransaction(userB, GTransactionType.EXPENSE, 1206000L, MoneySource.FUND, tDay1,
                 List.of(
                         TransactionParticipant.builder().userId(userA).shareAmount(402000L).build(),
                         TransactionParticipant.builder().userId(userB).shareAmount(402000L).build(),
@@ -141,7 +137,7 @@ class FundSettlementScenarioTest {
         transactions.add(txDay1);
 
         // B và C đi chơi riêng 756.000 VNĐ từ quỹ chung, người tham gia B, C
-        GTransaction txDay2 = buildTransaction(userB, TransactionType.EXPENSE, 756000L, MoneySource.FUND, tDay2,
+        GTransaction txDay2 = buildTransaction(userB, GTransactionType.EXPENSE, 756000L, MoneySource.FUND, tDay2,
                 List.of(
                         TransactionParticipant.builder().userId(userB).shareAmount(378000L).build(),
                         TransactionParticipant.builder().userId(userC).shareAmount(378000L).build()
@@ -163,7 +159,7 @@ class FundSettlementScenarioTest {
         assertThat(cRefundAmount).isEqualTo(1169000L);
 
         // tạo giao dịch hoàn tiền cho C từ quỹ
-        GTransaction txRefundC = buildTransaction(userC, TransactionType.REFUND, cRefundAmount, MoneySource.FUND, tDay3Leaves, null);
+        GTransaction txRefundC = buildTransaction(userC, GTransactionType.REFUND, cRefundAmount, MoneySource.FUND, tDay3Leaves, null);
         transactions.add(txRefundC);
 
         // cập nhật trạng thái C rời nhóm
@@ -187,7 +183,7 @@ class FundSettlementScenarioTest {
                 .build();
         members.add(memD);
 
-        GTransaction contribD = buildTransaction(userD, TransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tDay4Joins.plusSeconds(300), null);
+        GTransaction contribD = buildTransaction(userD, GTransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tDay4Joins.plusSeconds(300), null);
         transactions.add(contribD);
 
         // quỹ sau khi D đóng = 2.716.000 + 3.000.000 = 5.716.000 VNĐ
@@ -195,7 +191,7 @@ class FundSettlementScenarioTest {
         assertThat(balancesPhase4.totalNet()).isEqualTo(5716000L);
 
         // phát hiện thất thoát quỹ 1.000.000 VNĐ, xảy ra trước khi D tham gia nên chỉ A và B chịu
-        GTransaction txDeficit = buildTransaction(userB, TransactionType.ADJUSTMENT_DOWN, 1000000L, MoneySource.FUND, tDay5DeficitFound,
+        GTransaction txDeficit = buildTransaction(userB, GTransactionType.ADJUSTMENT_DOWN, 1000000L, MoneySource.FUND, tDay5DeficitFound,
                 List.of(
                         TransactionParticipant.builder().userId(userA).shareAmount(500000L).build(),
                         TransactionParticipant.builder().userId(userB).shareAmount(500000L).build()
@@ -207,7 +203,7 @@ class FundSettlementScenarioTest {
         assertThat(balancesPhase5.totalNet()).isEqualTo(4716000L);
 
         // A, B, D đi chơi chung phát sinh chi phí 2.000.000 VNĐ từ quỹ
-        GTransaction txDay6 = buildTransaction(userB, TransactionType.EXPENSE, 2000000L, MoneySource.FUND, tDay6Expense,
+        GTransaction txDay6 = buildTransaction(userB, GTransactionType.EXPENSE, 2000000L, MoneySource.FUND, tDay6Expense,
                 List.of(
                         TransactionParticipant.builder().userId(userA).shareAmount(666667L).build(),
                         TransactionParticipant.builder().userId(userB).shareAmount(666667L).build(),
@@ -246,9 +242,9 @@ class FundSettlementScenarioTest {
         assertThat(totalRefund).isEqualTo(finalBalances.totalNet());
 
         // mô phỏng hoàn tiền đợt quyết toán cuối cùng cho A, B, D
-        GTransaction finalRefundA = buildTransaction(userA, TransactionType.REFUND, refundA, MoneySource.FUND, tDay7Settlement, null);
-        GTransaction finalRefundB = buildTransaction(userB, TransactionType.REFUND, refundB, MoneySource.FUND, tDay7Settlement.plusSeconds(10), null);
-        GTransaction finalRefundD = buildTransaction(userD, TransactionType.REFUND, refundD, MoneySource.FUND, tDay7Settlement.plusSeconds(20), null);
+        GTransaction finalRefundA = buildTransaction(userA, GTransactionType.REFUND, refundA, MoneySource.FUND, tDay7Settlement, null);
+        GTransaction finalRefundB = buildTransaction(userB, GTransactionType.REFUND, refundB, MoneySource.FUND, tDay7Settlement.plusSeconds(10), null);
+        GTransaction finalRefundD = buildTransaction(userD, GTransactionType.REFUND, refundD, MoneySource.FUND, tDay7Settlement.plusSeconds(20), null);
 
         transactions.addAll(List.of(finalRefundA, finalRefundB, finalRefundD));
 
@@ -263,7 +259,7 @@ class FundSettlementScenarioTest {
 
     private GTransaction buildTransaction(
             UUID transactorId,
-            TransactionType type,
+            GTransactionType type,
             Long amount,
             MoneySource moneySource,
             Instant occurredAt,
@@ -279,7 +275,7 @@ class FundSettlementScenarioTest {
                 .moneySource(moneySource)
                 .occurredAt(occurredAt)
                 .createdAt(occurredAt)
-                .status(TransactionStatus.CONFIRMED)
+                .status(GTransactionStatus.CONFIRMED)
                 .participants(participants != null ? participants : List.of())
                 .build();
     }

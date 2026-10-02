@@ -49,11 +49,11 @@ Mỗi giao dịch có các trường liên quan đến tính toán:
 | `id`          | `UUID`               | Khóa chính                                              | 
 | `groupId`     | `UUID`               | Nhóm sở hữu giao dịch                                   |
 | `userId`      | `UUID`               | Người thực hiện giao dịch                               |
-| `type`        | `TransactionType`    | Loại giao dịch (xem mục 5)                              |
+| `type`        | `GTransactionType`   | Loại giao dịch (xem mục 5)                              |
 | `amount`      | `Long`               | Số tiền (đơn vị nhỏ nhất, luôn > 0)                     |
 | `moneySource` | `MoneySource`        | Nguồn tiền: `FUND` (quỹ) hoặc `PERSONAL` (tiền túi)     |
 | `occurredAt`  | `Instant`            | Thời điểm giao dịch xảy ra                              |
-| `status`      | `TransactionStatus`  | Chỉ tính giao dịch `CONFIRMED`                          |
+| `status`      | `GTransactionStatus` | Chỉ tính giao dịch `CONFIRMED`                          |
 | `deletedAt`   | `Instant` (nullable) | Chỉ tính giao dịch chưa bị xóa mềm (`deletedAt = null`) |
 
 **Điều kiện lọc:** Chỉ các giao dịch có `status = CONFIRMED` và `deletedAt IS NULL` mới được đưa vào tính toán. Sắp xếp
@@ -90,12 +90,12 @@ Khi giao dịch không có bản ghi participant nào (ví dụ chi tiêu chung 
 
 Mỗi thành viên có một bộ tích lũy gồm 4 biến số, khởi tạo ban đầu bằng 0:
 
-| Biến              | Ý nghĩa                                                                                  |
-|-------------------|------------------------------------------------------------------------------------------|
-| `rawContribution` | Tổng tiền thành viên đã nộp vào quỹ chung của nhóm                                       |
-| `paidOutOfPocket` | Tổng tiền thành viên tự bỏ tiền túi chi hộ nhóm (không lấy từ quỹ)                       |
-| `refunded`        | Tổng tiền quỹ nhóm đã trả lại cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)   |
-| `share`           | Tổng phần chi phí phân bổ mà thành viên có trách nhiệm phải chịu                         |
+| Biến              | Ý nghĩa                                                                               |
+|-------------------|---------------------------------------------------------------------------------------|
+| `rawContribution` | Tổng tiền thành viên đã nộp vào quỹ chung của nhóm                                    |
+| `paidOutOfPocket` | Tổng tiền thành viên tự bỏ tiền túi chi hộ nhóm (không lấy từ quỹ)                    |
+| `refunded`        | Tổng tiền quỹ nhóm đã trả lại cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp) |
+| `share`           | Tổng phần chi phí phân bổ mà thành viên có trách nhiệm phải chịu                      |
 
 ---
 

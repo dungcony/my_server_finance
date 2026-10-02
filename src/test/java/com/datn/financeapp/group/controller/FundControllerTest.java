@@ -14,7 +14,7 @@ import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
 import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.dto.response.fund.FundRes;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.service.FundService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -104,7 +104,7 @@ class FundControllerTest {
     void reconcileFund_success() throws Exception {
         FundReconcileReq req = new FundReconcileReq(600_000L, LocalDate.now(), "Kiểm quỹ tháng", null);
         GroupFundReconcileRes res = new GroupFundReconcileRes(
-                500_000L, 600_000L, 100_000L, TransactionType.ADJUSTMENT_UP, UUID.randomUUID()
+                500_000L, 600_000L, 100_000L, GTransactionType.ADJUSTMENT_UP, UUID.randomUUID()
         );
 
         when(fundService.reconcileFund(eq(userId), eq(groupId), any(FundReconcileReq.class))).thenReturn(res);

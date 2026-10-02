@@ -83,36 +83,41 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 
 ## 2. Danh mục Điểm cuối API (Endpoints Summary) <a id="2-endpoints-summary"></a>
 
-| Nhóm chức năng             |  Method  | Endpoint URL                                 | Mục đích & Phân quyền                                                                                                                                                                                            |
-|:---------------------------|:--------:|:---------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **1. Nhóm & Thành viên**   |  `POST`  | `/v1/groups`                                 | Tạo nhóm mới (khởi tạo cấu hình, quỹ duy nhất và tự động sinh mã mời `invite_code`)                                                                                                                              |
-|                            |  `GET`   | `/v1/groups`                                 | Danh sách các nhóm user đang là thành viên `ACTIVE`, kèm mã mời và số dư quỹ                                                                                                                                     |
-|                            |  `GET`   | `/v1/groups/{id}`                            | Chi tiết nhóm (thông tin, mã mời, quỹ, danh sách thành viên)                                                                                                                                                     |
-|                            | `PATCH`  | `/v1/groups/{id}`                            | Sửa thông tin nhóm (Tên, mô tả, mục tiêu, cờ tính thừa thiếu) — *Owner*                                                                                                                                          |
-|                            | `DELETE` | `/v1/groups/{id}`                            | Xóa nhóm — *Owner*. Quỹ = 0, không còn khoản chờ; bật tính thừa thiếu thì phần mọi thành viên = 0                                                                                                                |
-|                            |  `POST`  | `/v1/groups/{id}/archive`                    | Lưu trữ nhóm (chỉ xem) — *Owner*. Không còn khoản chờ                                                                                                                                                            |
-|                            |  `POST`  | `/v1/groups/{id}/unarchive`                  | Mở lại nhóm đã lưu trữ — *Owner*                                                                                                                                                                                 |
-|                            |  `POST`  | `/v1/groups/join`                            | Tham gia nhóm bằng mã mời (`invite_code`). Trả về kết quả thành công (`data = null`), trạng thái duyệt tự động hoặc chờ duyệt tùy cấu hình nhóm                                                                  |
-|                            |  `GET`   | `/v1/groups/{id}/members`                    | Danh sách thành viên hiện tại và lịch sử tham gia                                                                                                                                                                |
-|                            |  `POST`  | `/v1/groups/{id}/members/{userId}/approve`   | Duyệt thành viên `PENDING` vào nhóm — *Owner*                                                                                                                                                                    |
-|                            | `DELETE` | `/v1/groups/{id}/members/{userId}`           | Mời thành viên rời nhóm, hoặc từ chối người đang `PENDING` — *Owner*. Bật tính thừa thiếu thì người bị mời rời phải tất toán về 0 trước. Người đó đang giữ quỹ thì quỹ chuyển về chủ nhóm                        |
-|                            |  `POST`  | `/v1/groups/{id}/leave`                      | Thành viên tự rời nhóm. Chủ nhóm phải chuyển quyền trước. Bật tính thừa thiếu thì phải tất toán về 0 trước. Người đó đang giữ quỹ thì quỹ chuyển về chủ nhóm                                                     |
-|                            |  `POST`  | `/v1/groups/{id}/transfer-ownership`         | Chuyển quyền chủ nhóm cho một thành viên `ACTIVE` khác (body `new_owner_id`) — *Owner*                                                                                                                           |
-|                            | `PATCH`  | `/v1/groups/{id}/members/{userId}/role`      | Cập nhật vai trò thành viên (tương thích: nếu role = OWNER thì chuyển quyền chủ nhóm) — *Owner*                                                                                                                  |
-| **2. Quỹ Nhóm (`Fund`)**   |  `GET`   | `/v1/groups/{id}/fund`                       | Xem quỹ duy nhất của nhóm: người giữ quỹ, số dư                                                                                                                                                                  |
-|                            | `PATCH`  | `/v1/groups/{id}/fund`                       | Bàn giao người giữ quỹ (body `keepper_id`) — *Owner*. Không có đóng/mở trạng thái quỹ                                                                                                                            |
-| **3. Giao dịch Nhóm**      |  `POST`  | `/v1/groups/{id}/transactions`               | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên thường ghi sẽ ở `PENDING`, Thủ quỹ / Owner ghi được duyệt ngay `CONFIRMED` |
-|                            |  `GET`   | `/v1/groups/{id}/transactions`               | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                                               |
-|                            |  `GET`   | `/v1/groups/{id}/transactions/{tId}`         | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                                                  |
-|                            |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`         | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                                               |
-|                            | `DELETE` | `/v1/groups/{id}/transactions/{tId}`         | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                                                |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm` | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                     |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`  | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                      |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`  | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                      |
-|                            |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`   | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                       |
-| **4. Kiểm kê Quỹ**         |  `POST`  | `/v1/groups/{id}/fund/reconcile`             | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                                            |
-| **5. Tổng quan & Báo cáo** |  `GET`   | `/v1/groups/{id}/summary`                    | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                                        |
-|                            |  `GET`   | `/v1/groups/{id}/balances`                   | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                                            |
+| Nhóm chức năng (Controller)        |  Method  | Endpoint URL                                        | Mục đích & Phân quyền                                                                                                                                                                                            |
+|:-----------------------------------|:--------:|:----------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **1. Quản lý Nhóm (`GroupController`)** |  `POST`  | `/v1/groups`                                        | Tạo nhóm mới (khởi tạo cấu hình, quỹ duy nhất và tự động sinh mã mời `invite_code`)                                                                                                                              |
+|                                    |  `GET`   | `/v1/groups`                                        | Danh sách các nhóm user đang là thành viên `ACTIVE`, kèm mã mời và số dư quỹ                                                                                                                                     |
+|                                    |  `GET`   | `/v1/groups/{id}`                                   | Chi tiết nhóm (thông tin, mã mời, quỹ, danh sách thành viên)                                                                                                                                                     |
+|                                    | `PATCH`  | `/v1/groups/{id}`                                   | Sửa thông tin nhóm (Tên, mô tả, mục tiêu, cờ tính thừa thiếu) — *Owner*                                                                                                                                          |
+|                                    | `DELETE` | `/v1/groups/{id}`                                   | Xóa nhóm — *Owner*. Quỹ = 0, không còn khoản chờ; bật tính thừa thiếu thì phần mọi thành viên = 0                                                                                                                |
+|                                    |  `POST`  | `/v1/groups/{id}/archive`                           | Lưu trữ nhóm (chỉ xem) — *Owner*. Không còn khoản chờ                                                                                                                                                            |
+|                                    |  `POST`  | `/v1/groups/{id}/unarchive`                         | Mở lại nhóm đã lưu trữ — *Owner*                                                                                                                                                                                 |
+|                                    |  `POST`  | `/v1/groups/join`                                   | Tham gia nhóm bằng mã mời (`invite_code`). Trạng thái `ACTIVE` (vào thẳng) hoặc `PENDING` (chờ duyệt) tùy cấu hình                                                                                               |
+|                                    |  `GET`   | `/v1/groups/{id}/pending-count`                     | Đếm số giao dịch và thành viên đang chờ duyệt (hiển thị badge) — *Thành viên ACTIVE*                                                                                                                             |
+| **2. Thành viên (`MemberController`)** |  `GET`   | `/v1/groups/{id}/members`                           | Danh sách thành viên hiện tại và lịch sử tham gia (lọc tùy chọn `status`)                                                                                                                                        |
+|                                    |  `POST`  | `/v1/groups/{id}/members`                           | Chủ nhóm thêm trực tiếp danh sách thành viên (`MemberAddReq`) — *Owner*                                                                                                                                          |
+|                                    |  `PUT`   | `/v1/groups/{id}/owner-role/{memberUserId}/`        | Chuyển giao quyền chủ nhóm cho một thành viên `ACTIVE` khác — *Owner*                                                                                                                                            |
+|                                    |  `POST`  | `/v1/groups/{id}/members/{memberUserId}/approve`   | Duyệt thành viên `PENDING` đơn lẻ vào nhóm — *Owner*                                                                                                                                                             |
+|                                    |  `POST`  | `/v1/groups/{id}/approves`                          | Duyệt toàn bộ thành viên `PENDING` vào nhóm — *Owner*                                                                                                                                                            |
+|                                    |  `POST`  | `/v1/groups/{id}/members/{memberUserId}/reject`    | Từ chối yêu cầu tham gia của thành viên `PENDING` đơn lẻ — *Owner*                                                                                                                                               |
+|                                    |  `POST`  | `/v1/groups/{id}/rejects`                           | Từ chối toàn bộ yêu cầu tham gia `PENDING` — *Owner*                                                                                                                                                             |
+|                                    | `DELETE` | `/v1/groups/{id}/members/{memberUserId}`           | Mời thành viên rời nhóm — *Owner*. Bật tính thừa thiếu thì người bị mời phải tất toán về 0 trước                                                                                                                |
+|                                    |  `POST`  | `/v1/groups/{id}/leave`                             | Thành viên tự rời nhóm. Chủ nhóm phải chuyển quyền trước; bật tính thừa thiếu thì phải tất toán về 0                                                                                                             |
+| **3. Quỹ Nhóm (`FundController`)** |  `PUT`   | `/v1/groups/{id}/fund-kepper`                       | Bàn giao người giữ quỹ (`FundKepperUpdateReq`) — *Owner*                                                                                                                                                         |
+|                                    |  `POST`  | `/v1/groups/{id}/fund/reconcile`                    | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                                            |
+| **4. Giao dịch (`GroupTransactionController`)** |  `POST`  | `/v1/groups/{id}/transactions`    | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên ghi ở `PENDING`, Thủ quỹ / Owner duyệt `CONFIRMED` ngay |
+|                                    |  `GET`   | `/v1/groups/{id}/transactions`                      | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                                               |
+|                                    |  `GET`   | `/v1/groups/{id}/transactions/mine`                 | Lịch sử giao dịch do chính người dùng hiện tại ghi nhận (kèm cả `PENDING`)                                                                                                                                       |
+|                                    |  `GET`   | `/v1/groups/{id}/transactions/pending`              | Danh sách giao dịch đang chờ duyệt (`PENDING`) dành riêng cho người duyệt — *Thủ quỹ / Owner*                                                                                                                    |
+|                                    |  `GET`   | `/v1/groups/{id}/transactions/{tId}`                | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                                                  |
+|                                    |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`                | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                                               |
+|                                    | `DELETE` | `/v1/groups/{id}/transactions/{tId}`                | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                                                |
+|                                    |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm`        | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                     |
+|                                    |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`         | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                     |
+|                                    |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`         | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                      |
+|                                    |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`          | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                       |
+| **5. Báo cáo (`GroupReportController`)** |  `GET`   | `/v1/groups/{id}/summary`                           | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                                        |
+|                                    |  `GET`   | `/v1/groups/{id}/balances`                          | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                                            |
 
 ---
 
@@ -291,12 +296,36 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 
 ---
 
+#### Đếm việc chờ duyệt (`GET /v1/groups/{id}/pending-count`) <a id="315a-dem-viec-cho-duyet"></a>
+
+Dùng để hiển thị badge thông báo trên giao diện người dùng.
+
+- **Phân quyền:** Thành viên `ACTIVE` của nhóm.
+- **Nghiệp vụ:**
+    - Giao dịch `PENDING` chỉ trả cho Trưởng nhóm / Thủ quỹ; thành viên thường nhận 0.
+    - Thành viên `PENDING` chỉ trả cho Trưởng nhóm; thành viên thường nhận 0.
+- **Response (`HTTP 200 OK` - `GroupPendingCountRes`):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "pending_transactions": 2,
+    "pending_members": 1
+  },
+  "message": "Thao tác thành công"
+}
+```
+
+---
+
 #### Danh sách thành viên nhóm (`GET /v1/groups/{id}/members`) <a id="315b-danh-sach-thanh-vien"></a>
 
-- **Phân quyền:** Chỉ thành viên `ACTIVE` của nhóm → nếu không: `403 FORBIDDEN_NOT_GROUP_MEMBER`.
+- **Phân quyền:** Thành viên `ACTIVE` của nhóm → nếu không: `403 FORBIDDEN_NOT_GROUP_MEMBER`.
 - **Query Parameters:**
-    - `status` (chuỗi, tùy chọn): Lọc theo trạng thái thành viên (`ACTIVE`, `PENDING`, `LEFT`, `REMOVED`). Nếu để trống:
-      lấy toàn bộ thành viên hiện tại và lịch sử tham gia nhóm.
+    - `status` (chuỗi, tùy chọn): Lọc theo trạng thái thành viên (`ACTIVE`, `PENDING`, `LEFT`, `REMOVED`).
+    - Lọc `PENDING` chỉ dành cho Trưởng nhóm (`OWNER`); nếu không phải Owner mà lọc `PENDING`: `403 FORBIDDEN_OWNER_REQUIRED`.
+    - Bỏ trống `status`: Trưởng nhóm thấy cả `ACTIVE` và `PENDING`, thành viên thường chỉ thấy `ACTIVE`.
 - **Response (`HTTP 200 OK` - `List<GroupMemberRes>`):**
 
 ```json
@@ -324,17 +353,6 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
       "status": "ACTIVE",
       "joined_at": "2026-09-16T10:05:00Z",
       "left_at": null
-    },
-    {
-      "id": "m1000000-0000-0000-0000-000000000003",
-      "user_id": "u3000000-0000-0000-0000-000000000003",
-      "full_name": "Lê Văn C",
-      "email": "c@example.com",
-      "avatar_url": "https://example.com/avatar3.png",
-      "role": "MEMBER",
-      "status": "LEFT",
-      "joined_at": "2026-09-16T10:10:00Z",
-      "left_at": "2026-09-16T20:00:00Z"
     }
   ],
   "message": "Thao tác thành công"
@@ -343,38 +361,60 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 
 ---
 
-#### Duyệt hoặc từ chối thành viên chờ <a id="316-duyet-thanh-vien"></a>
+#### Chủ nhóm thêm thành viên trực tiếp (`POST /v1/groups/{id}/members`) <a id="315c-them-thanh-vien"></a>
 
-- **`POST /v1/groups/{id}/members/{userId}/approve`** — duyệt
-    - **Phân quyền:** Chỉ `OWNER` của nhóm.
-    - **Nghiệp vụ:** Chỉ áp dụng cho bản ghi đang `PENDING`. Chuyển `status` sang `ACTIVE`, gán `joined_at = now()`.
-- **`DELETE /v1/groups/{id}/members/{userId}`** với người đang `PENDING` — từ chối
-    - **Nghiệp vụ:** **Xoá hẳn** bản ghi `PENDING`. Người này chưa từng ở trong nhóm nên không có lịch sử cần giữ, và
-      ràng buộc `ck_gm_dates` không cho một bản ghi `REMOVED` thiếu `joined_at`.
+Chủ nhóm (`OWNER`) có thể thêm trực tiếp danh sách thành viên vào nhóm ở trạng thái `ACTIVE` mà không cần duyệt.
 
----
-
-#### Chuyển quyền chủ nhóm (`POST /v1/groups/{id}/transfer-ownership`) <a id="317-chuyen-quyen-chu-nhom"></a>
-
-Nhóm luôn có **đúng một** `OWNER` đang `ACTIVE` ([rule.md](rule.md) quy tắc 9). Vì vậy **không có** endpoint gán vai trò
-tuỳ ý — endpoint `PATCH /v1/groups/{id}/members/{userId}/role` trước đây đã bị bỏ, vì nó cho phép tạo nhóm không có chủ
-hoặc có nhiều chủ.
-
-- **Phân quyền:** Chỉ `OWNER` hiện tại.
-- **Request Body (`GroupTransferOwnershipReq`):**
+- **Phân quyền:** Chỉ `OWNER` của nhóm → nếu không: `403 FORBIDDEN_OWNER_REQUIRED`.
+- **Request Body (`MemberAddReq`):**
 
 ```json
 {
-  "new_owner_id": "u2000000-0000-0000-0000-000000000002"
+  "member_ids": [
+    "u2000000-0000-0000-0000-000000000002",
+    "u3000000-0000-0000-0000-000000000003"
+  ]
 }
 ```
 
-- **Jakarta Validation:** `new_owner_id`: `@NotNull`
+- **Jakarta Validation:**
+    - `member_ids`: `@NotNull`
+- **Nghiệp vụ:**
+    - Nhóm không đang lưu trữ (`409 GROUP_ARCHIVED`).
+    - Các thành viên được thêm chuyển ngay sang trạng thái `ACTIVE` với `joined_at = now()`.
+- **Response (`HTTP 200 OK` - `List<GroupMemberRes>`).**
+
+---
+
+#### Duyệt hoặc từ chối thành viên chờ <a id="316-duyet-thanh-vien"></a>
+
+- **Duyệt đơn lẻ: `POST /v1/groups/{id}/members/{memberUserId}/approve`**
+    - **Phân quyền:** Chỉ `OWNER` của nhóm.
+    - **Nghiệp vụ:** Chỉ áp dụng cho bản ghi đang `PENDING`. Chuyển `status` sang `ACTIVE`, gán `joined_at = now()`.
+- **Duyệt hàng loạt: `POST /v1/groups/{id}/approves`**
+    - **Phân quyền:** Chỉ `OWNER` của nhóm.
+    - **Nghiệp vụ:** Chuyển toàn bộ thành viên đang `PENDING` sang `ACTIVE`, gán `joined_at = now()`.
+- **Từ chối đơn lẻ: `POST /v1/groups/{id}/members/{memberUserId}/reject`**
+    - **Phân quyền:** Chỉ `OWNER` của nhóm.
+    - **Nghiệp vụ:** Xoá bản ghi `PENDING` của thành viên khỏi nhóm.
+- **Từ chối hàng loạt: `POST /v1/groups/{id}/rejects`**
+    - **Phân quyền:** Chỉ `OWNER` của nhóm.
+    - **Nghiệp vụ:** Xoá toàn bộ bản ghi `PENDING` của nhóm.
+- **Response:** `HTTP 200 OK`, `data = null`.
+
+---
+
+#### Chuyển quyền chủ nhóm (`PUT /v1/groups/{id}/owner-role/{memberUserId}/`) <a id="317-chuyen-quyen-chu-nhom"></a>
+
+Nhóm luôn có **đúng một** `OWNER` đang `ACTIVE` ([rule.md](rule.md) quy tắc 9).
+
+- **Phân quyền:** Chỉ `OWNER` hiện tại → nếu không: `403 FORBIDDEN_OWNER_REQUIRED`.
+- **Path Variable:** `memberUserId` (UUID người nhận quyền).
 - **Nghiệp vụ** — trong **một** transaction CSDL:
-    1. `new_owner_id` phải là thành viên `ACTIVE` của nhóm → nếu không: `400 NEW_OWNER_NOT_MEMBER`.
-    2. `new_owner_id` khác người gọi → nếu trùng: `400 CANNOT_TRANSFER_TO_SELF`.
-    3. Chủ cũ: `role = MEMBER`. Người nhận: `role = OWNER`.
-    4. Chủ cũ đang giữ quỹ thì quỹ **không tự đổi người giữ** — chủ mới bàn giao lại nếu muốn.
+    - `memberUserId` phải là thành viên `ACTIVE` của nhóm → nếu không: `400 NEW_OWNER_NOT_MEMBER`.
+    - `memberUserId` khác người gọi → nếu trùng: `400 CANNOT_TRANSFER_TO_SELF`.
+    - Chủ cũ: `role = MEMBER`. Người nhận: `role = OWNER`.
+    - Chủ cũ đang giữ quỹ thì quỹ **không tự đổi người giữ** — chủ mới bàn giao lại nếu muốn.
 - **Response:** `HTTP 200 OK`, `data = null`.
 
 ---
@@ -457,29 +497,15 @@ Mỗi nhóm có **đúng một quỹ**, tạo cùng lúc với nhóm và giao ch
 ([rule.md](rule.md) quy tắc 14). Quỹ **không có thuộc tính loại ví** (`type`), **không có trường `status`** và **được
 phép âm**.
 
-#### Xem quỹ (`GET /v1/groups/{id}/fund`) <a id="321-xem-quy"></a>
-
-- **Phân quyền:** Thành viên `ACTIVE` của nhóm.
-- **Response (`HTTP 200 OK` - `FundRes`):**
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "w1000000-0000-0000-0000-000000000001",
-    "group_id": "a1000000-0000-0000-0000-000000000001",
-    "keepper_id": "u1000000-0000-0000-0000-000000000001",
-    "current_balance": 2400000,
-    "created_at": "2026-09-16T10:00:00Z"
-  }
-}
-```
+- **Thông tin quỹ:** Được trả trực tiếp trong đối tượng phản hồi của API chi tiết nhóm (`GroupDetailRes.fund`) và
+  báo cáo tổng quan (`GroupSummaryReportRes.fund`), không có endpoint `GET /fund` riêng lẻ để tránh thừa thãi.
+- **Kiểm kê quỹ:** Xem chi tiết tại [Mục 3.4](#34-kiem-ke-quy) (`POST /v1/groups/{id}/fund/reconcile`).
 
 ---
 
-#### Bàn giao thủ quỹ (`PATCH /v1/groups/{id}/fund`) <a id="322-sua-quy"></a>
+#### Bàn giao thủ quỹ (`PUT /v1/groups/{id}/fund-kepper`) <a id="322-sua-quy"></a>
 
-- **Phân quyền:** Chỉ `OWNER`.
+- **Phân quyền:** Chỉ `OWNER` của nhóm → nếu không: `403 FORBIDDEN_OWNER_REQUIRED`.
 - **Request Body (`FundKepperUpdateReq`):**
 
 ```json
@@ -488,6 +514,8 @@ phép âm**.
 }
 ```
 
+- **Jakarta Validation:**
+    - `keepper_id`: `@NotNull`
 - **Nghiệp vụ:**
 
 | Trường       | Kiểm tra                             | Lỗi                     |
@@ -496,7 +524,21 @@ phép âm**.
 
 Quỹ đi theo vòng đời của nhóm, không có trường `status`.
 
-- **Response (`HTTP 200 OK` - `FundRes`).**
+- **Response (`HTTP 200 OK` - `FundRes`):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "w1000000-0000-0000-0000-000000000001",
+    "group_id": "a1000000-0000-0000-0000-000000000001",
+    "keepper_id": "u3000000-0000-0000-0000-000000000003",
+    "current_balance": 2400000,
+    "created_at": "2026-09-16T10:00:00Z"
+  },
+  "message": "Thao tác thành công"
+}
+```
 
 ---
 
@@ -509,7 +551,7 @@ tắc 24.
 Toàn bộ các loại giao dịch được quản lý và tạo lập tập trung qua endpoint thống nhất:
 
 - `POST /v1/groups/{id}/transactions` và cập nhật qua `PUT /v1/groups/{id}/transactions/{tId}` sử dụng **Strategy
-  Pattern** tương ứng theo từng loại giao dịch (`TransactionType`):
+  Pattern** tương ứng theo từng loại giao dịch (`GTransactionType`):
     - `EXPENSE` (Chi tiêu): Trả bằng tiền quỹ (`FUND`) hoặc tiền túi (`PERSONAL`), bắt buộc có `category_id`. Phân bổ
       chi phí qua `participants`.
     - `CONTRIBUTION` (Nộp quỹ): Tiền túi (`PERSONAL`) nộp vào quỹ (`FUND`), `category_id = null`, `participants = []`.
@@ -669,19 +711,19 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 
 #### Lịch sử & Chi tiết giao dịch <a id="332-lich-su-chi-tiet-giao-dich"></a>
 
-- **`GET /v1/groups/{id}/transactions`**:
+- **Lịch sử giao dịch chung (`GET /v1/groups/{id}/transactions`)**:
     - **Phân quyền:** Thành viên `ACTIVE` của nhóm.
     - **Query Parameters** (100% `snake_case`):
         - `money_source` (chuỗi, tùy chọn): `FUND` hoặc `PERSONAL`
-        - `type` (chuỗi, tùy chọn): `EXPENSE`, `CONTRIBUTION`, `REFUND`, `ADJUSTMENT_UP`,`ADJUSTMENT_DOWN`
+        - `type` (chuỗi, tùy chọn): `EXPENSE`, `CONTRIBUTION`, `REFUND`, `ADJUSTMENT_UP`, `ADJUSTMENT_DOWN`
         - `status` (chuỗi, tùy chọn): `PENDING`, `CONFIRMED`, `REJECTED`
         - `start_date` (chuỗi `YYYY-MM-DD`, tùy chọn): Lọc theo ngày giao dịch (tính theo múi giờ Việt Nam UTC+7)
         - `end_date` (chuỗi `YYYY-MM-DD`, tùy chọn): Lọc theo ngày giao dịch (tính theo múi giờ Việt Nam UTC+7)
         - `transactor_id` (UUID, tùy chọn): Lọc theo người thực hiện/đối ứng (người trả/góp/nhận/kiểm kê)
-        - `page` (số nguyên >= 0, tùy chọn, mặc định `0`)
+        - `page` (số nguyên >= 1, tùy chọn, mặc định `1`)
         - `size` (số nguyên > 0, tùy chọn, mặc định `20`)
     - Sắp xếp: `occurred_at` giảm dần (mới nhất lên đầu).
-    - **Response (`HTTP 200 OK` - `GroupTransactionPageRes`):**
+    - **Response (`HTTP 200 OK` - `GroupTransactionListRes`):**
 
 ```json
 {
@@ -693,34 +735,57 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
         "group_id": "a1000000-0000-0000-0000-000000000001",
         "money_source": "PERSONAL",
         "transactor_id": "u2000000-0000-0000-0000-000000000002",
-        "transactor_full_name": "Trần Thị B",
         "created_by": "u2000000-0000-0000-0000-000000000002",
         "category_id": "c1000000-0000-0000-0000-000000000001",
         "type": "EXPENSE",
         "status": "CONFIRMED",
+        "reviewed_by": "u1000000-0000-0000-0000-000000000001",
+        "reviewed_at": "2026-09-16T12:05:00Z",
         "amount": 600000,
         "occurred_at": "2026-09-16T12:30:00Z",
         "note": "B và C đi xem phim (B quẹt thẻ cá nhân)",
         "created_at": "2026-09-16T12:00:00Z",
         "is_all_members": false,
-        "participants_count": 2
+        "participants": [
+          {
+            "user_id": "u2000000-0000-0000-0000-000000000002",
+            "full_name": "Trần Thị B",
+            "avatar_url": "https://example.com/avatar2.png",
+            "share_amount": 300000
+          },
+          {
+            "user_id": "u3000000-0000-0000-0000-000000000003",
+            "full_name": "Lê Văn C",
+            "avatar_url": "https://example.com/avatar3.png",
+            "share_amount": 300000
+          }
+        ]
       }
     ],
-    "pagination": {
-      "page": 0,
-      "size": 20,
-      "total_elements": 1,
-      "total_pages": 1,
-      "has_next": false
+    "meta": {
+      "page": 1,
+      "page_size": 20,
+      "total_items": 1,
+      "total_pages": 1
     }
   },
   "message": "Thao tác thành công"
 }
 ```
 
-- **`GET /v1/groups/{id}/transactions/{tId}`**: Trả về `GroupTransactionDetailRes` có tính sẵn danh sách người tham gia
-  (kèm `user_id`, `full_name`, `avatar_url`, `share_amount`) và số tiền mỗi người chịu. Không tìm thấy khoản →
-  `404 TRANSACTION_NOT_FOUND`.
+- **Lịch sử giao dịch của tôi (`GET /v1/groups/{id}/transactions/mine`)**:
+    - **Phân quyền:** Thành viên `ACTIVE` của nhóm.
+    - Lấy toàn bộ giao dịch do chính người dùng hiện tại ghi nhận (kể cả giao dịch đang `PENDING` chờ duyệt).
+    - Query Parameters tương tự endpoint trên (ngoại trừ `transactor_id` được cố định theo người gọi).
+    - **Response:** `HTTP 200 OK` - `GroupTransactionListRes`.
+
+- **Danh sách giao dịch chờ duyệt (`GET /v1/groups/{id}/transactions/pending`)**:
+    - **Phân quyền:** Chỉ Thủ quỹ (`keepper_id`) hoặc Trưởng nhóm (`OWNER`) → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
+    - Lấy các khoản `PENDING` cần phê duyệt với phân trang `page`, `size`.
+    - **Response:** `HTTP 200 OK` - `GroupTransactionListRes`.
+
+- **Chi tiết giao dịch (`GET /v1/groups/{id}/transactions/{tId}`)**:
+    - Trả về `GroupTransactionDetailRes` có tính sẵn danh sách người tham gia (kèm `user_id`, `full_name`, `avatar_url`, `share_amount`) và số tiền mỗi người chịu. Không tìm thấy khoản → `404 TRANSACTION_NOT_FOUND`.
 
 ---
 
@@ -1167,100 +1232,137 @@ quỹ. `total_refunded` là tổng tiền quỹ đã trả lại cho người đ
 classDiagram
     class GroupController {
         -GroupService groupService
-        +create(dto: GroupCreateReq): ApiResponse~GroupDetailRes~
+        +create(req: GroupCreateReq): ApiResponse~GroupDetailRes~
         +list(): ApiResponse~List~GroupSummaryRes~~
         +detail(id: UUID): ApiResponse~GroupDetailRes~
-        +listMembers(id: UUID, status: String): ApiResponse~List~GroupMemberRes~~
-        +getOrRegenerateInviteCode(id: UUID, regenerate: boolean): ApiResponse~GroupInviteCodeRes~
-        +join(dto: GroupJoinReq): ApiResponse~GroupJoinRes~
-        +approveMember(id: UUID, userId: UUID): ApiResponse~Void~
-        +removeMember(id: UUID, userId: UUID): ApiResponse~Void~
-        +transferOwnership(id: UUID, dto: GroupTransferOwnershipReq): ApiResponse~Void~
-        +leave(id: UUID): ApiResponse~Void~
+        +update(id: UUID, req: GroupUpdateReq): ApiResponse~GroupDetailRes~
+        +delete(id: UUID): ApiResponse~Void~
+        +join(req: GroupJoinReq): ApiResponse~Void~
+        +pendingCount(id: UUID): ApiResponse~GroupPendingCountRes~
         +archive(id: UUID): ApiResponse~Void~
         +unarchive(id: UUID): ApiResponse~Void~
-        +delete(id: UUID): ApiResponse~Void~
     }
 
-    class GroupFundController {
-        -GroupFundService fundService
-        +get(groupId: UUID): ApiResponse~GroupFundRes~
-        +update(groupId: UUID, dto: GroupFundUpdateReq): ApiResponse~GroupFundRes~
-        +reconcile(groupId: UUID, dto: GroupFundReconcileReq): ApiResponse~GroupFundReconcileRes~
+    class MemberController {
+        -MemberBehavierService memberBehavierService
+        +listMembers(groupId: UUID, status: MemberStatus): ApiResponse~List~MemberRes~~
+        +addMembers(groupId: UUID, req: MemberAddReq): ApiResponse~List~MemberRes~~
+        +updateMemberRole(groupId: UUID, memberUserId: UUID): ApiResponse~Void~
+        +approveMember(groupId: UUID, memberUserId: UUID): ApiResponse~Void~
+        +approveMembers(groupId: UUID): ApiResponse~Void~
+        +rejectMember(groupId: UUID, memberUserId: UUID): ApiResponse~Void~
+        +rejectMembers(groupId: UUID): ApiResponse~Void~
+        +removeMember(groupId: UUID, memberUserId: UUID): ApiResponse~Void~
+        +leave(groupId: UUID): ApiResponse~Void~
+    }
+
+    class FundController {
+        -FundService fundService
+        +updateFund(groupId: UUID, req: FundKepperUpdateReq): ApiResponse~FundRes~
+        +reconcileFund(groupId: UUID, req: FundReconcileReq): ApiResponse~GroupFundReconcileRes~
     }
 
     class GroupTransactionController {
-        -GroupTransactionService txnService
-        +create(groupId: UUID, dto: GroupTransactionCreateReq): ApiResponse~GroupTransactionDetailRes~
-        +refund(groupId: UUID, dto: GroupPayoutReq): ApiResponse~GroupTransactionDetailRes~
-        +updateRefund(groupId: UUID, txnId: UUID, dto: GroupPayoutReq): ApiResponse~GroupTransactionDetailRes~
-        +list(groupId: UUID, filters: GroupTransactionFilterReq): ApiResponse~GroupTransactionPageRes~
+        -GTransactionService gTransactionService
+        -GTransactionReviewService transactionReviewService
+        +create(groupId: UUID, req: GroupTransactionCreateReq): ApiResponse~GroupTransactionDetailRes~
+        +list(groupId: UUID, filter: GroupTransactionFilterReq): ApiResponse~GroupTransactionListRes~
+        +myList(groupId: UUID, filter: GroupTransactionFilterReq): ApiResponse~GroupTransactionListRes~
+        +listPending(groupId: UUID, page: int, size: int): ApiResponse~GroupTransactionListRes~
         +detail(groupId: UUID, txnId: UUID): ApiResponse~GroupTransactionDetailRes~
-        +update(groupId: UUID, txnId: UUID, dto: GroupTransactionUpdateReq): ApiResponse~GroupTransactionDetailRes~
+        +update(groupId: UUID, txnId: UUID, req: GroupTransactionUpdateReq): ApiResponse~GroupTransactionDetailRes~
+        +delete(groupId: UUID, txnId: UUID): ApiResponse~Void~
         +confirm(groupId: UUID, txnId: UUID): ApiResponse~GroupTransactionDetailRes~
         +reject(groupId: UUID, txnId: UUID): ApiResponse~GroupTransactionDetailRes~
-        +bulkConfirm(groupId: UUID, dto: GroupTransactionBulkReviewReq): ApiResponse~Void~
-        +bulkReject(groupId: UUID, dto: GroupTransactionBulkReviewReq): ApiResponse~Void~
-        +delete(groupId: UUID, txnId: UUID): ApiResponse~Void~
+        +bulkConfirm(groupId: UUID, req: GroupTransactionBulkReviewReq): ApiResponse~GroupTransactionBulkReviewRes~
+        +bulkReject(groupId: UUID, req: GroupTransactionBulkReviewReq): ApiResponse~GroupTransactionBulkReviewRes~
     }
 
     class GroupReportController {
-        -GroupReportService reportService
-        +summary(groupId: UUID, month: String): ApiResponse~GroupFinanceSummaryRes~
+        -GReportService reportService
+        +summary(groupId: UUID, month: String): ApiResponse~GroupSummaryReportRes~
         +balances(groupId: UUID): ApiResponse~GroupBalanceReportRes~
     }
 
     class GroupService {
         <<Interface>>
-        +create(userId: UUID, req: GroupCreateReq): GroupDetailRes
-        +list(userId: UUID): List~GroupSummaryRes~
-        +detail(userId: UUID, groupId: UUID): GroupDetailRes
-        +listMembers(userId: UUID, groupId: UUID, status: MemberStatus): List~GroupMemberRes~
-        +getInviteCode(userId: UUID, groupId: UUID): GroupInviteCodeRes
-        +regenerateInviteCode(userId: UUID, groupId: UUID): GroupInviteCodeRes
-        +join(userId: UUID, req: GroupJoinReq): GroupJoinRes
-        +approveMember(userId: UUID, groupId: UUID, memberUserId: UUID): void
-        +removeMember(userId: UUID, groupId: UUID, memberUserId: UUID): void
-        +transferOwnership(userId: UUID, groupId: UUID, req: GroupTransferOwnershipReq): void
-        +leave(userId: UUID, groupId: UUID): void
-        +archive(userId: UUID, groupId: UUID): void
-        +unarchive(userId: UUID, groupId: UUID): void
-        +delete(userId: UUID, groupId: UUID): void
+        +create(operatorId: UUID, req: GroupCreateReq): GroupDetailRes
+        +list(operatorId: UUID): List~GroupSummaryRes~
+        +detail(operatorId: UUID, groupId: UUID): GroupDetailRes
+        +update(operatorId: UUID, groupId: UUID, req: GroupUpdateReq): GroupDetailRes
+        +archive(operatorId: UUID, groupId: UUID): void
+        +unarchive(operatorId: UUID, groupId: UUID): void
+        +delete(operatorId: UUID, groupId: UUID): void
+        +joinByCode(operatorId: UUID, req: GroupJoinReq): void
+        +pendingCount(operatorId: UUID, groupId: UUID): GroupPendingCountRes
+        +findNotDeletedById(groupId: UUID): GroupDetailRes
     }
 
-    class GroupFundService {
+    class MemberBehavierService {
         <<Interface>>
-        +createForGroup(groupId: UUID, holderId: UUID, name: String): GroupFundRes
-        +get(userId: UUID, groupId: UUID): GroupFundRes
-        +update(userId: UUID, groupId: UUID, req: GroupFundUpdateReq): GroupFundRes
-        +reassignHolder(groupId: UUID, fromUserId: UUID, toUserId: UUID): void
-        +adjustBalance(groupId: UUID, delta: Long): void
-        +reconcile(userId: UUID, groupId: UUID, req: GroupFundReconcileReq): GroupFundReconcileRes
+        +listMembers(operatorId: UUID, groupId: UUID, status: MemberStatus): List~MemberRes~
+        +ownerAddMembers(operatorId: UUID, groupId: UUID, req: MemberAddReq): List~MemberRes~
+        +leave(operatorId: UUID, groupId: UUID): void
+        +approve(operatorId: UUID, groupId: UUID, memberId: UUID): void
+        +approveAll(operatorId: UUID, groupId: UUID): int
+        +reject(operatorId: UUID, groupId: UUID, memberId: UUID): void
+        +rejectAll(operatorId: UUID, groupId: UUID): int
+        +removeMember(operatorId: UUID, groupId: UUID, memberId: UUID): void
+        +transferOwnership(operatorId: UUID, groupId: UUID, memberId: UUID): void
     }
 
-    class GroupTransactionService {
+    class MemberService {
         <<Interface>>
-        +create(userId: UUID, groupId: UUID, req: GroupTransactionCreateReq): GroupTransactionDetailRes
-        +payout(userId: UUID, groupId: UUID, type: GroupTransactionType, req: GroupPayoutReq): GroupTransactionDetailRes
-        +updatePayout(userId: UUID, groupId: UUID, txnId: UUID, type: GroupTransactionType, req: GroupPayoutReq): GroupTransactionDetailRes
-        +list(userId: UUID, groupId: UUID, filters: GroupTransactionFilterReq): GroupTransactionPageRes
-        +detail(userId: UUID, groupId: UUID, txnId: UUID): GroupTransactionDetailRes
-        +update(userId: UUID, groupId: UUID, txnId: UUID, req: GroupTransactionUpdateReq): GroupTransactionDetailRes
-        +confirm(userId: UUID, groupId: UUID, txnId: UUID): GroupTransactionDetailRes
-        +reject(userId: UUID, groupId: UUID, txnId: UUID): GroupTransactionDetailRes
-        +bulkConfirm(userId: UUID, groupId: UUID, txnIds: List~UUID~): void
-        +bulkReject(userId: UUID, groupId: UUID, txnIds: List~UUID~): void
-        +delete(userId: UUID, groupId: UUID, txnId: UUID): void
+        +create(req: MemberCreateReq): Optional~MemberRes~
+        +creates(req: List~MemberCreateReq~): List~MemberRes~
+        +countActiveMembers(groupId: UUID): long
+        +countPendingMembers(groupId: UUID): long
+        +getMember(groupId: UUID, memberId: UUID, status: MemberStatus): MemberRes
+        +getActivateMembers(groupId: UUID): List~MemberRes~
+        +getMembersWithStatusIn(groupId: UUID, statuses: List~MemberStatus~): List~MemberRes~
+        +findIdAllMember(groupId: UUID): List~UUID~
+        +allMemberInGroup(groupId: UUID, memberIds: List~UUID~): boolean
+        +assertNotInGroup(groupId: UUID, memberId: UUID): void
     }
 
-    class GroupReportService {
+    class FundService {
         <<Interface>>
-        +getSummary(userId: UUID, groupId: UUID, month: String): GroupFinanceSummaryRes
-        +getBalances(userId: UUID, groupId: UUID): GroupBalanceReportRes
+        +create(groupId: UUID, operatorId: UUID, now: Instant): FundRes
+        +updateFundKeepper(operatorId: UUID, groupId: UUID, req: FundKepperUpdateReq): FundRes
+        +reconcileFund(operatorId: UUID, groupId: UUID, req: FundReconcileReq): GroupFundReconcileRes
+        +adjustBalance(fundId: UUID, delta: Long): void
+    }
+
+    class GTransactionService {
+        <<Interface>>
+        +create(operatorId: UUID, groupId: UUID, req: GroupTransactionCreateReq): GroupTransactionDetailRes
+        +list(operatorId: UUID, groupId: UUID, filter: GroupTransactionFilterReq): GroupTransactionListRes
+        +myList(operatorId: UUID, groupId: UUID, filter: GroupTransactionFilterReq): GroupTransactionListRes
+        +listPending(operatorId: UUID, groupId: UUID, page: Integer, size: Integer): GroupTransactionListRes
+        +detail(operatorId: UUID, groupId: UUID, transactionId: UUID): GroupTransactionDetailRes
+        +update(operatorId: UUID, groupId: UUID, transactionId: UUID, req: GroupTransactionUpdateReq): GroupTransactionDetailRes
+        +delete(operatorId: UUID, groupId: UUID, transactionId: UUID): void
+        +countPendingForGroup(groupId: UUID): long
+    }
+
+    class GTransactionReviewService {
+        <<Interface>>
+        +confirm(operatorId: UUID, groupId: UUID, transactionId: UUID): GroupTransactionDetailRes
+        +reject(operatorId: UUID, groupId: UUID, transactionId: UUID): GroupTransactionDetailRes
+        +bulkConfirm(operatorId: UUID, groupId: UUID, req: GroupTransactionBulkReviewReq): GroupTransactionBulkReviewRes
+        +bulkReject(operatorId: UUID, groupId: UUID, req: GroupTransactionBulkReviewReq): GroupTransactionBulkReviewRes
+    }
+
+    class GReportService {
+        <<Interface>>
+        +getSummary(operatorId: UUID, groupId: UUID, month: String): GroupSummaryReportRes
+        +getBalances(operatorId: UUID, groupId: UUID): GroupBalanceReportRes
     }
 
     GroupController --> GroupService
-    GroupFundController --> GroupFundService
-    GroupTransactionController --> GroupTransactionService
-    GroupReportController --> GroupReportService
+    MemberController --> MemberBehavierService
+    FundController --> FundService
+    GroupTransactionController --> GTransactionService
+    GroupTransactionController --> GTransactionReviewService
+    GroupReportController --> GReportService
 ```

@@ -19,17 +19,19 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.service.GTransactionReviewService;
 import com.datn.financeapp.group.service.GTransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -93,13 +95,13 @@ class GroupTransactionControllerTest {
     @DisplayName("POST /groups/{groupId}/transactions - Tạo giao dịch nhóm thành công trả về 201")
     void createTransaction_success() throws Exception {
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
-                TransactionType.EXPENSE, MoneySource.FUND, 150_000L,
+                GTransactionType.EXPENSE, MoneySource.FUND, 150_000L,
                 Instant.now(), null, UUID.randomUUID(), userId, "Ăn trưa nhóm", null
         );
 
         GroupTransactionDetailRes res = new GroupTransactionDetailRes(
                 txnId, groupId, userId, userId, req.categoryId(),
-                MoneySource.FUND, TransactionType.EXPENSE, TransactionStatus.PENDING,
+                MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.PENDING,
                 null, null, 150_000L, Instant.now(), "Ăn trưa nhóm",
                 Instant.now(), Instant.now(), Collections.emptyList()
         );
@@ -122,7 +124,7 @@ class GroupTransactionControllerTest {
     void listTransactions_success() throws Exception {
         GroupTransactionDetailRes res = new GroupTransactionDetailRes(
                 txnId, groupId, userId, userId, null,
-                MoneySource.FUND, TransactionType.EXPENSE, TransactionStatus.CONFIRMED,
+                MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Ăn trưa",
                 Instant.now(), Instant.now(), Collections.emptyList()
         );
@@ -145,7 +147,7 @@ class GroupTransactionControllerTest {
     void detailTransaction_success() throws Exception {
         GroupTransactionDetailRes res = new GroupTransactionDetailRes(
                 txnId, groupId, userId, userId, null,
-                MoneySource.FUND, TransactionType.EXPENSE, TransactionStatus.CONFIRMED,
+                MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 null, null, 150_000L, Instant.now(), "Chi tiết",
                 Instant.now(), Instant.now(), Collections.emptyList()
         );
@@ -167,7 +169,7 @@ class GroupTransactionControllerTest {
         );
         GroupTransactionDetailRes res = new GroupTransactionDetailRes(
                 txnId, groupId, userId, userId, null,
-                MoneySource.FUND, TransactionType.EXPENSE, TransactionStatus.PENDING,
+                MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.PENDING,
                 null, null, 200_000L, Instant.now(), "Ghi chú mới",
                 Instant.now(), Instant.now(), Collections.emptyList()
         );
@@ -199,7 +201,7 @@ class GroupTransactionControllerTest {
     void confirmTransaction_success() throws Exception {
         GroupTransactionDetailRes res = new GroupTransactionDetailRes(
                 txnId, groupId, userId, userId, null,
-                MoneySource.FUND, TransactionType.EXPENSE, TransactionStatus.CONFIRMED,
+                MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Duyệt",
                 Instant.now(), Instant.now(), Collections.emptyList()
         );
@@ -218,7 +220,7 @@ class GroupTransactionControllerTest {
     void rejectTransaction_success() throws Exception {
         GroupTransactionDetailRes res = new GroupTransactionDetailRes(
                 txnId, groupId, userId, userId, null,
-                MoneySource.FUND, TransactionType.EXPENSE, TransactionStatus.REJECTED,
+                MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.REJECTED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Từ chối",
                 Instant.now(), Instant.now(), Collections.emptyList()
         );

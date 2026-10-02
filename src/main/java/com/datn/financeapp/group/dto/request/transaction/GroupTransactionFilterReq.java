@@ -1,7 +1,7 @@
 package com.datn.financeapp.group.dto.request.transaction;
 
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 
 import java.time.Instant;
@@ -11,8 +11,8 @@ import java.util.UUID;
 
 public record GroupTransactionFilterReq(
         MoneySource moneySource,
-        TransactionType type,
-        TransactionStatus status,
+        GTransactionType type,
+        GTransactionStatus status,
         UUID transactorId,
         Instant fromOccurredAt,
         Instant toOccurredAt,
@@ -20,18 +20,18 @@ public record GroupTransactionFilterReq(
         LocalDate endDate,
         Integer page,
         Integer size,
-        TransactionStatus excludeStatus,
+        GTransactionStatus excludeStatus,
         UUID createdBy) {
 
     public GroupTransactionFilterReq(
-            MoneySource moneySource, TransactionType type, TransactionStatus status,
+            MoneySource moneySource, GTransactionType type, GTransactionStatus status,
             UUID transactorId, Instant fromOccurredAt, Instant toOccurredAt,
             LocalDate startDate, LocalDate endDate, Integer page, Integer size) {
         this(moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
                 startDate, endDate, page, size, null, null);
     }
 
-    public GroupTransactionFilterReq withExcludeStatus(TransactionStatus excludeStatus) {
+    public GroupTransactionFilterReq withExcludeStatus(GTransactionStatus excludeStatus) {
         return new GroupTransactionFilterReq(
                 moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
                 startDate, endDate, page, size, excludeStatus, createdBy);

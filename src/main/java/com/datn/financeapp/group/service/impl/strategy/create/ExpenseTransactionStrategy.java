@@ -5,8 +5,8 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.events.ValidCategorySystemEvent;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.service.GTransactionBuilderStrategy;
@@ -24,8 +24,8 @@ import java.util.UUID;
  * <p>
  * Chi tiết các phương thức:
  * <ul>
- * <li>{@link #supports(TransactionType)}: Xác nhận hỗ trợ loại EXPENSE.</li>
- * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, TransactionStatus, boolean)}:
+ * <li>{@link #supports(GTransactionType)}: Xác nhận hỗ trợ loại EXPENSE.</li>
+ * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, GTransactionStatus, boolean)}:
  * Kiểm tra danh mục, tính toán phân bổ chi phí cho người tham gia và hoàn thiện
  * thực thể giao dịch.</li>
  * </ul>
@@ -41,21 +41,21 @@ public class ExpenseTransactionStrategy implements GTransactionBuilderStrategy {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public boolean supports(TransactionType type) {
-        return type == TransactionType.EXPENSE;
+    public boolean supports(GTransactionType type) {
+        return type == GTransactionType.EXPENSE;
     }
 
     @Override
-    public TransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
         if (authInfo.isOwner() || authInfo.isTreasurer()) {
-            return TransactionStatus.CONFIRMED;
+            return GTransactionStatus.CONFIRMED;
         }
-        return TransactionStatus.PENDING;
+        return GTransactionStatus.PENDING;
     }
 
     @Override
     public GTransaction build(UUID operatorId, UUID groupId, GroupTransactionCreateReq req,
-                              TransactionStatus status, boolean isSettlementEnabled) {
+                              GTransactionStatus status, boolean isSettlementEnabled) {
         // chi tiêu nhóm bắt buộc có danh mục
         if (req.categoryId() == null) {
             throw new BusinessException(ErrorCode.CATEGORY_REQUIRED_FOR_EXPENSE);

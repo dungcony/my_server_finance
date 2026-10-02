@@ -6,10 +6,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Member;
-import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.enums.TransactionStatus;
-import com.datn.financeapp.group.enums.TransactionType;
+import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
@@ -27,8 +24,8 @@ import java.util.UUID;
  * <p>
  * Chi tiết các phương thức:
  * <ul>
- * <li>{@link #supports(TransactionType)}: Xác nhận hỗ trợ loại REFUND.</li>
- * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, TransactionStatus, boolean)}:
+ * <li>{@link #supports(GTransactionType)}: Xác nhận hỗ trợ loại REFUND.</li>
+ * <li>{@link #build(UUID, UUID, GroupTransactionCreateReq, GTransactionStatus, boolean)}:
  * Kiểm tra nguồn tiền FUND, tính số dư còn lại của người nhận để đối soát hạn mức
  * hoàn trả và hoàn thiện thực thể giao dịch.</li>
  * </ul>
@@ -42,21 +39,21 @@ public class RefundTransactionStrategy implements GTransactionBuilderStrategy {
     private final MemberRepository memberRepository;
 
     @Override
-    public boolean supports(TransactionType type) {
-        return type == TransactionType.REFUND;
+    public boolean supports(GTransactionType type) {
+        return type == GTransactionType.REFUND;
     }
 
     @Override
-    public TransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
         if (authInfo.isOwner() || authInfo.isTreasurer()) {
-            return TransactionStatus.CONFIRMED;
+            return GTransactionStatus.CONFIRMED;
         }
         throw new com.datn.financeapp.common.exception.BusinessException(com.datn.financeapp.common.exception.ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED);
     }
 
     @Override
     public GTransaction build(UUID operatorId, UUID groupId, GroupTransactionCreateReq req,
-                              TransactionStatus status, boolean isSettlementEnabled) {
+                              GTransactionStatus status, boolean isSettlementEnabled) {
         MoneySource source = req.resolveMoneySource();
         if (source != MoneySource.FUND) {
             throw new BusinessException(ErrorCode.MONEY_SOURCE_INVALID);

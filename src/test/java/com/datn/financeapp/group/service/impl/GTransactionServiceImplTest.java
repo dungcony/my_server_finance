@@ -185,7 +185,7 @@ class GTransactionServiceImplTest {
 
         service.confirm(ownerId, groupId, pending.getId());
 
-        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
         assertThat(pending.getReviewedBy()).isEqualTo(ownerId);
         assertThat(pending.getReviewedAt()).isNotNull();
         assertThat(capturePublishedEvents()).containsExactly(new FundBalanceChangedEvent(groupId, 100_000L));
@@ -200,7 +200,7 @@ class GTransactionServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode()));
 
-        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.PENDING);
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.PENDING);
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
@@ -225,7 +225,7 @@ class GTransactionServiceImplTest {
 
         service.reject(ownerId, groupId, pending.getId());
 
-        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.REJECTED);
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.REJECTED);
         assertThat(pending.getReviewedBy()).isEqualTo(ownerId);
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
@@ -240,7 +240,7 @@ class GTransactionServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getCode()).isEqualTo(ErrorCode.TRANSACTION_NOT_PENDING.getCode()));
 
-        assertThat(confirmed.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(confirmed.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
     }
 
     @Test
@@ -278,7 +278,7 @@ class GTransactionServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getCode()).isEqualTo(ErrorCode.VALIDATION_ERROR.getCode()));
 
-        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.PENDING);
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.PENDING);
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
@@ -293,8 +293,8 @@ class GTransactionServiceImplTest {
                 new GroupTransactionBulkReviewReq(List.of(first.getId(), first.getId(), second.getId())));
 
         assertThat(count).isEqualTo(2);
-        assertThat(first.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
-        assertThat(second.getStatus()).isEqualTo(TransactionStatus.CONFIRMED);
+        assertThat(first.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
+        assertThat(second.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
         assertThat(first.getReviewedBy()).isEqualTo(ownerId);
         assertThat(capturePublishedEvents()).containsExactly(new FundBalanceChangedEvent(groupId, 350_000L));
     }
@@ -320,7 +320,7 @@ class GTransactionServiceImplTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getCode()).isEqualTo(ErrorCode.VALIDATION_ERROR.getCode()));
 
-        assertThat(pending.getStatus()).isEqualTo(TransactionStatus.PENDING);
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.PENDING);
     }
 
     @Test
@@ -334,8 +334,8 @@ class GTransactionServiceImplTest {
                 new GroupTransactionBulkReviewReq(List.of(first.getId(), second.getId())));
 
         assertThat(count).isEqualTo(2);
-        assertThat(first.getStatus()).isEqualTo(TransactionStatus.REJECTED);
-        assertThat(second.getStatus()).isEqualTo(TransactionStatus.REJECTED);
+        assertThat(first.getStatus()).isEqualTo(GTransactionStatus.REJECTED);
+        assertThat(second.getStatus()).isEqualTo(GTransactionStatus.REJECTED);
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 
@@ -372,12 +372,12 @@ class GTransactionServiceImplTest {
 
     private void stubFindPendingBatch(List<UUID> ids, List<GTransaction> found) {
         when(transactionRepository.findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(
-                ids, groupId, TransactionStatus.PENDING)).thenReturn(found);
+                ids, groupId, GTransactionStatus.PENDING)).thenReturn(found);
     }
 
     private GTransaction pendingTxn(long amount) {
         GTransaction pending = txn(amount);
-        pending.setStatus(TransactionStatus.PENDING);
+        pending.setStatus(GTransactionStatus.PENDING);
         return pending;
     }
 
@@ -391,11 +391,11 @@ class GTransactionServiceImplTest {
         return GTransaction.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
-                .type(TransactionType.CONTRIBUTION)
+                .type(GTransactionType.CONTRIBUTION)
                 .moneySource(MoneySource.PERSONAL)
                 .transactorId(memberId)
                 .createdBy(memberId)
-                .status(TransactionStatus.CONFIRMED)
+                .status(GTransactionStatus.CONFIRMED)
                 .amount(amount)
                 .participants(new ArrayList<>())
                 .occurredAt(now)
