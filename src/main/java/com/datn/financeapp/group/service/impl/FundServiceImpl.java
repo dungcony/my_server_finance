@@ -97,6 +97,11 @@ public class FundServiceImpl implements FundService {
                                                    FundReconcileReq req) {
         permissionValidator.verifyOwnerOrTreasurer(groupId, operatorId, fund.getKeepperId());
 
+        // chặn kiểm kê khi còn giao dịch chờ duyệt
+        if (gTransactionService.countPendingForGroup(groupId) > 0) {
+            throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
+        }
+
         long previousBalance = fund.getCurrentBalance();
         long actualBalance = req.actualBalance();
         long difference = actualBalance - previousBalance;

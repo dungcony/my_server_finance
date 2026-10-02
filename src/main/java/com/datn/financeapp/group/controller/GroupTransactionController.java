@@ -68,6 +68,23 @@ public class GroupTransactionController {
         return ApiResponse.of(gTransactionService.list(userId, groupId, filter));
     }
 
+    @GetMapping("/transactions/mine")
+    public ApiResponse<GroupTransactionListRes> myList(
+            @PathVariable UUID groupId,
+            @RequestParam(name = "money_source", required = false) MoneySource moneySource,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) TransactionStatus status,
+            @RequestParam(name = "start_date", required = false) LocalDate startDate,
+            @RequestParam(name = "end_date", required = false) LocalDate endDate,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        GroupTransactionFilterReq filter = new GroupTransactionFilterReq(
+                moneySource, type, status, null,
+                null, null, startDate, endDate, page, size);
+        return ApiResponse.of(gTransactionService.myList(userId, groupId, filter));
+    }
+
     @GetMapping("/transactions/pending")
     public ApiResponse<GroupTransactionListRes> listPending(
             @PathVariable UUID groupId,

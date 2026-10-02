@@ -37,7 +37,7 @@ import static org.mockito.Mockito.*;
 /**
  * Kiểm thử {@link GTransactionServiceImpl}:
  * <ul>
- * <li>{@link GTransactionServiceImpl#delete}: chủ nhóm xoá mềm giao dịch nhóm.</li>
+ * <li>{@link GTransactionServiceImpl#delete}: xoá mềm giao dịch nhóm, phân quyền theo vai trò (OWNER/THỦ QUỸ/MEMBER).</li>
  * <li>{@link GTransactionServiceImpl#confirm}, {@link GTransactionServiceImpl#reject},
  * {@link GTransactionServiceImpl#bulkConfirm}, {@link GTransactionServiceImpl#bulkReject}:
  * luồng duyệt giao dịch đang chờ.</li>
@@ -64,6 +64,7 @@ class GTransactionServiceImplTest {
     private UUID groupId;
     private UUID ownerId;
     private UUID memberId;
+    private UUID treasurerId;
 
     @BeforeEach
     void setUp() {
@@ -79,9 +80,22 @@ class GTransactionServiceImplTest {
         lenient().when(permissionValidator.getAuthInfo(groupId, memberId)).thenReturn(
                 new MemberAuthInfo(groupId, memberId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
                         MemberRole.MEMBER, ownerId));
+
+        treasurerId = UUID.randomUUID();
+        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId)).thenReturn(
+                new MemberAuthInfo(groupId, treasurerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
+                        MemberRole.MEMBER, treasurerId));
+
+        // gọi logic thật cho kiểm tra quyền xóa
+        lenient().doCallRealMethod().when(permissionValidator)
+                .verifyTransactionDeletePermission(any(), any(), any());
+
         // delta giả lập đúng chiều cộng: bằng số tiền giao dịch
         lenient().when(transactionHelper.calculateDelta(any(), any(), anyLong(), eq(false)))
                 .thenAnswer(invocation -> invocation.<Long>getArgument(2));
+        // delta giả lập hoàn tác: âm số tiền giao dịch
+        lenient().when(transactionHelper.calculateDelta(any(), any(), anyLong(), eq(true)))
+                .thenAnswer(invocation -> -invocation.<Long>getArgument(2));
     }
 
     @Test
@@ -94,6 +108,73 @@ class GTransactionServiceImplTest {
 
         assertThat(contribution.getDeletedAt()).isNotNull();
         verify(transactionRepository).save(contribution);
+    }
+
+    @Test
+    @DisplayName("Chủ nhóm xóa giao dịch đã xác nhận thì hoàn tác quỹ và xóa mềm")
+    void delete_ConfirmedByOwner_ReversesFundAndSoftDeletes() {
+        GTransaction confirmed = txn(500_000L);
+        stubFind(confirmed);
+
+        service.delete(ownerId, groupId, confirmed.getId());
+
+        assertThat(confirmed.getDeletedAt()).isNotNull();
+        assertThat(capturePublishedEvents())
+                .containsExactly(new FundBalanceChangedEvent(groupId, -500_000L));
+    }
+
+    @Test
+    @DisplayName("Thành viên xóa giao dịch PENDING do mình tạo thì xóa mềm thành công")
+    void delete_PendingByCreator_SoftDeletes() {
+        GTransaction pending = pendingTxn(100_000L);
+        stubFind(pending);
+
+        service.delete(memberId, groupId, pending.getId());
+
+        assertThat(pending.getDeletedAt()).isNotNull();
+        verify(transactionRepository).save(pending);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Thành viên xóa giao dịch CONFIRMED do mình tạo thì bị chặn")
+    void delete_ConfirmedByCreator_ThrowsForbidden() {
+        GTransaction confirmed = txn(100_000L);
+        stubFind(confirmed);
+
+        assertThatThrownBy(() -> service.delete(memberId, groupId, confirmed.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TRANSACTION_DELETE.getCode()));
+
+        assertThat(confirmed.getDeletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("Thành viên xóa giao dịch PENDING do người khác tạo thì bị chặn")
+    void delete_PendingByNonCreator_ThrowsForbidden() {
+        GTransaction pending = pendingTxn(100_000L);
+        pending.setCreatedBy(ownerId);
+        stubFind(pending);
+
+        assertThatThrownBy(() -> service.delete(memberId, groupId, pending.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TRANSACTION_DELETE.getCode()));
+
+        assertThat(pending.getDeletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("Thủ quỹ xóa giao dịch PENDING do chính mình tạo thì bị chặn")
+    void delete_PendingByTreasurer_ThrowsForbidden() {
+        GTransaction pending = pendingTxn(100_000L);
+        pending.setCreatedBy(treasurerId);
+        stubFind(pending);
+
+        assertThatThrownBy(() -> service.delete(treasurerId, groupId, pending.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TRANSACTION_DELETE.getCode()));
+
+        assertThat(pending.getDeletedAt()).isNull();
     }
 
     @Test

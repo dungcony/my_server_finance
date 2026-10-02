@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.UUID;
 
 public record GroupTransactionUpdateReq(
-        @NotNull @Positive @Max(999999999999L) Long amount,
+        @Positive @Max(999999999999L) Long amount,
         Instant occurredAt,
         LocalDate date,
         MoneySource moneySource,
         UUID categoryId,
-        @NotNull UUID userId,
+        UUID transactorId,
         @Size(max = 255) String note,
         @Valid List<GroupTransactionParticipantReq> participants) {
 

@@ -150,7 +150,7 @@
         <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);">
             <div class="form-row" style="align-items: center;">
                 <div class="form-group" style="flex: 3; margin-bottom: 0;">
-                    <label for="currentGroupId">🎯 Group ID Đang Chọn (Áp dụng cho mọi API nhóm/thành viên/quỹ bên dưới):</label>
+                    <label for="currentGroupId">🎯 Group ID Đang Chọn<span id="selectedGroupLabel" style="color: var(--primary); font-weight: 600; margin-left: 6px;"></span>:</label>
                     <input type="text" id="currentGroupId" placeholder="Chọn một nhóm ở bảng bên dưới hoặc dán UUID nhóm vào đây...">
                 </div>
                 <div class="form-group" style="flex: 1; margin-bottom: 0; justify-content: flex-end;">
@@ -164,8 +164,9 @@
     <div class="nav-tabs">
         <button class="nav-tab active" data-tab="tab-groups" onclick="switchTab('tab-groups')">🏢 Quản Lý Nhóm</button>
         <button class="nav-tab" data-tab="tab-members" onclick="switchTab('tab-members')">👥 Thành Viên</button>
+        <button class="nav-tab" data-tab="tab-transactions" onclick="switchTab('tab-transactions')">💳 Giao Dịch</button>
         <button class="nav-tab" data-tab="tab-fund" onclick="switchTab('tab-fund')">💰 Quỹ Nhóm</button>
-        <button class="nav-tab" data-tab="tab-report" onclick="switchTab('tab-report')">📊 Báo Cáo Tài Chính</button>
+        <button class="nav-tab role-reviewer-only" data-tab="tab-report" onclick="switchTab('tab-report')">📊 Báo Cáo Tài Chính</button>
     </div>
 
     <!-- NỘI DUNG TAB QUẢN LÝ NHÓM -->
@@ -255,12 +256,12 @@
                 </div>
                 <div class="form-row" style="margin-bottom: 8px;">
                     <button class="btn btn-secondary" onclick="detailGroup()">Xem Chi Tiết (GET)</button>
-                    <button class="btn btn-warning" onclick="archiveGroup()">Lưu Trữ (Archive)</button>
-                    <button class="btn btn-info" onclick="unarchiveGroup()">Hủy Lưu Trữ</button>
-                    <button class="btn btn-danger" onclick="deleteGroup()">Xóa Nhóm (DELETE)</button>
+                    <button class="btn btn-warning role-owner-only" onclick="archiveGroup()">Lưu Trữ (Archive)</button>
+                    <button class="btn btn-info role-owner-only" onclick="unarchiveGroup()">Hủy Lưu Trữ</button>
+                    <button class="btn btn-danger role-owner-only" onclick="deleteGroup()">Xóa Nhóm (DELETE)</button>
                 </div>
 
-                <div class="action-box">
+                <div class="action-box role-owner-only">
                     <div class="action-title">
                         <span>Cập nhật nhóm (PATCH)</span>
                         <span class="api-badge patch">PATCH /v1/groups/{id}</span>
@@ -318,10 +319,11 @@
             </div>
             <div style="display: flex; gap: 10px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); flex-wrap: wrap;">
                 <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Việc cần xử lý:</span>
+                <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="loadPendingCount()">Kiểm Tra Chờ Duyệt</button>
                 <span id="pendingMembersBadge" class="status-badge status-idle" style="cursor: pointer;" onclick="switchTab('tab-members'); filterMembersByStatus('PENDING');">
                     👤 0 thành viên chờ duyệt
                 </span>
-                <span id="pendingTransactionsBadge" class="status-badge status-idle" style="cursor: pointer;" onclick="switchTab('tab-fund'); loadPendingTransactions();">
+                <span id="pendingTransactionsBadge" class="status-badge status-idle" style="cursor: pointer;" onclick="switchTab('tab-transactions');">
                     ⏳ 0 giao dịch chờ duyệt
                 </span>
             </div>
@@ -344,8 +346,26 @@
                         <option value="PENDING">Chờ duyệt (PENDING)</option>
                     </select>
                     <button class="btn btn-secondary" onclick="filterMembersByStatus(document.getElementById('memberStatusFilter').value)">Lọc / Tải Lại</button>
+                    <button class="btn btn-primary role-owner-only" onclick="toggleAddMemberForm()">➕ Thêm Thành Viên</button>
                 </div>
             </div>
+
+            <!-- Form nhanh thêm thành viên (Chỉ Owner) -->
+            <div id="addMemberQuickCard" class="role-owner-only" style="display: none; background: #f8fafc; border: 1px dashed var(--primary); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <strong style="color: var(--primary); font-size: 14px;">➕ Thêm Thành Viên Vào Nhóm</strong>
+                    <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 12px;" onclick="toggleAddMemberForm()">Đóng</button>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label for="quickAddMemberUserIds">Nhập User ID (UUID) thành viên cần thêm (mỗi dòng hoặc cách nhau bởi dấu phẩy):</label>
+                    <textarea id="quickAddMemberUserIds" rows="2" placeholder="uuid-1, uuid-2 hoặc mỗi uuid một dòng..."></textarea>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-primary" onclick="addMembersQuick()">Xác Nhận Thêm</button>
+                    <button class="btn btn-secondary" onclick="toggleAddMemberForm()">Hủy</button>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table>
                     <thead>
@@ -371,7 +391,7 @@
 
         <div class="grid-2">
             <!-- Thêm thành viên & Chuyển quyền Owner -->
-            <div class="card">
+            <div class="card role-owner-only">
                 <div class="action-box">
                     <div class="action-title">
                         <span>Thêm thành viên vào nhóm (Chủ nhóm)</span>
@@ -409,7 +429,7 @@
             </div>
 
             <!-- Duyệt / Từ chối / Xóa thành viên -->
-            <div class="card">
+            <div class="card role-owner-only">
                 <div class="action-box">
                     <div class="action-title">
                         <span>Danh sách chờ duyệt</span>
@@ -468,10 +488,80 @@
         </div>
     </div>
 
-    <!-- NỘI DUNG TAB QUỸ NHÓM -->
-    <div id="tab-fund" class="tab-content">
-        <!-- Bảng Giao Dịch Chờ Duyệt (Thủ quỹ / Owner duyệt) -->
+    <!-- NỘI DUNG TAB GIAO DỊCH -->
+    <div id="tab-transactions" class="tab-content">
+        <!-- Tạo giao dịch -->
         <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>➕ Tạo Giao Dịch Nhóm</span>
+                <span class="api-badge post">POST /transactions</span>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="txnType">Loại giao dịch (*):</label>
+                    <select id="txnType" onchange="onTxnTypeChange()" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                        <option value="EXPENSE">Chi tiêu (EXPENSE)</option>
+                        <option value="CONTRIBUTION">Đóng góp (CONTRIBUTION)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="txnMoneySource">Nguồn tiền (*):</label>
+                    <select id="txnMoneySource" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                        <option value="FUND">Quỹ nhóm (FUND)</option>
+                        <option value="PERSONAL">Tự bỏ túi (PERSONAL)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="txnAmount">Số tiền (*) (VNĐ):</label>
+                    <input type="number" id="txnAmount" placeholder="100000">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                    <label for="txnTransactorId">Người thực hiện (*) (Thành viên):</label>
+                    <select id="txnTransactorId" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                        <option value="">-- Chọn thành viên (*) --</option>
+                    </select>
+                </div>
+                <div class="form-group expense-only-field" id="txnCategoryWrapper" style="flex: 1;">
+                    <label for="txnCategoryId">Danh mục chi tiêu (*):</label>
+                    <select id="txnCategoryId" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border);">
+                        <option value="">-- Chọn danh mục (*) --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="txnDate">Ngày giao dịch:</label>
+                    <input type="date" id="txnDate">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="txnNote">Ghi chú:</label>
+                <input type="text" id="txnNote" placeholder="Mô tả giao dịch...">
+            </div>
+
+            <!-- Người tham gia chia tiền (chỉ áp dụng cho Chi tiêu EXPENSE) -->
+            <div id="txnParticipantsSection" class="expense-only-field" style="margin-top: 10px; margin-bottom: 14px; padding: 12px; background: #f8fafc; border: 1px dashed var(--border); border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 13px; font-weight: 600; color: #0f172a;">👥 Người Tham Gia Chia Tiền (Participants):</span>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--primary); font-weight: 500;">
+                        <input type="checkbox" id="splitEquallyAll" checked onchange="toggleParticipantCustomSplit()"> Chia đều cho toàn bộ thành viên nhóm
+                    </label>
+                </div>
+                <div id="customParticipantsList" style="display: none; margin-top: 8px;">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+                        Tick chọn thành viên tham gia chia tiền. Để trống ô số tiền để tự động chia đều, hoặc điền số tiền cụ thể:
+                    </div>
+                    <div id="txnParticipantsContainer" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; padding-right: 4px;">
+                        <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px;">Chưa nạp danh sách thành viên</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="createGroupTransaction()">Tạo Giao Dịch</button>
+        </div>
+
+        <!-- Chờ duyệt (OWNER / THỦ QUỸ) -->
+        <div class="card role-reviewer-only" style="margin-bottom: 20px;">
             <div class="card-title">
                 <div class="card-title-left">
                     <span>⏳ Danh Sách Giao Dịch Chờ Duyệt</span>
@@ -507,9 +597,107 @@
             </div>
         </div>
 
+        <!-- Giao dịch của tôi -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <span>📋 Giao Dịch Của Tôi</span>
+                    <span id="myTxnCountBadge" class="status-badge status-idle">0 giao dịch</span>
+                </div>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="loadMyTransactions()">Tải Lại</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã GD</th>
+                            <th>Loại</th>
+                            <th>Số Tiền</th>
+                            <th>Trạng Thái</th>
+                            <th>Người Tạo</th>
+                            <th>Ghi Chú</th>
+                            <th>Ngày</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myTxnTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: var(--text-muted);">Bấm "Tải Lại" để xem giao dịch của bạn</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Danh sách chung -->
+        <div class="card">
+            <div class="card-title">
+                <div class="card-title-left">
+                    <span>📊 Danh Sách Giao Dịch Chung</span>
+                    <span id="allTxnCountBadge" class="status-badge status-idle">0 giao dịch</span>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <select id="filterMoneySource" style="padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px;">
+                        <option value="">Nguồn tiền</option>
+                        <option value="FUND">FUND</option>
+                        <option value="PERSONAL">PERSONAL</option>
+                    </select>
+                    <select id="filterType" style="padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px;">
+                        <option value="">Loại</option>
+                        <option value="EXPENSE">EXPENSE</option>
+                        <option value="CONTRIBUTION">CONTRIBUTION</option>
+                    </select>
+                    <select id="filterStatus" style="padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px;">
+                        <option value="">Trạng thái</option>
+                        <option value="PENDING">PENDING</option>
+                        <option value="CONFIRMED">CONFIRMED</option>
+                        <option value="REJECTED">REJECTED</option>
+                    </select>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="loadAllTransactions()">Lọc / Tải Lại</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã GD</th>
+                            <th>Loại</th>
+                            <th>Nguồn Tiền</th>
+                            <th>Số Tiền</th>
+                            <th>Trạng Thái</th>
+                            <th>Người Thực Hiện</th>
+                            <th>Ghi Chú</th>
+                            <th>Ngày</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allTxnTableBody">
+                        <tr>
+                            <td colspan="9" style="text-align: center; color: var(--text-muted);">Bấm "Lọc / Tải Lại" để xem giao dịch</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- NỘI DUNG TAB QUỸ NHÓM -->
+    <div id="tab-fund" class="tab-content">
+        <!-- Thông tin quỹ nhóm — mọi thành viên đều thấy -->
+        <div class="card" id="fundInfoCard" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <span>💰 Thông Tin Quỹ Nhóm</span>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="detailGroup()">Tải Lại</button>
+            </div>
+            <div id="fundInfoContent" style="color: var(--text-muted); text-align: center; padding: 16px;">
+                Đang tải thông tin quỹ...
+            </div>
+            <div id="memberBalancesContent" style="margin-top: 16px;"></div>
+        </div>
+
         <div class="grid-2">
             <!-- Đổi thủ quỹ -->
-            <div class="card">
+            <div class="card role-owner-only">
                 <div class="card-title">
                     <span>👤 Chuyển Giao Người Giữ Quỹ (Thủ Quỹ)</span>
                     <span class="api-badge put">PUT /fund-kepper</span>
@@ -525,7 +713,7 @@
             </div>
 
             <!-- Đối soát / Kiểm kê quỹ -->
-            <div class="card">
+            <div class="card role-reviewer-only">
                 <div class="card-title">
                     <span>⚖️ Kiểm Kê / Đối Soát Số Dư Quỹ</span>
                     <span class="api-badge post">POST /fund/reconcile</span>
@@ -549,38 +737,44 @@
 
     <!-- NỘI DUNG TAB BÁO CÁO NHÓM -->
     <div id="tab-report" class="tab-content">
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-title">
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+                <div class="card-title-left">
                     <span>📊 Báo Cáo Tổng Quan (Summary Report)</span>
                     <span class="api-badge get">GET /v1/groups/{id}/summary</span>
                 </div>
-                <div class="form-row" style="align-items: flex-end;">
-                    <div class="form-group" style="flex: 2;">
-                        <label for="reportMonth">Tháng báo cáo (YYYY-MM, để trống để xem toàn thời gian):</label>
-                        <input type="month" id="reportMonth">
-                    </div>
-                    <button class="btn btn-primary" style="height: 40px; margin-bottom: 12px;" onclick="getGroupSummaryReport()">
-                        Xem Tổng Quan
+            </div>
+            <div class="form-row" style="align-items: flex-end; max-width: 500px;">
+                <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                    <label for="reportMonth">Tháng báo cáo (YYYY-MM, để trống để xem toàn thời gian):</label>
+                    <input type="month" id="reportMonth">
+                </div>
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <button class="btn btn-primary" style="height: 40px; width: 100%;" onclick="getGroupSummaryReport()">
+                        Xem Báo Cáo
                     </button>
                 </div>
-                <p style="font-size: 13px; color: var(--text-muted); margin: 0;">
-                    Biến động thu chi, số dư quỹ hiện tại, tổng chi, tổng đóng góp và phân loại theo nhóm chi tiêu.
-                </p>
             </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin: 10px 0 14px;">
+                Biến động thu chi, số dư quỹ hiện tại, tổng chi, tổng đóng góp và mục tiêu tiết kiệm nhóm.
+            </p>
+            <div id="summaryReportResult"></div>
+        </div>
 
-            <div class="card">
-                <div class="card-title">
+        <div class="card">
+            <div class="card-title">
+                <div class="card-title-left">
                     <span>⚖️ Báo Cáo Cân Đối Thành Viên (Balances)</span>
                     <span class="api-badge get">GET /v1/groups/{id}/balances</span>
                 </div>
-                <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 16px;">
-                    Chi tiết từng thành viên: tiền tự bỏ túi chi hộ, tiền đã được quỹ hoàn, phần chi tiêu phải chịu, và số dư ròng thừa/thiếu.
-                </p>
-                <button class="btn btn-info" style="height: 40px;" onclick="getGroupBalancesReport()">
-                    Xem Đối Soát Cân Đối
+                <button class="btn btn-info" style="padding: 6px 14px; font-size: 13px;" onclick="getGroupBalancesReport()">
+                    Tải Lại Đối Soát
                 </button>
             </div>
+            <p style="font-size: 13px; color: var(--text-muted); margin: 0 0 14px;">
+                Chi tiết từng thành viên: tiền tự bỏ túi chi hộ, tiền đã được quỹ hoàn, phần chi tiêu phải chịu, và số dư ròng thừa/thiếu.
+            </p>
+            <div id="balancesReportResult"></div>
         </div>
     </div>
 
@@ -594,6 +788,22 @@
             <button class="btn btn-secondary" style="font-size: 12px; padding: 5px 10px;" onclick="copyResponse()">Sao Chép JSON</button>
         </div>
         <pre id="responseView" class="response-pre">// Kết quả JSON trả về từ API sẽ hiển thị tại đây...</pre>
+    </div>
+
+    <!-- MODAL CHI TIẾT GIAO DỊCH -->
+    <div id="txnDetailModal" class="modal-overlay" style="display: none;" onclick="onTxnModalOverlayClick(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <strong style="font-size: 16px; color: var(--primary);">🔍 Chi Tiết Giao Dịch</strong>
+                    <span class="api-badge get">GET /transactions/{id}</span>
+                </div>
+                <button class="modal-close-btn" onclick="closeTransactionDetailModal()">&times;</button>
+            </div>
+            <div id="txnDetailModalBody">
+                <p style="text-align: center; color: var(--text-muted); padding: 16px;">Đang tải chi tiết giao dịch...</p>
+            </div>
+        </div>
     </div>
 </div>
 

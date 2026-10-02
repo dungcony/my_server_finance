@@ -67,7 +67,7 @@ public class ExpenseUpdateStrategy implements GTransactionUpdateStrategy {
         }
 
         // cập nhật người chi tiền nếu có truyền
-        UUID transactorId = req.userId() != null ? req.userId() : txn.getTransactorId();
+        UUID transactorId = req.transactorId() != null ? req.transactorId() : txn.getTransactorId();
 
         // cập nhật danh sách người chia tiền nếu có truyền
         if (req.participants() != null) {

@@ -19,7 +19,29 @@ public record GroupTransactionFilterReq(
         LocalDate startDate,
         LocalDate endDate,
         Integer page,
-        Integer size) {
+        Integer size,
+        TransactionStatus excludeStatus,
+        UUID createdBy) {
+
+    public GroupTransactionFilterReq(
+            MoneySource moneySource, TransactionType type, TransactionStatus status,
+            UUID transactorId, Instant fromOccurredAt, Instant toOccurredAt,
+            LocalDate startDate, LocalDate endDate, Integer page, Integer size) {
+        this(moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
+                startDate, endDate, page, size, null, null);
+    }
+
+    public GroupTransactionFilterReq withExcludeStatus(TransactionStatus excludeStatus) {
+        return new GroupTransactionFilterReq(
+                moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
+                startDate, endDate, page, size, excludeStatus, createdBy);
+    }
+
+    public GroupTransactionFilterReq withCreatedBy(UUID createdBy) {
+        return new GroupTransactionFilterReq(
+                moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
+                startDate, endDate, page, size, excludeStatus, createdBy);
+    }
 
     public Instant resolveFrom() {
         if (fromOccurredAt != null) return fromOccurredAt;

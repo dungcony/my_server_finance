@@ -6,6 +6,7 @@ import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
+import com.datn.financeapp.group.enums.TransactionStatus;
 import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupRepository;
@@ -137,10 +138,46 @@ public class GroupPermissionValidator {
             throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_EDIT);
         }
 
+        // thành viên thường không được sửa giao dịch đã duyệt
+        if (txn.getStatus() == TransactionStatus.CONFIRMED) {
+            throw new BusinessException(ErrorCode.FORBIDDEN_EDIT_CONFIRMED_TRANSACTION);
+        }
+
         // thành viên thường không được sửa giao dịch can thiệp trực tiếp vào quỹ
         if (txn.getType() != TransactionType.EXPENSE && txn.getType() != TransactionType.CONTRIBUTION) {
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
         }
+    }
+
+    /**
+     * Xác thực quyền xóa giao dịch tài chính nhóm.
+     * <p>
+     * Quy tắc:
+     * <ul>
+     * <li>Trưởng nhóm (OWNER): Xóa được mọi giao dịch.</li>
+     * <li>Thủ quỹ (TREASURER): Không có quyền xóa.</li>
+     * <li>Thành viên thường: Chỉ xóa giao dịch do chính mình tạo và đang PENDING.</li>
+     * </ul>
+     *
+     * @param txn        Giao dịch cần xóa
+     * @param operatorId ID người thực hiện xóa
+     * @param authInfo   Thông tin quyền hạn của người thực hiện trong nhóm
+     */
+    public void verifyTransactionDeletePermission(GTransaction txn, UUID operatorId, MemberAuthInfo authInfo) {
+        // chủ nhóm xóa được mọi giao dịch
+        if (authInfo.isOwner()) return;
+
+        // thủ quỹ không có quyền xóa
+        if (authInfo.isTreasurer())
+            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
+
+        // thành viên thường chỉ xóa giao dịch do mình tạo
+        if (!txn.getCreatedBy().equals(operatorId))
+            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
+
+        // và chỉ khi giao dịch còn chờ duyệt
+        if (txn.getStatus() != TransactionStatus.PENDING)
+            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
     }
 
     private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo) {

@@ -57,7 +57,14 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupDetailRes findNotDeletedById(UUID groupId) {
-        return null;
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        FundRes fund = (group.getFund() != null)
+                ? fundMapper.toResponse(group.getFund())
+                : null;
+
+        return groupMapper.toDetailResponse(group, null, fund, List.of());
     }
 
     @Override

@@ -3,6 +3,12 @@ const STORAGE_KEY_TOKEN = 'finance_ai_access_token';
 const STORAGE_KEY_USER = 'finance_ai_user_info';
 const STORAGE_KEY_GROUP_ID = 'finance_ai_current_group_id';
 
+// trạng thái vai trò trong nhóm đang chọn (reset khi đổi nhóm)
+let currentGroupRole = null;
+let currentGroupIsTreasurer = false;
+let cachedCategories = null;
+let currentGroupMembersList = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     // Khôi phục session và groupId đã lưu trong localStorage
     updateAuthUI();
@@ -10,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedGroupId = localStorage.getItem(STORAGE_KEY_GROUP_ID);
     if (savedGroupId) {
         document.getElementById('currentGroupId').value = savedGroupId;
+        const groupLabel = document.getElementById('selectedGroupLabel');
+        if (groupLabel) {
+            groupLabel.innerText = ` (Đang chọn: ${savedGroupId})`;
+        }
     }
 
     // Nếu đã có token, tự động nạp danh sách nhóm
@@ -221,13 +231,59 @@ function switchTab(tabId) {
         tabBtn.classList.add('active');
         tabContent.classList.add('active');
     }
+
+    const currentGroupId = getCurrentGroupIdSilent();
+    if (!currentGroupId) return;
+
+    // nạp dữ liệu theo từng tab khi đã chọn nhóm
+    if (tabId === 'tab-members') {
+        const filterStatus = document.getElementById('memberStatusFilter')?.value || '';
+        filterMembersByStatus(filterStatus);
+    } else if (tabId === 'tab-transactions') {
+        const isReviewer = currentGroupRole === 'OWNER' || currentGroupIsTreasurer;
+        if (isReviewer) loadPendingTransactions();
+        loadMyTransactions();
+        loadAllTransactions();
+        loadExpenseCategories();
+        if (!currentGroupMembersList || currentGroupMembersList.length === 0) {
+            filterMembersByStatus('');
+        }
+    } else if (tabId === 'tab-fund') {
+        detailGroup();
+    } else if (tabId === 'tab-report') {
+        const isReviewer = currentGroupRole === 'OWNER' || currentGroupIsTreasurer;
+        if (isReviewer) {
+            getGroupSummaryReport();
+            getGroupBalancesReport();
+        }
+    }
 }
 
-// Lưu Group ID đang chọn
-function setCurrentGroupId(groupId) {
+// Lưu Group ID đang chọn thuần túy không gọi API
+function setCurrentGroupId(groupId, role, groupName) {
     document.getElementById('currentGroupId').value = groupId;
     localStorage.setItem(STORAGE_KEY_GROUP_ID, groupId);
-    detailGroup();
+
+    // cập nhật vai trò nếu có sẵn từ danh sách nhóm
+    if (role) {
+        currentGroupRole = role;
+    }
+    currentGroupIsTreasurer = false;
+    currentGroupMembersList = [];
+    applyRoleVisibility();
+
+    // cập nhật nhãn hiển thị nhóm đang chọn
+    const groupLabel = document.getElementById('selectedGroupLabel');
+    if (groupLabel) {
+        groupLabel.innerText = groupName ? ` (Đang chọn: ${groupName})` : ` (Đang chọn: ${groupId})`;
+    }
+
+    // đánh dấu highlight dòng nhóm đang chọn trên bảng
+    document.querySelectorAll('#groupTableBody tr').forEach(tr => tr.classList.remove('selected-group-row'));
+    const targetTr = document.getElementById(`group-row-${groupId}`);
+    if (targetTr) {
+        targetTr.classList.add('selected-group-row');
+    }
 }
 
 // Lấy thông tin Group ID hiện tại
@@ -238,6 +294,11 @@ function getCurrentGroupId() {
         return null;
     }
     return groupId;
+}
+
+// Lấy Group ID mà không hiện alert (dùng cho kiểm tra điều kiện)
+function getCurrentGroupIdSilent() {
+    return document.getElementById('currentGroupId').value.trim() || null;
 }
 
 // Hàm gửi request API dùng chung
@@ -326,18 +387,30 @@ async function listMyGroups() {
         tbody.innerHTML = '';
 
         const groups = res.data.data;
+        const currentSelectedId = getCurrentGroupIdSilent();
+
         if (Array.isArray(groups) && groups.length > 0) {
             groups.forEach(g => {
                 const tr = document.createElement('tr');
+                tr.id = `group-row-${g.id}`;
+                if (currentSelectedId === g.id) {
+                    tr.classList.add('selected-group-row');
+                }
+
+                const role = g.my_role || g.myRole || '';
+                const name = (g.name || '').replace(/'/g, "\\'");
+                const inviteCode = g.invite_code || g.inviteCode || '';
+                const memberCount = g.member_count ?? g.memberCount ?? 0;
+
                 tr.innerHTML = `
                     <td><code>${g.id}</code></td>
                     <td><strong>${g.name || ''}</strong></td>
-                    <td>${g.my_role || ''}</td>
+                    <td>${role}</td>
                     <td>${g.status || ''}</td>
-                    <td><code>${g.invite_code || ''}</code></td>
-                    <td>${g.member_count ?? 0}</td>
+                    <td><code>${inviteCode}</code></td>
+                    <td>${memberCount}</td>
                     <td>
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="setCurrentGroupId('${g.id}')">
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="setCurrentGroupId('${g.id}', '${role}', '${name}')">
                             Chọn
                         </button>
                     </td>
@@ -376,7 +449,7 @@ async function createGroup() {
 
     const res = await callApi('/v1/groups', 'POST', payload);
     if (res.ok && res.data && res.data.data && res.data.data.id) {
-        setCurrentGroupId(res.data.data.id);
+        setCurrentGroupId(res.data.data.id, 'OWNER', res.data.data.name);
         listMyGroups();
     }
 }
@@ -388,8 +461,6 @@ async function detailGroup() {
     const res = await callApi(`/v1/groups/${groupId}`, 'GET');
     if (res.ok && res.data && res.data.data) {
         renderGroupDetail(res.data.data);
-        loadPendingCount(groupId);
-        loadPendingTransactions();
     }
 }
 
@@ -442,6 +513,36 @@ function renderGroupDetail(group) {
     const descEl = document.getElementById('detailGroupDesc');
     if (descEl) descEl.innerText = group.description || 'Không có mô tả';
 
+    // tính toán vai trò để phân quyền hiển thị
+    const myRole = group.my_role || group.myRole || 'MEMBER';
+    currentGroupRole = myRole;
+    currentGroupIsTreasurer = false;
+    const userJson = localStorage.getItem(STORAGE_KEY_USER);
+    if (userJson) {
+        try {
+            const user = JSON.parse(userJson);
+            const myId = user?.id;
+            const members = group.members || [];
+            const myMember = members.find(m => (m.user_id || m.userId) === myId);
+            if (myMember) {
+                currentGroupIsTreasurer = myMember.is_treasurer ?? myMember.isTreasurer ?? false;
+            }
+        } catch (e) {}
+    }
+    applyRoleVisibility();
+
+    // render thông tin quỹ nhóm ở tab Quỹ
+    renderFundInfo(group);
+
+    // điền User ID hiện tại vào ô Người thực hiện của form tạo giao dịch
+    const txnTransactorInput = document.getElementById('txnTransactorId');
+    if (txnTransactorInput && !txnTransactorInput.value) {
+        try {
+            const u = JSON.parse(localStorage.getItem(STORAGE_KEY_USER));
+            if (u?.id) txnTransactorInput.value = u.id;
+        } catch (e) {}
+    }
+
     // Điền trước thông tin vào form Cập nhật nhóm
     const updateName = document.getElementById('updateGroupName');
     if (updateName) updateName.value = group.name || '';
@@ -460,6 +561,24 @@ function renderGroupDetail(group) {
 function renderMemberList(members) {
     const countBadge = document.getElementById('memberCountBadge');
     if (countBadge) countBadge.innerText = `${members.length} thành viên`;
+
+    // đồng bộ vai trò người dùng hiện tại từ danh sách thành viên
+    const userJson = localStorage.getItem(STORAGE_KEY_USER);
+    if (userJson) {
+        try {
+            const user = JSON.parse(userJson);
+            const myId = user?.id;
+            const myMember = members.find(m => (m.user_id || m.userId) === myId);
+            if (myMember) {
+                currentGroupRole = myMember.role || 'MEMBER';
+                currentGroupIsTreasurer = myMember.is_treasurer ?? myMember.isTreasurer ?? false;
+                applyRoleVisibility();
+            }
+        } catch (e) {}
+    }
+
+    // nạp danh sách thành viên vào các dropdown và bảng chia tiền ở tab giao dịch
+    populateTransactionMemberSelects(members);
 
     const memberTbody = document.getElementById('memberTableBody');
     if (!memberTbody) return;
@@ -526,15 +645,11 @@ function renderMemberList(members) {
 
 // Lọc danh sách thành viên theo trạng thái
 async function filterMembersByStatus(status) {
-    const groupId = getCurrentGroupId();
+    const groupId = getCurrentGroupIdSilent();
     if (!groupId) return;
 
-    if (!status) {
-        detailGroup();
-        return;
-    }
-
-    const res = await callApi(`/v1/groups/${groupId}/members?status=${status}`, 'GET');
+    const query = status ? `?status=${status}` : '';
+    const res = await callApi(`/v1/groups/${groupId}/members${query}`, 'GET');
     if (res.ok && res.data && res.data.data) {
         renderMemberList(res.data.data);
     }
@@ -616,7 +731,10 @@ function renderPendingTransactions(items) {
             <td><span class="status-badge status-idle">${moneySource}</span></td>
             <td>${desc}</td>
             <td>${createdAt}</td>
-            <td style="display: flex; gap: 6px;">
+            <td style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showTransactionDetail('${txnId}')">
+                    🔍 Chi tiết
+                </button>
                 <button class="btn btn-success" style="padding: 3px 8px; font-size: 11px;" onclick="confirmPendingTxn('${txnId}')">
                     Duyệt
                 </button>
@@ -732,11 +850,13 @@ function fillMemberUserId(userId) {
     const approveInput = document.getElementById('approveMemberUserId');
     const rejectInput = document.getElementById('rejectMemberUserId');
     const kickInput = document.getElementById('removeMemberUserId');
+    const transactorSelect = document.getElementById('txnTransactorId');
 
     if (targetOwner) targetOwner.value = userId;
     if (approveInput) approveInput.value = userId;
     if (rejectInput) rejectInput.value = userId;
     if (kickInput) kickInput.value = userId;
+    if (transactorSelect) transactorSelect.value = userId;
 
     alert('Đã điền User ID: ' + userId + ' vào các ô thao tác thành viên.');
 }
@@ -868,6 +988,47 @@ async function addMembers() {
     }
 }
 
+// Đóng mở khung thêm thành viên nhanh
+function toggleAddMemberForm() {
+    const card = document.getElementById('addMemberQuickCard');
+    if (!card) return;
+    if (card.style.display === 'none' || !card.style.display) {
+        card.style.display = 'block';
+        const input = document.getElementById('quickAddMemberUserIds');
+        if (input) input.focus();
+    } else {
+        card.style.display = 'none';
+    }
+}
+
+// Xác nhận thêm thành viên từ form nhanh
+async function addMembersQuick() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const input = document.getElementById('quickAddMemberUserIds');
+    const idsText = input ? input.value.trim() : '';
+    if (!idsText) {
+        alert('Vui lòng nhập ít nhất một User ID (UUID) thành viên cần thêm!');
+        return;
+    }
+
+    const memberIds = idsText.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    if (memberIds.length === 0) {
+        alert('Danh sách User ID không hợp lệ!');
+        return;
+    }
+
+    const res = await callApi(`/v1/groups/${groupId}/members`, 'POST', { member_ids: memberIds });
+    if (res.ok) {
+        alert('Đã thêm thành viên thành công!');
+        if (input) input.value = '';
+        toggleAddMemberForm();
+        filterMembersByStatus(document.getElementById('memberStatusFilter')?.value || '');
+        detailGroup();
+    }
+}
+
 // Chuyển quyền chủ nhóm (Owner)
 async function transferOwnership() {
     const groupId = getCurrentGroupId();
@@ -973,6 +1134,130 @@ async function leaveGroup() {
     }
 }
 
+// ----------------- FUND INFO -----------------
+
+function renderFundInfo(group) {
+    const container = document.getElementById('fundInfoContent');
+    if (!container) return;
+
+    const fund = group.fund;
+    if (!fund) {
+        container.innerHTML = '<p style="color: var(--text-muted);">Nhóm chưa có quỹ.</p>';
+        return;
+    }
+
+    const balance = Number(fund.current_balance ?? fund.currentBalance ?? 0).toLocaleString('vi-VN') + ' đ';
+    const keepperId = fund.kepper_id ?? fund.keepperId;
+    const createdAt = fund.created_at ?? fund.createdAt;
+    const createdAtStr = createdAt ? new Date(createdAt).toLocaleDateString('vi-VN') : '-';
+
+    // tìm tên thủ quỹ từ danh sách thành viên
+    let treasurerName = '-';
+    if (keepperId && group.members) {
+        const treasurer = group.members.find(m => (m.user_id || m.userId) === keepperId);
+        treasurerName = treasurer
+            ? `${treasurer.display_name || treasurer.displayName || 'Không rõ tên'}`
+            : keepperId.substring(0, 8) + '...';
+    }
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div style="padding: 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Số dư quỹ hiện tại</div>
+                <div style="font-size: 22px; font-weight: 700; color: var(--primary);">${balance}</div>
+            </div>
+            <div style="padding: 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Thủ quỹ hiện tại</div>
+                <div style="font-size: 16px; font-weight: 600;">${treasurerName}</div>
+                ${keepperId ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;"><code>${keepperId}</code></div>` : ''}
+            </div>
+            <div style="padding: 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">Ngày tạo quỹ</div>
+                <div style="font-size: 16px; font-weight: 600;">${createdAtStr}</div>
+            </div>
+        </div>
+    `;
+
+    loadMemberBalances();
+}
+
+async function loadMemberBalances() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const container = document.getElementById('memberBalancesContent');
+    if (!container) return;
+
+    container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">Đang tải số dư thành viên...</p>';
+
+    const res = await callApi(`/v1/groups/${groupId}/balances`, 'GET', null, false);
+    if (!res.ok || !res.data?.data) {
+        container.innerHTML = '<p style="color: var(--danger); text-align: center;">Không tải được số dư thành viên.</p>';
+        return;
+    }
+
+    const report = res.data.data;
+    const balances = report.balances || [];
+
+    if (balances.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">Chưa có dữ liệu số dư.</p>';
+        return;
+    }
+
+    const fmt = (v) => Number(v ?? 0).toLocaleString('vi-VN');
+    const colorVal = (v) => {
+        const n = Number(v ?? 0);
+        if (n > 0) return 'color: var(--success)';
+        if (n < 0) return 'color: var(--danger)';
+        return 'color: var(--text-muted)';
+    };
+
+    let rows = balances.map(b => {
+        const name = b.full_name || b.fullName || 'Không rõ';
+        const net = Number(b.net_balance ?? b.netBalance ?? 0);
+        const paid = Number(b.total_paid_out_of_pocket ?? b.totalPaidOutOfPocket ?? 0);
+        const share = Number(b.total_share_amount ?? b.totalShareAmount ?? 0);
+        const refunded = Number(b.total_refunded ?? b.totalRefunded ?? 0);
+        const needed = Number(b.needed_contribution ?? b.neededContribution ?? 0);
+        const status = b.status || '';
+        const statusBadge = status === 'ACTIVE'
+            ? '<span style="color: var(--success); font-size: 11px;">● Hoạt động</span>'
+            : `<span style="color: var(--text-muted); font-size: 11px;">● ${status}</span>`;
+
+        return `
+            <tr>
+                <td style="padding: 10px 12px;">
+                    <div style="font-weight: 600;">${name}</div>
+                    <div style="margin-top: 2px;">${statusBadge}</div>
+                </td>
+                <td style="padding: 10px 12px; text-align: right;">${fmt(paid)} đ</td>
+                <td style="padding: 10px 12px; text-align: right;">${fmt(share)} đ</td>
+                <td style="padding: 10px 12px; text-align: right;">${fmt(refunded)} đ</td>
+                <td style="padding: 10px 12px; text-align: right; font-weight: 700; ${colorVal(net)}">${net >= 0 ? '+' : ''}${fmt(net)} đ</td>
+                <td style="padding: 10px 12px; text-align: right; ${needed > 0 ? 'color: var(--warning)' : 'color: var(--text-muted)'}">${needed > 0 ? fmt(needed) + ' đ' : '—'}</td>
+            </tr>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">📋 Số Dư Thành Viên</div>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted);">
+                        <th style="padding: 8px 12px; text-align: left;">Thành viên</th>
+                        <th style="padding: 8px 12px; text-align: right;">Đã chi hộ</th>
+                        <th style="padding: 8px 12px; text-align: right;">Phần phải chịu</th>
+                        <th style="padding: 8px 12px; text-align: right;">Đã hoàn</th>
+                        <th style="padding: 8px 12px; text-align: right;">Số dư ròng</th>
+                        <th style="padding: 8px 12px; text-align: right;">Cần đóng thêm</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+}
+
 // ----------------- FUND APIS -----------------
 
 // Chuyển giao người giữ quỹ
@@ -1029,7 +1314,55 @@ async function getGroupSummaryReport() {
     const monthInput = document.getElementById('reportMonth').value.trim();
     const query = monthInput ? `?month=${encodeURIComponent(monthInput)}` : '';
 
-    await callApi(`/v1/groups/${groupId}/summary${query}`, 'GET');
+    const container = document.getElementById('summaryReportResult');
+    if (container) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 12px;">Đang tải báo cáo tổng quan...</p>';
+    }
+
+    const res = await callApi(`/v1/groups/${groupId}/summary${query}`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        renderSummaryReport(res.data.data);
+    } else if (container) {
+        container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 12px;">Không thể tải dữ liệu báo cáo tổng quan.</p>';
+    }
+}
+
+// Hiển thị trực quan dữ liệu báo cáo tổng quan
+function renderSummaryReport(data) {
+    const container = document.getElementById('summaryReportResult');
+    if (!container) return;
+
+    const fmt = v => Number(v ?? 0).toLocaleString('vi-VN');
+    const period = data.period || 'Toàn thời gian';
+    const currentBalance = data.fund?.current_balance ?? 0;
+    const target = data.target;
+    const totalExpense = data.total_expense ?? 0;
+    const totalContribution = data.total_contribution ?? 0;
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Kỳ báo cáo</div>
+                <div style="font-size: 14px; font-weight: 600; color: var(--primary); margin-top: 4px;">${period}</div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Số dư quỹ hiện tại</div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--success); margin-top: 4px;">${fmt(currentBalance)} đ</div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Mục tiêu tiết kiệm</div>
+                <div style="font-size: 16px; font-weight: 600; color: var(--info); margin-top: 4px;">${target ? fmt(target) + ' đ' : 'Chưa đặt'}</div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Tổng chi tiêu</div>
+                <div style="font-size: 16px; font-weight: 600; color: var(--danger); margin-top: 4px;">${fmt(totalExpense)} đ</div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Tổng đóng góp</div>
+                <div style="font-size: 16px; font-weight: 600; color: var(--primary); margin-top: 4px;">${fmt(totalContribution)} đ</div>
+            </div>
+        </div>
+    `;
 }
 
 // Xem báo cáo cân đối thu chi thành viên
@@ -1037,5 +1370,656 @@ async function getGroupBalancesReport() {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
 
-    await callApi(`/v1/groups/${groupId}/balances`, 'GET');
+    const container = document.getElementById('balancesReportResult');
+    if (container) {
+        container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 12px;">Đang tải báo cáo cân đối thành viên...</p>';
+    }
+
+    const res = await callApi(`/v1/groups/${groupId}/balances`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        renderBalancesReport(res.data.data);
+    } else if (container) {
+        container.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 12px;">Không thể tải dữ liệu báo cáo cân đối.</p>';
+    }
+}
+
+// Hiển thị trực quan dữ liệu báo cáo cân đối thành viên
+function renderBalancesReport(data) {
+    const container = document.getElementById('balancesReportResult');
+    if (!container) return;
+
+    const fmt = v => Number(v ?? 0).toLocaleString('vi-VN');
+    const colorVal = v => {
+        const n = Number(v ?? 0);
+        if (n > 0) return 'color: var(--success); font-weight: 700;';
+        if (n < 0) return 'color: var(--danger); font-weight: 700;';
+        return 'color: var(--text-muted);';
+    };
+
+    const fundBalance = data.fund_balance ?? 0;
+    const needed = data.total_needed_contribution ?? 0;
+    const isSettlement = data.is_settlement_enabled ? 'Đang bật' : 'Tắt';
+    const balances = data.balances || [];
+
+    let rowsHtml = '';
+    if (balances.length === 0) {
+        rowsHtml = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 12px;">Chưa có dữ liệu cân đối thành viên</td></tr>';
+    } else {
+        rowsHtml = balances.map(b => {
+            const name = b.full_name || 'Thành viên';
+            const userId = b.user_id || '';
+            const status = b.status || 'ACTIVE';
+            const statusBadge = status === 'ACTIVE'
+                ? '<span class="status-badge status-success" style="font-size: 11px; padding: 2px 6px;">ACTIVE</span>'
+                : `<span class="status-badge status-idle" style="font-size: 11px; padding: 2px 6px;">${status}</span>`;
+            const paid = b.total_paid_out_of_pocket ?? 0;
+            const refunded = b.total_refunded ?? 0;
+            const share = b.total_share_amount ?? 0;
+            const net = b.net_balance ?? 0;
+            const need = b.needed_contribution ?? 0;
+
+            return `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px 12px;">
+                        <div style="font-weight: 600;">${name}</div>
+                        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${userId ? userId.substring(0, 8) + '...' : ''}</div>
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center;">${statusBadge}</td>
+                    <td style="padding: 10px 12px; text-align: right;">${fmt(paid)} đ</td>
+                    <td style="padding: 10px 12px; text-align: right;">${fmt(refunded)} đ</td>
+                    <td style="padding: 10px 12px; text-align: right;">${fmt(share)} đ</td>
+                    <td style="padding: 10px 12px; text-align: right; ${colorVal(net)}">${net >= 0 ? '+' : ''}${fmt(net)} đ</td>
+                    <td style="padding: 10px 12px; text-align: right; font-weight: 600; ${need > 0 ? 'color: var(--warning);' : 'color: var(--text-muted);'}">
+                        ${need > 0 ? fmt(need) + ' đ' : '0 đ'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px;">
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Số dư quỹ hiện tại</div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--primary); margin-top: 4px;">${fmt(fundBalance)} đ</div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Tổng tiền cần đóng thêm</div>
+                <div style="font-size: 18px; font-weight: 700; color: ${needed > 0 ? 'var(--warning)' : 'var(--text-muted)'}; margin-top: 4px;">${fmt(needed)} đ</div>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Quyết toán tự động</div>
+                <div style="font-size: 15px; font-weight: 600; color: var(--text); margin-top: 4px;">${isSettlement}</div>
+            </div>
+        </div>
+        <div class="table-container" style="border: 1px solid var(--border); border-radius: 8px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 1px solid var(--border);">
+                        <th style="padding: 10px 12px; text-align: left;">Thành Viên</th>
+                        <th style="padding: 10px 12px; text-align: center;">Trạng Thái</th>
+                        <th style="padding: 10px 12px; text-align: right;">Tự Chi Hộ</th>
+                        <th style="padding: 10px 12px; text-align: right;">Đã Hoàn</th>
+                        <th style="padding: 10px 12px; text-align: right;">Phần Phải Chịu</th>
+                        <th style="padding: 10px 12px; text-align: right;">Cân Đối Ròng</th>
+                        <th style="padding: 10px 12px; text-align: right;">Cần Đóng Thêm</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// ----------------- PHÂN QUYỀN HIỂN THỊ -----------------
+
+function applyRoleVisibility() {
+    const isOwner = currentGroupRole === 'OWNER';
+    const isReviewer = isOwner || currentGroupIsTreasurer;
+
+    document.querySelectorAll('.role-owner-only').forEach(el => {
+        el.style.display = isOwner ? '' : 'none';
+    });
+    document.querySelectorAll('.role-reviewer-only').forEach(el => {
+        el.style.display = isReviewer ? '' : 'none';
+    });
+
+    // tự động chuyển tab về Quản lý nhóm nếu tài khoản không có quyền xem tab báo cáo
+    if (!isReviewer) {
+        const reportContent = document.getElementById('tab-report');
+        if (reportContent && reportContent.classList.contains('active')) {
+            switchTab('tab-groups');
+        }
+    }
+}
+
+// ----------------- TRANSACTION APIS -----------------
+
+// Tải danh mục chi tiêu cho dropdown
+async function loadExpenseCategories() {
+    if (cachedCategories && cachedCategories.length > 0) {
+        populateCategorySelect(cachedCategories);
+        return;
+    }
+
+    const res = await callApi('/v1/categories?as_tree=false', 'GET');
+    if (res.ok && res.data && res.data.data) {
+        cachedCategories = res.data.data;
+        populateCategorySelect(cachedCategories);
+    }
+}
+
+// Điền danh mục vào dropdown
+function populateCategorySelect(categories) {
+    const select = document.getElementById('txnCategoryId');
+    if (!select) return;
+
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- Chọn danh mục (*) --</option>';
+
+    if (Array.isArray(categories)) {
+        categories.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.innerText = c.name || c.id;
+            select.appendChild(opt);
+        });
+    }
+
+    if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+        select.value = currentVal;
+    }
+}
+
+// Điền thành viên vào dropdown Người thực hiện và danh sách Người tham gia
+function populateTransactionMemberSelects(members) {
+    currentGroupMembersList = members || [];
+
+    // nạp dropdown Người thực hiện
+    const transactorSelect = document.getElementById('txnTransactorId');
+    if (transactorSelect) {
+        const currentVal = transactorSelect.value;
+        transactorSelect.innerHTML = '<option value="">-- Chọn thành viên (*) --</option>';
+
+        let myId = null;
+        try {
+            const u = JSON.parse(localStorage.getItem(STORAGE_KEY_USER));
+            myId = u?.id;
+        } catch (e) {}
+
+        currentGroupMembersList.forEach(m => {
+            const uid = m.user_id || m.userId || '';
+            const name = m.display_name || m.displayName || uid;
+            const opt = document.createElement('option');
+            opt.value = uid;
+            opt.innerText = `${name} (${uid.substring(0, 8)}...)`;
+            transactorSelect.appendChild(opt);
+        });
+
+        if (currentVal && Array.from(transactorSelect.options).some(o => o.value === currentVal)) {
+            transactorSelect.value = currentVal;
+        } else if (myId && Array.from(transactorSelect.options).some(o => o.value === myId)) {
+            transactorSelect.value = myId;
+        }
+    }
+
+    // nạp danh sách Người tham gia
+    const container = document.getElementById('txnParticipantsContainer');
+    if (container) {
+        container.innerHTML = '';
+        if (currentGroupMembersList.length === 0) {
+            container.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px;">Chưa có thành viên nào</div>';
+            return;
+        }
+
+        currentGroupMembersList.forEach(m => {
+            const uid = m.user_id || m.userId || '';
+            const name = m.display_name || m.displayName || uid;
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px; background: #fff; border: 1px solid var(--border); border-radius: 6px;';
+            row.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; flex: 1;">
+                    <input type="checkbox" class="participant-checkbox" data-user-id="${uid}" checked>
+                    <strong>${name}</strong>
+                    <code style="font-size: 11px; color: var(--text-muted);">${uid.substring(0, 8)}...</code>
+                </label>
+                <div style="width: 140px;">
+                    <input type="number" class="participant-amount" data-user-id="${uid}" placeholder="Tự chia đều" style="padding: 4px 6px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); width: 100%;">
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+}
+
+// Bật tắt danh sách tùy chỉnh người tham gia
+function toggleParticipantCustomSplit() {
+    const isSplitEquallyAll = document.getElementById('splitEquallyAll')?.checked;
+    const customList = document.getElementById('customParticipantsList');
+    if (customList) {
+        customList.style.display = isSplitEquallyAll ? 'none' : 'block';
+    }
+}
+
+// Xử lý khi thay đổi loại giao dịch
+function onTxnTypeChange() {
+    const type = document.getElementById('txnType').value;
+    const isExpense = type === 'EXPENSE';
+
+    const catWrapper = document.getElementById('txnCategoryWrapper');
+    if (catWrapper) {
+        catWrapper.style.display = isExpense ? '' : 'none';
+    }
+
+    const participantsSection = document.getElementById('txnParticipantsSection');
+    if (participantsSection) {
+        participantsSection.style.display = isExpense ? '' : 'none';
+    }
+
+    const moneySourceSelect = document.getElementById('txnMoneySource');
+    if (moneySourceSelect) {
+        if (!isExpense) {
+            moneySourceSelect.value = 'PERSONAL';
+        }
+    }
+}
+
+// Tạo giao dịch nhóm
+async function createGroupTransaction() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const type = document.getElementById('txnType').value;
+    const moneySource = document.getElementById('txnMoneySource').value;
+    const amountStr = document.getElementById('txnAmount').value.trim();
+    const transactorId = document.getElementById('txnTransactorId').value.trim();
+    const categoryId = document.getElementById('txnCategoryId').value.trim();
+    const date = document.getElementById('txnDate').value.trim();
+    const note = document.getElementById('txnNote').value.trim();
+
+    if (!amountStr || !transactorId) {
+        alert('Vui lòng nhập số tiền và chọn người thực hiện!');
+        return;
+    }
+
+    if (type === 'EXPENSE' && !categoryId) {
+        alert('Giao dịch chi tiêu (EXPENSE) bắt buộc phải chọn danh mục!');
+        return;
+    }
+
+    // thu thập danh sách người tham gia chia tiền
+    let participants = [];
+    if (type === 'EXPENSE') {
+        const isSplitEquallyAll = document.getElementById('splitEquallyAll')?.checked ?? true;
+        if (!isSplitEquallyAll) {
+            const checkedBoxes = document.querySelectorAll('#txnParticipantsContainer .participant-checkbox:checked');
+            checkedBoxes.forEach(cb => {
+                const uid = cb.getAttribute('data-user-id');
+                const amountInput = document.querySelector(`.participant-amount[data-user-id="${uid}"]`);
+                const shareAmountStr = amountInput?.value?.trim();
+                participants.push({
+                    user_id: uid,
+                    share_amount: shareAmountStr ? parseInt(shareAmountStr, 10) : null
+                });
+            });
+            if (participants.length === 0) {
+                alert('Vui lòng tick chọn ít nhất một thành viên tham gia chia tiền!');
+                return;
+            }
+        }
+    }
+
+    const payload = {
+        type,
+        money_source: moneySource,
+        amount: parseInt(amountStr, 10),
+        transactor_id: transactorId,
+        category_id: type === 'EXPENSE' ? (categoryId || null) : null,
+        date: date || null,
+        note: note || null,
+        participants: participants
+    };
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions`, 'POST', payload);
+    if (res.ok) {
+        loadMyTransactions();
+        loadAllTransactions();
+        loadPendingCount(groupId);
+    }
+}
+
+// Tải giao dịch của tôi (transactor_id = user hiện tại)
+async function loadMyTransactions() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    let myId = null;
+    try {
+        const user = JSON.parse(localStorage.getItem(STORAGE_KEY_USER));
+        myId = user?.id;
+    } catch (e) {}
+
+    if (!myId) {
+        alert('Không xác định được User ID hiện tại!');
+        return;
+    }
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/mine?page=1&size=50`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        const items = res.data.data.items || res.data.data || [];
+        renderMyTransactions(items, myId);
+    }
+}
+
+// Hiển thị bảng giao dịch của tôi với nút sửa/xóa theo quyền
+function renderMyTransactions(items, myId) {
+    const badge = document.getElementById('myTxnCountBadge');
+    if (badge) {
+        badge.innerText = `${items.length} giao dịch`;
+        badge.className = items.length > 0 ? 'status-badge status-success' : 'status-badge status-idle';
+    }
+
+    const tbody = document.getElementById('myTxnTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(items) || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Không có giao dịch nào</td></tr>';
+        return;
+    }
+
+    const isOwner = currentGroupRole === 'OWNER';
+    const isReviewer = isOwner || currentGroupIsTreasurer;
+    const isPlainMember = !isOwner && !currentGroupIsTreasurer;
+
+    items.forEach(tx => {
+        const txnId = tx.id || '';
+        const type = tx.type || '-';
+        const amount = Number(tx.amount || 0).toLocaleString('vi-VN') + ' đ';
+        const status = tx.status || '-';
+        const createdBy = tx.created_by || tx.createdBy || '-';
+        const note = tx.note || '-';
+        const occurredAt = tx.occurred_at ? new Date(tx.occurred_at).toLocaleDateString('vi-VN') : '-';
+
+        const isCreator = createdBy === myId;
+        const isEditableType = type === 'EXPENSE' || type === 'CONTRIBUTION';
+
+        // nút Cập nhật: OWNER/THỦ QUỸ mọi dòng, MEMBER chỉ do mình tạo + PENDING + EXPENSE/CONTRIBUTION
+        let showEdit = isReviewer || (isCreator && isEditableType && status === 'PENDING');
+        // nút Xóa: OWNER mọi dòng, MEMBER thường chỉ do mình tạo + PENDING. THỦ QUỸ không xóa
+        let showDelete = isOwner || (isPlainMember && isCreator && status === 'PENDING');
+
+        let actions = `<button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showTransactionDetail('${txnId}')">🔍 Chi tiết</button> `;
+        if (showEdit) {
+            actions += `<button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="promptUpdateTransaction('${txnId}')">Cập nhật</button> `;
+        }
+        if (showDelete) {
+            actions += `<button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteGroupTransaction('${txnId}')">Xóa</button>`;
+        }
+
+        const statusClass = status === 'CONFIRMED' ? 'status-success' : status === 'PENDING' ? 'status-warning' : 'status-error';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><code style="font-size: 11px;">${txnId.substring(0, 8)}...</code></td>
+            <td><span class="status-badge status-idle">${type}</span></td>
+            <td style="font-weight: 600; color: var(--primary);">${amount}</td>
+            <td><span class="status-badge ${statusClass}">${status}</span></td>
+            <td><code style="font-size: 11px;">${createdBy === myId ? 'Tôi' : createdBy.substring(0, 8) + '...'}</code></td>
+            <td>${note}</td>
+            <td>${occurredAt}</td>
+            <td style="display: flex; gap: 4px; flex-wrap: wrap;">${actions || '<span style="color: var(--text-muted); font-size: 12px;">—</span>'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Cập nhật giao dịch (prompt đơn giản cho trang test)
+async function promptUpdateTransaction(txnId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const newAmount = prompt('Nhập số tiền mới (VNĐ):');
+    if (newAmount === null) return;
+    const newNote = prompt('Nhập ghi chú mới (để trống giữ nguyên):');
+
+    const payload = {};
+    if (newAmount) payload.amount = parseInt(newAmount, 10);
+    if (newNote) payload.note = newNote;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/${txnId}`, 'PUT', payload);
+    if (res.ok) {
+        loadMyTransactions();
+        detailGroup();
+    }
+}
+
+// Xóa giao dịch
+async function deleteGroupTransaction(txnId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) return;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/${txnId}`, 'DELETE');
+    if (res.ok) {
+        loadMyTransactions();
+        loadPendingCount(groupId);
+        detailGroup();
+    }
+}
+
+// Tải danh sách giao dịch chung (có bộ lọc)
+async function loadAllTransactions() {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const moneySource = document.getElementById('filterMoneySource').value;
+    const type = document.getElementById('filterType').value;
+    const status = document.getElementById('filterStatus').value;
+
+    let query = '?page=1&size=50';
+    if (moneySource) query += `&money_source=${moneySource}`;
+    if (type) query += `&type=${type}`;
+    if (status) query += `&status=${status}`;
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions${query}`, 'GET');
+    if (res.ok && res.data && res.data.data) {
+        const items = res.data.data.items || res.data.data || [];
+        renderAllTransactions(items);
+    }
+}
+
+// Hiển thị danh sách giao dịch chung
+function renderAllTransactions(items) {
+    const badge = document.getElementById('allTxnCountBadge');
+    if (badge) {
+        badge.innerText = `${items.length} giao dịch`;
+        badge.className = items.length > 0 ? 'status-badge status-success' : 'status-badge status-idle';
+    }
+
+    const tbody = document.getElementById('allTxnTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(items) || items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">Không có giao dịch nào</td></tr>';
+        return;
+    }
+
+    items.forEach(tx => {
+        const txnId = tx.id || '';
+        const type = tx.type || '-';
+        const moneySource = tx.money_source || '-';
+        const amount = Number(tx.amount || 0).toLocaleString('vi-VN') + ' đ';
+        const status = tx.status || '-';
+        const transactorId = tx.transactor_id || '-';
+        const note = tx.note || '-';
+        const occurredAt = tx.occurred_at ? new Date(tx.occurred_at).toLocaleDateString('vi-VN') : '-';
+
+        const statusClass = status === 'CONFIRMED' ? 'status-success' : status === 'PENDING' ? 'status-warning' : 'status-error';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><code style="font-size: 11px;">${txnId.substring(0, 8)}...</code></td>
+            <td><span class="status-badge status-idle">${type}</span></td>
+            <td><span class="status-badge status-idle">${moneySource}</span></td>
+            <td style="font-weight: 600; color: var(--primary);">${amount}</td>
+            <td><span class="status-badge ${statusClass}">${status}</span></td>
+            <td><code style="font-size: 11px;">${transactorId.substring(0, 8)}...</code></td>
+            <td>${note}</td>
+            <td>${occurredAt}</td>
+            <td>
+                <button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showTransactionDetail('${txnId}')">
+                    🔍 Chi tiết
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ----------------- TRANSACTION DETAIL MODAL -----------------
+
+// Xem chi tiết giao dịch
+async function showTransactionDetail(txnId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+
+    const modal = document.getElementById('txnDetailModal');
+    const body = document.getElementById('txnDetailModalBody');
+    if (!modal || !body) return;
+
+    modal.style.display = 'flex';
+    body.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 16px;">Đang tải chi tiết giao dịch...</p>';
+
+    const res = await callApi(`/v1/groups/${groupId}/transactions/${txnId}`, 'GET');
+    if (!res.ok || !res.data?.data) {
+        body.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 16px;">Không tải được chi tiết giao dịch.</p>';
+        return;
+    }
+
+    const tx = res.data.data;
+    const fmt = v => Number(v ?? 0).toLocaleString('vi-VN');
+
+    // tìm tên danh mục từ cache nếu có
+    let catName = tx.category_id || '-';
+    if (cachedCategories && tx.category_id) {
+        const foundCat = cachedCategories.find(c => c.id === tx.category_id);
+        if (foundCat) catName = `${foundCat.name || foundCat.id}`;
+    }
+
+    // tìm tên thành viên từ cache
+    const findMemberName = uid => {
+        if (!uid) return '-';
+        if (currentGroupMembersList && currentGroupMembersList.length > 0) {
+            const found = currentGroupMembersList.find(m => (m.user_id || m.userId) === uid);
+            if (found) return found.display_name || found.displayName || uid;
+        }
+        return uid;
+    };
+
+    const transactorName = findMemberName(tx.transactor_id);
+    const createdByName = findMemberName(tx.created_by);
+    const reviewedByName = tx.reviewed_by ? findMemberName(tx.reviewed_by) : null;
+
+    const statusClass = tx.status === 'CONFIRMED' ? 'status-success' : tx.status === 'PENDING' ? 'status-warning' : 'status-error';
+    const occurredAtStr = tx.occurred_at ? new Date(tx.occurred_at).toLocaleDateString('vi-VN') : '-';
+    const createdAtStr = tx.created_at ? new Date(tx.created_at).toLocaleString('vi-VN') : '-';
+    const reviewedAtStr = tx.reviewed_at ? new Date(tx.reviewed_at).toLocaleString('vi-VN') : null;
+
+    // render danh sách người tham gia chia tiền
+    let participantsHtml = '<p style="color: var(--text-muted); font-size: 13px; margin: 4px 0;">Không có thông tin chia tiền riêng (hoặc chia đều theo cấu hình).</p>';
+    if (Array.isArray(tx.participants) && tx.participants.length > 0) {
+        const rows = tx.participants.map(p => {
+            const mName = findMemberName(p.user_id);
+            const share = p.share_amount != null ? `${fmt(p.share_amount)} đ` : 'Tự chia đều';
+            return `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 6px 10px;">
+                        <strong>${mName}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${p.user_id}</div>
+                    </td>
+                    <td style="padding: 6px 10px; text-align: right; font-weight: 600; color: var(--primary);">${share}</td>
+                </tr>
+            `;
+        }).join('');
+
+        participantsHtml = `
+            <div class="table-container" style="border: 1px solid var(--border); border-radius: 6px; margin-top: 6px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid var(--border);">
+                            <th style="padding: 6px 10px; text-align: left;">Thành Viên</th>
+                            <th style="padding: 6px 10px; text-align: right;">Số Tiền Chịu (Share)</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    body.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px;">
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-muted);">Mã giao dịch</div>
+                <div style="font-size: 12px; font-family: monospace; font-weight: 600; word-break: break-all; margin-top: 2px;">${tx.id}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-muted);">Số tiền</div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--primary); margin-top: 2px;">${fmt(tx.amount)} đ</div>
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-muted);">Trạng thái & Loại</div>
+                <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                    <span class="status-badge ${statusClass}">${tx.status}</span>
+                    <span class="status-badge status-idle">${tx.type}</span>
+                </div>
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-muted);">Nguồn tiền & Danh mục</div>
+                <div style="font-size: 13px; font-weight: 600; margin-top: 2px;">${tx.money_source} | ${catName}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-muted);">Người thực hiện</div>
+                <div style="font-size: 13px; font-weight: 600; margin-top: 2px;">${transactorName}</div>
+            </div>
+            <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-muted);">Người tạo & Ngày tạo</div>
+                <div style="font-size: 12px; margin-top: 2px;">${createdByName} (${createdAtStr})</div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 14px; font-size: 13px;">
+            <strong>Ghi chú:</strong> <span style="color: var(--text);">${tx.note || 'Không có ghi chú'}</span>
+        </div>
+
+        ${reviewedByName ? `
+        <div style="margin-bottom: 14px; font-size: 12px; color: var(--text-muted); background: #f1f5f9; padding: 8px 10px; border-radius: 6px;">
+            Duyệt bởi: <strong>${reviewedByName}</strong> vào lúc ${reviewedAtStr || '-'}
+        </div>` : ''}
+
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);">
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">👥 Danh Sách Người Tham Gia Chia Tiền (${tx.participants ? tx.participants.length : 0})</div>
+            ${participantsHtml}
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+            <button class="btn btn-secondary" onclick="closeTransactionDetailModal()">Đóng</button>
+        </div>
+    `;
+}
+
+// Đóng modal chi tiết giao dịch
+function closeTransactionDetailModal() {
+    const modal = document.getElementById('txnDetailModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Xử lý khi click vào backdrop ngoài modal
+function onTxnModalOverlayClick(e) {
+    if (e.target && e.target.id === 'txnDetailModal') {
+        closeTransactionDetailModal();
+    }
 }

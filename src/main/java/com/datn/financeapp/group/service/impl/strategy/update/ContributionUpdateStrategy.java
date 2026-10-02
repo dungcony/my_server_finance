@@ -46,7 +46,7 @@ public class ContributionUpdateStrategy implements GTransactionUpdateStrategy {
         txn.setMoneySource(MoneySource.PERSONAL);
 
         // xác định người đóng góp
-        UUID contributorId = req.userId() != null ? req.userId() : txn.getTransactorId();
+        UUID contributorId = req.transactorId() != null ? req.transactorId() : txn.getTransactorId();
         transactionValidator.validTransactorAndParticipants(groupId, contributorId, List.of(), txn.getAmount());
 
         txn.setTransactorId(contributorId);

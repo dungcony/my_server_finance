@@ -57,6 +57,16 @@ public interface GTransactionService {
     GroupTransactionListRes list(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter);
 
     /**
+     * Danh sách giao dịch do chính người gọi tạo, bao gồm cả {@code PENDING}.
+     *
+     * @param operatorId ID thành viên gọi yêu cầu
+     * @param groupId    ID nhóm
+     * @param filter     Tiêu chí lọc
+     * @return Danh sách giao dịch của mình kèm metadata phân trang
+     */
+    GroupTransactionListRes myList(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter);
+
+    /**
      * Danh sách giao dịch đang chờ duyệt ({@code PENDING}) của nhóm, dành cho người duyệt.
      *
      * @param operatorId ID người gọi (phải là Owner hoặc Thủ quỹ)

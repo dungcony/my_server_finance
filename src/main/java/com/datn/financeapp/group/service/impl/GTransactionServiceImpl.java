@@ -11,6 +11,7 @@ import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetail
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.TransactionStatus;
+import com.datn.financeapp.group.enums.TransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
@@ -120,9 +121,27 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Transactional(readOnly = true)
     public GroupTransactionListRes list(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter) {
         // xác thực người thực hiện và lấy thông tin quyền hạn
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
+
+        // member thường không được thấy giao dịch chờ duyệt trong danh sách chung
+        boolean isReviewer = authInfo.isOwner() || authInfo.isTreasurer();
+        if (!isReviewer && filter.status() == null) {
+            filter = filter.withExcludeStatus(TransactionStatus.PENDING);
+        }
 
         return buildListRes(groupId, filter);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GroupTransactionListRes myList(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter) {
+        // xác thực người thực hiện đang trong nhóm
+        permissionValidator.getAuthInfo(groupId, operatorId);
+
+        // ép điều kiện chỉ lấy giao dịch do chính mình tạo
+        GroupTransactionFilterReq myFilter = filter.withCreatedBy(operatorId);
+
+        return buildListRes(groupId, myFilter);
     }
 
     @Override
@@ -145,6 +164,11 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // tìm giao dịch hợp lệ
         GTransaction txn = transactionRepository.findByIdAndGroupIdAndDeletedAtIsNull(transactionId, groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND));
+
+        // giao dịch điều chỉnh từ kiểm kê không được phép sửa
+        if (txn.getType() == TransactionType.ADJUSTMENT_UP || txn.getType() == TransactionType.ADJUSTMENT_DOWN) {
+            throw new BusinessException(ErrorCode.ADJUSTMENT_NOT_EDITABLE);
+        }
 
         // kiểm tra quyền sửa giao dịch và thời gian hợp lệ
         permissionValidator.verifyTransactionEditPermission(txn, operatorId, authInfo);
@@ -179,10 +203,10 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // xác thực người thực hiện và lấy thông tin quyền hạn
         MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
-        if (!authInfo.isOwner())
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
-
         GTransaction txn = findActiveTransaction(transactionId, groupId);
+
+        // kiểm tra quyền xóa theo vai trò
+        permissionValidator.verifyTransactionDeletePermission(txn, operatorId, authInfo);
 
         // hoàn tác số dư quỹ nếu giao dịch đã được xác nhận
         if (txn.getStatus() == TransactionStatus.CONFIRMED) {

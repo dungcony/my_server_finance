@@ -39,10 +39,18 @@ public class GTransactionSpecification {
             if (filter.status() != null)
                 predicates.add(cb.equal(root.get("status"), filter.status()));
 
+            // loại trừ trạng thái (dùng cho member thường không thấy PENDING)
+            if (filter.excludeStatus() != null)
+                predicates.add(cb.notEqual(root.get("status"), filter.excludeStatus()));
+
 
             // điều kiện lọc theo người chi
             if (filter.transactorId() != null)
                 predicates.add(cb.equal(root.get("transactorId"), filter.transactorId()));
+
+            // điều kiện lọc theo người tạo
+            if (filter.createdBy() != null)
+                predicates.add(cb.equal(root.get("createdBy"), filter.createdBy()));
 
 
             // điều kiện lọc theo khoảng thời gian

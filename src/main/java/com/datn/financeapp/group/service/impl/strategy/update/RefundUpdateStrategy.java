@@ -49,7 +49,7 @@ public class RefundUpdateStrategy implements GTransactionUpdateStrategy {
     public void update(GTransaction txn, UUID operatorId, UUID groupId, GroupTransactionUpdateReq req,
                        MemberAuthInfo authInfo) {
         // xác định thành viên nhận hoàn tiền và số tiền mới
-        UUID targetUserId = req.userId() != null ? req.userId() : txn.getTransactorId();
+        UUID targetUserId = req.transactorId() != null ? req.transactorId() : txn.getTransactorId();
         long newAmount = req.amount() != null ? req.amount() : txn.getAmount();
         transactionValidator.validTransactorAndParticipants(groupId, targetUserId, List.of(), newAmount);
 

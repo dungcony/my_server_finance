@@ -391,11 +391,14 @@ public enum ErrorCode {
     PARTICIPANTS_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch này không được chỉ định người tham gia."),
     PARTICIPANTS_REQUIRED_ON_AMOUNT_CHANGE(HttpStatus.BAD_REQUEST, "Vui lòng cung cấp danh sách người chia tiền khi thay đổi tổng số tiền."),
     FORBIDDEN_TRANSACTION_EDIT(HttpStatus.FORBIDDEN, "Bạn không có quyền chỉnh sửa giao dịch này."),
+    FORBIDDEN_EDIT_CONFIRMED_TRANSACTION(HttpStatus.FORBIDDEN, "Giao dịch đã duyệt chỉ được sửa bởi trưởng nhóm hoặc thủ quỹ."),
+    FORBIDDEN_TRANSACTION_DELETE(HttpStatus.FORBIDDEN, "Bạn không có quyền xóa giao dịch này."),
     TRANSACTION_NOT_PENDING(HttpStatus.CONFLICT, "Giao dịch không ở trạng thái chờ duyệt."),
     AMOUNT_EXCEEDS_SHARE(HttpStatus.CONFLICT, "Số tiền vượt quá phần trong quỹ hiện có của thành viên."),
     CANNOT_REFUND_EXCEED_BALANCE(HttpStatus.BAD_REQUEST, "Số tiền hoàn vượt quá phần trong quỹ hiện có."),
     ONLY_OWNER_CAN_DELETE_TRANSACTION(HttpStatus.FORBIDDEN, "Chỉ chủ nhóm mới có quyền xóa giao dịch."),
     ADJUSTMENT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "Lý do điều chỉnh là bắt buộc."),
+    ADJUSTMENT_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "Giao dịch điều chỉnh từ kiểm kê không được phép sửa."),
     GROUP_CREATE_NOT_ONLY_ONE(HttpStatus.BAD_REQUEST, "1 nhóm phải có từ 2 người trở lên"),
     GROUP_CREATE_MEMBER_CAN_NOT_OWNER(HttpStatus.BAD_REQUEST, "người tạo k được trong danh sách member");
 
