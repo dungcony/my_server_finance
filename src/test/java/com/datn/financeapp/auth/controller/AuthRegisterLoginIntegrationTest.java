@@ -38,7 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * Test tích hợp qua HTTP thật (MockMvc + AuthController + AuthService + Testcontainers
  * PostgreSQL) cho AUTH-01 (register tạo tài khoản chờ xác thực, không kèm ví) và AUTH-02 (login,
- * sai email/sai password cùng mã lỗi INVALID_CREDENTIALS).
+ * sai email/sai password cùng mã lỗi AUTH_CREDENTIALS_INVALID).
  *
  * RateLimitFilter thật (5/phút/IP trên /auth/**, đã verify riêng ở RateLimitFilterTest của
  * Plan 03) bị thay bằng no-op qua @TestConfiguration @Primary — nhiều test case trong file này
@@ -162,7 +162,7 @@ class AuthRegisterLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_EXISTS"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_EMAIL_ALREADY_EXISTS"));
     }
 
     @Test
@@ -181,7 +181,7 @@ class AuthRegisterLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(wrongPassword)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.error.code").value("AUTH_CREDENTIALS_INVALID"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -191,7 +191,7 @@ class AuthRegisterLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(wrongEmail)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.error.code").value("AUTH_CREDENTIALS_INVALID"))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -221,13 +221,13 @@ class AuthRegisterLoginIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(wrongPassword)))
                     .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
+                    .andExpect(jsonPath("$.error.code").value("AUTH_CREDENTIALS_INVALID"));
         }
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(wrongPassword)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("ACCOUNT_LOCKED"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_LOCKED"));
     }
 }

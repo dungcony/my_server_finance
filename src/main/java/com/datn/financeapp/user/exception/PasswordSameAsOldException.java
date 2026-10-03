@@ -6,10 +6,10 @@ import com.datn.financeapp.common.exception.ErrorCode;
 public class PasswordSameAsOldException extends BusinessException {
 
     public PasswordSameAsOldException() {
-        super(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+        super(ErrorCode.AUTH_PASSWORD_SAME_AS_OLD);
     }
 
     public PasswordSameAsOldException(String message) {
-        super(ErrorCode.NEW_PASSWORD_SAME_AS_OLD, message);
+        super(ErrorCode.AUTH_PASSWORD_SAME_AS_OLD, message);
     }
 }

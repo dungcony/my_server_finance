@@ -156,33 +156,33 @@ class GroupServiceImplTest {
         }
 
         @Test
-        @DisplayName("Người đã ACTIVE trong nhóm thì lỗi ALREADY_IN_GROUP lan ra và không tạo thêm dòng thành viên")
+        @DisplayName("Người đã ACTIVE trong nhóm thì lỗi GROUP_MEMBER_ALREADY_EXISTS lan ra và không tạo thêm dòng thành viên")
         void joinByCode_alreadyActiveMember_throwsAndDoesNotCreate() {
             when(groupRepository.findByInviteCodeAndStatusNot(INVITE_CODE, GroupStatus.DELETED))
                     .thenReturn(Optional.of(buildGroup(GroupStatus.ACTIVE, true)));
-            doThrow(new BusinessException(ErrorCode.ALREADY_IN_GROUP))
+            doThrow(new BusinessException(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS))
                     .when(memberService).assertNotInGroup(groupId, userId);
 
             assertThatThrownBy(() -> groupService.joinByCode(userId, new GroupJoinReq(INVITE_CODE)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(ErrorCode.ALREADY_IN_GROUP.getCode());
+                    .isEqualTo(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS.getCode());
 
             verify(memberService, never()).create(any());
         }
 
         @Test
-        @DisplayName("Người đang PENDING xin vào thì lỗi PENDING_IN_GROUP lan ra và không tạo thêm dòng thành viên")
+        @DisplayName("Người đang PENDING xin vào thì lỗi GROUP_MEMBER_PENDING lan ra và không tạo thêm dòng thành viên")
         void joinByCode_alreadyPendingMember_throwsAndDoesNotCreate() {
             when(groupRepository.findByInviteCodeAndStatusNot(INVITE_CODE, GroupStatus.DELETED))
                     .thenReturn(Optional.of(buildGroup(GroupStatus.ACTIVE, false)));
-            doThrow(new BusinessException(ErrorCode.PENDING_IN_GROUP))
+            doThrow(new BusinessException(ErrorCode.GROUP_MEMBER_PENDING))
                     .when(memberService).assertNotInGroup(groupId, userId);
 
             assertThatThrownBy(() -> groupService.joinByCode(userId, new GroupJoinReq(INVITE_CODE)))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(ErrorCode.PENDING_IN_GROUP.getCode());
+                    .isEqualTo(ErrorCode.GROUP_MEMBER_PENDING.getCode());
 
             verify(memberService, never()).create(any());
         }
@@ -271,7 +271,7 @@ class GroupServiceImplTest {
         }
 
         @Test
-        @DisplayName("detail: người ngoài nhóm có thật nhận FORBIDDEN_NOT_GROUP_MEMBER (rule.md quy tắc 8)")
+        @DisplayName("detail: người ngoài nhóm có thật nhận GROUP_MEMBER_REQUIRED (rule.md quy tắc 8)")
         void detail_nonMember_throwsForbiddenNotGroupMember() {
             Group group = buildGroup(GroupStatus.ACTIVE, true);
             when(groupRepository.findNotDeletedWithFundById(groupId)).thenReturn(Optional.of(group));
@@ -282,7 +282,7 @@ class GroupServiceImplTest {
             assertThatThrownBy(() -> groupService.detail(userId, groupId))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER.getCode());
+                    .isEqualTo(ErrorCode.GROUP_MEMBER_REQUIRED.getCode());
 
             verify(groupMapper, never()).toDetailResponse(any(), any(), any(), any());
         }

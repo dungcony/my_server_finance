@@ -103,12 +103,12 @@ class MemberBehavierServiceImplTest {
     }
 
     @Test
-    @DisplayName("Thành viên thường lọc PENDING thì bị chặn FORBIDDEN_OWNER_REQUIRED và không đụng vào CSDL")
+    @DisplayName("Thành viên thường lọc PENDING thì bị chặn GROUP_OWNER_REQUIRED và không đụng vào CSDL")
     void listMembers_NormalMemberFiltersPending_Forbidden() {
         assertThatThrownBy(() -> service.listMembers(treasurerId, groupId, MemberStatus.PENDING))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.FORBIDDEN_OWNER_REQUIRED.getCode());
+                .isEqualTo(ErrorCode.GROUP_OWNER_REQUIRED.getCode());
 
         verify(memberRepository, never()).findAllByGroupIdAndStatusIn(any(), any());
     }

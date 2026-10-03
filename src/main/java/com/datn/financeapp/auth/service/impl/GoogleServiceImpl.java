@@ -47,7 +47,7 @@ public class GoogleServiceImpl implements GoogleService {
     @Override
     public GoogleUserInfo verifyIdToken(String idToken) {
         if (delegate == null) {
-            throw new BusinessException(ErrorCode.INVALID_GOOGLE_TOKEN,
+            throw new BusinessException(ErrorCode.AUTH_GOOGLE_TOKEN_INVALID,
                     "Đăng nhập bằng Google chưa được cấu hình trên máy chủ.");
         }
 
@@ -94,6 +94,6 @@ public class GoogleServiceImpl implements GoogleService {
     }
 
     private BusinessException invalidToken() {
-        return new BusinessException(ErrorCode.INVALID_GOOGLE_TOKEN);
+        return new BusinessException(ErrorCode.AUTH_GOOGLE_TOKEN_INVALID);
     }
 }

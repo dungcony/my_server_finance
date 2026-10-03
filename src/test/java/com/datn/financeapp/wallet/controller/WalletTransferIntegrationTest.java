@@ -182,7 +182,7 @@ class WalletTransferIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("SAME_SOURCE_AND_DESTINATION"));
+                .andExpect(jsonPath("$.error.code").value("WALLET_TRANSFER_SAME_DESTINATION"));
     }
 
     @Test
@@ -242,6 +242,6 @@ class WalletTransferIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.error.code").value("INSUFFICIENT_BALANCE"));
+                .andExpect(jsonPath("$.error.code").value("WALLET_BALANCE_INSUFFICIENT"));
     }
 }

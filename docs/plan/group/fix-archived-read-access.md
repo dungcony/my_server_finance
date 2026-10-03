@@ -102,7 +102,7 @@ Lỗi thứ hai: `MemberRes.withDisplay` truyền `null` vào `leftAt` (`MemberR
         var info = getAuthInfo(groupId, operatorId, allowArchived);
 
         if (info.memberRole() != MemberRole.OWNER)
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_OWNER_REQUIRED);
     }
 
     private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo, boolean allowArchived) {
@@ -141,7 +141,7 @@ Lỗi thứ hai: `MemberRes.withDisplay` truyền `null` vào `leftAt` (`MemberR
     private void requireReviewer(UUID groupId, UUID operatorId, boolean allowArchived) {
         MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, allowArchived);
         if (!info.isOwner() && !info.isTreasurer())
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_TREASURER_REQUIRED);
     }
 ```
 
@@ -158,7 +158,7 @@ Lỗi thứ hai: `MemberRes.withDisplay` truyền `null` vào `leftAt` (`MemberR
 - **#7 `GroupPermissionValidatorTest`** (Mockito, mock `GroupRepository`):
   - `getAuthInfo(g, u, true)` trả thông tin khi nhóm `ARCHIVED`; `getAuthInfo(g, u)` (mặc định) và `getAuthInfo(g, u, false)` ném `GROUP_ARCHIVED` — **khoá hàm ghi không bị mở nhầm**;
   - nhóm `DELETED` hoặc không có bản ghi → `GROUP_NOT_FOUND` ở cả hai cờ; tham số `null` → `VALIDATION_ERROR`;
-  - `verifyOwner`: Owner trên nhóm `ARCHIVED` qua với `true`, bị chặn với bản mặc định; thành viên thường → `FORBIDDEN_OWNER_REQUIRED`.
+  - `verifyOwner`: Owner trên nhóm `ARCHIVED` qua với `true`, bị chặn với bản mặc định; thành viên thường → `GROUP_OWNER_REQUIRED`.
 - **#8 `MemberResTest`:** `withDisplay` giữ `leftAt` của thành viên đã rời (đỏ đúng lý do trước khi sửa) và vẫn `null` với thành viên đang ở nhóm.
 - **#9:** stub `findAuthInfo` trả nhóm `ARCHIVED`, kiểm `getSummary`/`getBalances` trả dữ liệu.
 - **#10, #11:** các test mock `GroupPermissionValidator` đổi stub của hàm đọc sang bản 3 tham số và thêm `verify` cờ đúng; hàm ghi vẫn stub bản 2 tham số như cũ.
@@ -193,14 +193,14 @@ Lỗi thứ hai: `MemberRes.withDisplay` truyền `null` vào `leftAt` (`MemberR
 
 ## 7. Bổ sung (✅ ĐÃ SỬA): bỏ `verifyMember` khỏi `GroupServiceImpl.detail`
 
-Từ nhận xét review: sau khi `buildGroupDetailRes(group, operatorId)` đã tự lấy thành viên `ACTIVE` và ném `FORBIDDEN_NOT_GROUP_MEMBER` nếu người gọi không có trong danh sách, thì `verifyMember` chỉ thêm một truy vấn `findAuthInfo` thừa. Đồng ý bỏ, vì còn có thêm hai lợi ích:
+Từ nhận xét review: sau khi `buildGroupDetailRes(group, operatorId)` đã tự lấy thành viên `ACTIVE` và ném `GROUP_MEMBER_REQUIRED` nếu người gọi không có trong danh sách, thì `verifyMember` chỉ thêm một truy vấn `findAuthInfo` thừa. Đồng ý bỏ, vì còn có thêm hai lợi ích:
 
 - `detail` đọc được nhóm `ARCHIVED` mà không cần cờ (`findNotDeletedWithFundById` chỉ loại nhóm `DELETED`), nên không cần `verifyMember(..., true)`.
-- Mã lỗi đúng `rule.md` quy tắc 8: người ngoài nhóm có thật → `403 FORBIDDEN_NOT_GROUP_MEMBER`. Hiện `verifyMember` → `findAuthInfo` rỗng → `GROUP_NOT_FOUND` (404), lệch quy tắc. Nhóm không tồn tại vẫn `404`.
+- Mã lỗi đúng `rule.md` quy tắc 8: người ngoài nhóm có thật → `403 GROUP_MEMBER_REQUIRED`. Hiện `verifyMember` → `findAuthInfo` rỗng → `GROUP_NOT_FOUND` (404), lệch quy tắc. Nhóm không tồn tại vẫn `404`.
 
 Đổi lại: người ngoài nhóm gọi vào nhóm có thật thì code nạp nhóm + quỹ + danh sách thành viên rồi mới từ chối (chỉ trên đường bị từ chối).
 
-Thay đổi nếu duyệt: xoá `verifyMember` (chỉ `detail` gọi) khỏi `GroupPermissionValidator` và 2 test `verifyMember_*` của nó; `detail_archivedGroup_stillReadable` đổi `verify(...verifyMember...)` thành `verifyNoInteractions(permissionValidator)`; thêm test người ngoài nhóm → `FORBIDDEN_NOT_GROUP_MEMBER`. Cờ `allowArchived` của `getAuthInfo`/`verifyOwner` giữ nguyên.
+Thay đổi nếu duyệt: xoá `verifyMember` (chỉ `detail` gọi) khỏi `GroupPermissionValidator` và 2 test `verifyMember_*` của nó; `detail_archivedGroup_stillReadable` đổi `verify(...verifyMember...)` thành `verifyNoInteractions(permissionValidator)`; thêm test người ngoài nhóm → `GROUP_MEMBER_REQUIRED`. Cờ `allowArchived` của `getAuthInfo`/`verifyOwner` giữ nguyên.
 
 ---
 

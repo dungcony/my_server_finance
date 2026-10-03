@@ -174,7 +174,7 @@ class TransactionBulkIntegrationTest {
 
         List<Map<String, Object>> items = List.of(
                 expenseRow(walletId, expenseCategoryId, 45_000, "Dòng hợp lệ 1"),
-                // Danh mục type=income gán cho giao dịch type=expense -> CATEGORY_TYPE_MISMATCH
+                // Danh mục type=income gán cho giao dịch type=expense -> TRANSACTION_CATEGORY_TYPE_MISMATCH
                 expenseRow(walletId, incomeCategoryId, 999_000, "Dòng sai danh mục"),
                 expenseRow(walletId, expenseCategoryId, 60_000, "Dòng hợp lệ 2"));
 
@@ -187,7 +187,7 @@ class TransactionBulkIntegrationTest {
                 .andExpect(jsonPath("$.data.failure_count").value(1))
                 .andExpect(jsonPath("$.data.row_errors.length()").value(1))
                 .andExpect(jsonPath("$.data.row_errors[0].row_index").value(1))
-                .andExpect(jsonPath("$.data.row_errors[0].code").value("CATEGORY_TYPE_MISMATCH"));
+                .andExpect(jsonPath("$.data.row_errors[0].code").value("TRANSACTION_CATEGORY_TYPE_MISMATCH"));
 
         assertThat(transactionCount()).isEqualTo(2);
         // Chỉ hai dòng hợp lệ tác động số dư — dòng lỗi không trừ 999.000 nào.
@@ -246,7 +246,7 @@ class TransactionBulkIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("items", items))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("TOO_MANY_ROWS"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_IMPORT_ROWS_EXCEEDED"));
 
         assertThat(transactionCount()).isZero();
     }

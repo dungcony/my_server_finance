@@ -58,7 +58,7 @@ public class ExpenseTransaction implements GTransactionBuilder {
                               GTransactionStatus status, boolean isSettlementEnabled) {
         // chi tiêu nhóm bắt buộc có danh mục
         if (req.categoryId() == null) {
-            throw new BusinessException(ErrorCode.CATEGORY_REQUIRED_FOR_EXPENSE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_CATEGORY_REQUIRED);
         }
         eventPublisher.publishEvent(new ValidCategorySystemEvent(req.categoryId()));
 

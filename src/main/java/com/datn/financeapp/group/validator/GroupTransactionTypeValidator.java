@@ -24,10 +24,10 @@ public final class GroupTransactionTypeValidator {
      */
     public static void validContribution(MoneySource moneySource, List<GroupTransactionParticipantReq> participants) {
         if (moneySource != MoneySource.PERSONAL)
-            throw new BusinessException(ErrorCode.MONEY_SOURCE_INVALID);
+            throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
 
         if (participants != null && !participants.isEmpty())
-            throw new BusinessException(ErrorCode.PARTICIPANTS_NOT_ALLOWED);
+            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_NOT_ALLOWED);
     }
 
     /**
@@ -44,7 +44,7 @@ public final class GroupTransactionTypeValidator {
     public static void validRefundLimit(UUID transactorId, long amount, MemberBalances mb) {
         long netBalance = mb.getNetBalance(transactorId);
         if (amount > netBalance) {
-            throw new BusinessException(ErrorCode.CANNOT_REFUND_EXCEED_BALANCE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE);
         }
     }
 }

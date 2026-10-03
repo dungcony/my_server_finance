@@ -1068,7 +1068,7 @@ Khi Quản trị viên khóa tài khoản:
 3. Tại `JwtAuthFilter`:
     * Với mỗi HTTP request có JWT hợp lệ, trích xuất `userId` từ token claim.
     * Kiểm tra nhanh trên Redis: `redisTemplate.hasKey("blacklist:user:" + userId)` ($O (1) < 1\text{ms}$).
-    * Nếu tồn tại $\rightarrow$ Ngắt filter chain ngay lập tức, trả về mã lỗi `ACCOUNT_BLOCKED` (HTTP `403 Forbidden`).
+    * Nếu tồn tại $\rightarrow$ Ngắt filter chain ngay lập tức, trả về mã lỗi `AUTH_ACCOUNT_BLOCKED` (HTTP `403 Forbidden`).
 
 ---
 

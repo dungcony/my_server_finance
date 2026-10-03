@@ -54,7 +54,7 @@ public class TokenServiceImpl implements TokenService {
 
         if (activeToken != null) {
             if (activeToken.getExpiresAt().isBefore(Instant.now()))
-                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                throw new BusinessException(ErrorCode.AUTH_CREDENTIALS_INVALID);
 
             activeToken.setRevokedAt(Instant.now());
             activeToken = refreshTokenRepository.save(activeToken);
@@ -65,7 +65,7 @@ public class TokenServiceImpl implements TokenService {
         refreshTokenRepository.findByTokenHash(hash)
                 .ifPresent(revoked -> refreshTokenRepository.revokeAllActiveForUser(revoked.getUserId()));
 
-        throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        throw new BusinessException(ErrorCode.AUTH_CREDENTIALS_INVALID);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class TokenServiceImpl implements TokenService {
 
         // tìm và khóa token đang hoạt động
         RefreshToken activeToken = refreshTokenRepository.findByTokenHashAndRevokedAtIsNull(hash)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_CREDENTIALS_INVALID));
 
         // đánh dấu thời gian thu hồi
         activeToken.setRevokedAt(Instant.now());

@@ -96,7 +96,7 @@ public final class BalanceCalculator {
 
             long amount = txn.getAmount() != null ? txn.getAmount() : 0L;
             if (amount <= 0) {
-                throw new BusinessException(ErrorCode.INVALID_AMOUNT,
+                throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID,
                         "Số tiền giao dịch phải lớn hơn 0. Transaction ID: " + txn.getId());
             }
 
@@ -106,12 +106,12 @@ public final class BalanceCalculator {
                 case CONTRIBUTION -> {
                     if (txn.getMoneySource() == MoneySource.FUND) {
                         throw new BusinessException(
-                                ErrorCode.MONEY_SOURCE_INVALID,
+                                ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID,
                                 "Nguồn tiền nộp quỹ không thể là tiền từ quỹ (FUND). Transaction ID: " + txn.getId());
                     }
                     if (uid == null) {
                         throw new BusinessException(
-                                ErrorCode.PAYER_NOT_MEMBER,
+                                ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER,
                                 "Người nộp quỹ không được để trống (null). Transaction ID: " + txn.getId());
                     }
                     memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addContribution(amount);
@@ -120,7 +120,7 @@ public final class BalanceCalculator {
                     if (txn.getMoneySource() == MoneySource.PERSONAL) {
                         if (uid == null) {
                             throw new BusinessException(
-                                    ErrorCode.PAYER_NOT_MEMBER,
+                                    ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER,
                                     "Người chi tiền túi không được để trống (null). Transaction ID: " + txn.getId());
                         }
                         memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addPaidOutOfPocket(amount);
@@ -130,7 +130,7 @@ public final class BalanceCalculator {
                 case REFUND -> {
                     if (uid == null) {
                         throw new BusinessException(
-                                ErrorCode.PAYER_NOT_MEMBER,
+                                ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER,
                                 "Người nhận hoàn tiền không được để trống (null). Transaction ID: " + txn.getId());
                     }
                     memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addRefund(amount);
@@ -179,12 +179,12 @@ public final class BalanceCalculator {
             for (TransactionParticipant p : raw) {
                 if (p.getUserId() == null || !seenUserIds.add(p.getUserId())) {
                     throw new BusinessException(
-                            ErrorCode.INVALID_PARTICIPANT_DATA,
+                            ErrorCode.GROUP_TXN_PARTICIPANT_DATA_INVALID,
                             "Danh sách người tham gia có thành viên bị trùng lặp hoặc null: " + p.getUserId());
                 }
                 if (p.getShareAmount() != null && p.getShareAmount() <= 0) {
                     throw new BusinessException(
-                            ErrorCode.INVALID_PARTICIPANT_DATA,
+                            ErrorCode.GROUP_TXN_PARTICIPANT_DATA_INVALID,
                             "Số tiền share của thành viên phải lớn hơn 0. User ID: " + p.getUserId());
                 }
             }
@@ -207,7 +207,7 @@ public final class BalanceCalculator {
                     sum += p.getShareAmount();
                 }
                 if (sum != amount) {
-                    throw new BusinessException(ErrorCode.PARTICIPANTS_SUM_MISMATCH);
+                    throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
                 }
                 for (TransactionParticipant p : specified) {
                     memberMap.computeIfAbsent(p.getUserId(), k -> new MemberBalanceAccumulator())
@@ -227,7 +227,7 @@ public final class BalanceCalculator {
                 }
                 if (sumSpecified >= amount) {
                     throw new BusinessException(
-                            ErrorCode.PARTICIPANTS_SUM_MISMATCH,
+                            ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH,
                             "Tổng số tiền các thành viên chỉ định phải nhỏ hơn số tiền giao dịch.");
                 }
                 // Người có shareAmount: giữ nguyên giá trị đã chỉ định
@@ -248,7 +248,7 @@ public final class BalanceCalculator {
             List<UUID> memberUserIds = getActiveMemberIdsAt(txn, memberPeriods);
             if (memberUserIds.isEmpty()) {
                 throw new BusinessException(
-                        ErrorCode.PARTICIPANT_NOT_MEMBER,
+                        ErrorCode.GROUP_TXN_PARTICIPANT_NOT_MEMBER,
                         "Không tìm thấy thành viên nào có mặt tại thời điểm giao dịch để phân bổ chi phí.");
             }
             allocateEvenly(txn, memberUserIds, amount, factor, memberMap);

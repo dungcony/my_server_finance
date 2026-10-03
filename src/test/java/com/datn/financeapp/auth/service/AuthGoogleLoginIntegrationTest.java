@@ -6,7 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.auth.dto.response.AuthResponse;
+import com.datn.financeapp.auth.dto.response.LoginRes;
+import com.datn.financeapp.auth.helper.ClientInfo;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
@@ -18,6 +19,7 @@ import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
+import com.datn.financeapp.user.service.UserBehavierService;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.wallet.entity.Wallet;
@@ -77,10 +79,13 @@ class AuthGoogleLoginIntegrationTest {
     private AuthService authService;
 
     @Autowired
-    private AccountService userAccountService;
+    private com.datn.financeapp.auth.service.impl.EmailLoginImpl emailLoginService;
 
     @Autowired
-    private ProfileService userProfileService;
+    private com.datn.financeapp.auth.service.impl.GoogleLoginImpl googleLoginService;
+
+    @Autowired
+    private UserBehavierService userBehavierService;
 
     @Autowired
     private UserRepository userRepository;
@@ -120,11 +125,11 @@ class AuthGoogleLoginIntegrationTest {
     void loginWithGoogle_NewUser_CreatesConfirmedAccountWithoutWallet() {
         stubGoogle("sub-moi-001", "nguoi.moi@example.com", "Người Mới");
 
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(res.user().email()).isEqualTo("nguoi.moi@example.com");
-        assertThat(res.accessToken()).isNotBlank();
-        assertThat(res.refreshToken()).isNotBlank();
+        assertThat(res.token().access()).isNotBlank();
+        assertThat(res.token().refresh()).isNotBlank();
 
         User saved = userRepository.findByEmail("nguoi.moi@example.com").orElseThrow();
         assertThat(saved.getGoogleId()).isEqualTo("sub-moi-001");
@@ -143,7 +148,7 @@ class AuthGoogleLoginIntegrationTest {
     void loginWithGoogle_TokenWithoutName_FallsBackToEmailLocalPart() {
         stubGoogle("sub-khong-ten", "an.danh@example.com", null);
 
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(res.user().email()).isEqualTo("an.danh@example.com");
     }
@@ -155,9 +160,9 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void loginWithGoogle_SecondTime_ReusesSameAccount() {
         stubGoogle("sub-lap-lai", "lap.lai@example.com", "Lần Đầu");
-        AuthResponse first = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes first = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
-        AuthResponse second = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes second = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(second.user().id()).isEqualTo(first.user().id());
         assertThat(userRepository.findAll()).hasSize(1);
@@ -166,10 +171,10 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void loginWithGoogle_NameChangedOnGoogleSide_DoesNotOverwriteLocalUsername() {
         stubGoogle("sub-doi-ten", "doi.ten@example.com", "Tên Ban Đầu");
-        authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         stubGoogle("sub-doi-ten", "doi.ten@example.com", "Tên Mới Bên Google");
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // prd/01 mục 9.4b: chỉ lấy tên từ Google đúng một lần lúc tạo. Đồng bộ đè lên mỗi lần
         // đăng nhập sẽ xoá mất thay đổi người dùng vừa thực hiện, trông hệt lỗi mất dữ liệu.
@@ -179,12 +184,12 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void loginWithGoogle_EmailChangedOnGoogleSide_StillFindsAccountBySub() {
         stubGoogle("sub-doi-mail", "cu@example.com", "Người Dùng");
-        AuthResponse first = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes first = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // Người dùng đổi email trong tài khoản Google. `sub` không đổi nên vẫn phải vào đúng
         // tài khoản cũ — đây là lý do lưu google_id thay vì dựa vào email.
         stubGoogle("sub-doi-mail", "moi@example.com", "Người Dùng");
-        AuthResponse second = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes second = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(second.user().id()).isEqualTo(first.user().id());
         assertThat(userRepository.findAll()).hasSize(1);
@@ -200,7 +205,7 @@ class AuthGoogleLoginIntegrationTest {
                 new RegisterRequest("ca.hai@example.com", PASSWORD, "Tên Cũ"));
 
         stubGoogle("sub-lien-ket", "ca.hai@example.com", "Tên Bên Google");
-        AuthResponse viaGoogle = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes viaGoogle = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(viaGoogle.user().id()).isEqualTo(registered.id());
         assertThat(userRepository.findAll()).hasSize(1);
@@ -217,12 +222,12 @@ class AuthGoogleLoginIntegrationTest {
     void loginWithGoogle_AfterLinking_PasswordLoginStillWorks() {
         authService.register(new RegisterRequest("van.dung.duoc@example.com", PASSWORD, "Người Dùng"));
         stubGoogle("sub-van-dung", "van.dung.duoc@example.com", "Người Dùng");
-        authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
-        AuthResponse viaPassword = authService.login(
-                new EmailLoginRequest("van.dung.duoc@example.com", PASSWORD), "127.0.0.1", "test");
+        LoginRes viaPassword = emailLoginService.login(
+                new EmailLoginRequest("van.dung.duoc@example.com", PASSWORD), new ClientInfo("127.0.0.1", "test"));
 
-        assertThat(viaPassword.accessToken()).isNotBlank();
+        assertThat(viaPassword.token().access()).isNotBlank();
     }
 
     @Test
@@ -230,7 +235,7 @@ class AuthGoogleLoginIntegrationTest {
         authService.register(new RegisterRequest("giu.ten@example.com", PASSWORD, "Tên Tôi Tự Đặt"));
 
         stubGoogle("sub-giu-ten", "giu.ten@example.com", "Tên Bên Google");
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(res.user().email()).isEqualTo("giu.ten@example.com");
     }
@@ -248,9 +253,9 @@ class AuthGoogleLoginIntegrationTest {
 
         // Khác /auth/login: mã này trả ra NGAY, không đợi biết mật khẩu. Google đã chứng minh
         // người bấm nút là chủ tài khoản nên không còn gì để giấu.
-        assertThatThrownBy(() -> authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN)))
+        assertThatThrownBy(() -> googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit")))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "ACCOUNT_BLOCKED");
+                .hasFieldOrPropertyWithValue("code", "AUTH_ACCOUNT_BLOCKED");
     }
 
     @Test
@@ -261,7 +266,7 @@ class AuthGoogleLoginIntegrationTest {
         stubGoogle("sub-da-xoa", "da.xoa@example.com", "Đã Xoá");
 
         // Tài khoản đã xoá coi như không tồn tại
-        assertThatThrownBy(() -> authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN)))
+        assertThatThrownBy(() -> googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit")))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
     }
@@ -269,14 +274,14 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void loginWithGoogle_BlockedAfterLinking_StillBlockedOnNextLogin() {
         stubGoogle("sub-khoa-sau", "khoa.sau@example.com", "Khoá Sau");
-        authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         setFlag("khoa.sau@example.com", u -> u.setBlocked(true));
 
         // Nấc 1 (tìm theo google_id) cũng phải kiểm cờ, không chỉ nấc 2
-        assertThatThrownBy(() -> authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN)))
+        assertThatThrownBy(() -> googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit")))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "ACCOUNT_BLOCKED");
+                .hasFieldOrPropertyWithValue("code", "AUTH_ACCOUNT_BLOCKED");
     }
 
     // -----------------------------------------------------------------
@@ -286,27 +291,27 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void login_GoogleOnlyAccount_ReturnsInvalidCredentialsNotServerError() {
         stubGoogle("sub-khong-mk", "khong.mat.khau@example.com", "Không Mật Khẩu");
-        authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // Trước khi vá, passwordEncoder.matches(x, null) ném NullPointerException -> 500
-        assertThatThrownBy(() -> authService.login(
+        assertThatThrownBy(() -> emailLoginService.login(
                 new EmailLoginRequest("khong.mat.khau@example.com", "thu.doan.mat.khau"),
-                "127.0.0.1", "test"))
+                new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "test")))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "INVALID_CREDENTIALS");
+                .hasFieldOrPropertyWithValue("code", "AUTH_CREDENTIALS_INVALID");
     }
 
     @Test
     void changePassword_GoogleOnlyAccount_ReturnsNoPasswordSet() {
         stubGoogle("sub-doi-mk", "doi.mk@example.com", "Đổi Mật Khẩu");
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // App đã ẩn nút Đổi mật khẩu, nhưng backend vẫn phải tự chặn: bảo vệ chỉ ở phía client
         // thì ai gọi thẳng API cũng qua
-        assertThatThrownBy(() -> userAccountService.changePassword(
+        assertThatThrownBy(() -> userBehavierService.changePassword(
                 res.user().id(), new UpdatePassReq("bat.ky", "matkhaumoi123")))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "NO_PASSWORD_SET");
+                .hasFieldOrPropertyWithValue("code", "AUTH_PASSWORD_NOT_SET");
     }
 
     private void deleteMeAs(UUID userId, String password) {
@@ -314,7 +319,7 @@ class AuthGoogleLoginIntegrationTest {
         context.setAuthentication(new UsernamePasswordAuthenticationToken(userId.toString(), null, Collections.emptyList()));
         SecurityContextHolder.setContext(context);
         try {
-            userProfileService.deleteMe(password);
+            userBehavierService.deleteMe(password);
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -323,7 +328,7 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void deleteAccount_GoogleOnlyAccount_SucceedsWithoutPasswordCheck() {
         stubGoogle("sub-xoa-tk", "xoa.tk@example.com", "Xoá Tài Khoản");
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // Không có mật khẩu nào để so, nhưng vẫn phải xoá được (prd/01 mục 9.4 — app gửi chữ XOA)
         deleteMeAs(res.user().id(), "XOA");
@@ -335,7 +340,7 @@ class AuthGoogleLoginIntegrationTest {
     @Test
     void forgotPassword_GoogleOnlyAccount_ReturnsSilentlyWithoutSendingCode() {
         stubGoogle("sub-quen-mk", "quen.mk@example.com", "Quên Mật Khẩu");
-        authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
         Mockito.reset(emailService);
 
         authService.forgotPassword(new ForgotPasswordRequest("quen.mk@example.com"));
@@ -350,12 +355,12 @@ class AuthGoogleLoginIntegrationTest {
     void deleteAccount_LinkedAccount_StillChecksPassword() {
         authService.register(new RegisterRequest("van.kiem@example.com", PASSWORD, "Vẫn Kiểm"));
         stubGoogle("sub-van-kiem", "van.kiem@example.com", "Vẫn Kiểm");
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // Tài khoản ĐÃ LIÊN KẾT vẫn có mật khẩu, nên không được nới lỏng bước so mật khẩu
         assertThatThrownBy(() -> deleteMeAs(res.user().id(), "mat.khau.sai"))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "WRONG_PASSWORD");
+                .hasFieldOrPropertyWithValue("code", "AUTH_PASSWORD_INCORRECT");
     }
 
     // -----------------------------------------------------------------
@@ -366,7 +371,7 @@ class AuthGoogleLoginIntegrationTest {
     void loginWithGoogle_GoogleOnlyAccount_ReportsNoPasswordAndLinked() {
         stubGoogle("sub-co-truong", "co.truong@example.com", "Có Trường");
 
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         assertThat(res.user().hasPassword()).isFalse();
         assertThat(res.user().googleLinked()).isTrue();
@@ -376,8 +381,8 @@ class AuthGoogleLoginIntegrationTest {
     void login_EmailOnlyAccount_ReportsHasPasswordAndNotLinked() {
         registerAndVerify("chi.email@example.com", "Chỉ Email");
 
-        AuthResponse res = authService.login(
-                new EmailLoginRequest("chi.email@example.com", PASSWORD), "127.0.0.1", "test");
+        LoginRes res = emailLoginService.login(
+                new EmailLoginRequest("chi.email@example.com", PASSWORD), new ClientInfo("127.0.0.1", "test"));
 
         assertThat(res.user().hasPassword()).isTrue();
         assertThat(res.user().googleLinked()).isFalse();
@@ -388,7 +393,7 @@ class AuthGoogleLoginIntegrationTest {
         authService.register(new RegisterRequest("ca.hai.co@example.com", PASSWORD, "Cả Hai"));
         stubGoogle("sub-ca-hai", "ca.hai.co@example.com", "Cả Hai");
 
-        AuthResponse res = authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
+        LoginRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
 
         // Tài khoản đã liên kết VẪN đổi mật khẩu được — đây là lý do không dùng is_confirm
         // thay cho has_password: cờ đó cũng true ở đây mà lại nói về chuyện khác.
@@ -402,7 +407,7 @@ class AuthGoogleLoginIntegrationTest {
 
     /**
      * Đăng ký bằng email rồi xác thực — {@code register} chỉ tạo tài khoản {@code PENDING_VERIFY}
-     * từ 13/09/2026, đăng nhập thẳng sẽ nhận {@code ACCOUNT_NOT_VERIFIED}.
+     * từ 13/09/2026, đăng nhập thẳng sẽ nhận {@code AUTH_ACCOUNT_NOT_VERIFIED}.
      */
     private void registerAndVerify(String email, String username) {
         authService.register(new RegisterRequest(email, PASSWORD, username));
@@ -414,8 +419,8 @@ class AuthGoogleLoginIntegrationTest {
     }
 
     private void stubGoogle(String sub, String email, String name) {
-        when(googleIdTokenVerifier.verify(anyString()))
-                .thenReturn(new GoogleService.GoogleUserInfo(sub, email, name));
+        when(googleIdTokenVerifier.verifyIdToken(anyString()))
+                .thenReturn(new com.datn.financeapp.auth.helper.GoogleUserInfo(sub, email, name));
     }
 
     private void setFlag(String email, Consumer<User> mutator) {
@@ -424,3 +429,4 @@ class AuthGoogleLoginIntegrationTest {
         userRepository.save(user);
     }
 }
+

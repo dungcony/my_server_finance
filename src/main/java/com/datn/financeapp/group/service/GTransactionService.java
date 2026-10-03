@@ -83,7 +83,7 @@ public interface GTransactionService {
      * @param size       số dòng mỗi trang, có thể null
      * @return giao dịch chờ duyệt kèm metadata phân trang
      * @throws com.datn.financeapp.common.exception.BusinessException nếu không phải Owner/Thủ quỹ
-     *                                                               ({@code FORBIDDEN_TREASURER_REQUIRED})
+     *                                                               ({@code GROUP_TREASURER_REQUIRED})
      */
     GroupTransactionListRes listPending(UUID operatorId, UUID groupId, Integer page, Integer size);
 

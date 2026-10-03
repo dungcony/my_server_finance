@@ -180,7 +180,7 @@ class CategoryTreeIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(grandChildBody)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("MAX_DEPTH_EXCEEDED"));
+                .andExpect(jsonPath("$.error.code").value("CATEGORY_DEPTH_EXCEEDED"));
     }
 
     @Test
@@ -200,7 +200,7 @@ class CategoryTreeIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(childBody)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("TYPE_MISMATCH_WITH_PARENT"));
+                .andExpect(jsonPath("$.error.code").value("CATEGORY_TYPE_MISMATCH_PARENT"));
     }
 
     @Test
@@ -239,7 +239,7 @@ class CategoryTreeIntegrationTest {
 
         mockMvc.perform(delete("/categories/" + root.get("id")).header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CHILD_CATEGORIES_EXIST"));
+                .andExpect(jsonPath("$.error.code").value("CATEGORY_CHILDREN_EXIST"));
     }
 
     @Test

@@ -116,7 +116,7 @@ class AuthLoginLockoutIntegrationTest {
     /**
      * Đăng ký và xác thực email — bộ test này đo cơ chế khoá sau nhiều lần sai mật khẩu, nên tài
      * khoản phải ở trạng thái đăng nhập được. Bỏ bước xác thực thì mọi lần login đều dừng ở
-     * {@code ACCOUNT_NOT_VERIFIED} và không còn đo được thứ định đo.
+     * {@code AUTH_ACCOUNT_NOT_VERIFIED} và không còn đo được thứ định đo.
      */
     private void register(String email, String password, String username) throws Exception {
         Map<String, Object> body = Map.of("email", email, "password", password, "username", username);
@@ -141,7 +141,7 @@ class AuthLoginLockoutIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_CREDENTIALS_INVALID"));
     }
 
     @Test
@@ -159,7 +159,7 @@ class AuthLoginLockoutIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("ACCOUNT_LOCKED"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_LOCKED"));
     }
 
     @Test
@@ -178,7 +178,7 @@ class AuthLoginLockoutIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("ACCOUNT_LOCKED"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_LOCKED"));
 
         // Thao túng trực tiếp attempted_at của TOÀN BỘ 5 bản ghi sai lùi hơn 15 phút trước —
         // isLockedOut() tính động mỗi lần gọi (không cron job riêng), khoá tự hết hạn theo thời

@@ -18,7 +18,8 @@ Dưới đây là phương án sửa đổi chi tiết, đảm bảo không làm
 - **Giải pháp**:
   - Sửa lại hàm `setUp()` để inject đúng các dependencies mới của `AuthServiceImpl` (`UserService`, `TokenService`, `EmailService`, `PasswordEncoder`, `ForgotPasswordRateLimiter`, `OtpRepository`).
   - Đổi các `@Mock AccountService` thành `@Mock UserService`.
-  - Thay đổi điều kiện `assertThatThrownBy(...).isInstanceOf(...)` thành `BusinessException.class` và assert theo `ErrorCode.CODE_INVALID` / `ErrorCode.NEW_PASSWORD_SAME_AS_OLD`.
+  - Thay đổi điều kiện `assertThatThrownBy(...).isInstanceOf(...)` thành `BusinessException.class` và assert theo các mã lỗi đã chuẩn hóa mới: `ErrorCode.AUTH_RESET_CODE_INVALID` / `ErrorCode.AUTH_PASSWORD_SAME_AS_OLD`.
+  - Cập nhật tương tự cho `UserControllerTest` nếu mock các mã lỗi như `AUTH_PASSWORD_ALREADY_SET`.
 
 ## 3. Các file Integration Test
 Các file: `AuthBlockedDeletedAccountIntegrationTest`, `AuthGoogleLoginIntegrationTest`, `UserDeleteAccountIntegrationTest`, `UserProfileIntegrationTest`.

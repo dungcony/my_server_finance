@@ -226,7 +226,7 @@ class ExportJobIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isNotImplemented())
-                .andExpect(jsonPath("$.error.code").value("FORMAT_NOT_SUPPORTED"));
+                .andExpect(jsonPath("$.error.code").value("EXPORT_FORMAT_NOT_SUPPORTED"));
 
         Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM export_jobs", Integer.class);
         Assertions.assertEquals(0, count, "pdf chưa hỗ trợ KHÔNG được tạo bản ghi export_jobs");

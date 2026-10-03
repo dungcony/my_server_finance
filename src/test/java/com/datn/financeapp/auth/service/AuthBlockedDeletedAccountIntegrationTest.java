@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.response.AuthResponse;
+import com.datn.financeapp.auth.dto.response.LoginRes;
+import com.datn.financeapp.auth.helper.ClientInfo;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RefreshRequest;
@@ -19,6 +20,7 @@ import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
+import com.datn.financeapp.user.service.UserBehavierService;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.wallet.repository.WalletRepository;
@@ -77,7 +79,10 @@ class AuthBlockedDeletedAccountIntegrationTest {
     private AuthService authService;
 
     @Autowired
-    private ProfileService userProfileService;
+    private LoginService<EmailLoginRequest> loginService;
+
+    @Autowired
+    private UserBehavierService userBehavierService;
 
     @Autowired
     private UserRepository userRepository;
@@ -121,13 +126,13 @@ class AuthBlockedDeletedAccountIntegrationTest {
         assertThatThrownBy(() -> login("bi.admin.khoa@example.com", PASSWORD))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
-                    assertThat(((BusinessException) ex).getCode()).isEqualTo("ACCOUNT_BLOCKED");
+                    assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_ACCOUNT_BLOCKED");
                     assertThat(((BusinessException) ex).getHttpStatus()).isEqualTo(403);
                 });
     }
 
     /**
-     * Mật khẩu SAI của một tài khoản bị khoá vẫn phải trả {@code INVALID_CREDENTIALS}: người
+     * Mật khẩu SAI của một tài khoản bị khoá vẫn phải trả {@code AUTH_CREDENTIALS_INVALID}: người
      * không biết mật khẩu thì cũng không đáng được biết tài khoản đó tồn tại và đang bị khoá.
      */
     @Test
@@ -137,7 +142,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
         assertThatThrownBy(() -> login("khoa.sai.mk@example.com", "sai-mat-khau"))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("INVALID_CREDENTIALS"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_CREDENTIALS_INVALID"));
     }
 
     /**
@@ -166,22 +171,22 @@ class AuthBlockedDeletedAccountIntegrationTest {
      */
     @Test
     void refresh_tokenIssuedBeforeBlocking_isRejected() {
-        AuthResponse session = register("refresh.bi.khoa@example.com");
+        LoginRes session = register("refresh.bi.khoa@example.com");
         markUser("refresh.bi.khoa@example.com", u -> u.setBlocked(true));
 
-        assertThatThrownBy(() -> authService.refresh(new RefreshRequest(session.refreshToken())))
+        assertThatThrownBy(() -> authService.refresh(new RefreshRequest(session.token().refresh())))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("REFRESH_TOKEN_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_REFRESH_TOKEN_INVALID"));
     }
 
     @Test
     void refresh_tokenOfDeletedAccount_isRejected() {
-        AuthResponse session = register("refresh.da.xoa@example.com");
+        LoginRes session = register("refresh.da.xoa@example.com");
         markUser("refresh.da.xoa@example.com", u -> u.setDeleted(true));
 
-        assertThatThrownBy(() -> authService.refresh(new RefreshRequest(session.refreshToken())))
+        assertThatThrownBy(() -> authService.refresh(new RefreshRequest(session.token().refresh())))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("REFRESH_TOKEN_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_REFRESH_TOKEN_INVALID"));
     }
 
     // -----------------------------------------------------------------
@@ -235,7 +240,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai.bi.khoa@example.com", rawCode, "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_RESET_CODE_INVALID"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches(PASSWORD, reload.getPassword())).isTrue();
@@ -249,7 +254,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai.da.xoa@example.com", rawCode, "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_RESET_CODE_INVALID"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches(PASSWORD, reload.getPassword())).isTrue();
@@ -261,7 +266,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
     @Test
     void verifiedAccount_returnsIsConfirmTrueAndRoleUser() {
-        AuthResponse response = register("truong.moi@example.com");
+        LoginRes response = register("truong.moi@example.com");
 
         // Luồng xác thực email đã làm (13/09/2026): helper register() đi qua /auth/verify-email
         // nên tài khoản đã ACTIVE. Trước đó test này kỳ vọng false vì luồng chưa tồn tại.
@@ -273,7 +278,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
     void getMe_returnsProfileDetails() {
         User user = registerAndReload("me.day.du@example.com");
 
-        var me = userProfileService.getMe(user.getId());
+        var me = userBehavierService.getMe(user.getId());
 
         assertThat(me.email()).isEqualTo("me.day.du@example.com");
         assertThat(me.plan()).isEqualTo(com.datn.financeapp.user.enums.UserPlan.FREE);
@@ -283,9 +288,9 @@ class AuthBlockedDeletedAccountIntegrationTest {
     @Test
     void login_confirmedAccount_succeedsAndCarriesIsConfirmTrue() {
         register("da.xac.thuc@example.com");
-        markUser("da.xac.thuc@example.com", u -> u.setConfirm(true));
+        markUser("da.xac.thuc@example.com", u -> u.setStatus(com.datn.financeapp.user.enums.UserStatus.ACTIVE));
 
-        AuthResponse response = login("da.xac.thuc@example.com", PASSWORD);
+        LoginRes response = login("da.xac.thuc@example.com", PASSWORD);
 
         assertThat(response.user().isConfirm()).isTrue();
         assertThat(response.user().roles()).extracting(r -> r.name()).contains(RoleName.ROLE_USER);
@@ -302,7 +307,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
      * {@code PENDING_VERIFY}, {@code login} trên tài khoản đó ném
      * {@code AuthAccountNotVerifiedException}. Mã OTP đọc thẳng từ Redis vì test không có hộp thư.
      */
-    private AuthResponse register(String email) {
+    private LoginRes register(String email) {
         authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
         String code = otpRepository
                 .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
@@ -317,8 +322,8 @@ class AuthBlockedDeletedAccountIntegrationTest {
         return userRepository.findByEmail(email).orElseThrow();
     }
 
-    private AuthResponse login(String email, String password) {
-        return authService.login(new EmailLoginRequest(email, password), "127.0.0.1", "junit");
+    private LoginRes login(String email, String password) {
+        return loginService.login(new EmailLoginRequest(email, password), new ClientInfo("127.0.0.1", "junit"));
     }
 
     // Đặt cờ trạng thái tay, đúng như ADMIN (hoặc luồng xoá tài khoản nhóm C) sẽ làm sau này.
@@ -349,3 +354,5 @@ class AuthBlockedDeletedAccountIntegrationTest {
         }
     }
 }
+
+

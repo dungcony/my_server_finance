@@ -193,7 +193,7 @@ class AuthRefreshRotationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error.code").value("REFRESH_TOKEN_INVALID"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_REFRESH_TOKEN_INVALID"));
 
         List<RefreshToken> active = refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(userId);
         assertThat(active).isEmpty();

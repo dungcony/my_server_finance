@@ -216,7 +216,7 @@ class WalletAdjustBalanceIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("INVALID_AMOUNT"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_AMOUNT_INVALID"));
     }
 
     @Test

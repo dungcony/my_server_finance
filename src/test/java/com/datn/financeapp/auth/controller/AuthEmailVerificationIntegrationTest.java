@@ -152,7 +152,7 @@ class AuthEmailVerificationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyReq)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("VERIFICATION_CODE_INVALID"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_VERIFICATION_CODE_INVALID"));
 
         User user = userRepository.findByEmail(email).orElseThrow();
         assertThat(user.isConfirm()).isFalse();
@@ -165,7 +165,7 @@ class AuthEmailVerificationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyReq)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("VERIFICATION_CODE_INVALID"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_VERIFICATION_CODE_INVALID"));
     }
 
     @Test

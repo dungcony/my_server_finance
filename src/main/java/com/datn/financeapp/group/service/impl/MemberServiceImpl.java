@@ -100,11 +100,11 @@ public class MemberServiceImpl implements MemberService {
         if (status == null)
             return memberRepository.findByGroupIdAndUserId(groupId, memberId)
                     .map(memberMapper::toResponse)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED));
 
         return memberRepository.findByGroupIdAndUserIdAndStatus(groupId, memberId, status)
                 .map(memberMapper::toResponse)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED));
     }
 
     @Override
@@ -148,9 +148,9 @@ public class MemberServiceImpl implements MemberService {
             return;
 
         if (mem.getStatus() == MemberStatus.ACTIVE)
-            throw new BusinessException(ErrorCode.ALREADY_IN_GROUP);
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS);
 
-        throw new BusinessException(ErrorCode.PENDING_IN_GROUP);
+        throw new BusinessException(ErrorCode.GROUP_MEMBER_PENDING);
     }
 
 

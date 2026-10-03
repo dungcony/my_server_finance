@@ -293,7 +293,7 @@ class RecurringCrudIntegrationTest {
 
         mockMvc.perform(post("/recurring/" + recurringId + "/run-now").header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("ALREADY_RUN_TODAY"));
+                .andExpect(jsonPath("$.error.code").value("RECURRING_ALREADY_RUN_TODAY"));
 
         assertThat(transactionCountForRecurring(recurringId)).isEqualTo(1);
     }
@@ -339,7 +339,7 @@ class RecurringCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("CATEGORY_TYPE_MISMATCH"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_CATEGORY_TYPE_MISMATCH"));
     }
 
     /**

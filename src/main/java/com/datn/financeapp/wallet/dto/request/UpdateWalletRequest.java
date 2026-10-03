@@ -10,7 +10,7 @@ import java.util.Map;
  * Body của PATCH /wallets/{id} (api/02-VI.md mục 5). Cố tình KHÔNG khai báo hai field số dư và
  * loại ví — chặn ngay ở tầng hợp đồng (T-02-04). {@code @JsonAnySetter} gom mọi field lạ trong
  * JSON gửi lên vào {@code extraFields} để WalletService phát hiện và trả
- * {@code BALANCE_NOT_EDITABLE} thay vì Jackson âm thầm bỏ qua.
+ * {@code WALLET_BALANCE_NOT_EDITABLE} thay vì Jackson âm thầm bỏ qua.
  */
 public class UpdateWalletRequest {
 

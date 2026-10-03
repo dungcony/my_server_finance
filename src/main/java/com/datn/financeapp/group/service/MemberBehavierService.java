@@ -38,7 +38,7 @@ public interface MemberBehavierService {
      * @param operatorId ID người gọi
      * @param groupId    ID nhóm
      * @param status     trạng thái cần lọc, có thể null
-     * @throws BusinessException nếu lọc {@code PENDING} mà không phải Owner ({@code FORBIDDEN_OWNER_REQUIRED})
+     * @throws BusinessException nếu lọc {@code PENDING} mà không phải Owner ({@code GROUP_OWNER_REQUIRED})
      */
     List<MemberRes> listMembers(UUID operatorId, UUID groupId, MemberStatus status);
 
@@ -59,7 +59,7 @@ public interface MemberBehavierService {
      * @param groupId    ID nhóm
      * @param memberId   ID thành viên cần được duyệt
      * @throws BusinessException nếu không phải Owner
-     *                           ({@code FORBIDDEN_OWNER_REQUIRED})
+     *                           ({@code GROUP_OWNER_REQUIRED})
      *                           hoặc thành viên không ở trạng thái PENDING
      */
     void approve(UUID operatorId, UUID groupId, UUID memberId);
@@ -74,7 +74,7 @@ public interface MemberBehavierService {
      * @param operatorId ID người thực hiện (phải là Owner)
      * @param groupId    ID nhóm
      * @throws BusinessException nếu không phải Owner
-     *                           ({@code FORBIDDEN_OWNER_REQUIRED})
+     *                           ({@code GROUP_OWNER_REQUIRED})
      *                           hoặc thành viên không ở trạng thái PENDING
      */
     int approveAll(UUID operatorId, UUID groupId);
@@ -89,7 +89,7 @@ public interface MemberBehavierService {
      * @param operatorId ID người thực hiện (phải là Owner)
      * @param groupId    ID nhóm
      * @throws BusinessException nếu không phải Owner
-     *                           ({@code FORBIDDEN_OWNER_REQUIRED})
+     *                           ({@code GROUP_OWNER_REQUIRED})
      *                           hoặc thành viên không ở trạng thái PENDING
      */
     void reject(UUID operatorId, UUID groupId, UUID memberId);
@@ -105,7 +105,7 @@ public interface MemberBehavierService {
      * @param groupId    ID nhóm
      * @return số thành viên đã bị từ chối (0 nếu không có ai đang chờ duyệt)
      * @throws BusinessException nếu không phải Owner
-     *                           ({@code FORBIDDEN_OWNER_REQUIRED})
+     *                           ({@code GROUP_OWNER_REQUIRED})
      */
     int rejectAll(UUID operatorId, UUID groupId);
 

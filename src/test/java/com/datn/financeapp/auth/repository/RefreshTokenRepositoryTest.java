@@ -87,16 +87,16 @@ class RefreshTokenRepositoryTest {
     }
 
     @Test
-    @DisplayName("findActiveByTokenHashForUpdate: Chỉ trả về token khi revokedAt là null")
-    void findActiveByTokenHashForUpdate_ReturnsActiveTokenOnly() {
+    @DisplayName("findByTokenHashAndRevokedAtIsNull: Chỉ trả về token khi revokedAt là null")
+    void findByTokenHashAndRevokedAtIsNull_ReturnsActiveTokenOnly() {
         createToken("active-hash-111", false);
         createToken("revoked-hash-222", true);
 
-        Optional<RefreshToken> active = refreshTokenRepository.findActiveByTokenHashForUpdate("active-hash-111");
+        Optional<RefreshToken> active = refreshTokenRepository.findByTokenHashAndRevokedAtIsNull("active-hash-111");
         assertThat(active).isPresent();
         assertThat(active.get().getTokenHash()).isEqualTo("active-hash-111");
 
-        Optional<RefreshToken> revoked = refreshTokenRepository.findActiveByTokenHashForUpdate("revoked-hash-222");
+        Optional<RefreshToken> revoked = refreshTokenRepository.findByTokenHashAndRevokedAtIsNull("revoked-hash-222");
         assertThat(revoked).isEmpty();
     }
 
@@ -132,7 +132,7 @@ class RefreshTokenRepositoryTest {
         int updatedCount = refreshTokenRepository.revokeByTokenHash("token-specific");
         assertThat(updatedCount).isEqualTo(1);
 
-        Optional<RefreshToken> token = refreshTokenRepository.findActiveByTokenHashForUpdate("token-specific");
+        Optional<RefreshToken> token = refreshTokenRepository.findByTokenHashAndRevokedAtIsNull("token-specific");
         assertThat(token).isEmpty();
     }
 
@@ -148,3 +148,4 @@ class RefreshTokenRepositoryTest {
         assertThat(list).allMatch(t -> t.getRevokedAt() == null);
     }
 }
+

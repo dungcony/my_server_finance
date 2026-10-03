@@ -6,6 +6,6 @@ import com.datn.financeapp.common.exception.ErrorCode;
 public class UserBlockedException extends BusinessException {
 
     public UserBlockedException() {
-        super(ErrorCode.ACCOUNT_BLOCKED);
+        super(ErrorCode.AUTH_ACCOUNT_BLOCKED);
     }
 }

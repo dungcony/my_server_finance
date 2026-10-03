@@ -37,7 +37,7 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
         String email = req.email().toLowerCase().trim();
 
         if (isLockedOut(email))
-            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_LOCKED);
 
         var user = userService.get(new UserGetReq(email));
 
@@ -53,13 +53,13 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
         saveLoginAttemp(email, isSuccess, client, Instant.now());
 
         if (!isSuccess)
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            throw new BusinessException(ErrorCode.AUTH_CREDENTIALS_INVALID);
 
         if (user.isBlocked())
-            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
 
         if (!user.isConfirm())
-            throw new BusinessException(ErrorCode.ACCOUNT_NOT_VERIFIED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
 
         return new LoginRes(
                 user,

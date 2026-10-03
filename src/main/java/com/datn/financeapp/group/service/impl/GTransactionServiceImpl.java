@@ -78,14 +78,14 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
         // validate người thực hiện bắt buộc phải là thành viên trong nhóm
         if (!memberService.allMemberInGroup(groupId, List.of(req.transactorId()))) {
-            throw new BusinessException(ErrorCode.GROUP_MEMBER_EXTSIS_NOT_IN);
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_IN_GROUP);
         }
 
         // tìm strategy phụ trách loại giao dịch này
         GTransactionBuilder strategy = createStrategies.stream()
                 .filter(s -> s.supports(req.type()))
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED));
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED));
 
         // lấy trạng thái kiểm duyệt dựa vào quyền người thực hiện
         GTransactionStatus status = strategy.determineStatus(authInfo);
@@ -169,7 +169,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
         // giao dịch điều chỉnh từ kiểm kê không được phép sửa
         if (txn.getType() == GTransactionType.ADJUSTMENT_UP || txn.getType() == GTransactionType.ADJUSTMENT_DOWN) {
-            throw new BusinessException(ErrorCode.ADJUSTMENT_NOT_EDITABLE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_ADJUSTMENT_NOT_EDITABLE);
         }
 
         // kiểm tra quyền sửa giao dịch và thời gian hợp lệ
@@ -185,7 +185,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         updateStrategies.stream()
                 .filter(s -> s.supports(txn.getType()))
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED))
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED))
                 .update(txn, operatorId, groupId, req, authInfo);
 
         // cộng dồn delta mới nếu trạng thái mới là CONFIRMED
@@ -314,13 +314,13 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     private void requireReviewer(UUID groupId, UUID operatorId, boolean allowArchived) {
         MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, allowArchived);
         if (!info.isOwner() && !info.isTreasurer())
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_TREASURER_REQUIRED);
     }
 
     private GTransaction findPendingTransaction(UUID transactionId, UUID groupId) {
         GTransaction txn = findActiveTransaction(transactionId, groupId);
         if (txn.getStatus() != GTransactionStatus.PENDING)
-            throw new BusinessException(ErrorCode.TRANSACTION_NOT_PENDING);
+            throw new BusinessException(ErrorCode.GROUP_TXN_NOT_PENDING);
         return txn;
     }
 

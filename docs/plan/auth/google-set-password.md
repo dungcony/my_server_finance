@@ -11,7 +11,7 @@
 ## 0. Nguyên nhân (giữ lại để đối chiếu)
 
 Tài khoản tạo bằng Google có `password_hash = NULL` (`AccountServiceImpl.createGoogleUser`). Đường đổi mật khẩu chặn
-bằng `NO_PASSWORD_SET`, quên mật khẩu im lặng bỏ qua, đăng ký trùng email bị từ chối → không có cách nào đặt mật khẩu
+bằng `AUTH_PASSWORD_NOT_SET`, quên mật khẩu im lặng bỏ qua, đăng ký trùng email bị từ chối → không có cách nào đặt mật khẩu
 lần đầu. API mới bổ sung đúng đường còn thiếu đó.
 
 ---
@@ -23,11 +23,11 @@ lần đầu. API mới bổ sung đúng đường còn thiếu đó.
 | `user/controller/UserController.java`                      | Thêm `POST /me/password` (không body) → gọi `AccountService.generatePassword(userId)`         |
 | `user/service/AccountService.java`                         | Thêm `void generatePassword(UUID userId)`                                                      |
 | `user/service/impl/AccountServiceImpl.java`                | Hiện thực: kiểm `password == null` → sinh mật khẩu → băm, lưu → gửi mail                       |
-| `user/exception/PasswordAlreadySetException.java` + `ErrorCode` | Lỗi khi tài khoản **đã có** mật khẩu: `PASSWORD_ALREADY_SET` (409)                         |
+| `user/exception/PasswordAlreadySetException.java` + `ErrorCode` | Lỗi khi tài khoản **đã có** mật khẩu: `AUTH_PASSWORD_ALREADY_SET` (409)                         |
 | `common/mail/EmailService.java` + `SmtpEmailServiceImpl` + `LogEmailServiceImpl` | Thêm `sendGeneratedPassword(email, rawPassword)`                          |
 | `common/util/` (hoặc `user/helper/`)                       | Hàm sinh mật khẩu ngẫu nhiên bằng `SecureRandom` (thành class riêng để test được)             |
 | `user/dto/response/UserProfileResponse.java` + `user/mapper/UserMapper.java` | Thêm `hasPassword` (JSON `has_password`); mapper `toProfile` thêm `@Mapping(target = "hasPassword", expression = "java(user.getPassword() != null)")` — `getMe` và `updateMe` cùng dùng `toProfile` nên cả hai đều có cờ |
-| `api/01-EXTEND-USER-PROFILE.md`, `THIET-KE-PHAN-QUYEN.md` (dòng 234) | Thêm mục API mới; ghi `NO_PASSWORD_SET` ở đổi MK vẫn đúng, trỏ sang API mới làm lối ra |
+| `api/01-EXTEND-USER-PROFILE.md`, `THIET-KE-PHAN-QUYEN.md` (dòng 234) | Thêm mục API mới; ghi `AUTH_PASSWORD_NOT_SET` ở đổi MK vẫn đúng, trỏ sang API mới làm lối ra |
 | Test (mục 3)                                               | Thêm test                                                                                      |
 
 Không đụng: schema CSDL (`password_hash` đã nullable từ V16), `register`, `loginWithGoogle`, `changePassword`,
@@ -52,7 +52,7 @@ lần 2 bị từ chối vì mật khẩu đã tồn tại, nên tự an toàn.
 | Trường hợp                         | Kết quả                                        |
 | ---------------------------------- | ---------------------------------------------- |
 | `password == null`                 | Sinh, lưu, gửi mail → 200                      |
-| `password != null`                 | 409 `PASSWORD_ALREADY_SET`                     |
+| `password != null`                 | 409 `AUTH_PASSWORD_ALREADY_SET`                     |
 | Tài khoản bị khoá / đã xoá         | Như mọi API khác: bị chặn từ cửa xác thực (5 cửa) |
 
 ### Code xem trước
@@ -105,7 +105,7 @@ public void generatePassword(UUID userId) {
 | `password != null` → ném `PasswordAlreadySetException`, không gửi mail, không đổi hash        | Unit        |
 | `PasswordGenerator`: đủ độ dài, đủ nhóm ký tự, hai lần gọi khác nhau                          | Unit        |
 | Đăng nhập Google → `POST /me/password` → `login` email + mật khẩu nhận được qua mail thành công | Integration |
-| Gọi lần hai → 409 `PASSWORD_ALREADY_SET`                                                      | Integration |
+| Gọi lần hai → 409 `AUTH_PASSWORD_ALREADY_SET`                                                      | Integration |
 | `GET /users/me` trả `has_password=false` cho tài khoản Google thuần, `true` cho tài khoản email; sau khi gọi `POST /me/password` thì thành `true` | Integration |
 | Không có token → 401                                                                          | Integration |
 | Tài khoản email thường (đã có MK) gọi → 409, mật khẩu cũ vẫn đăng nhập được                   | Integration |

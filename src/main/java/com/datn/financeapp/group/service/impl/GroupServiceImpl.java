@@ -72,10 +72,10 @@ public class GroupServiceImpl implements GroupService {
     public GroupDetailRes create(UUID operatorId, GroupCreateReq req) {
 
         if (req.members().contains(operatorId))
-            throw new BusinessException(ErrorCode.GROUP_CREATE_MEMBER_CAN_NOT_OWNER);
+            throw new BusinessException(ErrorCode.GROUP_OWNER_IN_MEMBER_LIST);
 
         if (req.members().isEmpty())
-            throw new BusinessException(ErrorCode.GROUP_CREATE_NOT_ONLY_ONE);
+            throw new BusinessException(ErrorCode.GROUP_MINIMUM_MEMBERS_REQUIRED);
 
         Instant now = Instant.now();
         UUID groupId = UUID.randomUUID();
@@ -138,7 +138,7 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        // tư cách thành viên được kiểm tra khi dựng chi tiết: người ngoài nhóm bị FORBIDDEN_NOT_GROUP_MEMBER
+        // tư cách thành viên được kiểm tra khi dựng chi tiết: người ngoài nhóm bị GROUP_MEMBER_REQUIRED
         return buildGroupDetailRes(group, operatorId);
     }
 
@@ -179,7 +179,7 @@ public class GroupServiceImpl implements GroupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
         if (gTransactionService.countPendingForGroup(groupId) > 0)
-            throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
+            throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
         group.setStatus(GroupStatus.ARCHIVED);
         group.setUpdatedAt(Instant.now());
@@ -213,10 +213,10 @@ public class GroupServiceImpl implements GroupService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
         if (group.getFund().getCurrentBalance() != null && group.getFund().getCurrentBalance() != 0)
-            throw new BusinessException(ErrorCode.CANNOT_DELETE_GROUP_WITH_BALANCE);
+            throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
 
         if (gTransactionService.countPendingForGroup(groupId) > 0)
-            throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
+            throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
 
         group.setStatus(GroupStatus.DELETED);
@@ -254,7 +254,7 @@ public class GroupServiceImpl implements GroupService {
             );
             log.info("Successfully joined the group.");
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(ErrorCode.ALREADY_IN_GROUP);
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS);
         }
 
     }
@@ -282,7 +282,7 @@ public class GroupServiceImpl implements GroupService {
         MemberRes currentMember = members.stream()
                 .filter(m -> m.userId().equals(operatorId))
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED));
 
         FundRes fund = (group.getFund() != null)
                 ? fundMapper.toResponse(group.getFund())

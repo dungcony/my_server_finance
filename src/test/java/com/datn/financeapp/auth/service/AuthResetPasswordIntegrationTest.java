@@ -157,6 +157,6 @@ class AuthResetPasswordIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("trung.mk@example.com", rawResetCode, "matkhaucu123")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("NEW_PASSWORD_SAME_AS_OLD"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_PASSWORD_SAME_AS_OLD"));
     }
 }

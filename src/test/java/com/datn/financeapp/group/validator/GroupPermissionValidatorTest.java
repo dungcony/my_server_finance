@@ -147,7 +147,7 @@ class GroupPermissionValidatorTest {
     }
 
     @Test
-    @DisplayName("verifyOwner: thành viên thường bị chặn FORBIDDEN_OWNER_REQUIRED dù cho phép nhóm lưu trữ")
+    @DisplayName("verifyOwner: thành viên thường bị chặn GROUP_OWNER_REQUIRED dù cho phép nhóm lưu trữ")
     void verifyOwner_NormalMember_ForbiddenOwnerRequired() {
         when(groupRepository.findAuthInfo(groupId, userId))
                 .thenReturn(Optional.of(info(GroupStatus.ACTIVE, MemberRole.MEMBER)));
@@ -155,7 +155,7 @@ class GroupPermissionValidatorTest {
         assertThatThrownBy(() -> validator.verifyOwner(groupId, userId, true))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.FORBIDDEN_OWNER_REQUIRED.getCode());
+                .isEqualTo(ErrorCode.GROUP_OWNER_REQUIRED.getCode());
     }
 
     @Test

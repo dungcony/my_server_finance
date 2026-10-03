@@ -231,7 +231,7 @@ flowchart LR
     5. Hệ thống trả về HTTP `200 OK` (chỉ trả trạng thái, không trả dữ liệu sổ nhóm bảo mật).
 - **Luồng ngoại lệ (Exception Flows):**
     - `404 INVITE_CODE_INVALID`: Mã mời sai ký tự hoặc không tồn tại.
-    - `409 ALREADY_IN_GROUP`: Người dùng đã là thành viên hoặc đang có yêu cầu chờ duyệt.
+    - `409 GROUP_MEMBER_ALREADY_EXISTS`: Người dùng đã là thành viên hoặc đang có yêu cầu chờ duyệt.
     - `409 GROUP_ARCHIVED`: Nhóm đang ở trạng thái lưu trữ (`ARCHIVED`), không nhận thêm người.
 
 ---
@@ -246,7 +246,7 @@ flowchart LR
     3. Trả về mã mời trong trường `invite_code` của `GroupDetailRes` hoặc `GroupSummaryRes`.
     4. Thành viên sao chép và gửi mã mời cho người khác.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 FORBIDDEN_NOT_GROUP_MEMBER`: Người gọi không phải thành viên `ACTIVE` của nhóm.
+    - `403 GROUP_MEMBER_REQUIRED`: Người gọi không phải thành viên `ACTIVE` của nhóm.
 
 ---
 
@@ -265,7 +265,7 @@ flowchart LR
       viên.
     - **Hàng loạt:** `Owner` gọi `POST /v1/groups/{id}/rejects`. Xoá toàn bộ bản ghi `PENDING` của nhóm.
 - **Luồng ngoại lệ:**
-    - `403 FORBIDDEN_OWNER_REQUIRED`: Người gọi không phải chủ nhóm.
+    - `403 GROUP_OWNER_REQUIRED`: Người gọi không phải chủ nhóm.
     - `400/404`: Thành viên không tồn tại hoặc không ở trạng thái `PENDING`.
 
 ---
@@ -280,7 +280,7 @@ flowchart LR
     3. Thêm các thành viên vào `group_members` với `status = 'ACTIVE'`, `role = 'MEMBER'`, `joined_at = now()`.
     4. Trả về `200 OK` kèm danh sách thành viên vừa thêm.
 - **Luồng ngoại lệ:**
-    - `403 FORBIDDEN_OWNER_REQUIRED`: Người gọi không phải chủ nhóm.
+    - `403 GROUP_OWNER_REQUIRED`: Người gọi không phải chủ nhóm.
     - `409 GROUP_ARCHIVED`: Nhóm đang lưu trữ.
 
 ---
@@ -313,8 +313,8 @@ flowchart LR
     3. Quỹ nhóm không tự đổi người giữ (nếu chủ cũ đang giữ quỹ thì vẫn giữ cho đến khi bàn giao).
     4. Hệ thống phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `400 NEW_OWNER_NOT_MEMBER`: Người nhận không phải là thành viên `ACTIVE`.
-    - `400 CANNOT_TRANSFER_TO_SELF`: Người nhận trùng với chủ nhóm hiện tại.
+    - `400 GROUP_NEW_OWNER_NOT_MEMBER`: Người nhận không phải là thành viên `ACTIVE`.
+    - `400 GROUP_TRANSFER_TO_SELF`: Người nhận trùng với chủ nhóm hiện tại.
     - `409 GROUP_ARCHIVED`: Nhóm đang lưu trữ.
 
 ---
@@ -329,8 +329,8 @@ flowchart LR
     3. Cập nhật `group_funds.keepper_id`.
     4. Trả về `200 OK` kèm thông tin quỹ mới (`FundRes`).
 - **Luồng ngoại lệ (Exception Flows):**
-    - `400 HOLDER_NOT_MEMBER`: Người được bàn giao không phải thành viên `ACTIVE`.
-    - `403 FORBIDDEN_OWNER_REQUIRED`: Người gọi không phải là chủ nhóm.
+    - `400 GROUP_FUND_HOLDER_NOT_MEMBER`: Người được bàn giao không phải thành viên `ACTIVE`.
+    - `403 GROUP_OWNER_REQUIRED`: Người gọi không phải là chủ nhóm.
 
 ---
 
@@ -339,8 +339,8 @@ flowchart LR
 - **Tác nhân:** `Owner`
 - **Mô tả:** Chủ nhóm mời một thành viên `ACTIVE` ra khỏi nhóm.
 - **Tiền điều kiện:**
-    - Không thể tự mời chính mình rời (`409 CANNOT_REMOVE_OWNER`).
-    - Người bị mời rời **không được đang giữ quỹ** (`409 TREASURER_MUST_TRANSFER_FIRST` — chủ nhóm phải dùng UC06 chuyển
+    - Không thể tự mời chính mình rời (`409 GROUP_OWNER_NOT_REMOVABLE`).
+    - Người bị mời rời **không được đang giữ quỹ** (`409 GROUP_TREASURER_TRANSFER_REQUIRED` — chủ nhóm phải dùng UC06 chuyển
       quỹ trước).
     - Nếu nhóm **bật tính thừa thiếu**: Nhóm không còn giao dịch `PENDING` và phần của người đó (`net_balance`) phải
       bằng 0 ([rule.md](rule.md) quy tắc 27).
@@ -352,9 +352,9 @@ flowchart LR
         - Tự động chuyển toàn bộ giao dịch `PENDING` do người này tạo (`created_by`) sang `status = 'REJECTED'`.
     4. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `409 TREASURER_MUST_TRANSFER_FIRST`: Thành viên bị mời đang giữ quỹ.
-    - `409 HAS_PENDING_TRANSACTIONS`: Nhóm còn khoản chờ duyệt (khi bật tính thừa thiếu).
-    - `409 MEMBER_SHARE_NOT_ZERO`: Người bị mời còn nợ hoặc còn tiền trong quỹ (khi bật tính thừa thiếu).
+    - `409 GROUP_TREASURER_TRANSFER_REQUIRED`: Thành viên bị mời đang giữ quỹ.
+    - `409 GROUP_PENDING_TXN_EXIST`: Nhóm còn khoản chờ duyệt (khi bật tính thừa thiếu).
+    - `409 GROUP_MEMBER_SHARE_NOT_ZERO`: Người bị mời còn nợ hoặc còn tiền trong quỹ (khi bật tính thừa thiếu).
 
 ---
 
@@ -363,8 +363,8 @@ flowchart LR
 - **Tác nhân:** `Member`
 - **Mô tả:** Thành viên chủ động rời khỏi nhóm chung quỹ.
 - **Tiền điều kiện:**
-    - Không phải là `OWNER` (`409 OWNER_MUST_TRANSFER_FIRST` — phải dùng UC05 chuyển quyền trước).
-    - Không đang giữ quỹ (`409 TREASURER_MUST_TRANSFER_FIRST` — phải yêu cầu chủ nhóm bàn giao quỹ trước).
+    - Không phải là `OWNER` (`409 GROUP_OWNER_TRANSFER_REQUIRED` — phải dùng UC05 chuyển quyền trước).
+    - Không đang giữ quỹ (`409 GROUP_TREASURER_TRANSFER_REQUIRED` — phải yêu cầu chủ nhóm bàn giao quỹ trước).
     - Nếu bật tính thừa thiếu: Phải tất toán phần trong quỹ về 0 (`net_balance == 0`) và không còn khoản `PENDING`. Nếu
       tắt tính thừa thiếu: Rời tự do.
 - **Luồng chính (Success Flow):**
@@ -376,9 +376,9 @@ flowchart LR
           (`created_by`).
     4. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `409 OWNER_MUST_TRANSFER_FIRST`: Chủ nhóm cố rời nhóm mà chưa chuyển quyền.
-    - `409 TREASURER_MUST_TRANSFER_FIRST`: Thủ quỹ cố rời nhóm mà chưa bàn giao quỹ.
-    - `409 MEMBER_SHARE_NOT_ZERO`: Phần trong quỹ khác 0 (khi bật tính thừa thiếu).
+    - `409 GROUP_OWNER_TRANSFER_REQUIRED`: Chủ nhóm cố rời nhóm mà chưa chuyển quyền.
+    - `409 GROUP_TREASURER_TRANSFER_REQUIRED`: Thủ quỹ cố rời nhóm mà chưa bàn giao quỹ.
+    - `409 GROUP_MEMBER_SHARE_NOT_ZERO`: Phần trong quỹ khác 0 (khi bật tính thừa thiếu).
 
 ---
 
@@ -388,14 +388,14 @@ flowchart LR
 - **Mô tả:** Đưa nhóm vào trạng thái lưu trữ (chỉ xem, đóng băng mọi thao tác ghi) hoặc mở lại hoạt động bình thường.
 - **Luồng chính - Lưu trữ (Archive):**
     1. `Owner` gọi `POST /v1/groups/{id}/archive`.
-    2. Kiểm tra nhóm đang `ACTIVE` và **không còn khoản PENDING** (`409 HAS_PENDING_TRANSACTIONS`).
+    2. Kiểm tra nhóm đang `ACTIVE` và **không còn khoản PENDING** (`409 GROUP_PENDING_TXN_EXIST`).
     3. Cập nhật `groups.status = 'ARCHIVED'`. Trả về `200 OK`.
 - **Luồng chính - Mở lại (Unarchive):**
     1. `Owner` gọi `POST /v1/groups/{id}/unarchive`.
     2. Cập nhật `groups.status = 'ACTIVE'`. Trả về `200 OK`.
 - **Luồng ngoại lệ:**
-    - `403 FORBIDDEN_OWNER_REQUIRED`: Người gọi không phải chủ nhóm.
-    - `409 HAS_PENDING_TRANSACTIONS`: Còn khoản chờ duyệt khi lưu trữ.
+    - `403 GROUP_OWNER_REQUIRED`: Người gọi không phải chủ nhóm.
+    - `409 GROUP_PENDING_TXN_EXIST`: Còn khoản chờ duyệt khi lưu trữ.
 
 ---
 
@@ -414,8 +414,8 @@ flowchart LR
         - Cập nhật `groups.status = 'DELETED'`.
     4. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `409 HAS_PENDING_TRANSACTIONS`: Còn khoản chờ duyệt.
-    - `409 CANNOT_DELETE_GROUP_WITH_BALANCE`: Quỹ còn tiền hoặc còn người có số dư thừa/thiếu.
+    - `409 GROUP_PENDING_TXN_EXIST`: Còn khoản chờ duyệt.
+    - `409 GROUP_DELETE_BALANCE_NOT_ZERO`: Quỹ còn tiền hoặc còn người có số dư thừa/thiếu.
 
 ---
 
@@ -443,11 +443,11 @@ flowchart LR
     4. Lưu bản ghi `group_transactions` và các dòng `group_transaction_participants`.
     5. Trả về `201 Created` kèm `GroupTransactionDetailRes`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `400 DATE_IN_FUTURE`: Thời điểm phát sinh ở tương lai.
-    - `400 PAYER_NOT_MEMBER` / `PARTICIPANT_NOT_MEMBER`: Người trả hoặc người chia tiền không có mặt tại thời điểm giao
+    - `400 GROUP_TXN_DATE_IN_FUTURE`: Thời điểm phát sinh ở tương lai.
+    - `400 GROUP_TXN_PAYER_NOT_MEMBER` / `GROUP_TXN_PARTICIPANT_NOT_MEMBER`: Người trả hoặc người chia tiền không có mặt tại thời điểm giao
       dịch.
-    - `400 SYSTEM_CATEGORY_REQUIRED`: Danh mục không phải danh mục hệ thống loại chi.
-    - `400 PARTICIPANTS_SUM_MISMATCH`: Tổng tiền tự nhập không khớp với số tiền chi.
+    - `400 GROUP_TXN_SYSTEM_CATEGORY_REQUIRED`: Danh mục không phải danh mục hệ thống loại chi.
+    - `400 GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`: Tổng tiền tự nhập không khớp với số tiền chi.
     - `409 GROUP_ARCHIVED`: Nhóm đang lưu trữ.
 
 ---
@@ -468,8 +468,8 @@ flowchart LR
         - Thành viên tự ghi → `PENDING` (chờ thủ quỹ nhận được tiền thật rồi duyệt).
     4. Lưu bản ghi và trả về `201 Created`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `400 MONEY_SOURCE_INVALID`: Góp quỹ mà chọn nguồn tiền `FUND`.
-    - `400 PARTICIPANTS_NOT_ALLOWED`: Góp quỹ có gắn người tham gia chia tiền.
+    - `400 GROUP_TXN_MONEY_SOURCE_INVALID`: Góp quỹ mà chọn nguồn tiền `FUND`.
+    - `400 GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`: Góp quỹ có gắn người tham gia chia tiền.
 
 ---
 
@@ -493,8 +493,8 @@ flowchart LR
     2. Chuyển `status = 'REJECTED'`, gán thông tin người duyệt. Quỹ không bị tác động.
     3. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 FORBIDDEN_TREASURER_REQUIRED`: Người duyệt không phải Thủ quỹ hoặc Chủ nhóm.
-    - `409 TRANSACTION_NOT_PENDING`: Giao dịch đã được duyệt hoặc bị từ chối trước đó.
+    - `403 GROUP_TREASURER_REQUIRED`: Người duyệt không phải Thủ quỹ hoặc Chủ nhóm.
+    - `409 GROUP_TXN_NOT_PENDING`: Giao dịch đã được duyệt hoặc bị từ chối trước đó.
 
 ---
 
@@ -516,8 +516,8 @@ flowchart LR
         - Gửi sự kiện `FundBalanceChangedEvent` nếu có chênh lệch delta số dư quỹ.
     3. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 FORBIDDEN_TRANSACTION_EDIT`: Thành viên thường cố sửa giao dịch của người khác.
-    - `400 TRANSACTION_TYPE_NOT_ALLOWED`: Cố ý đổi `type` sang loại khác hoặc sửa giao dịch kiểm kê (`ADJUSTMENT_*`).
+    - `403 GROUP_TXN_EDIT_FORBIDDEN`: Thành viên thường cố sửa giao dịch của người khác.
+    - `400 GROUP_TXN_TYPE_NOT_ALLOWED`: Cố ý đổi `type` sang loại khác hoặc sửa giao dịch kiểm kê (`ADJUSTMENT_*`).
 
 ---
 
@@ -533,7 +533,7 @@ flowchart LR
           `group_funds.current_balance`.
     3. Trả về `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 FORBIDDEN_OWNER_REQUIRED`: Thành viên thường hoặc thủ quỹ cố thực hiện xoá giao dịch.
+    - `403 GROUP_OWNER_REQUIRED`: Thành viên thường hoặc thủ quỹ cố thực hiện xoá giao dịch.
 
 ---
 
@@ -556,8 +556,8 @@ flowchart LR
     3. Khoá dòng quỹ, trừ tiền quỹ, ghi nhận giao dịch `CONFIRMED`.
     4. Trả về `201 Created`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 FORBIDDEN_TREASURER_REQUIRED`: Không có quyền thủ quỹ/chủ nhóm.
-    - `400 CANNOT_REFUND_EXCEED_BALANCE`: Số tiền trả vượt quá số còn lại trong quỹ của người nhận.
+    - `403 GROUP_TREASURER_REQUIRED`: Không có quyền thủ quỹ/chủ nhóm.
+    - `400 GROUP_TXN_REFUND_EXCEEDS_BALANCE`: Số tiền trả vượt quá số còn lại trong quỹ của người nhận.
 
 ---
 
@@ -582,8 +582,8 @@ flowchart LR
           (không ghi đè).
     3. Trả về `200 OK` kèm kết quả đối soát (`GroupFundReconcileRes`).
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 FORBIDDEN_TREASURER_REQUIRED`: Không có quyền thủ quỹ hoặc chủ nhóm.
-    - `400 DATE_IN_FUTURE`: Thời điểm kiểm kê ở tương lai.
+    - `403 GROUP_TREASURER_REQUIRED`: Không có quyền thủ quỹ hoặc chủ nhóm.
+    - `400 GROUP_TXN_DATE_IN_FUTURE`: Thời điểm kiểm kê ở tương lai.
 
 ---
 
@@ -599,7 +599,7 @@ flowchart LR
     2. Gọi `GET /v1/groups/{id}` để xem chi tiết nhóm, danh sách thành viên, vai trò của mình và thông tin quỹ nhóm
        (`GroupDetailRes.fund`).
 - **Luồng ngoại lệ:**
-    - `403 FORBIDDEN_NOT_GROUP_MEMBER`: Người gọi không phải là thành viên `ACTIVE` của nhóm.
+    - `403 GROUP_MEMBER_REQUIRED`: Người gọi không phải là thành viên `ACTIVE` của nhóm.
 
 ---
 

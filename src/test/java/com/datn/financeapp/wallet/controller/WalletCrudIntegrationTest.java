@@ -190,7 +190,7 @@ class WalletCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("BALANCE_NOT_EDITABLE"));
+                .andExpect(jsonPath("$.error.code").value("WALLET_BALANCE_NOT_EDITABLE"));
     }
 
     @Test
@@ -205,7 +205,7 @@ class WalletCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("BALANCE_NOT_EDITABLE"));
+                .andExpect(jsonPath("$.error.code").value("WALLET_BALANCE_NOT_EDITABLE"));
     }
 
     @Test
@@ -213,7 +213,7 @@ class WalletCrudIntegrationTest {
         String token = registerAndGetAccessToken("xoa.co.gd@example.com");
         String walletId = createWallet(token, "Ví Có Giao Dịch", "bank", 1_000_000);
         // Ví thứ hai để ví đang xoá KHÔNG phải ví cuối cùng — nếu không, luật
-        // CANNOT_DELETE_LAST_WALLET chặn trước và test này không còn kiểm được điều nó định kiểm.
+        // WALLET_LAST_NOT_DELETABLE chặn trước và test này không còn kiểm được điều nó định kiểm.
         createWallet(token, "Ví Dự Phòng", "cash", 0);
 
         Map<?, ?> parsed = objectMapper.readValue(
@@ -241,7 +241,7 @@ class WalletCrudIntegrationTest {
 
         mockMvc.perform(delete("/wallets/" + walletId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CANNOT_DELETE_LAST_WALLET"));
+                .andExpect(jsonPath("$.error.code").value("WALLET_LAST_NOT_DELETABLE"));
     }
 
     @Test

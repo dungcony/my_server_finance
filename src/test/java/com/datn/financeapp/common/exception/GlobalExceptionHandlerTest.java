@@ -47,7 +47,7 @@ public class GlobalExceptionHandlerTest {
         mockMvc.perform(post("/test/business").with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("EMAIL_ALREADY_EXISTS"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_EMAIL_ALREADY_EXISTS"));
     }
 
     @Test
@@ -71,7 +71,7 @@ public class GlobalExceptionHandlerTest {
 
         @PostMapping("/test/business")
         public void business() {
-            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
         }
 
         @PostMapping("/test/runtime")

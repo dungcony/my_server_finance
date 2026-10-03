@@ -55,6 +55,9 @@ class AdminUserServiceTest {
     @Mock
     private AuthService authService;
 
+    @org.mockito.Mock
+    private com.datn.financeapp.auth.service.TokenService tokenService;
+
     @Mock
     private BlacklistedUserRepository blacklistedUserRepository;
 
@@ -101,7 +104,7 @@ class AdminUserServiceTest {
     void blockUser_SelfBlock_ThrowsValidationError() {
         BlockUserRequest req = new BlockUserRequest(adminId, "Tự khóa");
 
-        assertThatThrownBy(() -> adminUserService.blockUser(req))
+        assertThatThrownBy(() -> adminUserService.lockUser(java.util.UUID.randomUUID(), req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VALIDATION_ERROR.getCode())
                 .hasMessageContaining("Không được phép tự khóa tài khoản của chính mình.");
@@ -115,7 +118,7 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.empty());
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Vi phạm chính sách");
 
-        assertThatThrownBy(() -> adminUserService.blockUser(req))
+        assertThatThrownBy(() -> adminUserService.lockUser(java.util.UUID.randomUUID(), req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND.getCode())
                 .hasMessageContaining("Không tìm thấy người dùng.");
@@ -136,7 +139,7 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(deletedUser));
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Vi phạm");
 
-        assertThatThrownBy(() -> adminUserService.blockUser(req))
+        assertThatThrownBy(() -> adminUserService.lockUser(java.util.UUID.randomUUID(), req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND.getCode())
                 .hasMessageContaining("Không tìm thấy người dùng.");
@@ -159,12 +162,12 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
 
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Spam hệ thống");
-        adminUserService.blockUser(req);
+        adminUserService.lockUser(java.util.UUID.randomUUID(), req);
 
         assertThat(user.getStatus()).isEqualTo(UserStatus.BLOCKED);
         verify(userRepository).save(user);
         verify(blacklistedUserRepository).add(targetUserId, "Spam hệ thống", 3600L);
-        verify(authService).revokeAllTokensForUser(targetUserId);
+        verify(tokenService).revokeAllByUserId(targetUserId);
     }
 
     @Test
@@ -230,3 +233,4 @@ class AdminUserServiceTest {
         verify(userRoleRepository, never()).save(any());
     }
 }
+

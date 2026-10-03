@@ -13,7 +13,7 @@ public interface GoogleService {
     /**
      * @param idToken chuỗi JWT client gửi lên
      * @return thông tin đã kiểm chứng
-     * @throws BusinessException mã{@code INVALID_GOOGLE_TOKEN} nếu chữ ký sai, hết hạn
+     * @throws BusinessException mã{@code AUTH_GOOGLE_TOKEN_INVALID} nếu chữ ký sai, hết hạn
      */
     GoogleUserInfo verifyIdToken(String idToken);
 

@@ -69,7 +69,7 @@ public interface GroupService {
      * @param groupId    ID nhóm cần xem
      * @return Chi tiết nhóm (thông tin nhóm, vai trò {@code myRole}, quỹ nhóm, danh sách thành viên)
      * @throws BusinessException nếu nhóm không tồn tại ({@code GROUP_NOT_FOUND})
-     *                           hoặc người dùng không thuộc nhóm ({@code FORBIDDEN_NOT_GROUP_MEMBER})
+     *                           hoặc người dùng không thuộc nhóm ({@code GROUP_MEMBER_REQUIRED})
      */
     GroupDetailRes detail(UUID operatorId, UUID groupId);
 
@@ -81,7 +81,7 @@ public interface GroupService {
      * @param groupId    ID nhóm cần cập nhật
      * @param req        Dữ liệu cập nhật
      * @return Chi tiết nhóm sau khi cập nhật
-     * @throws BusinessException nếu không phải Owner ({@code FORBIDDEN_OWNER_REQUIRED})
+     * @throws BusinessException nếu không phải Owner ({@code GROUP_OWNER_REQUIRED})
      *                           hoặc không tìm thấy nhóm ({@code GROUP_NOT_FOUND})
      */
     GroupDetailRes update(UUID operatorId, UUID groupId, GroupUpdateReq req);
@@ -95,8 +95,8 @@ public interface GroupService {
      *
      * @param operatorId ID người thực hiện (phải là Owner)
      * @param groupId    ID nhóm cần lưu trữ
-     * @throws BusinessException nếu không phải Owner ({@code FORBIDDEN_OWNER_REQUIRED})
-     *                           hoặc còn giao dịch chờ duyệt ({@code GROUP_HAS_PENDING_TRANSACTIONS})
+     * @throws BusinessException nếu không phải Owner ({@code GROUP_OWNER_REQUIRED})
+     *                           hoặc còn giao dịch chờ duyệt ({@code GROUP_PENDING_TXN_EXIST})
      */
     void archive(UUID operatorId, UUID groupId);
 
@@ -106,7 +106,7 @@ public interface GroupService {
      *
      * @param operatorId ID người thực hiện (phải là Owner)
      * @param groupId    ID nhóm cần mở lại
-     * @throws BusinessException nếu không phải Owner ({@code FORBIDDEN_OWNER_REQUIRED})
+     * @throws BusinessException nếu không phải Owner ({@code GROUP_OWNER_REQUIRED})
      */
     void unarchive(UUID operatorId, UUID groupId);
 
@@ -119,8 +119,8 @@ public interface GroupService {
      *
      * @param operatorId ID người thực hiện (phải là Owner)
      * @param groupId    ID nhóm cần xóa
-     * @throws BusinessException nếu không phải Owner, quỹ còn số dư ({@code CANNOT_DELETE_GROUP_WITH_BALANCE}),
-     *                           hoặc còn giao dịch chờ duyệt ({@code GROUP_HAS_PENDING_TRANSACTIONS})
+     * @throws BusinessException nếu không phải Owner, quỹ còn số dư ({@code GROUP_DELETE_BALANCE_NOT_ZERO}),
+     *                           hoặc còn giao dịch chờ duyệt ({@code GROUP_PENDING_TXN_EXIST})
      */
     void delete(UUID operatorId, UUID groupId);
 
@@ -135,7 +135,7 @@ public interface GroupService {
      * @param req        DTO chứa mã mời
      * @throws BusinessException nếu mã mời không hợp lệ ({@code INVITE_CODE_INVALID}),
      *                           nhóm đã lưu trữ ({@code GROUP_ARCHIVED}),
-     *                           hoặc đã là thành viên trong nhóm ({@code ALREADY_IN_GROUP})
+     *                           hoặc đã là thành viên trong nhóm ({@code GROUP_MEMBER_ALREADY_EXISTS})
      */
     void joinByCode(UUID operatorId, GroupJoinReq req);
 

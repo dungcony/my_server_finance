@@ -185,14 +185,14 @@ class MemberServiceImplTest {
         }
 
         @Test
-        @DisplayName("Ném FORBIDDEN_NOT_GROUP_MEMBER khi không tìm thấy")
+        @DisplayName("Ném GROUP_MEMBER_REQUIRED khi không tìm thấy")
         void getMember_notFound_throwsException() {
             when(memberRepository.findByGroupIdAndUserId(groupId, userId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> groupMemberService.getMember(groupId, userId, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER.getCode());
+                    .isEqualTo(ErrorCode.GROUP_MEMBER_REQUIRED.getCode());
         }
     }
 
@@ -294,7 +294,7 @@ class MemberServiceImplTest {
         }
 
         @Test
-        @DisplayName("Đang ACTIVE thì ném ALREADY_IN_GROUP")
+        @DisplayName("Đang ACTIVE thì ném GROUP_MEMBER_ALREADY_EXISTS")
         void assertNotInGroup_active_throwsAlreadyInGroup() {
             Member active = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userId)
                     .status(MemberStatus.ACTIVE).build();
@@ -304,11 +304,11 @@ class MemberServiceImplTest {
             assertThatThrownBy(() -> groupMemberService.assertNotInGroup(groupId, userId))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(ErrorCode.ALREADY_IN_GROUP.getCode());
+                    .isEqualTo(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS.getCode());
         }
 
         @Test
-        @DisplayName("Đang PENDING thì ném PENDING_IN_GROUP")
+        @DisplayName("Đang PENDING thì ném GROUP_MEMBER_PENDING")
         void assertNotInGroup_pending_throwsPendingInGroup() {
             Member pending = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userId)
                     .status(MemberStatus.PENDING).build();
@@ -318,7 +318,7 @@ class MemberServiceImplTest {
             assertThatThrownBy(() -> groupMemberService.assertNotInGroup(groupId, userId))
                     .isInstanceOf(BusinessException.class)
                     .extracting("code")
-                    .isEqualTo(ErrorCode.PENDING_IN_GROUP.getCode());
+                    .isEqualTo(ErrorCode.GROUP_MEMBER_PENDING.getCode());
         }
     }
 }

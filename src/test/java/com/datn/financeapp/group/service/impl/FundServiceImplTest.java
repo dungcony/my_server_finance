@@ -83,7 +83,7 @@ class FundServiceImplTest {
     }
 
     @Test
-    @DisplayName("Đổi thủ quỹ sang người không còn ACTIVE trong nhóm thì lỗi HOLDER_NOT_MEMBER và giữ nguyên thủ quỹ cũ")
+    @DisplayName("Đổi thủ quỹ sang người không còn ACTIVE trong nhóm thì lỗi GROUP_FUND_HOLDER_NOT_MEMBER và giữ nguyên thủ quỹ cũ")
     void updateFundKeepper_NotActiveMember_Rejected() {
         when(fundRepository.findByGroupId(groupId)).thenReturn(Optional.of(fund));
         when(memberService.allMemberInGroup(groupId, List.of(newKeeperId))).thenReturn(false);
@@ -91,7 +91,7 @@ class FundServiceImplTest {
         assertThatThrownBy(() -> service.updateFundKeepper(ownerId, groupId, new FundKepperUpdateReq(newKeeperId)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.HOLDER_NOT_MEMBER.getCode());
+                .isEqualTo(ErrorCode.GROUP_FUND_HOLDER_NOT_MEMBER.getCode());
 
         assertThat(fund.getKeepperId()).isEqualTo(ownerId);
         verify(fundRepository, never()).save(any(Fund.class));
@@ -100,13 +100,13 @@ class FundServiceImplTest {
     @Test
     @DisplayName("Người không phải chủ nhóm đổi thủ quỹ thì bị chặn ngay từ bước kiểm tra quyền")
     void updateFundKeepper_NotOwner_Forbidden() {
-        doThrow(new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED))
+        doThrow(new BusinessException(ErrorCode.GROUP_OWNER_REQUIRED))
                 .when(permissionValidator).verifyOwner(groupId, newKeeperId);
 
         assertThatThrownBy(() -> service.updateFundKeepper(newKeeperId, groupId, new FundKepperUpdateReq(ownerId)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.FORBIDDEN_OWNER_REQUIRED.getCode());
+                .isEqualTo(ErrorCode.GROUP_OWNER_REQUIRED.getCode());
 
         verify(fundRepository, never()).save(any(Fund.class));
     }

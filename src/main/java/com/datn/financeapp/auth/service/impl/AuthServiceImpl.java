@@ -47,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
         Instant now = Instant.now();
 
         if (userService.existByEmail(req.email()))
-            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
+            throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
 
         UserRes user = userService.create(
                 UserCreateReq.forEmail(
@@ -94,10 +94,10 @@ public class AuthServiceImpl implements AuthService {
         var u = userService.get(new UserGetReq(req.email()));
 
         if (u.isBlocked())
-            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
 
         if (u.isConfirm())
-            throw new BusinessException(ErrorCode.ACCOUNT_ALREADY_VERIFIED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_ALREADY_VERIFIED);
 
         OtpModel otp = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, req.email())
                 .orElse(null);
@@ -157,13 +157,13 @@ public class AuthServiceImpl implements AuthService {
     }
 
     //--------------------------------------------PRIVATE----------------------------------------//
-
+    
     private void verifyOtp(String email, String otp, OtpType type) {
         OtpModel otpM = otpRepository.findByTypeAndEmail(type, email)
-                .orElse(null);
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_RESET_CODE_INVALID));
 
-        if (otpM != null && !otpM.getCode().equals(otp))
-            throw new BusinessException(ErrorCode.CODE_INVALID);
+        if (!otpM.getCode().equals(otp))
+            throw new BusinessException(ErrorCode.AUTH_RESET_CODE_INVALID);
     }
 
     private void sendEmail(String email, OtpType type, Instant now) {

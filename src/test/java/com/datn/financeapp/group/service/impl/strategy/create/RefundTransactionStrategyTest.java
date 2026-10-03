@@ -69,7 +69,7 @@ class RefundTransactionStrategyTest {
         MemberAuthInfo memberInfo = new MemberAuthInfo(groupId, operatorId, null, true, null, MemberRole.MEMBER, UUID.randomUUID());
         assertThatThrownBy(() -> strategy.determineStatus(memberInfo))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED.getCode());
     }
 
     @Test
@@ -93,7 +93,7 @@ class RefundTransactionStrategyTest {
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, refundReq(2500000L),
                 GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE.getCode());
     }
 
     @Test
@@ -104,7 +104,7 @@ class RefundTransactionStrategyTest {
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, refundReq(2500000L),
                 GTransactionStatus.CONFIRMED, false))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE.getCode());
     }
 
     @Test
@@ -127,7 +127,7 @@ class RefundTransactionStrategyTest {
 
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.MONEY_SOURCE_INVALID.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID.getCode());
     }
 
     // dựng lịch sử một khoản góp của người nhận để có số còn lại trong quỹ

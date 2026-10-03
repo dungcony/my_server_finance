@@ -48,7 +48,7 @@ public class RefundTransaction implements GTransactionBuilder {
         if (authInfo.isOwner() || authInfo.isTreasurer()) {
             return GTransactionStatus.CONFIRMED;
         }
-        throw new com.datn.financeapp.common.exception.BusinessException(com.datn.financeapp.common.exception.ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED);
+        throw new com.datn.financeapp.common.exception.BusinessException(com.datn.financeapp.common.exception.ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED);
     }
 
     @Override
@@ -56,7 +56,7 @@ public class RefundTransaction implements GTransactionBuilder {
                               GTransactionStatus status, boolean isSettlementEnabled) {
         MoneySource source = req.resolveMoneySource();
         if (source != MoneySource.FUND) {
-            throw new BusinessException(ErrorCode.MONEY_SOURCE_INVALID);
+            throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
         }
 
         // tính toán số dư hiện tại để kiểm tra hạn mức hoàn trả

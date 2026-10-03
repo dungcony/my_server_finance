@@ -1,5 +1,7 @@
 package com.datn.financeapp.user.service;
 
+import com.datn.financeapp.user.dto.response.UserRes;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,7 +22,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.user.dto.request.UpdateProfileRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.user.dto.response.UserProfileResponse;
+
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.repository.UserRepository;
@@ -66,10 +68,13 @@ class UserProfileIntegrationTest {
     private AuthService authService;
 
     @Autowired
-    private ProfileService userProfileService;
+    private com.datn.financeapp.auth.service.LoginService<com.datn.financeapp.auth.dto.request.EmailLoginRequest> loginService;
 
     @Autowired
-    private AccountService userAccountService;
+    private UserBehavierService userBehavierService;
+
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private UserRepository userRepository;
@@ -111,7 +116,7 @@ class UserProfileIntegrationTest {
     void getMe_existingUser_returnsProfile() {
         User user = registerUser("xem.ho.so@example.com", "matkhaudung1", "Xem Hồ Sơ");
 
-        UserProfileResponse detail = userProfileService.getMe(user.getId());
+        UserRes detail = userBehavierService.getMe(user.getId());
 
         assertThat(detail.id()).isEqualTo(user.getId());
         assertThat(detail.email()).isEqualTo("xem.ho.so@example.com");
@@ -122,29 +127,29 @@ class UserProfileIntegrationTest {
     void getMe_emailAccount_hasPasswordTrue() {
         User user = registerUser("co.mat.khau@example.com", "matkhaudung1", "Có Mật Khẩu");
 
-        assertThat(userProfileService.getMe(user.getId()).hasPassword()).isTrue();
+        assertThat(userBehavierService.getMe(user.getId()).hasPassword()).isTrue();
     }
 
     @Test
     void getMe_googleOnlyAccount_hasPasswordFalse() {
-        var google = userAccountService.createGoogleUser("chua.co.mk@example.com", "sub-chua-co-mk", Instant.now());
+        var google = userService.resolveGoogleUser("chua.co.mk@example.com", "sub-chua-co-mk", Instant.now());
 
-        assertThat(userProfileService.getMe(google.id()).hasPassword()).isFalse();
+        assertThat(userBehavierService.getMe(google.id()).hasPassword()).isFalse();
     }
 
     @Test
     void generatePassword_googleOnlyAccount_mailsPasswordThatLogsIn_andFlipsHasPassword() {
-        var google = userAccountService.createGoogleUser("tao.mat.khau@example.com", "sub-tao-mk", Instant.now());
+        var google = userService.resolveGoogleUser("tao.mat.khau@example.com", "sub-tao-mk", Instant.now());
 
-        userAccountService.generatePassword(google.id());
+        userBehavierService.createPassword(google.id());
 
         ArgumentCaptor<String> rawPassword = ArgumentCaptor.forClass(String.class);
         verify(emailService).sendGeneratedPassword(eq("tao.mat.khau@example.com"), rawPassword.capture());
-        var login = authService.login(
+        var login = loginService.login(
                 new EmailLoginRequest("tao.mat.khau@example.com", rawPassword.getValue()),
-                "127.0.0.1", "junit");
+                new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "junit"));
         assertThat(login.user().id()).isEqualTo(google.id());
-        assertThat(userProfileService.getMe(google.id()).hasPassword()).isTrue();
+        assertThat(userBehavierService.getMe(google.id()).hasPassword()).isTrue();
         // chỉ lưu bản băm, không lưu mật khẩu thô
         User reload = userRepository.findById(google.id()).orElseThrow();
         assertThat(reload.getPassword()).isNotEqualTo(rawPassword.getValue());
@@ -153,12 +158,12 @@ class UserProfileIntegrationTest {
 
     @Test
     void generatePassword_calledTwice_secondCallThrowsPasswordAlreadySet() {
-        var google = userAccountService.createGoogleUser("goi.hai.lan@example.com", "sub-goi-hai-lan", Instant.now());
-        userAccountService.generatePassword(google.id());
+        var google = userService.resolveGoogleUser("goi.hai.lan@example.com", "sub-goi-hai-lan", Instant.now());
+        userBehavierService.createPassword(google.id());
 
-        assertThatThrownBy(() -> userAccountService.generatePassword(google.id()))
+        assertThatThrownBy(() -> userBehavierService.createPassword(google.id()))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("PASSWORD_ALREADY_SET"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_PASSWORD_ALREADY_SET"));
         // mail chỉ gửi đúng một lần, mật khẩu đầu tiên vẫn còn hiệu lực
         verify(emailService, times(1)).sendGeneratedPassword(eq("goi.hai.lan@example.com"), anyString());
     }
@@ -167,9 +172,9 @@ class UserProfileIntegrationTest {
     void generatePassword_emailAccountWithPassword_throwsAndKeepsOldPassword() {
         User user = registerUser("da.co.mk@example.com", "matkhaudung1", "Đã Có Mật Khẩu");
 
-        assertThatThrownBy(() -> userAccountService.generatePassword(user.getId()))
+        assertThatThrownBy(() -> userBehavierService.createPassword(user.getId()))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("PASSWORD_ALREADY_SET"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_PASSWORD_ALREADY_SET"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches("matkhaudung1", reload.getPassword())).isTrue();
@@ -180,7 +185,7 @@ class UserProfileIntegrationTest {
     void patchMe_UpdatesUsername_Succeeds() {
         User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
-        var result = userProfileService.updateMe(user.getId(), new UpdateProfileRequest("Minh", "Nguyễn", null));
+        var result = userBehavierService.updateMe(user.getId(), new UpdateProfileRequest("Minh", "Nguyễn", null));
 
         assertThat(result.firstName()).isEqualTo("Minh");
         assertThat(result.lastName()).isEqualTo("Nguyễn");
@@ -195,16 +200,16 @@ class UserProfileIntegrationTest {
     void changePassword_correctOldPassword_revokesAllActiveRefreshTokens() {
         User user = registerUser("doi.matkhau@example.com", "matkhaucu123", "Đổi Mật Khẩu");
 
-        authService.login(
+        loginService.login(
                 new EmailLoginRequest("doi.matkhau@example.com", "matkhaucu123"),
-                "127.0.0.1", "junit");
-        authService.login(
+                new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "junit"));
+        loginService.login(
                 new EmailLoginRequest("doi.matkhau@example.com", "matkhaucu123"),
-                "127.0.0.1", "junit");
+                new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "junit"));
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isNotEmpty();
 
-        userAccountService.changePassword(user.getId(), new UpdatePassReq("matkhaucu123", "matkhaumoi456"));
+        userBehavierService.changePassword(user.getId(), new UpdatePassReq("matkhaucu123", "matkhaumoi456"));
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isEmpty();
 
@@ -216,19 +221,24 @@ class UserProfileIntegrationTest {
     void changePassword_wrongOldPassword_throwsWrongOldPassword() {
         User user = registerUser("sai.matkhau.cu@example.com", "matkhaudung1", "Sai Mật Khẩu Cũ");
 
-        assertThatThrownBy(() -> userAccountService.changePassword(
+        assertThatThrownBy(() -> userBehavierService.changePassword(
                 user.getId(), new UpdatePassReq("matkhausai999", "matkhaumoi456")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("WRONG_OLD_PASSWORD"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_OLD_PASSWORD_INCORRECT"));
     }
 
     @Test
     void changePassword_sameAsOldPassword_throwsNewPasswordSameAsOld() {
         User user = registerUser("doi.trung.mk@example.com", "matkhaudung1", "Đổi Trùng Mật Khẩu");
 
-        assertThatThrownBy(() -> userAccountService.changePassword(
+        assertThatThrownBy(() -> userBehavierService.changePassword(
                 user.getId(), new UpdatePassReq("matkhaudung1", "matkhaudung1")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("NEW_PASSWORD_SAME_AS_OLD"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_PASSWORD_SAME_AS_OLD"));
     }
 }
+
+
+
+
+

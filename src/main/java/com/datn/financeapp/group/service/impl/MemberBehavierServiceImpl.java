@@ -49,7 +49,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
         // người chờ duyệt chỉ chủ nhóm được xem
         if (status == MemberStatus.PENDING && !info.isOwner())
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_OWNER_REQUIRED);
 
         List<MemberStatus> statuses = resolveStatuses(status, info.isOwner());
         List<MemberRes> members = toResponses(memberRepository.findAllByGroupIdAndStatusIn(groupId, statuses));
@@ -96,10 +96,10 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     @Override
     public void leave(UUID operatorId, UUID groupId) {
         Member member = memberRepository.findByGroupIdAndUserIdAndStatus(groupId, operatorId, MemberStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN_NOT_GROUP_MEMBER));
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED));
 
         if (member.getRole() == MemberRole.OWNER)
-            throw new BusinessException(ErrorCode.OWNER_MUST_TRANSFER_FIRST);
+            throw new BusinessException(ErrorCode.GROUP_OWNER_TRANSFER_REQUIRED);
 
         // tìm kiếm owner id để bắn sự kiện rời nhóm
         MemberRes owner = findOwner(groupId);
@@ -199,7 +199,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     public void transferOwnership(UUID operatorId, UUID groupId, UUID memberId) {
         // không thể chuyển quyền cho chính mình
         if (Objects.equals(operatorId, memberId))
-            throw new BusinessException(ErrorCode.CANNOT_TRANSFER_TO_SELF);
+            throw new BusinessException(ErrorCode.GROUP_TRANSFER_TO_SELF);
 
         // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
         permissionValidator.verifyOwner(groupId, operatorId);
@@ -238,8 +238,8 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
                 .findFirst()
                 .ifPresent(m -> {
                     throw new BusinessException(m.getStatus() == MemberStatus.PENDING
-                            ? ErrorCode.PENDING_IN_GROUP
-                            : ErrorCode.ALREADY_IN_GROUP);
+                            ? ErrorCode.GROUP_MEMBER_PENDING
+                            : ErrorCode.GROUP_MEMBER_ALREADY_EXISTS);
                 });
     }
 

@@ -94,12 +94,12 @@ public class DebtServiceImpl implements DebtService {
     @Transactional
     public CreateDebtResponse create(UUID userId, CreateDebtRequest req) {
         if (req.principalAmount() == null || req.principalAmount() <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
         }
 
         LocalDate issuedDate = req.issuedDate() != null ? req.issuedDate() : LocalDate.now();
         if (req.dueDate() != null && req.dueDate().isBefore(issuedDate)) {
-            throw new BusinessException(ErrorCode.INVALID_DUE_DATE);
+            throw new BusinessException(ErrorCode.DEBT_DUE_DATE_INVALID);
         }
 
         WalletRefResponse wallet = walletService.findRefForUser(userId, req.walletId());
@@ -178,7 +178,7 @@ public class DebtServiceImpl implements DebtService {
 
         long remaining = debt.getPrincipalAmount() - debt.getPaidAmount();
         if (req.amount() > remaining) {
-            throw new BusinessException(ErrorCode.EXCEEDS_REMAINING_AMOUNT, String.format(
+            throw new BusinessException(ErrorCode.DEBT_PAYMENT_EXCEEDS_REMAINING, String.format(
                             Locale.GERMANY,
                             "%s chỉ còn nợ %,d đ. Ghi trả %,d đ, phần dư ghi thành khoản thu riêng.",
                             debt.getCounterpartyName(), remaining, remaining));
@@ -313,7 +313,7 @@ public class DebtServiceImpl implements DebtService {
         }
         if (req.dueDate() != null) {
             if (req.dueDate().isBefore(debt.getIssuedDate())) {
-                throw new BusinessException(ErrorCode.INVALID_DUE_DATE);
+                throw new BusinessException(ErrorCode.DEBT_DUE_DATE_INVALID);
             }
             debt.setDueDate(req.dueDate());
         }

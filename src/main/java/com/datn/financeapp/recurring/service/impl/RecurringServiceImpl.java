@@ -88,10 +88,10 @@ public class RecurringServiceImpl implements RecurringService {
 
         int interval = req.interval() == null ? 1 : req.interval();
         if (interval < 1) {
-            throw new BusinessException(ErrorCode.INVALID_INTERVAL);
+            throw new BusinessException(ErrorCode.RECURRING_INTERVAL_INVALID);
         }
         if (req.endDate() != null && req.endDate().isBefore(req.startDate())) {
-            throw new BusinessException(ErrorCode.INVALID_END_DATE);
+            throw new BusinessException(ErrorCode.RECURRING_END_DATE_INVALID);
         }
 
         requireWalletAccess(req.walletId(), userId);
@@ -157,7 +157,7 @@ public class RecurringServiceImpl implements RecurringService {
         }
         if (req.endDate() != null) {
             if (req.endDate().isBefore(rec.getStartDate())) {
-                throw new BusinessException(ErrorCode.INVALID_END_DATE);
+                throw new BusinessException(ErrorCode.RECURRING_END_DATE_INVALID);
             }
             rec.setEndDate(req.endDate());
         }
@@ -238,10 +238,10 @@ public class RecurringServiceImpl implements RecurringService {
     private CategoryRefResponse requireCategoryOfType(UUID categoryId, UUID userId, String type) {
         CategoryRefResponse category = categoryService.findRefVisibleToUser(categoryId, userId);
         if (category == null) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+            throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_ALLOWED);
         }
         if (!category.type().equals(type)) {
-            throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
+            throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_TYPE_MISMATCH);
         }
         return category;
     }
@@ -249,13 +249,13 @@ public class RecurringServiceImpl implements RecurringService {
     private void validateType(String type) {
         if (!VALID_TYPES.contains(type)) {
             // ck_rec_type chỉ cho expense/income — khoản định kỳ không sinh chuyển tiền được.
-            throw new BusinessException(ErrorCode.INVALID_TYPE);
+            throw new BusinessException(ErrorCode.RECURRING_TYPE_INVALID);
         }
     }
 
     private void validateFrequency(String frequency) {
         if (!VALID_FREQUENCIES.contains(frequency)) {
-            throw new BusinessException(ErrorCode.INVALID_FREQUENCY);
+            throw new BusinessException(ErrorCode.RECURRING_FREQUENCY_INVALID);
         }
     }
 

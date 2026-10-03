@@ -6,6 +6,6 @@ import com.datn.financeapp.common.exception.ErrorCode;
 public class PasswordAlreadySetException extends BusinessException {
 
     public PasswordAlreadySetException() {
-        super(ErrorCode.PASSWORD_ALREADY_SET);
+        super(ErrorCode.AUTH_PASSWORD_ALREADY_SET);
     }
 }

@@ -2,7 +2,8 @@ package com.datn.financeapp.user.controller;
 
 import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
-import com.datn.financeapp.auth.dto.response.AuthResponse;
+import com.datn.financeapp.auth.dto.response.LoginRes;
+import com.datn.financeapp.auth.helper.ClientInfo;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.service.AuthService;
@@ -96,6 +97,9 @@ class AdminBlockUserIntegrationTest {
     private AuthService authService;
 
     @Autowired
+    private com.datn.financeapp.auth.service.LoginService<com.datn.financeapp.auth.dto.request.EmailLoginRequest> loginService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -139,8 +143,8 @@ class AdminBlockUserIntegrationTest {
     }
 
     private String loginAndGetToken(String email) {
-        AuthResponse response = authService.login(new EmailLoginRequest(email, PASSWORD), "127.0.0.1", "junit");
-        return response.accessToken();
+        LoginRes response = loginService.login(new EmailLoginRequest(email, PASSWORD), new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "junit"));
+        return response.token().access();
     }
 
     @Test
@@ -179,12 +183,12 @@ class AdminBlockUserIntegrationTest {
         // 3. Redis đã đánh dấu blacklist cho user này
         assertThat(blacklistedUserRepository.isBlacklisted(target.getId().toString())).isTrue();
 
-        // 4. Target user dùng token cũ gọi API -> Bị chặn 403 ACCOUNT_BLOCKED
+        // 4. Target user dùng token cũ gọi API -> Bị chặn 403 AUTH_ACCOUNT_BLOCKED
         mockMvc.perform(get("/users/me")
                         .header("Authorization", "Bearer " + targetToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("ACCOUNT_BLOCKED"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_BLOCKED"));
     }
 
     @Test

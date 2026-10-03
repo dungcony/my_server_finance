@@ -200,7 +200,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    @DisplayName("Hoàn tiền vượt quá số còn lại của người nhận -> Báo lỗi CANNOT_REFUND_EXCEED_BALANCE")
+    @DisplayName("Hoàn tiền vượt quá số còn lại của người nhận -> Báo lỗi GROUP_TXN_REFUND_EXCEEDS_BALANCE")
     void testCreateRefund_ExceedsBalance_ThrowsException() {
         MemberAuthInfo authInfo = new MemberAuthInfo(
                 groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, ownerId
@@ -211,7 +211,7 @@ class TransactionServiceTest {
         when(refundStrategy.supports(GTransactionType.REFUND)).thenReturn(true);
         when(refundStrategy.determineStatus(any())).thenReturn(GTransactionStatus.CONFIRMED);
         when(refundStrategy.build(eq(ownerId), eq(groupId), any(), eq(GTransactionStatus.CONFIRMED), eq(true)))
-                .thenThrow(new BusinessException(ErrorCode.CANNOT_REFUND_EXCEED_BALANCE));
+                .thenThrow(new BusinessException(ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE));
 
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
                 GTransactionType.REFUND,
@@ -227,7 +227,7 @@ class TransactionServiceTest {
 
         assertThatThrownBy(() -> transactionService.create(ownerId, groupId, req))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE.getCode());
     }
 
     @Test

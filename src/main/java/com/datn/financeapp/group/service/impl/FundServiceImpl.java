@@ -67,7 +67,7 @@ public class FundServiceImpl implements FundService {
         if (req.keepperId() != null) {
             // thủ quỹ mới phải đang là thành viên ACTIVE, nếu không quỹ rơi vào tay người đã rời nhóm
             if (!memberService.allMemberInGroup(groupId, List.of(req.keepperId())))
-                throw new BusinessException(ErrorCode.HOLDER_NOT_MEMBER);
+                throw new BusinessException(ErrorCode.GROUP_FUND_HOLDER_NOT_MEMBER);
             fund.setKeepperId(req.keepperId());
         }
 
@@ -99,7 +99,7 @@ public class FundServiceImpl implements FundService {
 
         // chặn kiểm kê khi còn giao dịch chờ duyệt
         if (gTransactionService.countPendingForGroup(groupId) > 0) {
-            throw new BusinessException(ErrorCode.GROUP_HAS_PENDING_TRANSACTIONS);
+            throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
         }
 
         long previousBalance = fund.getCurrentBalance();

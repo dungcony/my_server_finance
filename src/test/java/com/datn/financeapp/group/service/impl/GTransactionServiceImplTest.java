@@ -153,7 +153,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.delete(memberId, groupId, confirmed.getId()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TRANSACTION_DELETE.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
 
         assertThat(confirmed.getDeletedAt()).isNull();
     }
@@ -167,7 +167,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.delete(memberId, groupId, pending.getId()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TRANSACTION_DELETE.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
 
         assertThat(pending.getDeletedAt()).isNull();
     }
@@ -181,7 +181,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.delete(treasurerId, groupId, pending.getId()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TRANSACTION_DELETE.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
 
         assertThat(pending.getDeletedAt()).isNull();
     }
@@ -207,7 +207,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.confirm(memberId, groupId, pending.getId()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TREASURER_REQUIRED.getCode()));
 
         assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.PENDING);
         verify(eventPublisher, never()).publishEvent(any(Object.class));
@@ -221,7 +221,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.confirm(ownerId, groupId, confirmed.getId()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.TRANSACTION_NOT_PENDING.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_NOT_PENDING.getCode()));
 
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
@@ -247,7 +247,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.reject(ownerId, groupId, confirmed.getId()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.TRANSACTION_NOT_PENDING.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_NOT_PENDING.getCode()));
 
         assertThat(confirmed.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
     }
@@ -268,7 +268,7 @@ class GTransactionServiceImplTest {
 
         assertThatThrownBy(() -> service.bulkConfirm(memberId, groupId, req))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode()));
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TREASURER_REQUIRED.getCode()));
 
         verify(transactionRepository, never())
                 .findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(any(), any(), any());
@@ -349,12 +349,12 @@ class GTransactionServiceImplTest {
     }
 
     @Test
-    @DisplayName("Thành viên thường xem danh sách giao dịch chờ duyệt thì bị chặn FORBIDDEN_TREASURER_REQUIRED")
+    @DisplayName("Thành viên thường xem danh sách giao dịch chờ duyệt thì bị chặn GROUP_TREASURER_REQUIRED")
     void listPending_ByNormalMember_Forbidden() {
         assertThatThrownBy(() -> service.listPending(memberId, groupId, 1, 20))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.FORBIDDEN_TREASURER_REQUIRED.getCode());
+                .isEqualTo(ErrorCode.GROUP_TREASURER_REQUIRED.getCode());
 
         verify(transactionRepository, never()).findAll(any(Specification.class), any(Pageable.class));
     }

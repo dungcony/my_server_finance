@@ -5,6 +5,6 @@ import com.datn.financeapp.common.exception.ErrorCode;
 
 public class AccountNotVerifiedException extends BusinessException {
     public AccountNotVerifiedException() {
-        super(ErrorCode.ACCOUNT_NOT_VERIFIED);
+        super(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
     }
 }

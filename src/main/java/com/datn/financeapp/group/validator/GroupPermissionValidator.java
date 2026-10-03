@@ -99,7 +99,7 @@ public class GroupPermissionValidator {
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng thực hiện thao tác
      * @throws BusinessException nếu không phải Owner
-     *                           ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
+     *                           ({@link ErrorCode#GROUP_OWNER_REQUIRED})
      */
     public void verifyOwner(UUID groupId, UUID operatorId) {
         verifyOwner(groupId, operatorId, false);
@@ -112,14 +112,14 @@ public class GroupPermissionValidator {
      * @param operatorId    ID người dùng thực hiện thao tác
      * @param allowArchived {@code true} cho thao tác vẫn làm được khi nhóm đã lưu trữ (xoá, mở lại nhóm)
      * @throws BusinessException nếu không phải Owner
-     *                           ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
+     *                           ({@link ErrorCode#GROUP_OWNER_REQUIRED})
      */
     public void verifyOwner(UUID groupId, UUID operatorId, boolean allowArchived) {
 
         var info = getAuthInfo(groupId, operatorId, allowArchived);
 
         if (info.memberRole() != MemberRole.OWNER)
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_OWNER_REQUIRED);
     }
 
     /**
@@ -129,14 +129,14 @@ public class GroupPermissionValidator {
      * @param operatorId ID người dùng đang thực hiện thao tác
      * @param keepperId  ID người dùng đang giữ quỹ
      * @throws BusinessException nếu không phải Owner và không phải Thủ quỹ
-     *                           ({@link ErrorCode#FORBIDDEN_TREASURER_REQUIRED})
+     *                           ({@link ErrorCode#GROUP_TREASURER_REQUIRED})
      */
     public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID keepperId) {
         var info = getAuthInfo(groupId, operatorId);
         boolean isOwner = info.memberRole() == MemberRole.OWNER;
         boolean isTreasurer = keepperId != null && keepperId.equals(operatorId);
         if (!isOwner && !isTreasurer)
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_TREASURER_REQUIRED);
     }
 
     /**
@@ -163,17 +163,17 @@ public class GroupPermissionValidator {
         // thành viên thường chỉ được sửa giao dịch do chính mình tạo
         boolean isCreator = txn.getCreatedBy().equals(operatorId);
         if (!isCreator) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_EDIT);
+            throw new BusinessException(ErrorCode.GROUP_TXN_EDIT_FORBIDDEN);
         }
 
         // thành viên thường không được sửa giao dịch đã duyệt
         if (txn.getStatus() == GTransactionStatus.CONFIRMED) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_EDIT_CONFIRMED_TRANSACTION);
+            throw new BusinessException(ErrorCode.GROUP_TXN_CONFIRMED_EDIT_FORBIDDEN);
         }
 
         // thành viên thường không được sửa giao dịch can thiệp trực tiếp vào quỹ
         if (txn.getType() != GTransactionType.EXPENSE && txn.getType() != GTransactionType.CONTRIBUTION) {
-            throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
+            throw new BusinessException(ErrorCode.GROUP_TREASURER_REQUIRED);
         }
     }
 
@@ -197,15 +197,15 @@ public class GroupPermissionValidator {
 
         // thủ quỹ không có quyền xóa
         if (authInfo.isTreasurer())
-            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN);
 
         // thành viên thường chỉ xóa giao dịch do mình tạo
         if (!txn.getCreatedBy().equals(operatorId))
-            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN);
 
         // và chỉ khi giao dịch còn chờ duyệt
         if (txn.getStatus() != GTransactionStatus.PENDING)
-            throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN);
     }
 
     private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo, boolean allowArchived) {

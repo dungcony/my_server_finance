@@ -90,7 +90,7 @@ class RefundUpdateStrategyTest {
         assertThatThrownBy(() -> strategy.update(refund, treasurerId, groupId, updateReq(500_000L, userA),
                 treasurerAuth()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        ex -> assertThat(ex.getCode()).isEqualTo(ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode()));
+                        ex -> assertThat(ex.getCode()).isEqualTo(ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE.getCode()));
 
         assertThat(refund.getAmount()).isEqualTo(200_000L);
     }
@@ -107,7 +107,7 @@ class RefundUpdateStrategyTest {
         assertThatThrownBy(() -> strategy.update(refund, treasurerId, groupId, updateReq(500_000L, userA),
                 settlementDisabled))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        ex -> assertThat(ex.getCode()).isEqualTo(ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode()));
+                        ex -> assertThat(ex.getCode()).isEqualTo(ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE.getCode()));
     }
 
     @Test
@@ -166,7 +166,7 @@ class RefundUpdateStrategyTest {
         assertThatThrownBy(() -> strategy.update(refund, treasurerId, groupId, updateReq(1_200_000L, userA),
                 treasurerAuth()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        ex -> assertThat(ex.getCode()).isEqualTo(ErrorCode.CANNOT_REFUND_EXCEED_BALANCE.getCode()));
+                        ex -> assertThat(ex.getCode()).isEqualTo(ErrorCode.GROUP_TXN_REFUND_EXCEEDS_BALANCE.getCode()));
     }
 
     @Test

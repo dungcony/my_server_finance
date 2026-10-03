@@ -60,7 +60,7 @@ class UserDeleteAccountIntegrationTest {
     private AuthService authService;
 
     @Autowired
-    private ProfileService userProfileService;
+    private UserBehavierService userBehavierService;
 
     @Autowired
     private UserRepository userRepository;
@@ -112,7 +112,7 @@ class UserDeleteAccountIntegrationTest {
         User user = registerUser("xoa.thanh.cong@example.com");
         authenticateAs(user.getId());
 
-        userProfileService.deleteMe(PASSWORD);
+        userBehavierService.deleteMe(PASSWORD);
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(reload.isDeleted()).isTrue();
@@ -123,9 +123,9 @@ class UserDeleteAccountIntegrationTest {
         User user = registerUser("xoa.sai.pass@example.com");
         authenticateAs(user.getId());
 
-        assertThatThrownBy(() -> userProfileService.deleteMe("sai-mat-khau"))
+        assertThatThrownBy(() -> userBehavierService.deleteMe("sai-mat-khau"))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("WRONG_PASSWORD"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_PASSWORD_INCORRECT"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(reload.isDeleted()).isFalse();
@@ -139,9 +139,10 @@ class UserDeleteAccountIntegrationTest {
         userRepository.save(user);
         authenticateAs(user.getId());
 
-        userProfileService.deleteMe(null);
+        userBehavierService.deleteMe(null);
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(reload.isDeleted()).isTrue();
     }
 }
+

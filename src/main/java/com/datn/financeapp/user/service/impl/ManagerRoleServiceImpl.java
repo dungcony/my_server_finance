@@ -2,6 +2,7 @@ package com.datn.financeapp.user.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.user.dto.request.AddPermissionRoleRequest;
 import com.datn.financeapp.user.dto.response.PermissionResponse;
 import com.datn.financeapp.user.dto.response.RoleResponse;
@@ -14,6 +15,7 @@ import com.datn.financeapp.user.mapper.RoleMapper;
 import com.datn.financeapp.user.repository.PermissionRepository;
 import com.datn.financeapp.user.repository.RolePermissionRepository;
 import com.datn.financeapp.user.repository.RoleRepository;
+import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.service.ManagerRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +33,7 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final UserRepository userRepository;
 
     private final RoleMapper roleMapper;
 
@@ -65,12 +68,24 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
     }
 
     private void addPermissionInternal(Role role, PermissionName permissionName) {
-        if (permissionName == null) {
+        if (permissionName == null)
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Vui lòng cung cấp quyền hạn cần gán.");
-        }
+
+        UUID currentUserId = SecurityContextUtil.currentUserId();
+
+        // số nhỏ = quyền cao, không được sửa quyền của role cấp cao hơn hoặc bằng mình
+        int currentUserLevel = userRepository.findTopRoleLevelByUserId(currentUserId);
+        if (role.getLevel() <= currentUserLevel)
+            throw new BusinessException(ErrorCode.FORBIDDEN,
+                    "Không được gán quyền cho vai trò có cấp bậc cao hơn hoặc bằng chính mình.");
 
         Permission permission = permissionRepository.findByName(permissionName)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy quyền hạn."));
+
+        // không được gán quyền mà chính mình không có (DB lưu permission dạng getValue(), vd "users:read")
+        if (!userRepository.findAuthoritiesByUserId(currentUserId).contains(permission.getName().getValue()))
+            throw new BusinessException(ErrorCode.FORBIDDEN,
+                    "Không được gán quyền mà chính mình không có.");
 
         if (!rolePermissionRepository.existsByRoleIdAndPermissionId(role.getId(), permission.getId())) {
             RolePermission rolePermission = new RolePermission(role.getId(), permission.getId());

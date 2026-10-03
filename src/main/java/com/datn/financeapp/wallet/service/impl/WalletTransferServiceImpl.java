@@ -56,7 +56,7 @@ public class WalletTransferServiceImpl implements WalletTransferService {
         UUID destinationId = req.destinationWalletId();
 
         if (sourceId.equals(destinationId)) {
-            throw new BusinessException(ErrorCode.SAME_SOURCE_AND_DESTINATION);
+            throw new BusinessException(ErrorCode.WALLET_TRANSFER_SAME_DESTINATION);
         }
 
         // Khoá theo thứ tự cố định (nhỏ trước, lớn sau) bất kể vai trò nguồn/đích — chống
@@ -72,7 +72,7 @@ public class WalletTransferServiceImpl implements WalletTransferService {
 
         long amount = req.amount();
         if (Boolean.TRUE.equals(req.failIfInsufficient()) && sourceWallet.getCurrentBalance() < amount) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE, "Số dư ví không đủ để thực hiện giao dịch này.", Map.of(
+            throw new BusinessException(ErrorCode.WALLET_BALANCE_INSUFFICIENT, "Số dư ví không đủ để thực hiện giao dịch này.", Map.of(
                             "current_balance", sourceWallet.getCurrentBalance(),
                             "requested_amount", amount));
         }
@@ -106,7 +106,7 @@ public class WalletTransferServiceImpl implements WalletTransferService {
         Wallet wallet = lockAndCheckOwnership(walletId, userId);
 
         if (req.actualBalance() < 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT, "Số dư thực tế không được âm.");
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID, "Số dư thực tế không được âm.");
         }
 
         long previousBalance = wallet.getCurrentBalance();

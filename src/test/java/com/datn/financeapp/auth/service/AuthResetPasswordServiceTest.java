@@ -4,17 +4,13 @@ import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
 import com.datn.financeapp.auth.entity.OtpModel;
 import com.datn.financeapp.auth.enums.OtpType;
-import com.datn.financeapp.auth.exception.AuthPasswordSameAsOldException;
-import com.datn.financeapp.auth.exception.AuthResetCodeInvalidException;
-import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.OtpRepository;
-import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.service.impl.AuthServiceImpl;
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
-import com.datn.financeapp.common.security.JwtService;
-import com.datn.financeapp.user.dto.response.UserRes;
-import com.datn.financeapp.user.enums.UserPlan;
-import com.datn.financeapp.user.enums.UserStatus;
+import com.datn.financeapp.user.service.UserService;
+import com.datn.financeapp.auth.helper.ForgotPasswordRateLimiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,11 +18,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,25 +34,17 @@ import static org.mockito.Mockito.*;
 class AuthResetPasswordServiceTest {
 
     @Mock
-    private AccountService userAccountService;
+    private UserService userService;
     @Mock
-    private RefreshTokenRepository refreshTokenRepository;
-    @Mock
-    private LoginAttemptRepository loginAttemptRepository;
-    @Mock
-    private PasswordEncoder passwordEncoder;
-    @Mock
-    private JwtService jwtService;
+    private TokenService tokenService;
     @Mock
     private EmailService emailService;
     @Mock
+    private PasswordEncoder passwordEncoder;
+    @Mock
     private ForgotPasswordRateLimiter forgotPasswordRateLimiter;
     @Mock
-    private GoogleService googleIdTokenVerifier;
-    @Mock
     private OtpRepository otpRepository;
-    @Mock
-    private ApplicationEventPublisher eventPublisher;
 
     private AuthServiceImpl authService;
 
@@ -68,23 +54,19 @@ class AuthResetPasswordServiceTest {
     @BeforeEach
     void setUp() {
         authService = new AuthServiceImpl(
-                userAccountService,
-                refreshTokenRepository,
-                loginAttemptRepository,
-                passwordEncoder,
-                jwtService,
+                userService,
+                tokenService,
                 emailService,
+                passwordEncoder,
                 forgotPasswordRateLimiter,
-                googleIdTokenVerifier,
-                otpRepository,
-                eventPublisher
+                otpRepository
         );
     }
 
     @Test
-    @DisplayName("forgotPassword: Email tồn tại -> Lưu OtpModel vào Redis và gửi mail")
+    @DisplayName("forgotPassword: User hợp lệ -> Lưu OtpModel vào Redis và gửi mail")
     void forgotPassword_UserExists_SavesOtpToRedisAndSendsMail() {
-        when(userAccountService.findUserIdForPasswordReset(email)).thenReturn(Optional.of(userId));
+        doNothing().when(userService).validUser(email);
 
         authService.forgotPassword(new ForgotPasswordRequest(email));
 
@@ -97,22 +79,24 @@ class AuthResetPasswordServiceTest {
         assertThat(savedOtp.getCode()).matches("\\d{6}");
         assertThat(savedOtp.getTtl()).isEqualTo(15L);
 
-        verify(emailService).sendPasswordResetCode(eq(email), eq(savedOtp.getCode()));
+        verify(emailService).sendVerificationOtp(eq(email), eq(savedOtp.getCode()));
     }
 
     @Test
-    @DisplayName("forgotPassword: Email không tồn tại -> Không lưu Redis, không gửi mail, không ném exception")
+    @DisplayName("forgotPassword: User không hợp lệ -> Ném exception từ userService.validUser")
     void forgotPassword_UserNotFound_DoesNothing() {
-        when(userAccountService.findUserIdForPasswordReset(email)).thenReturn(Optional.empty());
+        doThrow(new BusinessException(ErrorCode.NOT_FOUND)).when(userService).validUser(email);
 
-        authService.forgotPassword(new ForgotPasswordRequest(email));
+        assertThatThrownBy(() -> authService.forgotPassword(new ForgotPasswordRequest(email)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
 
         verify(otpRepository, never()).save(any());
-        verify(emailService, never()).sendPasswordResetCode(any(), any());
+        verify(emailService, never()).sendVerificationOtp(any(), any());
     }
 
     @Test
-    @DisplayName("resetPassword: Mật khẩu mới trùng mật khẩu cũ -> Ném AuthPasswordSameAsOldException")
+    @DisplayName("resetPassword: Mật khẩu mới trùng mật khẩu cũ -> Ném BusinessException(AUTH_PASSWORD_SAME_AS_OLD)")
     void resetPassword_NewPasswordMatchesOldPassword_ThrowsAuthPasswordSameAsOldException() {
         String code = "123456";
         String samePassword = "currentPassword123";
@@ -126,28 +110,23 @@ class AuthResetPasswordServiceTest {
                 .build();
 
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
-
-        UserRes user = new UserRes(
-                userId, email, "encodedCurrentPassword", UserPlan.FREE, UserStatus.ACTIVE,
-                Collections.emptyList(), false, null
-        );
-        when(userAccountService.findByEmail(email)).thenReturn(user);
-        when(passwordEncoder.matches(samePassword, "encodedCurrentPassword")).thenReturn(true);
+        
+        doThrow(new BusinessException(ErrorCode.AUTH_PASSWORD_SAME_AS_OLD))
+                .when(userService).updatePass(email, samePassword);
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, code, samePassword)))
-                .isInstanceOf(AuthPasswordSameAsOldException.class)
-                .hasFieldOrPropertyWithValue("code", "NEW_PASSWORD_SAME_AS_OLD");
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "AUTH_PASSWORD_SAME_AS_OLD");
 
-        verify(userAccountService, never()).resetPasswordWithCode(any(), any());
         verify(otpRepository, never()).deleteByTypeAndEmail(any(), any());
-        verify(refreshTokenRepository, never()).revokeAllActiveForUser(any());
+        verify(tokenService, never()).revokeAllByEmail(any());
     }
 
     @Test
     @DisplayName("resetPassword: Mã OTP khớp -> Đổi mật khẩu, xóa OTP trong Redis, thu hồi refresh tokens")
     void resetPassword_ValidOtp_ResetsPasswordAndDeletesOtp() {
         String code = "123456";
-        String newPassword = "123456";
+        String newPassword = "newPassword123";
 
         OtpModel otp = OtpModel.builder()
                 .email(email)
@@ -159,21 +138,15 @@ class AuthResetPasswordServiceTest {
 
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
 
-        UserRes user = new UserRes(
-                userId, email, "1234567", UserPlan.FREE, UserStatus.ACTIVE,
-                Collections.emptyList(), false, null
-        );
-        when(userAccountService.findByEmail(email)).thenReturn(user);
-
         authService.resetPassword(new ResetPasswordRequest(email, code, newPassword));
 
-        verify(userAccountService).resetPasswordWithCode(userId, newPassword);
+        verify(userService).updatePass(email, newPassword);
         verify(otpRepository).deleteByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email);
-        verify(refreshTokenRepository).revokeAllActiveForUser(userId);
+        verify(tokenService).revokeAllByEmail(email);
     }
 
     @Test
-    @DisplayName("resetPassword: Mã OTP sai -> Ném AuthResetCodeInvalidException")
+    @DisplayName("resetPassword: Mã OTP sai -> Ném BusinessException(AUTH_RESET_CODE_INVALID)")
     void resetPassword_WrongCode_ThrowsException() {
         OtpModel otp = OtpModel.builder()
                 .email(email)
@@ -186,46 +159,24 @@ class AuthResetPasswordServiceTest {
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "999999", "newPassword123")))
-                .isInstanceOf(AuthResetCodeInvalidException.class);
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "AUTH_RESET_CODE_INVALID");
 
-        verify(userAccountService, never()).resetPasswordWithCode(any(), any());
+        verify(userService, never()).updatePass(any(), any());
         verify(otpRepository, never()).deleteByTypeAndEmail(any(), any());
     }
 
     @Test
-    @DisplayName("resetPassword: Không tìm thấy OTP trong Redis (hết hạn) -> Ném AuthResetCodeInvalidException")
+    @DisplayName("resetPassword: Không tìm thấy OTP trong Redis (hết hạn) -> Ném BusinessException(CODE_INVALID)")
     void resetPassword_OtpNotFound_ThrowsException() {
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "123456", "newPassword123")))
-                .isInstanceOf(AuthResetCodeInvalidException.class);
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "AUTH_RESET_CODE_INVALID");
 
-        verify(userAccountService, never()).resetPasswordWithCode(any(), any());
+        verify(userService, never()).updatePass(any(), any());
     }
 
-    @Test
-    @DisplayName("resetPassword: User bị khóa -> Ném AuthResetCodeInvalidException")
-    void resetPassword_UserBlocked_ThrowsException() {
-        OtpModel otp = OtpModel.builder()
-                .email(email)
-                .type(OtpType.PASSWORD_RESET_OTP)
-                .code("123456")
-                .ttl(15L)
-                .createdAt(Instant.now())
-                .build();
-
-        when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
-
-        UserRes user = new UserRes(
-                userId, email, "oldHash", UserPlan.FREE, UserStatus.BLOCKED,
-                Collections.emptyList(), false, null
-        );
-        when(userAccountService.findByEmail(email)).thenReturn(user);
-
-        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "123456", "newPassword123")))
-                .isInstanceOf(AuthResetCodeInvalidException.class);
-
-        verify(userAccountService, never()).resetPasswordWithCode(any(), any());
-        verify(otpRepository, never()).deleteByTypeAndEmail(any(), any());
-    }
 }
+

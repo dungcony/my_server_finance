@@ -132,10 +132,10 @@ class ExpenseTransactionStrategyTest {
         );
 
         when(helper.resolveParticipants(eq(1000000L), eq(req.participants()), any()))
-                .thenThrow(new BusinessException(ErrorCode.PARTICIPANTS_SUM_MISMATCH));
+                .thenThrow(new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH));
 
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.PARTICIPANTS_SUM_MISMATCH.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH.getCode());
     }
 }

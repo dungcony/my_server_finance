@@ -129,7 +129,7 @@ class GroupJoinIntegrationTest {
     }
 
     @Test
-    @DisplayName("Người đã ACTIVE gọi tham gia lần nữa thì nhận ALREADY_IN_GROUP và không sinh thêm dòng")
+    @DisplayName("Người đã ACTIVE gọi tham gia lần nữa thì nhận GROUP_MEMBER_ALREADY_EXISTS và không sinh thêm dòng")
     void join_alreadyActive_throwsAlreadyInGroup() {
         groupService.joinByCode(joinerId, new GroupJoinReq(group.getInviteCode()));
 
@@ -138,12 +138,12 @@ class GroupJoinIntegrationTest {
 
         assertThat(failure).isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.ALREADY_IN_GROUP.getCode());
+                .isEqualTo(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS.getCode());
         assertThat(countRows(MemberStatus.ACTIVE)).isEqualTo(1);
     }
 
     @RepeatedTest(5)
-    @DisplayName("Hai request tham gia cùng lúc của một người: chỉ một dòng ACTIVE, request thua nhận ALREADY_IN_GROUP chứ không phải lỗi 500")
+    @DisplayName("Hai request tham gia cùng lúc của một người: chỉ một dòng ACTIVE, request thua nhận GROUP_MEMBER_ALREADY_EXISTS chứ không phải lỗi 500")
     void join_twoConcurrentRequests_oneWinsOtherGetsAlreadyInGroup() throws Exception {
         String inviteCode = group.getInviteCode();
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -171,7 +171,7 @@ class GroupJoinIntegrationTest {
         assertThat(failures).hasSize(1);
         assertThat(failures.get(0)).isInstanceOf(BusinessException.class)
                 .extracting("code")
-                .isEqualTo(ErrorCode.ALREADY_IN_GROUP.getCode());
+                .isEqualTo(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS.getCode());
     }
 
     // gọi một thao tác và trả về lỗi nếu có, null nếu thành công

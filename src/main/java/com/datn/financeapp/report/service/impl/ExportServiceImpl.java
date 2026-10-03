@@ -36,7 +36,7 @@ public class ExportServiceImpl implements ExportService {
     @Transactional
     public ExportJobResponse createJob(UUID userId, ExportRequest req) {
         if (!"csv".equals(req.format())) {
-            throw new BusinessException(ErrorCode.FORMAT_NOT_SUPPORTED, "Định dạng " + req.format() + " chưa hỗ trợ, chỉ hỗ trợ csv ở phiên bản này.");
+            throw new BusinessException(ErrorCode.EXPORT_FORMAT_NOT_SUPPORTED, "Định dạng " + req.format() + " chưa hỗ trợ, chỉ hỗ trợ csv ở phiên bản này.");
         }
 
         UUID jobId = UUID.randomUUID();

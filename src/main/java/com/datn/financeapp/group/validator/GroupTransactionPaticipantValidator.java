@@ -28,11 +28,11 @@ public class GroupTransactionPaticipantValidator {
      * Kiểm tra thời điểm xảy ra giao dịch (không được là thời gian trong tương lai).
      *
      * @param occurredAt Thời điểm phát sinh giao dịch
-     * @throws BusinessException nếu thời điểm lớn hơn hiện tại ({@link ErrorCode#DATE_IN_FUTURE})
+     * @throws BusinessException nếu thời điểm lớn hơn hiện tại ({@link ErrorCode#GROUP_TXN_DATE_IN_FUTURE})
      */
     public void timeNotFuture(Instant occurredAt) {
         if (occurredAt != null && occurredAt.isAfter(Instant.now()))
-            throw new BusinessException(ErrorCode.DATE_IN_FUTURE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_DATE_IN_FUTURE);
     }
 
     /**
@@ -67,7 +67,7 @@ public class GroupTransactionPaticipantValidator {
 
         // kiểm tra tư cách thành viên cho toàn bộ ID cần xét
         if (!memberService.allMemberInGroup(groupId, candidateIds))
-            throw new BusinessException(ErrorCode.GROUP_MEMBER_EXTSIS_NOT_IN);
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_IN_GROUP);
 
     }
 
@@ -79,7 +79,7 @@ public class GroupTransactionPaticipantValidator {
         Set<UUID> uniqueParticipantIds = new HashSet<>(ids);
         // 2. So sánh size của Set với size của List ban đầu để phát hiện trùng lặp
         if (uniqueParticipantIds.size() != ids.size()) {
-            throw new BusinessException(ErrorCode.PARTICIPANT_IS_CONFLICT);
+            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANT_DUPLICATED);
         }
 
     }
@@ -114,20 +114,20 @@ public class GroupTransactionPaticipantValidator {
                 anyNull = true;
             } else {
                 if (p.shareAmount() <= 0) {
-                    throw new BusinessException(ErrorCode.PARTICIPANTS_AMOUNT_INVALID);
+                    throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_AMOUNT_INVALID);
                 }
                 sum += p.shareAmount();
                 allNull = false;
             }
 
             if (anyNull && !allNull)
-                throw new BusinessException(ErrorCode.PARTICIPANTS_SHARE_MIXED);
+                throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SHARE_MIXED);
         }
 
         // Nếu tất cả đều có tiền
         if (!anyNull) {
             if (sum != amount) {
-                throw new BusinessException(ErrorCode.PARTICIPANTS_SUM_MISMATCH);
+                throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
             }
         }
     }

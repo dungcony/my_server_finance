@@ -202,7 +202,7 @@ class BudgetCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("category_id", otherCategoryId))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("CATEGORY_NOT_EDITABLE"));
+                .andExpect(jsonPath("$.error.code").value("BUDGET_CATEGORY_NOT_EDITABLE"));
 
         // Đổi period_type cũng bị chặn bằng đúng mã lỗi đó.
         mockMvc.perform(patch("/budgets/" + budgetId)
@@ -210,7 +210,7 @@ class BudgetCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("period_type", "week"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("CATEGORY_NOT_EDITABLE"));
+                .andExpect(jsonPath("$.error.code").value("BUDGET_CATEGORY_NOT_EDITABLE"));
     }
 
     /**

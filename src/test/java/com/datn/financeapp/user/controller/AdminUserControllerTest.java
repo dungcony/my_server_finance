@@ -54,7 +54,7 @@ class AdminUserControllerTest {
     @DisplayName("TC_CTL_01: Admin block user thành công -> 200 OK với msg và success=true")
     void blockUser_Success_Returns200Ok() throws Exception {
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Vi phạm chính sách cộng đồng");
-        doNothing().when(adminUserService).blockUser(req);
+        doNothing().when(adminUserService).lockUser(java.util.UUID.randomUUID(), req);
 
         mockMvc.perform(patch("/admin/user/block")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +82,7 @@ class AdminUserControllerTest {
     void blockUser_SelfBlock_Returns400ValidationError() throws Exception {
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Tự khóa");
         doThrow(new BusinessException(ErrorCode.VALIDATION_ERROR, "Không được phép tự khóa tài khoản của chính mình."))
-                .when(adminUserService).blockUser(req);
+                .when(adminUserService).lockUser(java.util.UUID.randomUUID(), req);
 
         mockMvc.perform(patch("/admin/user/block")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ class AdminUserControllerTest {
     void blockUser_NotFound_Returns404NotFound() throws Exception {
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Lý do");
         doThrow(new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng."))
-                .when(adminUserService).blockUser(req);
+                .when(adminUserService).lockUser(java.util.UUID.randomUUID(), req);
 
         mockMvc.perform(patch("/admin/user/block")
                         .contentType(MediaType.APPLICATION_JSON)

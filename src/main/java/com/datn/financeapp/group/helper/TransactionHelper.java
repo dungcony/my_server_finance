@@ -110,7 +110,7 @@ public class TransactionHelper {
 
         // Nhánh 2a: Người có số tiền, người không -> Vi phạm tính đồng nhất
         if (anyNull && !allNull) {
-            throw new BusinessException(ErrorCode.PARTICIPANTS_SHARE_MIXED);
+            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SHARE_MIXED);
         }
 
         // Nhánh 2b: Chỉ định danh sách nhưng không truyền số tiền -> Chia đều cho danh sách đó
@@ -122,7 +122,7 @@ public class TransactionHelper {
         // Nhánh 3: Chỉ định danh sách kèm số tiền cụ thể từng người
         long totalSpecified = paticipants.stream().mapToLong(GroupTransactionParticipantReq::shareAmount).sum();
         if (totalSpecified != amount) {
-            throw new BusinessException(ErrorCode.PARTICIPANTS_SUM_MISMATCH);
+            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
         }
 
         return paticipants.stream()

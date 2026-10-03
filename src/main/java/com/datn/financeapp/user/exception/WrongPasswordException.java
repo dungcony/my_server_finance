@@ -6,7 +6,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 public class WrongPasswordException extends BusinessException {
 
     public WrongPasswordException() {
-        super(ErrorCode.WRONG_PASSWORD);
+        super(ErrorCode.AUTH_PASSWORD_INCORRECT);
     }
 
     public WrongPasswordException(ErrorCode code) {

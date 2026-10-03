@@ -246,9 +246,9 @@ public class BudgetServiceImpl implements BudgetService {
         }
 
         // Trigger trg_budgets_validate cũng chặn, nhưng kiểm tra ở đây để trả đúng mã nghiệp vụ
-        // CATEGORY_NOT_EXPENSE thay vì lỗi ràng buộc thô — hai tầng phòng thủ.
+        // BUDGET_CATEGORY_NOT_EXPENSE thay vì lỗi ràng buộc thô — hai tầng phòng thủ.
         if (!"expense".equals(category.type())) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_EXPENSE);
+            throw new BusinessException(ErrorCode.BUDGET_CATEGORY_NOT_EXPENSE);
         }
 
         if (req.walletId() != null
@@ -284,7 +284,7 @@ public class BudgetServiceImpl implements BudgetService {
     /**
      * api/05 mục 5. {@code category_id} và {@code period_type} KHÔNG sửa được — đổi hai trường đó
      * thực chất là một ngân sách khác, cho sửa sẽ làm mọi con số của kỳ đang chạy vô nghĩa. Từ
-     * chối tường minh bằng {@code CATEGORY_NOT_EDITABLE} rõ ràng hơn im lặng bỏ qua trường client
+     * chối tường minh bằng {@code BUDGET_CATEGORY_NOT_EDITABLE} rõ ràng hơn im lặng bỏ qua trường client
      * gửi lên (T-04-06).
      */
     @Transactional
@@ -294,7 +294,7 @@ public class BudgetServiceImpl implements BudgetService {
         boolean changesCategory = req.categoryId() != null && !req.categoryId().equals(budget.getCategoryId());
         boolean changesPeriod = req.periodType() != null && !req.periodType().equals(budget.getPeriodType());
         if (changesCategory || changesPeriod) {
-            throw new BusinessException(ErrorCode.CATEGORY_NOT_EDITABLE);
+            throw new BusinessException(ErrorCode.BUDGET_CATEGORY_NOT_EDITABLE);
         }
 
         if (req.limitAmount() != null) {

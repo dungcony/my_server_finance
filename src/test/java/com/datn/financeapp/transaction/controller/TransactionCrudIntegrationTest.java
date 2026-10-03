@@ -203,7 +203,7 @@ class TransactionCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("CATEGORY_REQUIRED"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_CATEGORY_REQUIRED"));
     }
 
     @Test
@@ -225,7 +225,7 @@ class TransactionCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("CATEGORY_NOT_ALLOWED"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_CATEGORY_NOT_ALLOWED"));
     }
 
     @Test
@@ -266,7 +266,7 @@ class TransactionCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("CATEGORY_TYPE_MISMATCH"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_CATEGORY_TYPE_MISMATCH"));
     }
 
     @Test
@@ -288,6 +288,6 @@ class TransactionCrudIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("DESTINATION_WALLET_NOT_ALLOWED"));
+                .andExpect(jsonPath("$.error.code").value("TRANSACTION_DEST_WALLET_NOT_ALLOWED"));
     }
 }

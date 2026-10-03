@@ -85,7 +85,7 @@ public class TransactionServiceImpl implements TransactionService {
         validateShape(req.type(), req.categoryId(), req.destinationWalletId(), req.walletId());
 
         if (req.amount() == null || req.amount() <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
         }
 
         if ("transfer".equals(req.type())) {
@@ -98,10 +98,10 @@ public class TransactionServiceImpl implements TransactionService {
             CategoryRefResponse category =
                     categoryService.findRefVisibleToUser(req.categoryId(), userId);
             if (category == null) {
-                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_ALLOWED);
             }
             if (!category.type().equals(req.type())) {
-                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_TYPE_MISMATCH);
             }
         }
 
@@ -145,7 +145,7 @@ public class TransactionServiceImpl implements TransactionService {
         validateShape(req.type(), req.categoryId(), req.destinationWalletId(), req.walletId());
 
         if (req.amount() == null || req.amount() <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
         }
 
         Set<UUID> walletIds = new HashSet<>();
@@ -163,10 +163,10 @@ public class TransactionServiceImpl implements TransactionService {
             CategoryRefResponse category =
                     categoryService.findRefVisibleToUser(req.categoryId(), userId);
             if (category == null) {
-                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_ALLOWED);
             }
             if (!category.type().equals(req.type())) {
-                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_TYPE_MISMATCH);
             }
         }
 
@@ -658,20 +658,20 @@ public class TransactionServiceImpl implements TransactionService {
     public void validateShape(String type, UUID categoryId, UUID destinationWalletId, UUID walletId) {
         if ("transfer".equals(type)) {
             if (destinationWalletId == null) {
-                throw new BusinessException(ErrorCode.DESTINATION_WALLET_REQUIRED);
+                throw new BusinessException(ErrorCode.TRANSACTION_DEST_WALLET_REQUIRED);
             }
             if (categoryId != null) {
-                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED, "Giao dịch chuyển không được có danh mục.");
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_ALLOWED, "Giao dịch chuyển không được có danh mục.");
             }
             if (walletId != null && walletId.equals(destinationWalletId)) {
-                throw new BusinessException(ErrorCode.SAME_SOURCE_AND_DESTINATION);
+                throw new BusinessException(ErrorCode.WALLET_TRANSFER_SAME_DESTINATION);
             }
         } else {
             if (categoryId == null) {
-                throw new BusinessException(ErrorCode.CATEGORY_REQUIRED);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_REQUIRED);
             }
             if (destinationWalletId != null) {
-                throw new BusinessException(ErrorCode.DESTINATION_WALLET_NOT_ALLOWED);
+                throw new BusinessException(ErrorCode.TRANSACTION_DEST_WALLET_NOT_ALLOWED);
             }
         }
     }

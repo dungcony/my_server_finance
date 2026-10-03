@@ -1,12 +1,15 @@
 package com.datn.financeapp.user.controller;
 
+import com.datn.financeapp.user.dto.response.UserRes;
+
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
 import com.datn.financeapp.user.dto.request.UpdateProfileRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.user.dto.response.UserProfileResponse;
+
 import com.datn.financeapp.user.enums.UserPlan;
-import com.datn.financeapp.user.exception.PasswordAlreadySetException;
+import com.datn.financeapp.user.service.UserBehavierService;
+import com.datn.financeapp.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,10 +50,7 @@ class UserControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
-    private ProfileService userProfileService;
-
-    @Mock
-    private AccountService userAccountService;
+    private UserBehavierService userBehavierService;
 
     @InjectMocks
     private UserController userController;
@@ -77,10 +77,8 @@ class UserControllerTest {
     @Test
     @DisplayName("GET /users/me: Lấy thông tin hồ sơ của user hiện tại -> 200 OK")
     void getMe_Success_ReturnsUserProfile() throws Exception {
-        UserProfileResponse response = new UserProfileResponse(
-                currentUserId, "test@example.com", "Nam", "Nguyen", "avatar.png", UserPlan.FREE, true
-        );
-        when(userProfileService.getMe(currentUserId)).thenReturn(response);
+        UserRes response = new UserRes(currentUserId, "test@example.com", "Nam", "Nguyen", UserPlan.FREE, com.datn.financeapp.user.enums.UserStatus.ACTIVE, null, "dummy_password", null, false);
+        when(userBehavierService.getMe(currentUserId)).thenReturn(response);
 
         mockMvc.perform(get("/users/me"))
                 .andExpect(status().isOk())
@@ -94,35 +92,33 @@ class UserControllerTest {
     @Test
     @DisplayName("POST /users/me/password: Không body, chỉ cần token -> gọi sinh mật khẩu cho user hiện tại -> 200 OK")
     void generatePassword_Success_Returns200() throws Exception {
-        doNothing().when(userAccountService).generatePassword(currentUserId);
+        doNothing().when(userBehavierService).createPassword(currentUserId);
 
         mockMvc.perform(post("/users/me/password"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.msg").value("Mật khẩu đã được gửi về email của bạn."));
 
-        verify(userAccountService).generatePassword(currentUserId);
+        verify(userBehavierService).createPassword(currentUserId);
     }
 
     @Test
-    @DisplayName("POST /users/me/password: Tài khoản đã có mật khẩu -> 409 PASSWORD_ALREADY_SET")
+    @DisplayName("POST /users/me/password: Tài khoản đã có mật khẩu -> 409 AUTH_PASSWORD_ALREADY_SET")
     void generatePassword_AlreadyHasPassword_Returns409() throws Exception {
-        doThrow(new PasswordAlreadySetException()).when(userAccountService).generatePassword(currentUserId);
+        doThrow(new com.datn.financeapp.common.exception.BusinessException(com.datn.financeapp.common.exception.ErrorCode.AUTH_PASSWORD_ALREADY_SET)).when(userBehavierService).createPassword(currentUserId);
 
         mockMvc.perform(post("/users/me/password"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("PASSWORD_ALREADY_SET"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_PASSWORD_ALREADY_SET"));
     }
 
     @Test
     @DisplayName("PATCH /users/me: Cập nhật thông tin hồ sơ -> 200 OK")
     void updateProfile_Success_ReturnsUpdatedProfile() throws Exception {
         UpdateProfileRequest req = new UpdateProfileRequest("Minh", "Tran", "new-avatar.png");
-        UserProfileResponse updated = new UserProfileResponse(
-                currentUserId, "test@example.com", "Minh", "Tran", "new-avatar.png", UserPlan.FREE, true
-        );
-        when(userProfileService.updateMe(eq(currentUserId), any(UpdateProfileRequest.class))).thenReturn(updated);
+        UserRes updated = new UserRes(currentUserId, "test@example.com", "Minh", "Tran", UserPlan.FREE, com.datn.financeapp.user.enums.UserStatus.ACTIVE, null, "dummy_password", null, false);
+        when(userBehavierService.updateMe(eq(currentUserId), any(UpdateProfileRequest.class))).thenReturn(updated);
 
         mockMvc.perform(patch("/users/me")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,7 +133,7 @@ class UserControllerTest {
     @DisplayName("PUT /users/me/password: Đổi mật khẩu thành công -> 200 OK")
     void changePassword_Success_Returns200() throws Exception {
         UpdatePassReq req = new UpdatePassReq("oldPassword123", "newPassword456");
-        doNothing().when(userAccountService).changePassword(eq(currentUserId), any(UpdatePassReq.class));
+        doNothing().when(userBehavierService).changePassword(eq(currentUserId), any(UpdatePassReq.class));
 
         mockMvc.perform(put("/users/me/password")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,14 +141,14 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(userAccountService).changePassword(eq(currentUserId), any(UpdatePassReq.class));
+        verify(userBehavierService).changePassword(eq(currentUserId), any(UpdatePassReq.class));
     }
 
     @Test
     @DisplayName("DELETE /users/me: Xóa tài khoản thành công -> 200 OK")
     void deleteAccount_Success_Returns200() throws Exception {
         DeleteAccountRequest req = new DeleteAccountRequest("myPassword123");
-        doNothing().when(userProfileService).deleteMe("myPassword123");
+        doNothing().when(userBehavierService).deleteMe("myPassword123");
 
         mockMvc.perform(delete("/users/me")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,6 +156,12 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(userProfileService).deleteMe("myPassword123");
+        verify(userBehavierService).deleteMe("myPassword123");
     }
 }
+
+
+
+
+
+

@@ -48,14 +48,14 @@ public class TransactionBulkServiceImpl implements TransactionBulkService {
     private final WalletService walletService;
 
     /**
-     * Xử lý tối đa {@value #MAX_ROWS} dòng. Vượt hạn mức -> {@code TOO_MANY_ROWS} 400 NGAY ĐẦU,
+     * Xử lý tối đa {@value #MAX_ROWS} dòng. Vượt hạn mức -> {@code TRANSACTION_IMPORT_ROWS_EXCEEDED} 400 NGAY ĐẦU,
      * không xử lý dòng nào (T-03-11). Mỗi dòng validate quyền wallet/category giống hệt
      * {@code TransactionService.create()} — không có đường tắt bỏ qua kiểm tra quyền vì đang ở
      * trong vòng lặp bulk (T-03-12).
      */
     public BulkCreateTransactionResponse createBulk(UUID userId, BulkCreateTransactionRequest req) {
         if (req.items().size() > MAX_ROWS) {
-            throw new BusinessException(ErrorCode.TOO_MANY_ROWS, "Tối đa " + MAX_ROWS + " giao dịch mỗi lần gọi.");
+            throw new BusinessException(ErrorCode.TRANSACTION_IMPORT_ROWS_EXCEEDED, "Tối đa " + MAX_ROWS + " giao dịch mỗi lần gọi.");
         }
 
         List<TransactionListItemResponse> saved = new ArrayList<>();
@@ -103,7 +103,7 @@ public class TransactionBulkServiceImpl implements TransactionBulkService {
         transactionService.validateShape(item.type(), item.categoryId(), item.destinationWalletId(), item.walletId());
 
         if (item.amount() == null || item.amount() <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
         }
 
         requireWalletAccess(item.walletId(), userId);
@@ -115,10 +115,10 @@ public class TransactionBulkServiceImpl implements TransactionBulkService {
             CategoryRefResponse category =
                     categoryService.findRefVisibleToUser(item.categoryId(), userId);
             if (category == null) {
-                throw new BusinessException(ErrorCode.CATEGORY_NOT_ALLOWED);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_ALLOWED);
             }
             if (!category.type().equals(item.type())) {
-                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH);
+                throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_TYPE_MISMATCH);
             }
         }
 

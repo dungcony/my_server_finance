@@ -76,7 +76,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
 
         if (user.getPassword() != null
                 && (password == null || !passwordEncoder.matches(password, user.getPassword()))) {
-            throw new WrongPasswordException(ErrorCode.WRONG_PASSWORD);
+            throw new WrongPasswordException(ErrorCode.AUTH_PASSWORD_INCORRECT);
         }
 
         user.setDeleted(true);
@@ -95,7 +95,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
         }
 
         if (!passwordEncoder.matches(req.oldPassword(), user.getPassword())) {
-            throw new WrongPasswordException(ErrorCode.WRONG_OLD_PASSWORD);
+            throw new WrongPasswordException(ErrorCode.AUTH_OLD_PASSWORD_INCORRECT);
         }
 
         if (passwordEncoder.matches(req.newPassword(), user.getPassword())) {

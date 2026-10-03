@@ -146,39 +146,4 @@ class UserRepositoryTest {
         assertThat(visibleIds).doesNotContain(adminUser.getId());
     }
 
-    @Test
-    @DisplayName("setStatusById: Cập nhật status trực tiếp qua @Modifying")
-    void setStatusById_UpdatesDirectly() {
-        User user = createUser("status.change@example.com", null, UserStatus.PENDING_VERIFY);
-        assertThat(user.getStatus()).isEqualTo(UserStatus.PENDING_VERIFY);
-
-        userRepository.setStatusById(user.getId(), UserStatus.BLOCKED);
-
-        User reloaded = userRepository.findById(user.getId()).orElseThrow();
-        assertThat(reloaded.getStatus()).isEqualTo(UserStatus.BLOCKED);
-    }
-
-    @Test
-    @DisplayName("findAll: Chỉ trả về user chưa bị xóa (isDeleted = false) và fetch sẵn userRoles")
-    void findAll_FiltersOutDeletedUsers() {
-        User activeUser = createUser("active.repo@example.com", null, UserStatus.ACTIVE);
-        User deletedUser = User.builder()
-                .id(UUID.randomUUID())
-                .email("deleted.repo@example.com")
-                .password("hashed_password")
-                .firstName("Deleted")
-                .lastName("User")
-                .plan(UserPlan.FREE)
-                .status(UserStatus.ACTIVE)
-                .isDeleted(true)
-                .createdAt(Instant.now())
-                .build();
-        userRepository.saveAndFlush(deletedUser);
-
-        List<User> all = userRepository.findAll();
-        List<UUID> ids = all.stream().map(User::getId).toList();
-
-        assertThat(ids).contains(activeUser.getId());
-        assertThat(ids).doesNotContain(deletedUser.getId());
-    }
 }

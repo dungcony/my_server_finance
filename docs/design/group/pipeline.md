@@ -275,7 +275,7 @@ Hệ quả: người còn nợ mà không chịu góp thì chủ nhóm **không 
 
 Qua kiểm tra thì, trong **một** transaction CSDL:
 
-1. Người đó đang giữ quỹ → **chặn**, báo `409 TREASURER_MUST_TRANSFER_FIRST`. Phải bàn giao quỹ (`PUT /v1/groups/{id}/fund-kepper`) trước.
+1. Người đó đang giữ quỹ → **chặn**, báo `409 GROUP_TREASURER_TRANSFER_REQUIRED`. Phải bàn giao quỹ (`PUT /v1/groups/{id}/fund-kepper`) trước.
 2. Đặt `status` và `left_at = now()` cho bản ghi thành viên.
 3. Hệ thống tự **`REJECTED`** mọi khoản `PENDING` có `created_by` = người rời: `reviewed_by` = người kích hoạt rời (chính mình hoặc chủ nhóm mời rời), `reviewed_at = now()`.
 

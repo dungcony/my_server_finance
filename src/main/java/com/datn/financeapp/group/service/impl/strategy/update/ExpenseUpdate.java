@@ -50,7 +50,7 @@ public class ExpenseUpdate implements GTransactionUpdate {
         // kiểm tra bắt buộc truyền lại người chia tiền khi thay đổi tổng số tiền
         if (req.amount() != null && !req.amount().equals(txn.getAmount())) {
             if (req.participants() == null || req.participants().isEmpty()) {
-                throw new BusinessException(ErrorCode.PARTICIPANTS_REQUIRED_ON_AMOUNT_CHANGE);
+                throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_REQUIRED);
             }
         }
 
@@ -60,7 +60,7 @@ public class ExpenseUpdate implements GTransactionUpdate {
         // cập nhật danh mục nếu có truyền lên
         UUID categoryId = req.categoryId() != null ? req.categoryId() : txn.getCategoryId();
         if (categoryId == null) {
-            throw new BusinessException(ErrorCode.CATEGORY_REQUIRED_FOR_EXPENSE);
+            throw new BusinessException(ErrorCode.GROUP_TXN_CATEGORY_REQUIRED);
         }
         if (req.categoryId() != null) {
             eventPublisher.publishEvent(new ValidCategorySystemEvent(categoryId));

@@ -363,12 +363,12 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.PARTICIPANT_NOT_MEMBER.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PARTICIPANT_NOT_MEMBER.getCode());
                     });
         }
 
         @Test
-        @DisplayName("Tổng shareAmount không khớp amount -> ném PARTICIPANTS_SUM_MISMATCH")
+        @DisplayName("Tổng shareAmount không khớp amount -> ném GROUP_TXN_PARTICIPANTS_SUM_MISMATCH")
         void testFailFast_ParticipantsSumMismatch() {
             UUID userA = UUID.randomUUID();
             UUID userB = UUID.randomUUID();
@@ -394,12 +394,12 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.PARTICIPANTS_SUM_MISMATCH.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH.getCode());
                     });
         }
 
         @Test
-        @DisplayName("Chia hỗn hợp nhưng tổng shareAmount chỉ định >= amount -> ném PARTICIPANTS_SUM_MISMATCH")
+        @DisplayName("Chia hỗn hợp nhưng tổng shareAmount chỉ định >= amount -> ném GROUP_TXN_PARTICIPANTS_SUM_MISMATCH")
         void testFailFast_MixedShareSumExceedsAmount() {
             UUID userA = UUID.randomUUID();
             UUID userB = UUID.randomUUID();
@@ -425,12 +425,12 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.PARTICIPANTS_SUM_MISMATCH.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH.getCode());
                     });
         }
 
         @Test
-        @DisplayName("shareAmount <= 0 -> ném INVALID_PARTICIPANT_DATA")
+        @DisplayName("shareAmount <= 0 -> ném GROUP_TXN_PARTICIPANT_DATA_INVALID")
         void testFailFast_NegativeOrZeroShareAmount() {
             UUID userA = UUID.randomUUID();
             UUID txId = UUID.randomUUID();
@@ -453,12 +453,12 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.INVALID_PARTICIPANT_DATA.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PARTICIPANT_DATA_INVALID.getCode());
                     });
         }
 
         @Test
-        @DisplayName("Trùng lặp userId trong cùng transaction -> ném INVALID_PARTICIPANT_DATA")
+        @DisplayName("Trùng lặp userId trong cùng transaction -> ném GROUP_TXN_PARTICIPANT_DATA_INVALID")
         void testFailFast_DuplicateParticipantUserId() {
             UUID userA = UUID.randomUUID();
             UUID txId = UUID.randomUUID();
@@ -482,12 +482,12 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.INVALID_PARTICIPANT_DATA.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PARTICIPANT_DATA_INVALID.getCode());
                     });
         }
 
         @Test
-        @DisplayName("Số tiền giao dịch <= 0 -> ném INVALID_AMOUNT")
+        @DisplayName("Số tiền giao dịch <= 0 -> ném TRANSACTION_AMOUNT_INVALID")
         void testFailFast_InvalidAmount() {
             UUID userA = UUID.randomUUID();
             GTransaction tx = GTransaction.builder()
@@ -504,7 +504,7 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.INVALID_AMOUNT.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.TRANSACTION_AMOUNT_INVALID.getCode());
                     });
         }
     }
@@ -514,7 +514,7 @@ class BalanceCalculatorTest {
     class ValidationAndSecurityTests {
 
         @Test
-        @DisplayName("CONTRIBUTION có transactorId == null -> ném PAYER_NOT_MEMBER")
+        @DisplayName("CONTRIBUTION có transactorId == null -> ném GROUP_TXN_PAYER_NOT_MEMBER")
         void testContribution_ThrowsWhenTransactorNull() {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
@@ -530,7 +530,7 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.PAYER_NOT_MEMBER.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER.getCode());
                     });
         }
 
@@ -554,7 +554,7 @@ class BalanceCalculatorTest {
         }
 
         @Test
-        @DisplayName("CONTRIBUTION có moneySource == FUND -> ném MONEY_SOURCE_INVALID (Option 1)")
+        @DisplayName("CONTRIBUTION có moneySource == FUND -> ném GROUP_TXN_MONEY_SOURCE_INVALID (Option 1)")
         void testContribution_ThrowsWhenMoneySourceIsFund() {
             UUID userA = UUID.randomUUID();
             GTransaction tx = GTransaction.builder()
@@ -571,12 +571,12 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.MONEY_SOURCE_INVALID.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID.getCode());
                     });
         }
 
         @Test
-        @DisplayName("EXPENSE nguồn tiền PERSONAL nhưng transactorId == null -> ném PAYER_NOT_MEMBER")
+        @DisplayName("EXPENSE nguồn tiền PERSONAL nhưng transactorId == null -> ném GROUP_TXN_PAYER_NOT_MEMBER")
         void testExpensePersonal_ThrowsWhenTransactorNull() {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
@@ -596,7 +596,7 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.PAYER_NOT_MEMBER.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER.getCode());
                     });
         }
 
@@ -623,7 +623,7 @@ class BalanceCalculatorTest {
         }
 
         @Test
-        @DisplayName("REFUND có transactorId == null -> ném PAYER_NOT_MEMBER")
+        @DisplayName("REFUND có transactorId == null -> ném GROUP_TXN_PAYER_NOT_MEMBER")
         void testRefund_ThrowsWhenTransactorNull() {
             GTransaction tx = GTransaction.builder()
                     .id(UUID.randomUUID())
@@ -639,7 +639,7 @@ class BalanceCalculatorTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
-                        assertThat(be.getCode()).isEqualTo(ErrorCode.PAYER_NOT_MEMBER.getCode());
+                        assertThat(be.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER.getCode());
                     });
         }
 

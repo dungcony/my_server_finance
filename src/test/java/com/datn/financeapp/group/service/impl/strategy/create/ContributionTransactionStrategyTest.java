@@ -104,7 +104,7 @@ class ContributionTransactionStrategyTest {
 
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.MONEY_SOURCE_INVALID.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID.getCode());
     }
 
     @Test
@@ -124,6 +124,6 @@ class ContributionTransactionStrategyTest {
 
         assertThatThrownBy(() -> strategy.build(operatorId, groupId, req, GTransactionStatus.CONFIRMED, true))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.PARTICIPANTS_NOT_ALLOWED.getCode());
+                .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_PARTICIPANTS_NOT_ALLOWED.getCode());
     }
 }

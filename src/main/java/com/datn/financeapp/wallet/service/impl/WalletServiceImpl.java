@@ -138,7 +138,7 @@ public class WalletServiceImpl implements WalletService {
             // Group thuộc Phase 5 — chưa tồn tại entity/nghiệp vụ kiểm tra thành viên. Ném lỗi
             // tường minh thay vì tự bịa logic kiểm tra thành viên nhóm không kiểm chứng được
             // (T-02-05).
-            throw new BusinessException(ErrorCode.NOT_GROUP_MEMBER, "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED, "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
         }
 
         Integer maxSortOrder = walletRepository.findMaxSortOrderByUserId(userId);
@@ -171,7 +171,7 @@ public class WalletServiceImpl implements WalletService {
      * {@code REQUIRED} — tham gia transaction đang mở chứ không mở transaction mới.
      *
      * <p><b>Không gọi {@link #create} thay cho method này.</b> {@code create} nhận
-     * {@code CreateWalletRequest} và còn kiểm trùng tên lẫn ném {@code NOT_GROUP_MEMBER} — đều
+     * {@code CreateWalletRequest} và còn kiểm trùng tên lẫn ném {@code GROUP_MEMBER_REQUIRED} — đều
      * vô nghĩa với một tài khoản chưa có ví nào. Tách riêng để hai luồng không ràng buộc nhau.
      *
      * <p>Trước đây khối dựng ví này được chép nguyên văn ở hai chỗ trong {@code AuthService}
@@ -343,14 +343,14 @@ public class WalletServiceImpl implements WalletService {
     /**
      * api/02-VI.md mục 5. {@code UpdateWalletRequest} không có field {@code currentBalance}/
      * {@code type} — nếu client vẫn cố gửi (bắt qua {@code extraFields}), trả
-     * {@code BALANCE_NOT_EDITABLE} tường minh thay vì Jackson âm thầm bỏ qua (T-02-04).
+     * {@code WALLET_BALANCE_NOT_EDITABLE} tường minh thay vì Jackson âm thầm bỏ qua (T-02-04).
      */
     @Transactional
     public WalletResponse update(UUID userId, UUID walletId, UpdateWalletRequest req) {
         Map<String, Object> extra = req.extraFields();
         if (extra.containsKey("current_balance") || extra.containsKey("currentBalance")
                 || extra.containsKey("type")) {
-            throw new BusinessException(ErrorCode.BALANCE_NOT_EDITABLE);
+            throw new BusinessException(ErrorCode.WALLET_BALANCE_NOT_EDITABLE);
         }
 
         Wallet wallet = walletRepository
@@ -394,7 +394,7 @@ public class WalletServiceImpl implements WalletService {
         }
 
         if (walletRepository.countByUserIdAndIsDeletedFalse(userId) <= 1) {
-            throw new BusinessException(ErrorCode.CANNOT_DELETE_LAST_WALLET);
+            throw new BusinessException(ErrorCode.WALLET_LAST_NOT_DELETABLE);
         }
 
         Long transactionCount = jdbcTemplate.queryForObject(

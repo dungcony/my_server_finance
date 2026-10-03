@@ -56,7 +56,7 @@ public class AdjustmentTransaction implements GTransactionBuilder {
                               GTransactionStatus status, boolean isSettlementEnabled) {
         MoneySource source = req.resolveMoneySource();
         if (source != MoneySource.FUND) {
-            throw new BusinessException(ErrorCode.MONEY_SOURCE_INVALID);
+            throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
         }
 
         // tự động chia đều cho toàn bộ thành viên trong nhóm nếu client không truyền

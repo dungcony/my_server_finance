@@ -129,7 +129,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(UserNotFoundException::new);
 
         if (passwordEncoder.matches(password, user.getPassword()))
-            throw new BusinessException(ErrorCode.NEW_PASSWORD_SAME_AS_OLD);
+            throw new BusinessException(ErrorCode.AUTH_PASSWORD_SAME_AS_OLD);
 
         user.setPassword(passwordEncoder.encode(password));
         return userMapper.toResponse(userRepository.save(user));
@@ -149,7 +149,7 @@ public class UserServiceImpl implements UserService {
 
         else if (!user.getGoogleId().equals(googleId))
             // nên gửi lỗi khác nhưng chưa nghĩ ra
-            throw new BusinessException(ErrorCode.INVALID_GOOGLE_TOKEN);
+            throw new BusinessException(ErrorCode.AUTH_GOOGLE_TOKEN_INVALID);
 
         validateAccountForLogin(userMapper.toResponse(user));
 
@@ -171,10 +171,10 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(UserNotFoundException::new);
 
         if (!user.isConfirm())
-            throw new BusinessException(ErrorCode.ACCOUNT_NOT_VERIFIED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
 
         if (user.isLocked())
-            throw new BusinessException(ErrorCode.ACCOUNT_BLOCKED);
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
     }
 
 

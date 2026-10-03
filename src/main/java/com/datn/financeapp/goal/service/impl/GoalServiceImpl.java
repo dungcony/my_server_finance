@@ -94,13 +94,13 @@ public class GoalServiceImpl implements GoalService {
     @Transactional
     public CreateGoalResponse create(UUID userId, CreateGoalRequest req) {
         if (req.targetAmount() == null || req.targetAmount() <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT);
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
         }
         if (req.targetDate() != null && !req.targetDate().isAfter(LocalDate.now())) {
-            throw new BusinessException(ErrorCode.INVALID_TARGET_DATE);
+            throw new BusinessException(ErrorCode.GOAL_TARGET_DATE_INVALID);
         }
         if (req.initialAmount() != null && req.initialAmount() < 0) {
-            throw new BusinessException(ErrorCode.INVALID_AMOUNT, "Số tiền đã có sẵn không được âm.");
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID, "Số tiền đã có sẵn không được âm.");
         }
 
         WalletRefResponse wallet = null;
@@ -291,13 +291,13 @@ public class GoalServiceImpl implements GoalService {
         }
         if (req.targetAmount() != null) {
             if (req.targetAmount() <= 0) {
-                throw new BusinessException(ErrorCode.INVALID_AMOUNT);
+                throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
             }
             goal.setTargetAmount(req.targetAmount());
         }
         if (req.targetDate() != null) {
             if (!req.targetDate().isAfter(LocalDate.now())) {
-                throw new BusinessException(ErrorCode.INVALID_TARGET_DATE);
+                throw new BusinessException(ErrorCode.GOAL_TARGET_DATE_INVALID);
             }
             goal.setTargetDate(req.targetDate());
         }

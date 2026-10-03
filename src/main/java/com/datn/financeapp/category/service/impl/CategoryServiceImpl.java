@@ -186,11 +186,11 @@ public class CategoryServiceImpl implements CategoryService {
 
             // Ràng buộc 1: cha được chọn phải có parent_category_id rỗng (chỉ hai tầng).
             if (parent.getParentCategoryId() != null) {
-                throw new BusinessException(ErrorCode.MAX_DEPTH_EXCEEDED);
+                throw new BusinessException(ErrorCode.CATEGORY_DEPTH_EXCEEDED);
             }
             // Ràng buộc 2: con phải cùng type với cha.
             if (!parent.getType().equals(req.type())) {
-                throw new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT);
+                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH_PARENT);
             }
             // Con kế thừa category_group_id từ cha, dù trigger DB cũng tự làm — set tường minh
             // để response trả đúng ngay không cần load lại.
@@ -212,7 +212,7 @@ public class CategoryServiceImpl implements CategoryService {
         Icon icon = iconRepository
                 .findById(req.iconId())
                 .filter(i -> Boolean.TRUE.equals(i.getIsActive()))
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ICON));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_ICON_INVALID));
 
         Integer maxSortOrder = categoryRepository.findMaxSortOrderInLevel(userId, req.parentCategoryId());
         Instant now = Instant.now();
@@ -249,7 +249,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryResponse update(UUID userId, UUID categoryId, UpdateCategoryRequest req) {
         if (req.extraFields().containsKey("type")) {
-            throw new BusinessException(ErrorCode.TYPE_NOT_EDITABLE);
+            throw new BusinessException(ErrorCode.CATEGORY_TYPE_NOT_EDITABLE);
         }
 
         Category category = categoryRepository
@@ -276,10 +276,10 @@ public class CategoryServiceImpl implements CategoryService {
                         .findByIdAndVisibleToUser(newParentId, userId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục cha."));
                 if (newParent.getParentCategoryId() != null) {
-                    throw new BusinessException(ErrorCode.MAX_DEPTH_EXCEEDED);
+                    throw new BusinessException(ErrorCode.CATEGORY_DEPTH_EXCEEDED);
                 }
                 if (!newParent.getType().equals(category.getType())) {
-                    throw new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT);
+                    throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH_PARENT);
                 }
                 category.setParentCategoryId(newParentId);
                 category.setCategoryGroupId(newParent.getCategoryGroupId());
@@ -307,7 +307,7 @@ public class CategoryServiceImpl implements CategoryService {
             Icon icon = iconRepository
                     .findById(req.iconId())
                     .filter(i -> Boolean.TRUE.equals(i.getIsActive()))
-                    .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ICON));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_ICON_INVALID));
             category.setIconId(icon.getId());
         }
         if (req.color() != null) {
@@ -340,7 +340,7 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         if (categoryRepository.existsByParentCategoryIdAndIsDeletedFalse(categoryId)) {
-            throw new BusinessException(ErrorCode.CHILD_CATEGORIES_EXIST);
+            throw new BusinessException(ErrorCode.CATEGORY_CHILDREN_EXIST);
         }
 
         Long transactionCount = jdbcTemplate.queryForObject(
@@ -356,7 +356,7 @@ public class CategoryServiceImpl implements CategoryService {
                     .findByIdAndVisibleToUser(replacementCategoryId, userId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy danh mục thay thế."));
             if (!replacement.getType().equals(category.getType())) {
-                throw new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT, "Danh mục thay thế phải cùng loại thu/chi.");
+                throw new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH_PARENT, "Danh mục thay thế phải cùng loại thu/chi.");
             }
             jdbcTemplate.update(
                     "UPDATE transactions SET category_id = ? WHERE category_id = ?",
@@ -555,11 +555,11 @@ public class CategoryServiceImpl implements CategoryService {
         String message = Optional.ofNullable(ex.getMostSpecificCause())
                 .map(Throwable::getMessage)
                 .orElse("");
-        if (message.contains("MAX_DEPTH_EXCEEDED")) {
-            return new BusinessException(ErrorCode.MAX_DEPTH_EXCEEDED);
+        if (message.contains("CATEGORY_DEPTH_EXCEEDED")) {
+            return new BusinessException(ErrorCode.CATEGORY_DEPTH_EXCEEDED);
         }
-        if (message.contains("TYPE_MISMATCH_WITH_PARENT")) {
-            return new BusinessException(ErrorCode.TYPE_MISMATCH_WITH_PARENT);
+        if (message.contains("CATEGORY_TYPE_MISMATCH_PARENT")) {
+            return new BusinessException(ErrorCode.CATEGORY_TYPE_MISMATCH_PARENT);
         }
         if (message.contains("CATEGORY_HAS_CHILDREN")) {
             return new BusinessException(ErrorCode.CATEGORY_HAS_CHILDREN);

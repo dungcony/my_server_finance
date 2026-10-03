@@ -58,7 +58,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String userId = claims.getSubject();
 
                 if (blacklistedUserRepository.isBlacklisted(userId)) {
-                    request.setAttribute(ATTR_TOKEN_ERROR, "ACCOUNT_BLOCKED");
+                    request.setAttribute(ATTR_TOKEN_ERROR, "AUTH_ACCOUNT_BLOCKED");
                     chain.doFilter(request, response);
                     return;
                 }

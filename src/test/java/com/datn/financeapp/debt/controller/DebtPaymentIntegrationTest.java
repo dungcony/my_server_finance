@@ -245,7 +245,7 @@ class DebtPaymentIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("amount", 2_500_000))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("EXCEEDS_REMAINING_AMOUNT"))
+                .andExpect(jsonPath("$.error.code").value("DEBT_PAYMENT_EXCEEDS_REMAINING"))
                 .andExpect(jsonPath("$.error.message").value(org.hamcrest.Matchers.containsString("2.000.000")));
 
         // Không có tác dụng phụ nào: ví không đổi, paid_amount không đổi.

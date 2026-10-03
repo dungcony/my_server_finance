@@ -121,7 +121,7 @@ public class RecurringPeriodWriter {
         } catch (DataIntegrityViolationException duplicate) {
             // Ràng buộc CSDL là nơi phát hiện, nhưng người dùng phải nhận lỗi nghiệp vụ rõ nghĩa
             // chứ không phải 500 lộ tên constraint.
-            throw new BusinessException(ErrorCode.ALREADY_RUN_TODAY);
+            throw new BusinessException(ErrorCode.RECURRING_ALREADY_RUN_TODAY);
         }
     }
 
