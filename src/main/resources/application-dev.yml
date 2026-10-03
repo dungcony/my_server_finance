@@ -24,6 +24,12 @@ spring:
     encoding: UTF-8
     baseline-on-migrate: false
 
+# ngưỡng cảnh báo của ServicePerformanceAspect (chỉ chạy ở profile dev)
+app:
+  perf:
+    sql-warn-threshold: 10
+    slow-ms: 300
+
 logging:
   level:
     com.datn.financeapp: DEBUG

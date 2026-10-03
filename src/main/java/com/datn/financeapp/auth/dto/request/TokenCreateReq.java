@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record TokenCreateReq(
         UUID userId,
+        String email,
         String plan,
         List<String> authorities,
         int roleLevel

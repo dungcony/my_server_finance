@@ -60,6 +60,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(user);
     }
 
+    @Transactional(readOnly = true, noRollbackFor = UserNotFoundException.class)
     @Override
     public UserRes get(UserGetReq req) {
 

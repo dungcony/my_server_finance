@@ -1,39 +1,27 @@
-# Kế hoạch sửa lỗi Test sau khi Refactor module User & Auth
+# Kế hoạch sửa lỗi 500 khi đăng nhập sai email
 
-Sau khi phân tích logic cũ trong các file test bị lỗi và cấu trúc mới của module `user` / `auth`, tôi nhận thấy nguyên nhân chính là:
-- `ProfileService` và `AccountService` đã bị xóa/gộp và thay thế bởi `UserBehavierService` (cho các logic như `getMe`, `updateMe`, `deleteMe`, `changePassword`) và `UserService` (cho các logic quản lý user chung, update status).
-- Các Exception cụ thể của module auth (như `AuthResetCodeInvalidException`, `AuthPasswordSameAsOldException`) đã bị xóa và thay bằng `BusinessException(ErrorCode.XXX)`.
-- Các dependencies của `AuthServiceImpl` đã thay đổi hoàn toàn.
+## Nguyên nhân gốc (Root Cause)
 
-Dưới đây là phương án sửa đổi chi tiết, đảm bảo không làm thay đổi logic nghiệp vụ hiện tại:
+1. Lỗi xảy ra do cơ chế quản lý Transaction của Spring (Spring Transaction).
+2. Khi đăng nhập bằng email không tồn tại, hàm `userService.get()` bên trong `UserServiceImpl` sẽ ném ra lỗi `UserNotFoundException`.
+3. Vì `UserServiceImpl` có đánh dấu `@Transactional` ở mức class, khi một `RuntimeException` (như `UserNotFoundException`) bay ra, Spring sẽ đánh dấu toàn bộ transaction chung là **rollback-only**.
+4. Mặc dù ở ngoài `EmailLoginImpl.login()` có cấu hình `@Transactional(noRollbackFor = BusinessException.class)` để cố gắng bỏ qua lỗi và tiếp tục lưu lịch sử đăng nhập sai (`saveLoginAttemp`), nhưng vì transaction đã bị ruột bên trong (`UserServiceImpl`) đánh dấu là rollback-only từ trước, nên khi kết thúc hàm `login()`, Spring cố gắng commit transaction và gây ra lỗi `UnexpectedRollbackException`.
+5. Ngoại lệ này bị văng ra tận Controller, làm cho API trả về HTTP 500 thay vì 401. 
+6. Hơn nữa, vì lỗi không được catch bên trong `EmailLoginImpl`, code không bao giờ chạy đến đoạn `saveLoginAttemp`, dẫn đến việc không thể lưu lịch sử sai mật khẩu để bảo vệ hệ thống (chặn sau 5 lần sai).
 
-## 1. UserControllerTest.java
-- **Vấn đề**: Đang mock `ProfileService` và `AccountService`.
-- **Giải pháp**: 
-  - Thay bằng `@Mock UserBehavierService userBehavierService`.
-  - Cập nhật các phương thức `when(...)` và `verify(...)` (ví dụ: đổi `userProfileService.getMe` thành `userBehavierService.getMe`, đổi `userAccountService.generatePassword` thành `userBehavierService.createPassword`).
+## Đề xuất thay đổi
 
-## 2. AuthResetPasswordServiceTest.java
-- **Vấn đề**: Sử dụng dependency cũ của `AuthServiceImpl` và bắt lỗi các exception cũ không còn tồn tại.
-- **Giải pháp**:
-  - Sửa lại hàm `setUp()` để inject đúng các dependencies mới của `AuthServiceImpl` (`UserService`, `TokenService`, `EmailService`, `PasswordEncoder`, `ForgotPasswordRateLimiter`, `OtpRepository`).
-  - Đổi các `@Mock AccountService` thành `@Mock UserService`.
-  - Thay đổi điều kiện `assertThatThrownBy(...).isInstanceOf(...)` thành `BusinessException.class` và assert theo các mã lỗi đã chuẩn hóa mới: `ErrorCode.AUTH_RESET_CODE_INVALID` / `ErrorCode.AUTH_PASSWORD_SAME_AS_OLD`.
-  - Cập nhật tương tự cho `UserControllerTest` nếu mock các mã lỗi như `AUTH_PASSWORD_ALREADY_SET`.
+Thay đổi cần thực hiện ở 2 file:
 
-## 3. Các file Integration Test
-Các file: `AuthBlockedDeletedAccountIntegrationTest`, `AuthGoogleLoginIntegrationTest`, `UserDeleteAccountIntegrationTest`, `UserProfileIntegrationTest`.
-- **Vấn đề**: Đang `@Autowired` `ProfileService` hoặc `AccountService` để chuẩn bị dữ liệu hoặc verify kết quả.
-- **Giải pháp**:
-  - Gỡ bỏ `@Autowired ProfileService`, `@Autowired AccountService`.
-  - Thay thế bằng `@Autowired UserBehavierService` hoặc `@Autowired UserService` tương ứng với logic đang dùng. (Ví dụ: `deleteMe` thì dùng `UserBehavierService`, còn nếu truy vấn lấy dữ liệu user ra thì dùng `UserService` hoặc dùng trực tiếp Repository).
+**1. `UserServiceImpl.java`**
+- Thêm annotation `@Transactional(readOnly = true, noRollbackFor = UserNotFoundException.class)` vào hàm `get(UserGetReq req)`.
+- **Mục đích:** Báo cho Spring biết rằng nếu hàm này ném ra `UserNotFoundException`, đừng đánh dấu transaction là rollback-only. (Hàm get chỉ đọc dữ liệu nên không lo việc không rollback làm sai lệch dữ liệu).
 
-## 4. AccountServiceImplTest.java
-- **Vấn đề**: `AccountServiceImpl` không còn tồn tại, gây lỗi `cannot find symbol`.
-- **Giải pháp**:
-  - Tùy chọn A (Đề xuất): **Xóa file này** vì class tương ứng đã bị xóa/gộp. Nếu cần, có thể viết mới `UserBehavierServiceImplTest` / `UserServiceImplTest` sau.
-  - Tùy chọn B: Đổi tên thành `UserBehavierServiceImplTest` và viết lại toàn bộ test theo logic mới của `UserBehavierService`.
+**2. `EmailLoginImpl.java`**
+- Bọc đoạn gọi `userService.get()` trong một khối `try-catch` để bắt lỗi `UserNotFoundException` (hoặc `BusinessException` có mã lỗi `NOT_FOUND`).
+- **Mục đích:** Để khi không tìm thấy user, biến `user` sẽ bằng `null`, hàm sẽ tiếp tục chạy xuống dưới để thực hiện lưu lịch sử đăng nhập sai `saveLoginAttemp(email, false, ...)` thay vì bị crash giữa chừng.
+- Cần thêm import `UserRes` do phải đổi từ `var user = ...` sang khai báo tường minh.
 
----
+## Xin xác nhận
 
-**Bạn xem qua plan trên, đặc biệt là phần 4 (bạn muốn xóa `AccountServiceImplTest` hay viết lại?), nếu đồng ý hãy báo tôi để tôi bắt đầu tiến hành sửa code nhé.**
+Bạn vui lòng xem kỹ nguyên nhân và giải pháp đề xuất. Nếu bạn đồng ý, hãy phản hồi lại hoặc bấm/gõ "Process" / "Đồng ý" để tôi bắt đầu sửa code nhé.

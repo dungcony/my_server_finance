@@ -11,6 +11,8 @@ import com.datn.financeapp.auth.service.TokenService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.user.dto.request.UserGetReq;
+import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,7 +41,12 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
         if (isLockedOut(email))
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_LOCKED);
 
-        var user = userService.get(new UserGetReq(email));
+        UserRes user = null;
+        try {
+            user = userService.get(new UserGetReq(email));
+        } catch (UserNotFoundException e) {
+            // bỏ qua, user sẽ bằng null và tiếp tục lưu lịch sử sai
+        }
 
         // lấy trạng thái đăng nhập
         // user = null không tìm thấy
@@ -65,6 +72,7 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
                 user,
                 tokenService.create(new TokenCreateReq(
                         user.id(),
+                        user.email(),
                         user.plan().name(),
                         user.getAuthorities(),
                         user.getTopRoleLevel()

@@ -19,6 +19,7 @@ import com.datn.financeapp.user.dto.request.UserGetReq;
 import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.service.UserService;
+import com.datn.financeapp.user.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -77,6 +78,7 @@ public class AuthServiceImpl implements AuthService {
                 user,
                 tokenService.create(new TokenCreateReq(
                         user.id(),
+                        user.email(),
                         user.plan().name(),
                         user.getAuthorities(),
                         user.getTopRoleLevel()
@@ -113,11 +115,17 @@ public class AuthServiceImpl implements AuthService {
     public TokenRes refresh(RefreshRequest req) {
         var userId = tokenService.checkRefreshAndGetUserId(req.refreshToken());
 
-        UserRes user = userService.get(new UserGetReq(userId));
+        UserRes user;
+        try {
+            user = userService.get(new UserGetReq(userId));
+        } catch (UserNotFoundException e) {
+            throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
+        }
 
         return tokenService.create(
                 new TokenCreateReq(
                         user.id(),
+                        user.email(),
                         user.plan().name(),
                         user.getAuthorities(),
                         user.getTopRoleLevel()

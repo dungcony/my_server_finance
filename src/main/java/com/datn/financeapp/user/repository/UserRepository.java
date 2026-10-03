@@ -20,7 +20,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
 
     @Query("""
-            select u
+            select COUNT(u) > 0
             from User u
             where u.isDeleted = false
             and u.email = :email

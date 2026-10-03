@@ -36,7 +36,7 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public TokenRes create(TokenCreateReq req) {
-        String refreshToken = saveAndGetRefresh(req.userId());
+        String refreshToken = saveAndGetRefresh(req.userId(), req.email());
         String accessToken = jwt.generateAccessToken(req.userId(), req.plan(), req.authorities(), req.roleLevel());
         return new TokenRes(accessToken, refreshToken, jwt.getAccessTokenExpirySeconds());
     }
@@ -98,11 +98,12 @@ public class TokenServiceImpl implements TokenService {
     //---------------------------------------PRIVATE----------------------------------------//
 
 
-    private String saveAndGetRefresh(UUID userId) {
+    private String saveAndGetRefresh(UUID userId, String email) {
         String rawToken = generateSecureRandomToken();
         RefreshToken refreshToken = RefreshToken.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
+                .email(email)
                 .tokenHash(sha256Hex(rawToken))
                 .expiresAt(Instant.now().plus(refreshTokenTTL, ChronoUnit.DAYS))
                 .createdAt(Instant.now())

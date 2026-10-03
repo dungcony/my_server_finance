@@ -96,6 +96,9 @@ class AuthRegisterLoginIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private com.datn.financeapp.auth.service.TokenService tokenService;
+
     @BeforeEach
     void cleanTables() {
         refreshTokenRepository.deleteAll();
@@ -229,5 +232,47 @@ class AuthRegisterLoginIntegrationTest {
                         .content(objectMapper.writeValueAsString(wrongPassword)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_LOCKED"));
+    }
+
+    @Test
+    void after5FailedAttemptsWithNonExistentEmail_6thLoginReturnsAccountLocked() throws Exception {
+        Map<String, Object> wrongEmail = Map.of("email", "fake.bi.khoa@example.com", "password", "sai-mat-khau");
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(wrongEmail)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error.code").value("AUTH_CREDENTIALS_INVALID"));
+        }
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(wrongEmail)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("AUTH_ACCOUNT_LOCKED"));
+    }
+
+    @Test
+    void refreshWithDeletedUser_returnsAuthRefreshTokenInvalid() throws Exception {
+        java.util.UUID userId = java.util.UUID.randomUUID();
+        com.datn.financeapp.user.entity.User user = com.datn.financeapp.user.entity.User.builder()
+                .id(userId)
+                .email("deleted.refresh@example.com")
+                .createdAt(java.time.Instant.now())
+                .isDeleted(true)
+                .build();
+        userRepository.save(user);
+
+        var tokenReq = new com.datn.financeapp.auth.dto.request.TokenCreateReq(
+                userId, "deleted.refresh@example.com", "FREE", java.util.List.of(), 1
+        );
+        String refreshToken = tokenService.create(tokenReq).refresh();
+
+        Map<String, Object> req = Map.of("refresh_token", refreshToken);
+        mockMvc.perform(post("/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_REFRESH_TOKEN_INVALID"));
     }
 }

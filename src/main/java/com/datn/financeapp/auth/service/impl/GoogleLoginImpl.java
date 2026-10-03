@@ -34,6 +34,7 @@ public class GoogleLoginImpl implements LoginService<GoogleLoginRequest> {
                 user,
                 tokenService.create(new TokenCreateReq(
                         user.id(),
+                        user.email(),
                         user.plan().name(),
                         user.getAuthorities(),
                         user.getTopRoleLevel()
