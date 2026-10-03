@@ -13,6 +13,8 @@ import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
+import com.datn.financeapp.group.helper.GTransactionBuilder;
+import com.datn.financeapp.group.helper.GTransactionUpdate;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
@@ -63,8 +65,8 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     private final GroupTransactionPaticipantValidator transactionValidator;
 
     // Stragy
-    private final List<GTransactionBuilderStrategy> createStrategies;
-    private final List<GTransactionUpdateStrategy> updateStrategies;
+    private final List<GTransactionBuilder> createStrategies;
+    private final List<GTransactionUpdate> updateStrategies;
 
     @Override
     public GroupTransactionDetailRes create(UUID operatorId, UUID groupId, GroupTransactionCreateReq req) {
@@ -80,7 +82,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         }
 
         // tìm strategy phụ trách loại giao dịch này
-        GTransactionBuilderStrategy strategy = createStrategies.stream()
+        GTransactionBuilder strategy = createStrategies.stream()
                 .filter(s -> s.supports(req.type()))
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRANSACTION_TYPE_NOT_ALLOWED));
@@ -109,8 +111,8 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     @Transactional(readOnly = true)
     public GroupTransactionDetailRes detail(UUID operatorId, UUID groupId, UUID transactionId) {
-        // xác thực người thực hiện đang trong group
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        // xác thực người thực hiện đang trong group, nhóm đã lưu trữ vẫn xem được
+        permissionValidator.verifyMember(groupId, operatorId, true);
 
         GTransaction txn = findActiveTransaction(transactionId, groupId);
 
@@ -120,8 +122,8 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     @Transactional(readOnly = true)
     public GroupTransactionListRes list(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter) {
-        // xác thực người thực hiện và lấy thông tin quyền hạn
-        MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
+        // xác thực người thực hiện và lấy thông tin quyền hạn, nhóm đã lưu trữ vẫn xem được
+        MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId, true);
 
         // member thường không được thấy giao dịch chờ duyệt trong danh sách chung
         boolean isReviewer = authInfo.isOwner() || authInfo.isTreasurer();
@@ -135,8 +137,8 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     @Transactional(readOnly = true)
     public GroupTransactionListRes myList(UUID operatorId, UUID groupId, GroupTransactionFilterReq filter) {
-        // xác thực người thực hiện đang trong nhóm
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        // xác thực người thực hiện đang trong nhóm, nhóm đã lưu trữ vẫn xem được
+        permissionValidator.verifyMember(groupId, operatorId, true);
 
         // ép điều kiện chỉ lấy giao dịch do chính mình tạo
         GroupTransactionFilterReq myFilter = filter.withCreatedBy(operatorId);
@@ -147,7 +149,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     @Transactional(readOnly = true)
     public GroupTransactionListRes listPending(UUID operatorId, UUID groupId, Integer page, Integer size) {
-        requireReviewer(groupId, operatorId);
+        requireReviewer(groupId, operatorId, true);
 
         GroupTransactionFilterReq filter = new GroupTransactionFilterReq(
                 null, null, GTransactionStatus.PENDING, null, null, null, null, null, page, size);
@@ -226,7 +228,27 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         return transactionRepository.countByGroupIdAndStatusAndDeletedAtIsNull(groupId, GTransactionStatus.PENDING);
     }
 
-    // -----------------------------------REVIEWING-----------------------------------------//
+    @Override
+    @Transactional(readOnly = true)
+    public long sumConfirmedAmount(UUID groupId, GTransactionType type) {
+        Long total = transactionRepository.sumAmountByGroupIdAndType(groupId, type);
+        return total != null ? total : 0L;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long sumConfirmedAmount(UUID groupId, GTransactionType type, Instant from, Instant to) {
+        Long total = transactionRepository.sumAmountByGroupIdAndTypeAndPeriod(groupId, type, from, to);
+        return total != null ? total : 0L;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GTransaction> findConfirmedTransactions(UUID groupId) {
+        return transactionRepository.findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
+                groupId, GTransactionStatus.CONFIRMED);
+    }
+
     @Override
     public GroupTransactionDetailRes confirm(UUID operatorId, UUID groupId, UUID transactionId) {
         requireReviewer(groupId, operatorId);
@@ -284,9 +306,13 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND));
     }
 
-    // xác thực người thực hiện đang trong nhóm và là chủ nhóm hoặc thủ quỹ
+    // xác thực người thực hiện đang trong nhóm và là chủ nhóm hoặc thủ quỹ, mặc định chặn nhóm đã lưu trữ
     private void requireReviewer(UUID groupId, UUID operatorId) {
-        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId);
+        requireReviewer(groupId, operatorId, false);
+    }
+
+    private void requireReviewer(UUID groupId, UUID operatorId, boolean allowArchived) {
+        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, allowArchived);
         if (!info.isOwner() && !info.isTreasurer())
             throw new BusinessException(ErrorCode.FORBIDDEN_TREASURER_REQUIRED);
     }

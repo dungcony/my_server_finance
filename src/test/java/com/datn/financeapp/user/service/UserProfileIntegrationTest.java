@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.datn.financeapp.TestRedisConfig;
+import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
 import com.datn.financeapp.auth.enums.OtpType;
@@ -17,14 +18,12 @@ import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.mail.EmailService;
-import com.datn.financeapp.user.dto.request.UpdateMeRequest;
+import com.datn.financeapp.user.dto.request.UpdateProfileRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.response.UserProfileResponse;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.repository.UserRepository;
-import com.datn.financeapp.user.service.AccountService;
-import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -142,7 +141,7 @@ class UserProfileIntegrationTest {
         ArgumentCaptor<String> rawPassword = ArgumentCaptor.forClass(String.class);
         verify(emailService).sendGeneratedPassword(eq("tao.mat.khau@example.com"), rawPassword.capture());
         var login = authService.login(
-                new com.datn.financeapp.auth.dto.request.LoginRequest("tao.mat.khau@example.com", rawPassword.getValue()),
+                new EmailLoginRequest("tao.mat.khau@example.com", rawPassword.getValue()),
                 "127.0.0.1", "junit");
         assertThat(login.user().id()).isEqualTo(google.id());
         assertThat(userProfileService.getMe(google.id()).hasPassword()).isTrue();
@@ -181,7 +180,7 @@ class UserProfileIntegrationTest {
     void patchMe_UpdatesUsername_Succeeds() {
         User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
-        var result = userProfileService.updateMe(user.getId(), new UpdateMeRequest("Minh", "Nguyễn", null));
+        var result = userProfileService.updateMe(user.getId(), new UpdateProfileRequest("Minh", "Nguyễn", null));
 
         assertThat(result.firstName()).isEqualTo("Minh");
         assertThat(result.lastName()).isEqualTo("Nguyễn");
@@ -197,10 +196,10 @@ class UserProfileIntegrationTest {
         User user = registerUser("doi.matkhau@example.com", "matkhaucu123", "Đổi Mật Khẩu");
 
         authService.login(
-                new com.datn.financeapp.auth.dto.request.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
+                new EmailLoginRequest("doi.matkhau@example.com", "matkhaucu123"),
                 "127.0.0.1", "junit");
         authService.login(
-                new com.datn.financeapp.auth.dto.request.LoginRequest("doi.matkhau@example.com", "matkhaucu123"),
+                new EmailLoginRequest("doi.matkhau@example.com", "matkhaucu123"),
                 "127.0.0.1", "junit");
 
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(user.getId())).isNotEmpty();

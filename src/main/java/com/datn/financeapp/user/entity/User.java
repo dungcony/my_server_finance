@@ -73,14 +73,11 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(name = "last_login_at")
-    private Instant lastLoginAt;
-
     @Builder.Default
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private Set<UserRole> userRoles = new HashSet<>();
 
-    public boolean isBlocked() {
+    public boolean isLocked() {
         return this.status == UserStatus.BLOCKED;
     }
 
@@ -90,11 +87,5 @@ public class User {
 
     public boolean isConfirm() {
         return this.status == UserStatus.ACTIVE;
-    }
-
-    public void setConfirm(boolean confirm) {
-        if (confirm) {
-            this.status = UserStatus.ACTIVE;
-        }
     }
 }

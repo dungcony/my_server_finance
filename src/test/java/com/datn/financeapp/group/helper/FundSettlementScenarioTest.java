@@ -2,8 +2,8 @@ package com.datn.financeapp.group.helper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.*;
 
@@ -44,7 +44,7 @@ class FundSettlementScenarioTest {
     private Instant tDay6Expense;
     private Instant tDay7Settlement;
 
-    private List<Member> members;
+    private List<MemberRes> members;
     private List<GTransaction> transactions;
 
     @BeforeEach
@@ -69,36 +69,18 @@ class FundSettlementScenarioTest {
         transactions = new ArrayList<>();
     }
 
+    // dựng thành viên dạng DTO như MemberService trả về
+    private MemberRes member(UUID userId, MemberRole role, MemberStatus status, Instant joinedAt, Instant leftAt) {
+        return new MemberRes(UUID.randomUUID(), userId, role, status, joinedAt, leftAt, null, false);
+    }
+
     @Test
     @DisplayName("Kịch bản trọn vẹn: Lập nhóm -> Chi tiêu -> C rời nhóm -> D vào nhóm -> Thất thoát quỹ -> Chi tiếp -> Quyết toán cuối cùng")
     void testCompleteFundSettlementScenario() {
         // tạo danh sách thành viên ban đầu A, B, C
-        Member memA = Member.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .userId(userA)
-                .role(MemberRole.OWNER)
-                .status(MemberStatus.ACTIVE)
-                .joinedAt(tGroupCreated)
-                .build();
-
-        Member memB = Member.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .userId(userB)
-                .role(MemberRole.MEMBER)
-                .status(MemberStatus.ACTIVE)
-                .joinedAt(tGroupCreated)
-                .build();
-
-        Member memC = Member.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .userId(userC)
-                .role(MemberRole.MEMBER)
-                .status(MemberStatus.ACTIVE)
-                .joinedAt(tGroupCreated)
-                .build();
+        MemberRes memA = member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, tGroupCreated, null);
+        MemberRes memB = member(userB, MemberRole.MEMBER, MemberStatus.ACTIVE, tGroupCreated, null);
+        MemberRes memC = member(userC, MemberRole.MEMBER, MemberStatus.ACTIVE, tGroupCreated, null);
 
         members.add(memA);
         members.add(memB);
@@ -163,8 +145,10 @@ class FundSettlementScenarioTest {
         transactions.add(txRefundC);
 
         // cập nhật trạng thái C rời nhóm
-        memC.setStatus(MemberStatus.LEFT);
-        memC.setLeftAt(tDay3Leaves);
+        // MemberRes là record bất biến nên thay bản ghi của C bằng bản đã rời nhóm
+        members.replaceAll(m -> m.userId().equals(userC)
+                ? member(userC, MemberRole.MEMBER, MemberStatus.LEFT, tGroupCreated, tDay3Leaves)
+                : m);
 
         // kiểm tra số dư sau khi hoàn tiền cho C: Net Balance của C bằng đúng 0 VNĐ
         MemberBalances balancesPhase3 = BalanceCalculator.calculateBalances(transactions, members, null);
@@ -173,14 +157,7 @@ class FundSettlementScenarioTest {
         assertThat(balancesPhase3.totalNet()).isEqualTo(2716000L);
 
         // D tham gia nhóm và nộp vào quỹ 3.000.000 VNĐ
-        Member memD = Member.builder()
-                .id(UUID.randomUUID())
-                .groupId(groupId)
-                .userId(userD)
-                .role(MemberRole.MEMBER)
-                .status(MemberStatus.ACTIVE)
-                .joinedAt(tDay4Joins)
-                .build();
+        MemberRes memD = member(userD, MemberRole.MEMBER, MemberStatus.ACTIVE, tDay4Joins, null);
         members.add(memD);
 
         GTransaction contribD = buildTransaction(userD, GTransactionType.CONTRIBUTION, 3000000L, MoneySource.PERSONAL, tDay4Joins.plusSeconds(300), null);

@@ -2,13 +2,11 @@ package com.datn.financeapp.user.controller;
 
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.user.dto.request.DeleteAccountRequest;
-import com.datn.financeapp.user.dto.request.UpdateMeRequest;
+import com.datn.financeapp.user.dto.request.UpdateProfileRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.user.dto.response.UserProfileResponse;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.exception.PasswordAlreadySetException;
-import com.datn.financeapp.user.service.AccountService;
-import com.datn.financeapp.user.service.ProfileService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -120,11 +118,11 @@ class UserControllerTest {
     @Test
     @DisplayName("PATCH /users/me: Cập nhật thông tin hồ sơ -> 200 OK")
     void updateProfile_Success_ReturnsUpdatedProfile() throws Exception {
-        UpdateMeRequest req = new UpdateMeRequest("Minh", "Tran", "new-avatar.png");
+        UpdateProfileRequest req = new UpdateProfileRequest("Minh", "Tran", "new-avatar.png");
         UserProfileResponse updated = new UserProfileResponse(
                 currentUserId, "test@example.com", "Minh", "Tran", "new-avatar.png", UserPlan.FREE, true
         );
-        when(userProfileService.updateMe(eq(currentUserId), any(UpdateMeRequest.class))).thenReturn(updated);
+        when(userProfileService.updateMe(eq(currentUserId), any(UpdateProfileRequest.class))).thenReturn(updated);
 
         mockMvc.perform(patch("/users/me")
                         .contentType(MediaType.APPLICATION_JSON)

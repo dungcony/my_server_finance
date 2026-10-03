@@ -4,20 +4,20 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupRepository;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.service.impl.GReportServiceImpl;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import com.datn.financeapp.user.service.ProfileService;
+import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.enums.UserStatus;
+import com.datn.financeapp.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
 /**
@@ -44,17 +46,21 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class GroupReportServiceTest {
 
+    // báo cáo cân đối lấy mọi thành viên trừ người đang chờ duyệt
+    private static final List<MemberStatus> NON_PENDING_STATUSES =
+            List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED);
+
     @Mock
     private GroupService groupService;
 
     @Mock
-    private MemberRepository memberRepository;
+    private GTransactionService gTransactionService;
 
     @Mock
-    private GroupTransactionRepository groupTransactionRepository;
+    private MemberService memberService;
 
     @Mock
-    private ProfileService profileService;
+    private UserService userService;
 
     @Mock
     private GroupRepository groupRepository;
@@ -77,9 +83,9 @@ class GroupReportServiceTest {
 
         reportService = new GReportServiceImpl(
                 groupService,
-                groupTransactionRepository,
-                memberRepository,
-                profileService,
+                gTransactionService,
+                memberService,
+                userService,
                 permissionValidator
         );
     }
@@ -118,13 +124,12 @@ class GroupReportServiceTest {
         );
         when(groupRepository.findAuthInfo(groupId, userA)).thenReturn(Optional.of(authInfo));
 
-        Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER).status(MemberStatus.ACTIVE).joinedAt(Instant.now()).build();
-        Member memB = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userB).role(MemberRole.MEMBER).status(MemberStatus.ACTIVE).joinedAt(Instant.now()).build();
-        Member memC = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userC).role(MemberRole.MEMBER).status(MemberStatus.ACTIVE).joinedAt(Instant.now()).build();
+        MemberRes memA = member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, Instant.now(), null);
+        MemberRes memB = member(userB, MemberRole.MEMBER, MemberStatus.ACTIVE, Instant.now(), null);
+        MemberRes memC = member(userC, MemberRole.MEMBER, MemberStatus.ACTIVE, Instant.now(), null);
 
-        when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
-                .thenReturn(List.of(memA, memB, memC));
-        when(profileService.getDisplayNames(any())).thenReturn(Map.of(userA, "Nguyen A", userB, "Tran B", userC, "Le C"));
+        stubMembers(memA, memB, memC);
+        stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userB, "Tran", "B"), userNamed(userC, "Le", "C"));
 
         Instant now = Instant.now();
 
@@ -189,9 +194,7 @@ class GroupReportServiceTest {
                 .createdAt(now)
                 .build();
 
-        when(groupTransactionRepository.findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                groupId, GTransactionStatus.CONFIRMED))
-                .thenReturn(List.of(tx1, tx2, tx3, tx4));
+        stubTransactions(tx1, tx2, tx3, tx4);
 
         // thực hiện lấy báo cáo số dư
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
@@ -284,9 +287,9 @@ class GroupReportServiceTest {
     void testGetSummary_AllTime_WhenMonthIsNull() {
         stubGroupWithThreeMembers(5000000L, 1000000L);
 
-        when(groupTransactionRepository.sumAmountByGroupIdAndType(groupId, GTransactionType.EXPENSE))
+        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.EXPENSE))
                 .thenReturn(2000000L);
-        when(groupTransactionRepository.sumAmountByGroupIdAndType(groupId, GTransactionType.CONTRIBUTION))
+        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION))
                 .thenReturn(3000000L);
 
         // gọi với month là null
@@ -307,10 +310,10 @@ class GroupReportServiceTest {
     void testGetSummary_ByMonth() {
         stubGroupWithThreeMembers(5000000L, 1000000L);
 
-        when(groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
+        when(gTransactionService.sumConfirmedAmount(
                 eq(groupId), eq(GTransactionType.EXPENSE), any(Instant.class), any(Instant.class)))
                 .thenReturn(800000L);
-        when(groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
+        when(gTransactionService.sumConfirmedAmount(
                 eq(groupId), eq(GTransactionType.CONTRIBUTION), any(Instant.class), any(Instant.class)))
                 .thenReturn(1500000L);
 
@@ -350,15 +353,11 @@ class GroupReportServiceTest {
         when(groupRepository.findAuthInfo(groupId, userA)).thenReturn(Optional.of(
                 new MemberAuthInfo(groupId, userA, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, userA)));
 
-        Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER)
-                .status(MemberStatus.ACTIVE).joinedAt(now.minusSeconds(3600)).build();
-        Member memD = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userD).role(MemberRole.MEMBER)
-                .status(MemberStatus.LEFT).joinedAt(now.minusSeconds(3600)).leftAt(now.minusSeconds(600)).build();
+        MemberRes memA = member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, now.minusSeconds(3600), null);
+        MemberRes memD = member(userD, MemberRole.MEMBER, MemberStatus.LEFT, now.minusSeconds(3600), now.minusSeconds(600));
 
-        when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
-                .thenReturn(List.of(memA, memD));
-        when(profileService.getDisplayNames(any()))
-                .thenReturn(Map.of(userA, "Nguyen A", userD, "Nguoi Roi Nhom D"));
+        stubMembers(memA, memD);
+        stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userD, "Nguoi Roi Nhom", "D"));
 
         // D chi tiền túi 500k cho riêng D chịu 200k, A chịu 300k => D còn net 300k > 0
         TransactionParticipant pA = TransactionParticipant.builder().userId(userA).shareAmount(300000L).build();
@@ -388,15 +387,11 @@ class GroupReportServiceTest {
         when(groupRepository.findAuthInfo(groupId, userA)).thenReturn(Optional.of(
                 new MemberAuthInfo(groupId, userA, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, userA)));
 
-        Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER)
-                .status(MemberStatus.ACTIVE).joinedAt(now.minusSeconds(3600)).build();
-        Member memD = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userD).role(MemberRole.MEMBER)
-                .status(MemberStatus.LEFT).joinedAt(now.minusSeconds(3600)).leftAt(now.minusSeconds(600)).build();
+        MemberRes memA = member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, now.minusSeconds(3600), null);
+        MemberRes memD = member(userD, MemberRole.MEMBER, MemberStatus.LEFT, now.minusSeconds(3600), now.minusSeconds(600));
 
-        when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
-                .thenReturn(List.of(memA, memD));
-        when(profileService.getDisplayNames(any()))
-                .thenReturn(Map.of(userA, "Nguyen A"));
+        stubMembers(memA, memD);
+        stubNames(userNamed(userA, "Nguyen", "A"));
 
         // D không phát sinh bất kỳ giao dịch nào => netBalance = 0
         stubTransactions();
@@ -426,15 +421,11 @@ class GroupReportServiceTest {
         Instant t2Left = now.minusSeconds(1000);
         Instant t3TxnAfterLeave = now.minusSeconds(100);
 
-        Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER)
-                .status(MemberStatus.ACTIVE).joinedAt(t0Joined).build();
-        Member memD = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userD).role(MemberRole.MEMBER)
-                .status(MemberStatus.LEFT).joinedAt(t0Joined).leftAt(t2Left).build();
+        MemberRes memA = member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, t0Joined, null);
+        MemberRes memD = member(userD, MemberRole.MEMBER, MemberStatus.LEFT, t0Joined, t2Left);
 
-        when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
-                .thenReturn(List.of(memA, memD));
-        when(profileService.getDisplayNames(any()))
-                .thenReturn(Map.of(userA, "Nguyen A", userD, "Nguoi Roi Nhom D"));
+        stubMembers(memA, memD);
+        stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userD, "Nguoi Roi Nhom", "D"));
 
         // giao dịch diễn ra lúc t1 trước khi D rời nhóm, A chi tiền túi 400k không participant chia đều cho A và D mỗi người 200k
         GTransaction txn1 = txn(GTransactionType.EXPENSE, MoneySource.PERSONAL, userA, 400000L, List.of(), t1TxnBeforeLeave);
@@ -459,6 +450,91 @@ class GroupReportServiceTest {
         assertThat(itemA.netBalance()).isEqualTo(200000L);
     }
 
+    @Test
+    @DisplayName("Người đã rời nhóm còn số dư xếp sau thành viên đang hoạt động, người vào nhóm gần nhất lên trước")
+    void testGetBalances_DepartedMembers_SortedByJoinedAtDescending() {
+        UUID userD = UUID.randomUUID();
+        UUID userE = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        stubGroupWithThreeMembers(null, 300000L);
+
+        // MemberService không đảm bảo thứ tự: D vào nhóm sớm hơn E nhưng lại được trả về trước
+        stubMembers(
+                member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, now.minusSeconds(5000), null),
+                member(userD, MemberRole.MEMBER, MemberStatus.LEFT, now.minusSeconds(4000), now.minusSeconds(1000)),
+                member(userE, MemberRole.MEMBER, MemberStatus.REMOVED, now.minusSeconds(2000), now.minusSeconds(500)));
+        stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userD, "Pham", "D"), userNamed(userE, "Hoang", "E"));
+
+        // D và E đều đã góp tiền nên còn số dư khác 0 và phải hiện trong báo cáo
+        stubTransactions(
+                txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userD, 100000L, List.of(), now.minusSeconds(3500)),
+                txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userE, 200000L, List.of(), now.minusSeconds(1500)));
+
+        GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
+
+        // A đang hoạt động đứng đầu, sau đó E (vào nhóm gần nhất) rồi tới D
+        assertThat(report.balances())
+                .extracting(GroupBalanceItemRes::userId)
+                .containsExactly(userA, userE, userD);
+    }
+
+    @Test
+    @DisplayName("Tên hiển thị lấy từ UserRes, thành viên không có trong kết quả tra tên thì dùng tên dự phòng theo id")
+    void testGetBalances_DisplayName_FromUserResOrFallbackToId() {
+        stubGroupWithThreeMembers(null, 0L);
+
+        Instant joinedAt = Instant.now().minusSeconds(3600);
+        stubMembers(
+                member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, joinedAt, null),
+                member(userB, MemberRole.MEMBER, MemberStatus.ACTIVE, joinedAt, null));
+
+        // chỉ A có trong kết quả tra tên, B thì không
+        stubNames(userNamed(userA, "Nguyen", "A"));
+        stubTransactions();
+
+        GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
+
+        assertThat(itemOf(report, userA).fullName()).isEqualTo("Nguyen A");
+        assertThat(itemOf(report, userB).fullName()).isEqualTo("Thành viên " + userB.toString().substring(0, 8));
+    }
+
+    @Test
+    @DisplayName("Nhóm đã lưu trữ vẫn xem được báo cáo tổng quan (nhóm lưu trữ chỉ đọc, rule.md quy tắc 26)")
+    void testGetSummary_ArchivedGroup_StillReadable() {
+        stubArchivedGroup(5000000L, 1000000L);
+
+        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.EXPENSE)).thenReturn(2000000L);
+        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION)).thenReturn(3000000L);
+
+        GroupSummaryReportRes report = reportService.getSummary(userA, groupId, null);
+
+        assertThat(report.totalExpense()).isEqualTo(2000000L);
+        assertThat(report.totalContribution()).isEqualTo(3000000L);
+    }
+
+    @Test
+    @DisplayName("Nhóm đã lưu trữ vẫn xem được báo cáo cân đối thành viên")
+    void testGetBalances_ArchivedGroup_StillReadable() {
+        stubArchivedGroup(null, 0L);
+        stubThreeMembersWithNames();
+        stubTransactions();
+
+        GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
+
+        assertThat(report.balances()).hasSize(3);
+    }
+
+    // dựng nhóm đã lưu trữ cùng quyền truy cập của chủ nhóm A
+    private void stubArchivedGroup(Long target, long fundBalance) {
+        FundRes fund = new FundRes(UUID.randomUUID(), groupId, userA, fundBalance, Instant.now());
+        GroupDetailRes group = new GroupDetailRes(groupId, "Nhóm thử", null, GroupStatus.ARCHIVED, "CODE", target,
+                true, true, Instant.now(), MemberRole.OWNER, fund, List.of());
+        when(groupService.findNotDeletedById(groupId)).thenReturn(group);
+        when(groupRepository.findAuthInfo(groupId, userA)).thenReturn(Optional.of(
+                new MemberAuthInfo(groupId, userA, GroupStatus.ARCHIVED, true, MemberStatus.ACTIVE, MemberRole.OWNER, userA)));
+    }
+
     // dựng nhóm bật tính thừa thiếu của chủ nhóm A cùng quyền truy cập
     private void stubGroupWithThreeMembers(Long target, long fundBalance) {
         FundRes fund = new FundRes(UUID.randomUUID(), groupId, userA, fundBalance, Instant.now());
@@ -472,22 +548,38 @@ class GroupReportServiceTest {
     // dựng danh sách ba thành viên và tên hiển thị, chỉ báo cáo cân đối mới dùng
     private void stubThreeMembersWithNames() {
         Instant joinedAt = Instant.now().minusSeconds(3600);
-        Member memA = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userA).role(MemberRole.OWNER)
-                .status(MemberStatus.ACTIVE).joinedAt(joinedAt).build();
-        Member memB = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userB).role(MemberRole.MEMBER)
-                .status(MemberStatus.ACTIVE).joinedAt(joinedAt).build();
-        Member memC = Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userC).role(MemberRole.MEMBER)
-                .status(MemberStatus.ACTIVE).joinedAt(joinedAt).build();
+        MemberRes memA = member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, joinedAt, null);
+        MemberRes memB = member(userB, MemberRole.MEMBER, MemberStatus.ACTIVE, joinedAt, null);
+        MemberRes memC = member(userC, MemberRole.MEMBER, MemberStatus.ACTIVE, joinedAt, null);
 
-        when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
-                .thenReturn(List.of(memA, memB, memC));
-        when(profileService.getDisplayNames(any()))
-                .thenReturn(Map.of(userA, "Nguyen A", userB, "Tran B", userC, "Le C"));
+        stubMembers(memA, memB, memC);
+        stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userB, "Tran", "B"), userNamed(userC, "Le", "C"));
+    }
+
+    // dựng thành viên dạng DTO như MemberService trả về
+    private MemberRes member(UUID userId, MemberRole role, MemberStatus status, Instant joinedAt, Instant leftAt) {
+        return new MemberRes(UUID.randomUUID(), userId, role, status, joinedAt, leftAt, null, false);
+    }
+
+    private void stubMembers(MemberRes... members) {
+        when(memberService.getMembersWithStatusIn(groupId, NON_PENDING_STATUSES)).thenReturn(List.of(members));
+    }
+
+    // dựng bản ghi người dùng chỉ cần phần tên để UserService.getNames trả về
+    private UserRes userNamed(UUID id, String firstName, String lastName) {
+        return new UserRes(id, null, firstName, lastName, null, UserStatus.ACTIVE, null, null, null, false);
+    }
+
+    private void stubNames(UserRes... users) {
+        Map<UUID, UserRes> byId = new HashMap<>();
+        for (UserRes user : users) {
+            byId.put(user.id(), user);
+        }
+        when(userService.getNames(any(), isNull())).thenReturn(byId);
     }
 
     private void stubTransactions(GTransaction... txns) {
-        when(groupTransactionRepository.findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                groupId, GTransactionStatus.CONFIRMED)).thenReturn(List.of(txns));
+        when(gTransactionService.findConfirmedTransactions(groupId)).thenReturn(List.of(txns));
     }
 
     private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,

@@ -22,12 +22,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Lớp kiểm thử cho {@link ContributionTransactionStrategy}.
+ * Lớp kiểm thử cho {@link ContributionTransaction}.
  * Đảm bảo các logic tạo giao dịch đóng góp quỹ được thực thi đúng.
  */
 class ContributionTransactionStrategyTest {
 
-    private ContributionTransactionStrategy strategy;
+    private ContributionTransaction strategy;
 
     private UUID groupId;
     private UUID operatorId;
@@ -38,7 +38,7 @@ class ContributionTransactionStrategyTest {
         groupId = UUID.randomUUID();
         operatorId = UUID.randomUUID();
         transactorId = UUID.randomUUID();
-        strategy = new ContributionTransactionStrategy();
+        strategy = new ContributionTransaction();
     }
 
     @Test

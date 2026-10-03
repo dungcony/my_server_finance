@@ -4,23 +4,23 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.response.fund.FundRes;
 import com.datn.financeapp.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MemberStatus;
-import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
 import com.datn.financeapp.group.helper.MemberBalances;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.MemberRepository;
+import com.datn.financeapp.group.service.GTransactionService;
 import com.datn.financeapp.group.service.GroupService;
+import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.service.ReportService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import com.datn.financeapp.user.service.ProfileService;
+import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,9 +49,9 @@ import java.util.UUID;
 public class GReportServiceImpl implements ReportService {
 
     private final GroupService groupService;
-    private final GroupTransactionRepository groupTransactionRepository;
-    private final MemberRepository memberRepository;
-    private final ProfileService profileService;
+    private final GTransactionService gTransactionService;
+    private final MemberService memberService;
+    private final UserService userService;
     private final GroupPermissionValidator permissionValidator;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -60,7 +60,7 @@ public class GReportServiceImpl implements ReportService {
     @Override
     public GroupSummaryReportRes getSummary(UUID operatorId, UUID groupId, String month) {
         // xác thực thành viên đang hoạt động trong nhóm
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        permissionValidator.verifyMember(groupId, operatorId, true);
         GroupDetailRes group = groupService.findNotDeletedById(groupId);
         FundRes fundRes = group.fund();
         if (fundRes == null) {
@@ -68,8 +68,8 @@ public class GReportServiceImpl implements ReportService {
         }
 
         String period = null;
-        Long totalExpense;
-        Long totalContribution;
+        long totalExpense;
+        long totalContribution;
 
         // kiểm tra điều kiện lọc theo tháng cụ thể hoặc toàn thời gian
         if (month != null && !month.isBlank()) {
@@ -79,14 +79,14 @@ public class GReportServiceImpl implements ReportService {
             Instant fromTime = ym.atDay(1).atStartOfDay(VN_ZONE).toInstant();
             Instant toTime = ym.plusMonths(1).atDay(1).atStartOfDay(VN_ZONE).toInstant();
 
-            totalExpense = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
+            totalExpense = gTransactionService.sumConfirmedAmount(
                     groupId, GTransactionType.EXPENSE, fromTime, toTime);
-            totalContribution = groupTransactionRepository.sumAmountByGroupIdAndTypeAndPeriod(
+            totalContribution = gTransactionService.sumConfirmedAmount(
                     groupId, GTransactionType.CONTRIBUTION, fromTime, toTime);
         } else {
-            totalExpense = groupTransactionRepository.sumAmountByGroupIdAndType(
+            totalExpense = gTransactionService.sumConfirmedAmount(
                     groupId, GTransactionType.EXPENSE);
-            totalContribution = groupTransactionRepository.sumAmountByGroupIdAndType(
+            totalContribution = gTransactionService.sumConfirmedAmount(
                     groupId, GTransactionType.CONTRIBUTION);
         }
 
@@ -96,14 +96,14 @@ public class GReportServiceImpl implements ReportService {
                 group.target(),
                 period,
                 fundRes,
-                totalExpense != null ? totalExpense : 0L,
-                totalContribution != null ? totalContribution : 0L);
+                totalExpense,
+                totalContribution);
     }
 
     @Override
     public GroupBalanceReportRes getBalances(UUID operatorId, UUID groupId) {
         // xác thực thành viên đang hoạt động trong nhóm
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        permissionValidator.verifyMember(groupId, operatorId, true);
         GroupDetailRes group = groupService.findNotDeletedById(groupId);
         FundRes fund = group.fund();
         if (fund == null) {
@@ -111,23 +111,23 @@ public class GReportServiceImpl implements ReportService {
         }
 
         // lấy danh sách toàn bộ giao dịch đã xác nhận để tính toán số dư
-        List<GTransaction> allTxns = groupTransactionRepository
-                .findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                        groupId, GTransactionStatus.CONFIRMED);
+        List<GTransaction> allTxns = gTransactionService.findConfirmedTransactions(groupId);
 
         // lấy tất cả thành viên ngoại trừ trạng thái chờ duyệt
-        List<Member> allMembers = memberRepository
-                .findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING);
+        List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
+                groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
 
         // tính toán số dư thu chi của từng thành viên
         MemberBalances mb = BalanceCalculator.calculateBalances(allTxns, allMembers, null);
 
         // xây dựng danh sách thành viên cần hiển thị trên báo cáo
-        List<Member> displayMembers = buildDisplayMembers(allMembers, mb);
+        List<MemberRes> displayMembers = buildDisplayMembers(allMembers, mb);
 
         // lấy danh sách tên hiển thị của các thành viên
-        List<UUID> displayUserIds = displayMembers.stream().map(Member::getUserId).toList();
-        Map<UUID, String> userNames = profileService.getDisplayNames(displayUserIds);
+        List<UUID> displayUserIds = displayMembers.stream()
+                .map(MemberRes::userId).toList();
+
+        Map<UUID, UserRes> userNames = userService.getNames(displayUserIds, null);
 
         boolean isSettlement = Boolean.TRUE.equals(group.isSettlementEnabled());
         Long target = group.target();
@@ -136,7 +136,7 @@ public class GReportServiceImpl implements ReportService {
         long totalNeeded = 0L;
 
         // xây dựng từng dòng báo cáo cân đối thành viên
-        for (Member m : displayMembers) {
+        for (MemberRes m : displayMembers) {
             GroupBalanceItemRes item = buildBalanceItem(m, mb, userNames);
             totalNeeded += item.neededContribution();
             balances.add(item);
@@ -163,32 +163,32 @@ public class GReportServiceImpl implements ReportService {
     }
 
     // xây dựng danh sách thành viên cần hiển thị trong báo cáo
-    private List<Member> buildDisplayMembers(
-            List<Member> allMembers,
+    private List<MemberRes> buildDisplayMembers(
+            List<MemberRes> allMembers,
             MemberBalances mb) {
-        List<Member> activeMembers = allMembers.stream()
-                .filter(m -> m.getStatus() == MemberStatus.ACTIVE)
-                .sorted(Comparator.comparing(m -> m.getUserId().toString()))
-                .toList();
+        List<MemberRes> display = new ArrayList<>(allMembers.stream()
+                .filter(m -> m.status() == MemberStatus.ACTIVE)
+                .sorted(Comparator.comparing(m -> m.userId().toString()))
+                .toList());
 
-        List<Member> display = new ArrayList<>(activeMembers);
-        for (Member m : allMembers) {
-            if (m.getStatus() == MemberStatus.LEFT || m.getStatus() == MemberStatus.REMOVED) {
-                if (mb.getNetBalance(m.getUserId()) != 0L) {
-                    display.add(m);
-                }
-            }
-        }
+        // người đã rời/bị xoá chỉ hiện khi còn số dư, xếp người vào nhóm gần nhất lên trước
+        allMembers.stream()
+                .filter(m -> m.status() == MemberStatus.LEFT || m.status() == MemberStatus.REMOVED)
+                .filter(m -> mb.getNetBalance(m.userId()) != 0L)
+                .sorted(Comparator.comparing(MemberRes::joinedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .forEach(display::add);
+
         return display;
     }
 
     // xây dựng item báo cáo cân đối cho một thành viên
     private GroupBalanceItemRes buildBalanceItem(
-            Member m,
+            MemberRes m,
             MemberBalances mb,
-            Map<UUID, String> userNames) {
-        UUID uid = m.getUserId();
-        String name = userNames.getOrDefault(uid, "Thành viên " + uid.toString().substring(0, 8));
+            Map<UUID, UserRes> userNames) {
+        UUID uid = m.userId();
+        UserRes user = userNames.get(uid);
+        String name = user != null ? user.fullName() : "Thành viên " + uid.toString().substring(0, 8);
 
         MemberBalanceAccumulator b = mb.get(uid);
         long outOfPocket = b.getPaidOutOfPocket();
@@ -201,7 +201,7 @@ public class GReportServiceImpl implements ReportService {
         return new GroupBalanceItemRes(
                 uid,
                 name,
-                m.getStatus().name(),
+                m.status().name(),
                 outOfPocket,
                 refunded,
                 share,

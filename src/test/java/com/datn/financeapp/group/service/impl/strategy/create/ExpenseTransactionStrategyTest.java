@@ -35,7 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Lớp kiểm thử cho {@link ExpenseTransactionStrategy}.
+ * Lớp kiểm thử cho {@link ExpenseTransaction}.
  * Đảm bảo các logic nghiệp vụ tạo giao dịch chi tiêu được thực thi đúng.
  */
 @ExtendWith(MockitoExtension.class)
@@ -53,7 +53,7 @@ class ExpenseTransactionStrategyTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    private ExpenseTransactionStrategy strategy;
+    private ExpenseTransaction strategy;
 
     private UUID groupId;
     private UUID operatorId;
@@ -64,7 +64,7 @@ class ExpenseTransactionStrategyTest {
         groupId = UUID.randomUUID();
         operatorId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
-        strategy = new ExpenseTransactionStrategy(validator, helper, memberService, eventPublisher);
+        strategy = new ExpenseTransaction(validator, helper, memberService, eventPublisher);
     }
 
     @Test

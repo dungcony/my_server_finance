@@ -2,7 +2,7 @@ package com.datn.financeapp.auth.controller;
 
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
-import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.LogoutRequest;
 import com.datn.financeapp.auth.dto.request.RefreshRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
@@ -43,52 +43,41 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest req) {
+    public ApiResponse<?> register(@Valid @RequestBody RegisterRequest req) {
         return ApiResponse.of(authService.register(req));
     }
 
     @PostMapping("/verify-email")
-    public ApiResponse<AuthResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest req) {
+    public ApiResponse<?> verifyEmail(@Valid @RequestBody VerifyEmailRequest req) {
         return ApiResponse.of(authService.verifyEmail(req));
     }
 
     @PostMapping("/resend-verification")
-    public ApiResponse<Map<String, String>> resendVerification(@Valid @RequestBody ResendVerificationRequest req) {
+    public ApiResponse<?> resendVerification(@Valid @RequestBody ResendVerificationRequest req) {
         authService.resendVerification(req);
         return ApiResponse.of(Map.of("message", "Mã xác thực mới đã được gửi tới email của bạn."));
     }
 
-    @PostMapping("/login")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest req, HttpServletRequest httpReq) {
-        String ip = ClientIpResolver.resolve(httpReq);
-        String userAgent = httpReq.getHeader("User-Agent");
-        return ApiResponse.of(authService.login(req, ip, userAgent));
-    }
-
-    @PostMapping("/google")
-    public ApiResponse<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest req) {
-        return ApiResponse.of(authService.loginWithGoogle(req));
-    }
 
     @PostMapping("/refresh")
-    public ApiResponse<RefreshResponse> refresh(@Valid @RequestBody RefreshRequest req) {
+    public ApiResponse<?> refresh(@Valid @RequestBody RefreshRequest req) {
         return ApiResponse.of(authService.refresh(req));
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@RequestBody LogoutRequest req) {
+    public ApiResponse<?> logout(@RequestBody LogoutRequest req) {
         authService.logout(SecurityContextUtil.currentUserId(), req.refreshToken(), req.logoutAllDevices());
         return ApiResponse.of(null);
     }
 
     @PostMapping("/forgot-password")
-    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+    public ApiResponse<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
         authService.forgotPassword(req);
         return ApiResponse.of(null);
     }
 
     @PostMapping("/reset-password")
-    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+    public ApiResponse<?> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
         authService.resetPassword(req);
         return ApiResponse.of(null);
     }

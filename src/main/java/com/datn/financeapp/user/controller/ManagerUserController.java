@@ -1,9 +1,10 @@
 package com.datn.financeapp.user.controller;
 
 import com.datn.financeapp.common.response.ApiResponse;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.user.dto.request.BlockUserRequest;
 import com.datn.financeapp.user.dto.request.UpdateUserRoleReq;
-import com.datn.financeapp.user.service.ManagerAccountService;
+import com.datn.financeapp.user.service.ManagerUserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,7 +17,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ManagerUserController {
 
-    private final ManagerAccountService adminUserService;
+    private final ManagerUserService adminUserService;
 
     @GetMapping("/{userId}")
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USERS_READ.getValue())")
@@ -32,11 +33,11 @@ public class ManagerUserController {
         return ApiResponse.of(adminUserService.findAllUser());
     }
 
-    @PatchMapping("/block")
+    @PatchMapping("/lock")
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.user.enums.PermissionName).USERS_UPDATE.getValue())")
     public ApiResponse<Void> blockUser(
             @Valid @RequestBody BlockUserRequest req) {
-        adminUserService.blockUser(req);
+        adminUserService.lockUser(SecurityContextUtil.currentUserId(), req);
         return ApiResponse.of(null, "Khóa tài khoản người dùng thành công");
     }
 

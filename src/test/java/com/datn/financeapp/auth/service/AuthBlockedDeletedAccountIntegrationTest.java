@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RefreshRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.TestRedisConfig;
@@ -21,7 +21,6 @@ import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 
 import java.nio.charset.StandardCharsets;
@@ -319,7 +318,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
     }
 
     private AuthResponse login(String email, String password) {
-        return authService.login(new LoginRequest(email, password), "127.0.0.1", "junit");
+        return authService.login(new EmailLoginRequest(email, password), "127.0.0.1", "junit");
     }
 
     // Đặt cờ trạng thái tay, đúng như ADMIN (hoặc luồng xoá tài khoản nhóm C) sẽ làm sau này.

@@ -3,11 +3,10 @@ package com.datn.financeapp.user.controller;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
-import com.datn.financeapp.user.controller.ManagerUserController;
 import com.datn.financeapp.user.dto.request.BlockUserRequest;
 import com.datn.financeapp.user.dto.request.UpdateUserRoleReq;
 import com.datn.financeapp.user.enums.RoleName;
-import com.datn.financeapp.user.service.ManagerAccountService;
+import com.datn.financeapp.user.service.ManagerUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,7 +36,7 @@ class AdminUserControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
-    private ManagerAccountService adminUserService;
+    private ManagerUserService adminUserService;
 
     @InjectMocks
     private ManagerUserController adminUserController;

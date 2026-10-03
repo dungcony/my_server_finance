@@ -2,6 +2,7 @@ package com.datn.financeapp.auth.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.auth.helper.GoogleUserInfo;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -17,24 +18,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 
-/**
- * D3: bản kiểm chứng thật, gọi ra máy chủ Google để lấy khoá công khai.
- *
- * <p>
- * Thư viện {@code google-api-client} lo bốn việc: khớp chữ ký với khoá công
- * khai của Google,
- * kiểm {@code iss} thuộc hai giá trị hợp lệ, kiểm {@code aud} bằng đúng web
- * client id của dự án,
- * và kiểm token chưa hết hạn. Khoá công khai được cache và tự xoay khi Google
- * đổi.
- *
- * <p>
- * Tự viết phần này bằng tay là chỗ rất dễ sai — mà sai thì im lặng: một lỗi bỏ
- * sót bước kiểm
- * {@code aud} vẫn cho đăng nhập thành công trong mọi lần thử tay, chỉ có kẻ tấn
- * công mới phát
- * hiện ra.
- */
+
 @Component
 @Slf4j
 public class GoogleServiceImpl implements GoogleService {

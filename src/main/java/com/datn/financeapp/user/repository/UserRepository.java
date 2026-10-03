@@ -1,12 +1,10 @@
 package com.datn.financeapp.user.repository;
 
+import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,9 +14,18 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailAndStatus(String email, UserStatus status);
 
     Optional<User> findByGoogleId(String googleId);
+
+
+    @Query("""
+            select u
+            from User u
+            where u.isDeleted = false
+            and u.email = :email
+            """)
+    boolean existsByEmail(String email);
 
     @Query(value = """
             SELECT DISTINCT p.name FROM permissions p
@@ -30,7 +37,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             JOIN user_roles ur ON r.id = ur.role_id
             WHERE ur.user_id = :userId
             """, nativeQuery = true)
-    List<String> findAuthoritiesByUserId(@Param("userId") UUID userId);
+    List<String> findAuthoritiesByUserId(UUID userId);
 
     /**
      * Level của role MẠNH NHẤT user đang giữ. Quy ước "số nhỏ = quyền cao" nên role mạnh
@@ -43,7 +50,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             JOIN user_roles ur ON r.id = ur.role_id
             WHERE ur.user_id = :userId
             """, nativeQuery = true)
-    int findTopRoleLevelByUserId(@Param("userId") UUID userId);
+    int findTopRoleLevelByUserId(UUID userId);
 
     /**
      * CORE: chỉ trả user có role mạnh nhất YẾU HƠN {@code callerLevel} — lọc ngay trong
@@ -61,27 +68,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                 WHERE ur2.userId = u.id AND r2.level <= :callerLevel
             )
             """)
-    List<User> findAllVisibleToLevel(@Param("callerLevel") int callerLevel);
+    List<User> findAllVisibleToLevel(int callerLevel);
 
-    @org.springframework.lang.NonNull
-    @Override
     @Query("""
-            SELECT DISTINCT u FROM User u
-            LEFT JOIN FETCH u.userRoles ur
-            LEFT JOIN FETCH ur.role r
-            LEFT JOIN FETCH r.rolePermissions
-            WHERE u.isDeleted = false
+            SELECT u
+            FROM User u
+            WHERE u.email IN :emails
             """)
-    List<User> findAll();
+    List<User> findAllByEmailIn(List<String> emails);
 
-    @Transactional
-    @Modifying
-    @Query("""
-            update User u
-            set u.status = :status
-            where u.id = :id
-            """)
-    void setStatusById(
-            @Param("id") UUID id,
-            @Param("status") UserStatus status);
 }

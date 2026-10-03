@@ -9,15 +9,12 @@ import com.datn.financeapp.auth.exception.AuthResetCodeInvalidException;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.auth.service.ForgotPasswordRateLimiter;
-import com.datn.financeapp.auth.service.GoogleService;
 import com.datn.financeapp.auth.service.impl.AuthServiceImpl;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.JwtService;
-import com.datn.financeapp.user.dto.response.UserAccountResponse;
+import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
-import com.datn.financeapp.user.service.AccountService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -113,6 +110,7 @@ class AuthResetPasswordServiceTest {
         verify(otpRepository, never()).save(any());
         verify(emailService, never()).sendPasswordResetCode(any(), any());
     }
+
     @Test
     @DisplayName("resetPassword: Mật khẩu mới trùng mật khẩu cũ -> Ném AuthPasswordSameAsOldException")
     void resetPassword_NewPasswordMatchesOldPassword_ThrowsAuthPasswordSameAsOldException() {
@@ -129,7 +127,7 @@ class AuthResetPasswordServiceTest {
 
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
 
-        UserAccountResponse user = new UserAccountResponse(
+        UserRes user = new UserRes(
                 userId, email, "encodedCurrentPassword", UserPlan.FREE, UserStatus.ACTIVE,
                 Collections.emptyList(), false, null
         );
@@ -161,7 +159,7 @@ class AuthResetPasswordServiceTest {
 
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
 
-        UserAccountResponse user = new UserAccountResponse(
+        UserRes user = new UserRes(
                 userId, email, "1234567", UserPlan.FREE, UserStatus.ACTIVE,
                 Collections.emptyList(), false, null
         );
@@ -218,7 +216,7 @@ class AuthResetPasswordServiceTest {
 
         when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
 
-        UserAccountResponse user = new UserAccountResponse(
+        UserRes user = new UserRes(
                 userId, email, "oldHash", UserPlan.FREE, UserStatus.BLOCKED,
                 Collections.emptyList(), false, null
         );

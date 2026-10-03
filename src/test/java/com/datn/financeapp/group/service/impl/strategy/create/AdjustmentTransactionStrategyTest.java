@@ -26,7 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Lớp kiểm thử cho {@link AdjustmentTransactionStrategy}.
+ * Lớp kiểm thử cho {@link AdjustmentTransaction}.
  * Đảm bảo giao dịch điều chỉnh quỹ chia đều chênh lệch cho thành viên hợp lệ.
  */
 @ExtendWith(MockitoExtension.class)
@@ -38,7 +38,7 @@ class AdjustmentTransactionStrategyTest {
     @Mock
     private TransactionHelper transactionHelper;
 
-    private AdjustmentTransactionStrategy strategy;
+    private AdjustmentTransaction strategy;
 
     private UUID groupId;
     private UUID operatorId;
@@ -47,7 +47,7 @@ class AdjustmentTransactionStrategyTest {
     void setUp() {
         groupId = UUID.randomUUID();
         operatorId = UUID.randomUUID();
-        strategy = new AdjustmentTransactionStrategy(memberService, transactionHelper);
+        strategy = new AdjustmentTransaction(memberService, transactionHelper);
     }
 
     @Test

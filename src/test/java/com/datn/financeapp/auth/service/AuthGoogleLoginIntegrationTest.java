@@ -10,7 +10,7 @@ import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
-import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.auth.enums.OtpType;
@@ -18,12 +18,8 @@ import com.datn.financeapp.auth.repository.OtpRepository;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.user.repository.UserRepository;
-import com.datn.financeapp.auth.service.AuthService;
-import com.datn.financeapp.auth.service.GoogleService;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.user.service.AccountService;
-import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.entity.Wallet;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -224,7 +220,7 @@ class AuthGoogleLoginIntegrationTest {
         authService.loginWithGoogle(new GoogleLoginRequest(ID_TOKEN));
 
         AuthResponse viaPassword = authService.login(
-                new LoginRequest("van.dung.duoc@example.com", PASSWORD), "127.0.0.1", "test");
+                new EmailLoginRequest("van.dung.duoc@example.com", PASSWORD), "127.0.0.1", "test");
 
         assertThat(viaPassword.accessToken()).isNotBlank();
     }
@@ -294,7 +290,7 @@ class AuthGoogleLoginIntegrationTest {
 
         // Trước khi vá, passwordEncoder.matches(x, null) ném NullPointerException -> 500
         assertThatThrownBy(() -> authService.login(
-                new LoginRequest("khong.mat.khau@example.com", "thu.doan.mat.khau"),
+                new EmailLoginRequest("khong.mat.khau@example.com", "thu.doan.mat.khau"),
                 "127.0.0.1", "test"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "INVALID_CREDENTIALS");
@@ -381,7 +377,7 @@ class AuthGoogleLoginIntegrationTest {
         registerAndVerify("chi.email@example.com", "Chỉ Email");
 
         AuthResponse res = authService.login(
-                new LoginRequest("chi.email@example.com", PASSWORD), "127.0.0.1", "test");
+                new EmailLoginRequest("chi.email@example.com", PASSWORD), "127.0.0.1", "test");
 
         assertThat(res.user().hasPassword()).isTrue();
         assertThat(res.user().googleLinked()).isFalse();

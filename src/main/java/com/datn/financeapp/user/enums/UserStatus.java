@@ -7,6 +7,8 @@ public enum UserStatus {
 
     @jakarta.persistence.Converter(autoApply = true)
     public static class Converter extends LowercaseEnumConverter<UserStatus> {
-        public Converter() { super(UserStatus.class); }
+        public Converter() {
+            super(UserStatus.class);
+        }
     }
 }

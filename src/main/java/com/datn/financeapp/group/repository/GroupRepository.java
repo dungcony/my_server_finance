@@ -7,7 +7,6 @@ import com.datn.financeapp.group.helper.MemberAuthInfo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,8 +37,8 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
                 WHERE g.id = :groupId and gm.status = MemberStatus.ACTIVE
             """)
     Optional<MemberAuthInfo> findAuthInfo(
-            @Param("groupId") UUID groupId,
-            @Param("userId") UUID userId);
+            UUID groupId,
+            UUID userId);
 
     @Query("""
                 SELECT new com.datn.financeapp.group.helper.MemberAuthInfo(
@@ -58,7 +57,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             """)
     Optional<MemberAuthInfo> findAuthInfo(
             String inviteCode,
-            @Param("userId") UUID userId);
+            UUID userId);
 
     @Query("""
             SELECT new com.datn.financeapp.group.dto.response.group.GroupSummaryRes(
@@ -89,7 +88,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             LEFT JOIN FETCH g.fund
             WHERE g.id = :id and g.status <> GroupStatus.DELETED
             """)
-    Optional<Group> findNotDeletedWithFundById(@Param("id") UUID id);
+    Optional<Group> findNotDeletedWithFundById(UUID id);
 
     @Query("""
             SELECT g
@@ -97,7 +96,7 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             LEFT JOIN FETCH g.fund
             WHERE g.id = :id and g.status = GroupStatus.ACTIVE
             """)
-    Optional<Group> findActivatedWithFundById(@Param("id") UUID id);
+    Optional<Group> findActivatedWithFundById(UUID id);
 
     @Query("""
             SELECT g
@@ -105,6 +104,6 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             LEFT JOIN FETCH g.fund
             WHERE g.id = :id and g.status = GroupStatus.ARCHIVED
             """)
-    Optional<Group> findArchivedWithFundById(@Param("id") UUID id);
+    Optional<Group> findArchivedWithFundById(UUID id);
 
 }

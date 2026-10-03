@@ -4,8 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
 import java.time.Instant;
 import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -31,6 +33,9 @@ public class RefreshToken {
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
+
+    @Column(name = "email", nullable = false)
+    private String email;
 
     // SHA-256 hex (64 ký tự) của token gốc — UNIQUE (uq_rt_hash).
     @Column(name = "token_hash", nullable = false, unique = true)

@@ -3,6 +3,7 @@ package com.datn.financeapp.group.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionBulkReviewReq;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
@@ -41,6 +42,8 @@ import static org.mockito.Mockito.*;
  * <li>{@link GTransactionServiceImpl#confirm}, {@link GTransactionServiceImpl#reject},
  * {@link GTransactionServiceImpl#bulkConfirm}, {@link GTransactionServiceImpl#bulkReject}:
  * luồng duyệt giao dịch đang chờ.</li>
+ * <li>{@link GTransactionServiceImpl#sumConfirmedAmount}, {@link GTransactionServiceImpl#findConfirmedTransactions}:
+ * cộng tổng và lấy danh sách giao dịch đã xác nhận cho báo cáo nhóm.</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -74,17 +77,23 @@ class GTransactionServiceImplTest {
         ownerId = UUID.randomUUID();
         memberId = UUID.randomUUID();
 
-        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId)).thenReturn(
-                new MemberAuthInfo(groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
-                        MemberRole.OWNER, ownerId));
-        lenient().when(permissionValidator.getAuthInfo(groupId, memberId)).thenReturn(
-                new MemberAuthInfo(groupId, memberId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
-                        MemberRole.MEMBER, ownerId));
-
         treasurerId = UUID.randomUUID();
-        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId)).thenReturn(
-                new MemberAuthInfo(groupId, treasurerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE,
-                        MemberRole.MEMBER, treasurerId));
+        MemberAuthInfo ownerInfo = new MemberAuthInfo(groupId, ownerId, GroupStatus.ACTIVE, true,
+                MemberStatus.ACTIVE, MemberRole.OWNER, ownerId);
+        MemberAuthInfo memberInfo = new MemberAuthInfo(groupId, memberId, GroupStatus.ACTIVE, true,
+                MemberStatus.ACTIVE, MemberRole.MEMBER, ownerId);
+        MemberAuthInfo treasurerInfo = new MemberAuthInfo(groupId, treasurerId, GroupStatus.ACTIVE, true,
+                MemberStatus.ACTIVE, MemberRole.MEMBER, treasurerId);
+
+        // hàm ghi dùng bản mặc định (chặn nhóm lưu trữ)
+        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId)).thenReturn(ownerInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, memberId)).thenReturn(memberInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId)).thenReturn(treasurerInfo);
+
+        // hàm đọc dùng bản cho phép nhóm lưu trữ
+        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId, true)).thenReturn(ownerInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, memberId, true)).thenReturn(memberInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId, true)).thenReturn(treasurerInfo);
 
         // gọi logic thật cho kiểm tra quyền xóa
         lenient().doCallRealMethod().when(permissionValidator)
@@ -362,6 +371,124 @@ class GTransactionServiceImplTest {
         assertThat(res.items()).hasSize(1);
         assertThat(res.meta().totalItems()).isEqualTo(1);
         verify(transactionHelper).buildDetailRes(pending);
+    }
+
+    @Test
+    @DisplayName("Tổng giao dịch đã xác nhận toàn thời gian trả đúng số repository cộng được")
+    void sumConfirmedAmount_AllTime_ReturnsRepositorySum() {
+        when(transactionRepository.sumAmountByGroupIdAndType(groupId, GTransactionType.EXPENSE))
+                .thenReturn(2_000_000L);
+
+        long total = service.sumConfirmedAmount(groupId, GTransactionType.EXPENSE);
+
+        assertThat(total).isEqualTo(2_000_000L);
+    }
+
+    @Test
+    @DisplayName("Tổng giao dịch đã xác nhận toàn thời gian mà repository trả null thì quy về 0")
+    void sumConfirmedAmount_AllTime_NullBecomesZero() {
+        when(transactionRepository.sumAmountByGroupIdAndType(groupId, GTransactionType.CONTRIBUTION))
+                .thenReturn(null);
+
+        long total = service.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION);
+
+        assertThat(total).isZero();
+    }
+
+    @Test
+    @DisplayName("Tổng giao dịch đã xác nhận theo kỳ thì truyền đúng khoảng thời gian xuống repository")
+    void sumConfirmedAmount_Period_PassesRangeToRepository() {
+        Instant from = Instant.parse("2026-08-31T17:00:00Z");
+        Instant to = Instant.parse("2026-09-30T17:00:00Z");
+        when(transactionRepository.sumAmountByGroupIdAndTypeAndPeriod(groupId, GTransactionType.EXPENSE, from, to))
+                .thenReturn(800_000L);
+
+        long total = service.sumConfirmedAmount(groupId, GTransactionType.EXPENSE, from, to);
+
+        assertThat(total).isEqualTo(800_000L);
+    }
+
+    @Test
+    @DisplayName("Tổng giao dịch đã xác nhận theo kỳ mà repository trả null thì quy về 0")
+    void sumConfirmedAmount_Period_NullBecomesZero() {
+        Instant from = Instant.parse("2026-08-31T17:00:00Z");
+        Instant to = Instant.parse("2026-09-30T17:00:00Z");
+        when(transactionRepository.sumAmountByGroupIdAndTypeAndPeriod(groupId, GTransactionType.CONTRIBUTION, from, to))
+                .thenReturn(null);
+
+        long total = service.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION, from, to);
+
+        assertThat(total).isZero();
+    }
+
+    @Test
+    @DisplayName("Lấy giao dịch đã xác nhận chỉ hỏi repository trạng thái CONFIRMED của đúng nhóm")
+    void findConfirmedTransactions_QueriesConfirmedStatusOfGroup() {
+        GTransaction confirmed = txn(100_000L);
+        when(transactionRepository.findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
+                groupId, GTransactionStatus.CONFIRMED)).thenReturn(List.of(confirmed));
+
+        List<GTransaction> result = service.findConfirmedTransactions(groupId);
+
+        assertThat(result).containsExactly(confirmed);
+    }
+
+    @Test
+    @DisplayName("Xem chi tiết giao dịch chỉ cần kiểm tra là thành viên và cho phép nhóm lưu trữ")
+    void detail_UsesAllowArchivedValidation() {
+        GTransaction confirmed = txn(100_000L);
+        stubFind(confirmed);
+
+        service.detail(ownerId, groupId, confirmed.getId());
+
+        verify(permissionValidator).verifyMember(groupId, ownerId, true);
+    }
+
+    @Test
+    @DisplayName("Danh sách giao dịch chung dùng bản xác thực cho phép nhóm lưu trữ")
+    void list_UsesAllowArchivedValidation() {
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.list(ownerId, groupId, new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, 20));
+
+        verify(permissionValidator).getAuthInfo(groupId, ownerId, true);
+        verify(permissionValidator, never()).getAuthInfo(groupId, ownerId);
+    }
+
+    @Test
+    @DisplayName("Danh sách giao dịch của tôi chỉ cần kiểm tra là thành viên và cho phép nhóm lưu trữ")
+    void myList_UsesAllowArchivedValidation() {
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.myList(memberId, groupId, new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, 20));
+
+        verify(permissionValidator).verifyMember(groupId, memberId, true);
+    }
+
+    @Test
+    @DisplayName("Danh sách giao dịch chờ duyệt dùng bản xác thực cho phép nhóm lưu trữ")
+    void listPending_UsesAllowArchivedValidation() {
+        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.listPending(ownerId, groupId, 1, 20);
+
+        verify(permissionValidator).getAuthInfo(groupId, ownerId, true);
+        verify(permissionValidator, never()).getAuthInfo(groupId, ownerId);
+    }
+
+    @Test
+    @DisplayName("Duyệt giao dịch là thao tác ghi nên dùng bản xác thực mặc định, nhóm lưu trữ bị chặn")
+    void confirm_UsesDefaultValidationThatBlocksArchived() {
+        GTransaction pending = pendingTxn(100_000L);
+        stubFind(pending);
+
+        service.confirm(ownerId, groupId, pending.getId());
+
+        verify(permissionValidator).getAuthInfo(groupId, ownerId);
+        verify(permissionValidator, never()).getAuthInfo(groupId, ownerId, true);
     }
 
     private List<Object> capturePublishedEvents() {

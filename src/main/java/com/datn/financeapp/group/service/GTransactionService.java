@@ -5,7 +5,11 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
+import com.datn.financeapp.group.entity.GTransaction;
+import com.datn.financeapp.group.enums.GTransactionType;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,6 +43,10 @@ import java.util.UUID;
  * Output: ID giao dịch (UUID).</li>
  * <li>{@link #countPendingForGroup}: Đếm giao dịch chờ duyệt. Input: groupId.
  * Output: số lượng (long).</li>
+ * <li>{@link #sumConfirmedAmount}: Cộng tổng tiền giao dịch đã xác nhận theo loại, toàn thời gian hoặc trong một kỳ.
+ * Input: groupId, type, [from, to). Output: tổng tiền (long).</li>
+ * <li>{@link #findConfirmedTransactions}: Lấy toàn bộ giao dịch đã xác nhận của nhóm để tính số dư thành viên.
+ * Input: groupId. Output: List&lt;GTransaction&gt;.</li>
  * </ul>
  * </p>
  */
@@ -138,4 +146,35 @@ public interface GTransactionService {
      * @return Số lượng giao dịch PENDING chưa xóa
      */
     long countPendingForGroup(UUID groupId);
+
+    /**
+     * Tổng tiền các giao dịch đã xác nhận ({@code CONFIRMED}, chưa xóa) theo loại, trên toàn thời gian.
+     * <p>Không kiểm tra quyền — nơi gọi phải xác thực thành viên trước.</p>
+     *
+     * @param groupId ID nhóm
+     * @param type    loại giao dịch cần cộng
+     * @return Tổng tiền, 0 nếu chưa có giao dịch nào
+     */
+    long sumConfirmedAmount(UUID groupId, GTransactionType type);
+
+    /**
+     * Như {@link #sumConfirmedAmount(UUID, GTransactionType)} nhưng chỉ tính giao dịch phát sinh trong khoảng
+     * {@code [from, to)}.
+     *
+     * @param groupId ID nhóm
+     * @param type    loại giao dịch cần cộng
+     * @param from    mốc bắt đầu (tính cả mốc này)
+     * @param to      mốc kết thúc (không tính mốc này)
+     * @return Tổng tiền, 0 nếu trong kỳ chưa có giao dịch nào
+     */
+    long sumConfirmedAmount(UUID groupId, GTransactionType type, Instant from, Instant to);
+
+    /**
+     * Toàn bộ giao dịch đã xác nhận của nhóm (kèm danh sách phân bổ), xếp theo thời điểm phát sinh tăng dần.
+     * <p>Dùng để tính số dư từng thành viên. Không kiểm tra quyền — nơi gọi phải xác thực thành viên trước.</p>
+     *
+     * @param groupId ID nhóm
+     * @return Danh sách giao dịch {@code CONFIRMED}, chưa xóa
+     */
+    List<GTransaction> findConfirmedTransactions(UUID groupId);
 }

@@ -44,7 +44,8 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     @Override
     @Transactional(readOnly = true)
     public List<MemberRes> listMembers(UUID operatorId, UUID groupId, MemberStatus status) {
-        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId);
+        // xem danh sách là thao tác đọc nên nhóm đã lưu trữ vẫn xem được
+        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, true);
 
         // người chờ duyệt chỉ chủ nhóm được xem
         if (status == MemberStatus.PENDING && !info.isOwner())

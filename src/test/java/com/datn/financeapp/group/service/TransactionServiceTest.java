@@ -10,6 +10,7 @@ import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.*;
+import com.datn.financeapp.group.helper.GTransactionBuilder;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.mapper.GTransactionMapper;
@@ -60,10 +61,10 @@ class TransactionServiceTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
-    private GTransactionBuilderStrategy expenseStrategy;
+    private GTransactionBuilder expenseStrategy;
 
     @Mock
-    private GTransactionBuilderStrategy refundStrategy;
+    private GTransactionBuilder refundStrategy;
 
     private GTransactionServiceImpl transactionService;
 

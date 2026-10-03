@@ -13,7 +13,6 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface GroupTransactionRepository extends JpaRepository<GTransaction, UUID>, JpaSpecificationExecutor<GTransaction> {
 
@@ -44,10 +43,10 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
                   AND gt.occurredAt < :toTime
             """)
     Long sumAmountByGroupIdAndTypeAndPeriod(
-            @Param("groupId") UUID groupId,
-            @Param("type") GTransactionType type,
-            @Param("fromTime") Instant fromTime,
-            @Param("toTime") Instant toTime);
+            UUID groupId,
+            GTransactionType type,
+            Instant fromTime,
+            Instant toTime);
 
     @Query("""
                 SELECT COALESCE(SUM(gt.amount), 0)
@@ -58,6 +57,6 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
                   AND gt.deletedAt IS NULL
             """)
     Long sumAmountByGroupIdAndType(
-            @Param("groupId") UUID groupId,
-            @Param("type") GTransactionType type);
+            UUID groupId,
+            GTransactionType type);
 }

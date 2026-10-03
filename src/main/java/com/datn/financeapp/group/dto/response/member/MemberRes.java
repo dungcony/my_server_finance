@@ -12,15 +12,16 @@ public record MemberRes(
         MemberRole role,
         MemberStatus status,
         Instant joinedAt,
+        Instant leftAt,
         String displayName,
         Boolean isTreasurer) {
 
     // dùng khi mới map từ entity, chưa gắn tên hiển thị và cờ thủ quỹ
     public MemberRes(UUID id, UUID userId, MemberRole role, MemberStatus status, Instant joinedAt) {
-        this(id, userId, role, status, joinedAt, null, false);
+        this(id, userId, role, status, joinedAt, null, null, false);
     }
 
     public MemberRes withDisplay(String displayName, boolean isTreasurer) {
-        return new MemberRes(id, userId, role, status, joinedAt, displayName, isTreasurer);
+        return new MemberRes(id, userId, role, status, joinedAt, leftAt, displayName, isTreasurer);
     }
 }

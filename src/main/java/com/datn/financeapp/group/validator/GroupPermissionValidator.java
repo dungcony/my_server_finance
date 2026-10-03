@@ -29,19 +29,34 @@ public class GroupPermissionValidator {
     private final GroupRepository groupRepository;
 
     /**
-     * Lấy thông tin auth và xác thực trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE)
+     * Lấy thông tin auth và xác thực trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE).
+     * Mặc định chặn nhóm đã lưu trữ — dùng cho mọi thao tác ghi.
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng
      * @return {@link MemberAuthInfo} chứa trạng thái và role
      */
     public MemberAuthInfo getAuthInfo(UUID groupId, UUID operatorId) {
+        return getAuthInfo(groupId, operatorId, false);
+    }
+
+    /**
+     * Lấy thông tin auth và xác thực nhóm chưa bị xoá cùng tư cách thành viên (ACTIVE).
+     *
+     * @param groupId       ID nhóm
+     * @param operatorId    ID người dùng
+     * @param allowArchived {@code true} cho thao tác chỉ đọc (và xoá/mở lại nhóm), {@code false} thì nhóm đã lưu trữ
+     *                      bị chặn bằng {@link ErrorCode#GROUP_ARCHIVED}
+     * @return {@link MemberAuthInfo} chứa trạng thái và role
+     */
+    public MemberAuthInfo getAuthInfo(UUID groupId, UUID operatorId, boolean allowArchived) {
         if (groupId == null || operatorId == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
 
         return validateAuthInfo(
-                groupRepository.findAuthInfo(groupId, operatorId)
+                groupRepository.findAuthInfo(groupId, operatorId),
+                allowArchived
         );
     }
 
@@ -59,12 +74,27 @@ public class GroupPermissionValidator {
 
 
         return validateAuthInfo(
-                groupRepository.findAuthInfo(inviteCode, operatorId)
+                groupRepository.findAuthInfo(inviteCode, operatorId),
+                false
         );
     }
 
     /**
+     * Xác thực người dùng phải là thành viên đang hoạt động (ACTIVE) của nhóm chưa bị xoá, không cần vai trò cụ thể.
+     * Dành cho chỗ chỉ cần kiểm tra quyền và không dùng thông tin auth trả về.
+     *
+     * @param groupId       ID nhóm
+     * @param operatorId    ID người dùng thực hiện thao tác
+     * @param allowArchived {@code true} cho thao tác chỉ đọc: nhóm đã lưu trữ vẫn qua
+     * @throws BusinessException nếu không phải thành viên đang hoạt động hoặc nhóm không hợp lệ
+     */
+    public void verifyMember(UUID groupId, UUID operatorId, boolean allowArchived) {
+        getAuthInfo(groupId, operatorId, allowArchived);
+    }
+
+    /**
      * Xác thực người dùng phải là Trưởng nhóm (OWNER) đang hoạt động.
+     * Mặc định chặn nhóm đã lưu trữ — dùng cho mọi thao tác ghi.
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng thực hiện thao tác
@@ -72,19 +102,21 @@ public class GroupPermissionValidator {
      *                           ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
      */
     public void verifyOwner(UUID groupId, UUID operatorId) {
-
-        var info = getAuthInfo(groupId, operatorId);
-
-        if (info.memberRole() != MemberRole.OWNER)
-            throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
-
+        verifyOwner(groupId, operatorId, false);
     }
 
-    public void verifyOwnerAllowArchived(UUID groupId, UUID operatorId) {
-        if (groupId == null || operatorId == null)
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+    /**
+     * Xác thực người dùng phải là Trưởng nhóm (OWNER) đang hoạt động.
+     *
+     * @param groupId       ID nhóm
+     * @param operatorId    ID người dùng thực hiện thao tác
+     * @param allowArchived {@code true} cho thao tác vẫn làm được khi nhóm đã lưu trữ (xoá, mở lại nhóm)
+     * @throws BusinessException nếu không phải Owner
+     *                           ({@link ErrorCode#FORBIDDEN_OWNER_REQUIRED})
+     */
+    public void verifyOwner(UUID groupId, UUID operatorId, boolean allowArchived) {
 
-        MemberAuthInfo info = requireNotDeleted(groupRepository.findAuthInfo(groupId, operatorId));
+        var info = getAuthInfo(groupId, operatorId, allowArchived);
 
         if (info.memberRole() != MemberRole.OWNER)
             throw new BusinessException(ErrorCode.FORBIDDEN_OWNER_REQUIRED);
@@ -176,10 +208,10 @@ public class GroupPermissionValidator {
             throw new BusinessException(ErrorCode.FORBIDDEN_TRANSACTION_DELETE);
     }
 
-    private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo) {
+    private MemberAuthInfo validateAuthInfo(Optional<MemberAuthInfo> authInfo, boolean allowArchived) {
         MemberAuthInfo info = requireNotDeleted(authInfo);
 
-        if (info.groupStatus() == GroupStatus.ARCHIVED)
+        if (!allowArchived && info.groupStatus() == GroupStatus.ARCHIVED)
             throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
 
         return info;

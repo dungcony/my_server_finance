@@ -136,7 +136,7 @@ public enum ErrorCode {
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Thẻ làm mới không hợp lệ."),
 
     // Mã đặt lại mật khẩu 6 chữ số sai, hết hạn hoặc đã dùng.
-    RESET_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã sai, hết hạn hoặc đã dùng."),
+    CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã sai, hết hạn hoặc đã dùng."),
 
     // Mã xác thực email 6 chữ số sai hoặc đã hết hạn.
     VERIFICATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã xác thực không hợp lệ hoặc đã hết hạn."),

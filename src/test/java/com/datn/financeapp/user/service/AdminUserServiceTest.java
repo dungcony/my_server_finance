@@ -15,7 +15,7 @@ import com.datn.financeapp.user.mapper.UserMapper;
 import com.datn.financeapp.user.repository.RoleRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
-import com.datn.financeapp.user.service.impl.ManagerAccountServiceImpl;
+import com.datn.financeapp.user.service.impl.ManagerUserServiceImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,7 +65,7 @@ class AdminUserServiceTest {
     private UserMapper userMapper;
 
     @InjectMocks
-    private ManagerAccountServiceImpl adminUserService;
+    private ManagerUserServiceImpl adminUserService;
 
     private final UUID adminId = UUID.randomUUID();
     private final UUID targetUserId = UUID.randomUUID();
@@ -163,7 +163,7 @@ class AdminUserServiceTest {
 
         assertThat(user.getStatus()).isEqualTo(UserStatus.BLOCKED);
         verify(userRepository).save(user);
-        verify(blacklistedUserRepository).blacklist(targetUserId, "Spam hệ thống", 3600L);
+        verify(blacklistedUserRepository).add(targetUserId, "Spam hệ thống", 3600L);
         verify(authService).revokeAllTokensForUser(targetUserId);
     }
 

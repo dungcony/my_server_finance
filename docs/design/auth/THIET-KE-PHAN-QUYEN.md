@@ -202,16 +202,16 @@ chính (Information Disclosure):
 2. **`ManagerUserController`** tiếp nhận request, kích hoạt validation `@Valid`. Spring Security kiểm tra
    `@PreAuthorize("hasAuthority('admin:users:manage')")`.
 3. **`ManagerUserController`** ủy quyền xử lý cho `adminUserService.blockUser(userId, request)`.
-4. **`ManagerAccountServiceImpl`** kiểm tra quy tắc nghiệp vụ: `userId != currentUserId` (Admin không được phép tự khóa
+4. **`ManagerUserServiceImpl`** kiểm tra quy tắc nghiệp vụ: `userId != currentUserId` (Admin không được phép tự khóa
    tài
    khoản của chính mình).
-5. **`ManagerAccountServiceImpl`** gọi `userRepository.findById(userId)` để tìm người dùng.
+5. **`ManagerUserServiceImpl`** gọi `userRepository.findById(userId)` để tìm người dùng.
 6. **`UserRepository`** trả về `Optional<User>`.
-7. **`ManagerAccountServiceImpl`** cập nhật `user.setStatus(UserStatus.BLOCKED)` và gọi `userRepository.save(user)`.
-8. **`ManagerAccountServiceImpl`** ghi khóa vào Redis Blacklist (`blacklist:user:{userId}`) với TTL bằng thời hạn còn
+7. **`ManagerUserServiceImpl`** cập nhật `user.setStatus(UserStatus.BLOCKED)` và gọi `userRepository.save(user)`.
+8. **`ManagerUserServiceImpl`** ghi khóa vào Redis Blacklist (`blacklist:user:{userId}`) với TTL bằng thời hạn còn
    lại của
    token (hoặc 1 giờ mặc định) để chặn ngay lập tức các JWT còn hạn lưu hành.
-9. **`ManagerAccountServiceImpl`** gọi `refreshTokenRepository.deleteByUserId(userId)` để hủy toàn bộ phiên refresh
+9. **`ManagerUserServiceImpl`** gọi `refreshTokenRepository.deleteByUserId(userId)` để hủy toàn bộ phiên refresh
    token của
    người dùng.
 10. **`ManagerUserController`** trả về HTTP Status **`200 OK`** kèm
@@ -1054,7 +1054,7 @@ sequenceDiagram
 
 Khi Quản trị viên khóa tài khoản:
 
-1. `ManagerAccountServiceImpl` tính toán thời gian sống còn lại của JWT token:
+1. `ManagerUserServiceImpl` tính toán thời gian sống còn lại của JWT token:
    $$\text{remainingTTL} = \max (\text{tokenExpiration} - \text{currentTime}, 0)$$
    Nếu không có metadata phiên chi tiết, fallback về thời hạn tối đa của Access Token (1 giờ).
 2. Lưu vào Redis:

@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface FundRepository extends JpaRepository<Fund, UUID> {
 
@@ -24,11 +23,11 @@ public interface FundRepository extends JpaRepository<Fund, UUID> {
             SET gf.currentBalance = gf.currentBalance + :delta
             WHERE gf.id = :id
             """)
-    int adjustBalance(@Param("id") UUID id, @Param("delta") Long delta);
+    int adjustBalance(UUID id, Long delta);
 
     @Modifying
     @Query("UPDATE Fund gf SET gf.currentBalance = gf.currentBalance + :delta WHERE gf.groupId = :groupId")
-    int adjustBalanceByGroupId(@Param("groupId") UUID groupId, @Param("delta") Long delta);
+    int adjustBalanceByGroupId(UUID groupId, Long delta);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
@@ -36,5 +35,5 @@ public interface FundRepository extends JpaRepository<Fund, UUID> {
             from Fund f
             where f.groupId = :groupId
             """)
-    Optional<Fund> findByGroupIdForUpdate(@Param("groupId") UUID groupId);
+    Optional<Fund> findByGroupIdForUpdate(UUID groupId);
 }

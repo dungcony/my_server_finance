@@ -83,41 +83,41 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 
 ## 2. Danh mục Điểm cuối API (Endpoints Summary) <a id="2-endpoints-summary"></a>
 
-| Nhóm chức năng (Controller)        |  Method  | Endpoint URL                                        | Mục đích & Phân quyền                                                                                                                                                                                            |
-|:-----------------------------------|:--------:|:----------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **1. Quản lý Nhóm (`GroupController`)** |  `POST`  | `/v1/groups`                                        | Tạo nhóm mới (khởi tạo cấu hình, quỹ duy nhất và tự động sinh mã mời `invite_code`)                                                                                                                              |
-|                                    |  `GET`   | `/v1/groups`                                        | Danh sách các nhóm user đang là thành viên `ACTIVE`, kèm mã mời và số dư quỹ                                                                                                                                     |
-|                                    |  `GET`   | `/v1/groups/{id}`                                   | Chi tiết nhóm (thông tin, mã mời, quỹ, danh sách thành viên)                                                                                                                                                     |
-|                                    | `PATCH`  | `/v1/groups/{id}`                                   | Sửa thông tin nhóm (Tên, mô tả, mục tiêu, cờ tính thừa thiếu) — *Owner*                                                                                                                                          |
-|                                    | `DELETE` | `/v1/groups/{id}`                                   | Xóa nhóm — *Owner*. Quỹ = 0, không còn khoản chờ; bật tính thừa thiếu thì phần mọi thành viên = 0                                                                                                                |
-|                                    |  `POST`  | `/v1/groups/{id}/archive`                           | Lưu trữ nhóm (chỉ xem) — *Owner*. Không còn khoản chờ                                                                                                                                                            |
-|                                    |  `POST`  | `/v1/groups/{id}/unarchive`                         | Mở lại nhóm đã lưu trữ — *Owner*                                                                                                                                                                                 |
-|                                    |  `POST`  | `/v1/groups/join`                                   | Tham gia nhóm bằng mã mời (`invite_code`). Trạng thái `ACTIVE` (vào thẳng) hoặc `PENDING` (chờ duyệt) tùy cấu hình                                                                                               |
-|                                    |  `GET`   | `/v1/groups/{id}/pending-count`                     | Đếm số giao dịch và thành viên đang chờ duyệt (hiển thị badge) — *Thành viên ACTIVE*                                                                                                                             |
-| **2. Thành viên (`MemberController`)** |  `GET`   | `/v1/groups/{id}/members`                           | Danh sách thành viên hiện tại và lịch sử tham gia (lọc tùy chọn `status`)                                                                                                                                        |
-|                                    |  `POST`  | `/v1/groups/{id}/members`                           | Chủ nhóm thêm trực tiếp danh sách thành viên (`MemberAddReq`) — *Owner*                                                                                                                                          |
-|                                    |  `PUT`   | `/v1/groups/{id}/owner-role/{memberUserId}/`        | Chuyển giao quyền chủ nhóm cho một thành viên `ACTIVE` khác — *Owner*                                                                                                                                            |
-|                                    |  `POST`  | `/v1/groups/{id}/members/{memberUserId}/approve`   | Duyệt thành viên `PENDING` đơn lẻ vào nhóm — *Owner*                                                                                                                                                             |
-|                                    |  `POST`  | `/v1/groups/{id}/approves`                          | Duyệt toàn bộ thành viên `PENDING` vào nhóm — *Owner*                                                                                                                                                            |
-|                                    |  `POST`  | `/v1/groups/{id}/members/{memberUserId}/reject`    | Từ chối yêu cầu tham gia của thành viên `PENDING` đơn lẻ — *Owner*                                                                                                                                               |
-|                                    |  `POST`  | `/v1/groups/{id}/rejects`                           | Từ chối toàn bộ yêu cầu tham gia `PENDING` — *Owner*                                                                                                                                                             |
-|                                    | `DELETE` | `/v1/groups/{id}/members/{memberUserId}`           | Mời thành viên rời nhóm — *Owner*. Bật tính thừa thiếu thì người bị mời phải tất toán về 0 trước                                                                                                                |
-|                                    |  `POST`  | `/v1/groups/{id}/leave`                             | Thành viên tự rời nhóm. Chủ nhóm phải chuyển quyền trước; bật tính thừa thiếu thì phải tất toán về 0                                                                                                             |
-| **3. Quỹ Nhóm (`FundController`)** |  `PUT`   | `/v1/groups/{id}/fund-kepper`                       | Bàn giao người giữ quỹ (`FundKepperUpdateReq`) — *Owner*                                                                                                                                                         |
-|                                    |  `POST`  | `/v1/groups/{id}/fund/reconcile`                    | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                                            |
-| **4. Giao dịch (`GroupTransactionController`)** |  `POST`  | `/v1/groups/{id}/transactions`    | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên ghi ở `PENDING`, Thủ quỹ / Owner duyệt `CONFIRMED` ngay |
-|                                    |  `GET`   | `/v1/groups/{id}/transactions`                      | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                                               |
-|                                    |  `GET`   | `/v1/groups/{id}/transactions/mine`                 | Lịch sử giao dịch do chính người dùng hiện tại ghi nhận (kèm cả `PENDING`)                                                                                                                                       |
-|                                    |  `GET`   | `/v1/groups/{id}/transactions/pending`              | Danh sách giao dịch đang chờ duyệt (`PENDING`) dành riêng cho người duyệt — *Thủ quỹ / Owner*                                                                                                                    |
-|                                    |  `GET`   | `/v1/groups/{id}/transactions/{tId}`                | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                                                  |
-|                                    |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`                | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                                               |
-|                                    | `DELETE` | `/v1/groups/{id}/transactions/{tId}`                | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                                                |
-|                                    |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm`        | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                     |
-|                                    |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`         | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                                     |
-|                                    |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`         | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                      |
-|                                    |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`          | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                                       |
-| **5. Báo cáo (`GroupReportController`)** |  `GET`   | `/v1/groups/{id}/summary`                           | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                                        |
-|                                    |  `GET`   | `/v1/groups/{id}/balances`                          | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                                            |
+| Nhóm chức năng (Controller)                     |  Method  | Endpoint URL                                     | Mục đích & Phân quyền                                                                                                                                                                         |
+|:------------------------------------------------|:--------:|:-------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **1. Quản lý Nhóm (`GroupController`)**         |  `POST`  | `/v1/groups`                                     | Tạo nhóm mới (khởi tạo cấu hình, quỹ duy nhất và tự động sinh mã mời `invite_code`)                                                                                                           |
+|                                                 |  `GET`   | `/v1/groups`                                     | Danh sách các nhóm user đang là thành viên `ACTIVE`, kèm mã mời và số dư quỹ                                                                                                                  |
+|                                                 |  `GET`   | `/v1/groups/{id}`                                | Chi tiết nhóm (thông tin, mã mời, quỹ, danh sách thành viên)                                                                                                                                  |
+|                                                 | `PATCH`  | `/v1/groups/{id}`                                | Sửa thông tin nhóm (Tên, mô tả, mục tiêu, cờ tính thừa thiếu) — *Owner*                                                                                                                       |
+|                                                 | `DELETE` | `/v1/groups/{id}`                                | Xóa nhóm — *Owner*. Quỹ = 0, không còn khoản chờ; bật tính thừa thiếu thì phần mọi thành viên = 0                                                                                             |
+|                                                 |  `POST`  | `/v1/groups/{id}/archive`                        | Lưu trữ nhóm (chỉ xem) — *Owner*. Không còn khoản chờ                                                                                                                                         |
+|                                                 |  `POST`  | `/v1/groups/{id}/unarchive`                      | Mở lại nhóm đã lưu trữ — *Owner*                                                                                                                                                              |
+|                                                 |  `POST`  | `/v1/groups/join`                                | Tham gia nhóm bằng mã mời (`invite_code`). Trạng thái `ACTIVE` (vào thẳng) hoặc `PENDING` (chờ duyệt) tùy cấu hình                                                                            |
+|                                                 |  `GET`   | `/v1/groups/{id}/pending-count`                  | Đếm số giao dịch và thành viên đang chờ duyệt (hiển thị badge) — *Thành viên ACTIVE*                                                                                                          |
+| **2. Thành viên (`MemberController`)**          |  `GET`   | `/v1/groups/{id}/members`                        | Danh sách thành viên hiện tại và lịch sử tham gia (lọc tùy chọn `status`)                                                                                                                     |
+|                                                 |  `POST`  | `/v1/groups/{id}/members`                        | Chủ nhóm thêm trực tiếp danh sách thành viên (`MemberAddReq`) — *Owner*                                                                                                                       |
+|                                                 |  `PUT`   | `/v1/groups/{id}/owner-role/{memberUserId}/`     | Chuyển giao quyền chủ nhóm cho một thành viên `ACTIVE` khác — *Owner*                                                                                                                         |
+|                                                 |  `POST`  | `/v1/groups/{id}/members/{memberUserId}/approve` | Duyệt thành viên `PENDING` đơn lẻ vào nhóm — *Owner*                                                                                                                                          |
+|                                                 |  `POST`  | `/v1/groups/{id}/approves`                       | Duyệt toàn bộ thành viên `PENDING` vào nhóm — *Owner*                                                                                                                                         |
+|                                                 |  `POST`  | `/v1/groups/{id}/members/{memberUserId}/reject`  | Từ chối yêu cầu tham gia của thành viên `PENDING` đơn lẻ — *Owner*                                                                                                                            |
+|                                                 |  `POST`  | `/v1/groups/{id}/rejects`                        | Từ chối toàn bộ yêu cầu tham gia `PENDING` — *Owner*                                                                                                                                          |
+|                                                 | `DELETE` | `/v1/groups/{id}/members/{memberUserId}`         | Mời thành viên rời nhóm — *Owner*. Bật tính thừa thiếu thì người bị mời phải tất toán về 0 trước                                                                                              |
+|                                                 |  `POST`  | `/v1/groups/{id}/leave`                          | Thành viên tự rời nhóm. Chủ nhóm phải chuyển quyền trước; bật tính thừa thiếu thì phải tất toán về 0                                                                                          |
+| **3. Quỹ Nhóm (`FundController`)**              |  `PUT`   | `/v1/groups/{id}/fund-kepper`                    | Bàn giao người giữ quỹ (`FundKepperUpdateReq`) — *Owner*                                                                                                                                      |
+|                                                 |  `POST`  | `/v1/groups/{id}/fund/reconcile`                 | Kiểm kê tiền thực tế, sinh giao dịch điều chỉnh chênh lệch `ADJUSTMENT_UP`/`DOWN` — *Thủ quỹ / Owner*                                                                                         |
+| **4. Giao dịch (`GroupTransactionController`)** |  `POST`  | `/v1/groups/{id}/transactions`                   | **Tạo giao dịch nhóm thống nhất**: `EXPENSE` (chi tiêu), `CONTRIBUTION` (nộp quỹ), `REFUND` (quỹ trả tiền cho thành viên). Thành viên ghi ở `PENDING`, Thủ quỹ / Owner duyệt `CONFIRMED` ngay |
+|                                                 |  `GET`   | `/v1/groups/{id}/transactions`                   | Lịch sử giao dịch nhóm (phân trang `page`/`size`, lọc `money_source`, `type`, `status`, `transactor_id`, `start_date`, `end_date`)                                                            |
+|                                                 |  `GET`   | `/v1/groups/{id}/transactions/mine`              | Lịch sử giao dịch do chính người dùng hiện tại ghi nhận (kèm cả `PENDING`)                                                                                                                    |
+|                                                 |  `GET`   | `/v1/groups/{id}/transactions/pending`           | Danh sách giao dịch đang chờ duyệt (`PENDING`) dành riêng cho người duyệt — *Thủ quỹ / Owner*                                                                                                 |
+|                                                 |  `GET`   | `/v1/groups/{id}/transactions/{tId}`             | Chi tiết giao dịch kèm danh sách người tham gia phân bổ chi phí                                                                                                                               |
+|                                                 |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`             | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                            |
+|                                                 | `DELETE` | `/v1/groups/{id}/transactions/{tId}`             | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                             |
+|                                                 |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm`     | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                  |
+|                                                 |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`      | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                   |
+|                                                 |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`      | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                   |
+|                                                 |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`       | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                    |
+| **5. Báo cáo (`GroupReportController`)**        |  `GET`   | `/v1/groups/{id}/summary`                        | Báo cáo tổng quan số dư, tổng thu, tổng chi (tham số tùy chọn `month=YYYY-MM`, bỏ trống = toàn thời gian)                                                                                     |
+|                                                 |  `GET`   | `/v1/groups/{id}/balances`                       | Bảng cân đối phần trong quỹ của từng thành viên (`BalanceCalculator`)                                                                                                                         |
 
 ---
 
@@ -324,7 +324,8 @@ Dùng để hiển thị badge thông báo trên giao diện người dùng.
 - **Phân quyền:** Thành viên `ACTIVE` của nhóm → nếu không: `403 FORBIDDEN_NOT_GROUP_MEMBER`.
 - **Query Parameters:**
     - `status` (chuỗi, tùy chọn): Lọc theo trạng thái thành viên (`ACTIVE`, `PENDING`, `LEFT`, `REMOVED`).
-    - Lọc `PENDING` chỉ dành cho Trưởng nhóm (`OWNER`); nếu không phải Owner mà lọc `PENDING`: `403 FORBIDDEN_OWNER_REQUIRED`.
+    - Lọc `PENDING` chỉ dành cho Trưởng nhóm (`OWNER`); nếu không phải Owner mà lọc `PENDING`:
+      `403 FORBIDDEN_OWNER_REQUIRED`.
     - Bỏ trống `status`: Trưởng nhóm thấy cả `ACTIVE` và `PENDING`, thành viên thường chỉ thấy `ACTIVE`.
 - **Response (`HTTP 200 OK` - `List<GroupMemberRes>`):**
 
@@ -780,12 +781,14 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
     - **Response:** `HTTP 200 OK` - `GroupTransactionListRes`.
 
 - **Danh sách giao dịch chờ duyệt (`GET /v1/groups/{id}/transactions/pending`)**:
-    - **Phân quyền:** Chỉ Thủ quỹ (`keepper_id`) hoặc Trưởng nhóm (`OWNER`) → nếu không: `403 FORBIDDEN_TREASURER_REQUIRED`.
+    - **Phân quyền:** Chỉ Thủ quỹ (`keepper_id`) hoặc Trưởng nhóm (`OWNER`) → nếu không:
+      `403 FORBIDDEN_TREASURER_REQUIRED`.
     - Lấy các khoản `PENDING` cần phê duyệt với phân trang `page`, `size`.
     - **Response:** `HTTP 200 OK` - `GroupTransactionListRes`.
 
 - **Chi tiết giao dịch (`GET /v1/groups/{id}/transactions/{tId}`)**:
-    - Trả về `GroupTransactionDetailRes` có tính sẵn danh sách người tham gia (kèm `user_id`, `full_name`, `avatar_url`, `share_amount`) và số tiền mỗi người chịu. Không tìm thấy khoản → `404 TRANSACTION_NOT_FOUND`.
+    - Trả về `GroupTransactionDetailRes` có tính sẵn danh sách người tham gia (kèm `user_id`, `full_name`, `avatar_url`,
+      `share_amount`) và số tiền mỗi người chịu. Không tìm thấy khoản → `404 TRANSACTION_NOT_FOUND`.
 
 ---
 
@@ -813,12 +816,12 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 }
 ```
 
-- **Kiểm tra nghiệp vụ (xử lý bởi `RefundTransactionStrategy`):**
+- **Kiểm tra nghiệp vụ (xử lý bởi `RefundTransaction`):**
     - `money_source` bắt buộc là `FUND`.
     - `transactor_id` (người nhận tiền) phải là thành viên trong nhóm.
     - Hạn mức: số tiền không vượt quá phần còn lại của người nhận trong quỹ (`net_balance`), dù bật hay tắt tính thừa
       thiếu (`validRefundLimit`) → nếu vượt: `400 CANNOT_REFUND_EXCEED_BALANCE`.
-    - Khi **sửa** (`RefundUpdateStrategy`): chỉ kiểm lại hạn mức khi số tiền tăng hoặc đổi người nhận, tính trên số dư
+    - Khi **sửa** (`RefundUpdate`): chỉ kiểm lại hạn mức khi số tiền tăng hoặc đổi người nhận, tính trên số dư
       hiện tại bỏ chính khoản đang sửa.
     - Tự động gán trạng thái `status = CONFIRMED`, trừ trực tiếp vào số dư quỹ nhóm (`FundBalanceChangedEvent`).
 - **Response:** `HTTP 201 Created` - `GroupTransactionDetailRes`.
@@ -886,7 +889,7 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 - **`PUT /v1/groups/{id}/transactions/{tId}`**:
     - **Phân quyền:** người ghi khoản đó (`created_by`) hoặc `OWNER` → nếu không: `403 FORBIDDEN_TRANSACTION_EDIT`.
     - Hỗ trợ sửa các loại giao dịch `EXPENSE`, `CONTRIBUTION`, `REFUND` thông qua bộ chiến lược cập nhật
-      (`GTransactionUpdateStrategy`). `ADJUSTMENT_*` không được sửa trực tiếp — nếu kiểm kê sai thì thực hiện phiên kiểm
+      (`GTransactionUpdate`). `ADJUSTMENT_*` không được sửa trực tiếp — nếu kiểm kê sai thì thực hiện phiên kiểm
       kê mới.
     - **Không đổi được `type`** của giao dịch. Muốn đổi loại, người dùng xóa và tạo khoản mới.
     - **Request Body (`GroupTransactionUpdateReq`):**
@@ -926,7 +929,7 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
   danh mục hợp lệ, kiểm tra hạn mức hoàn trả, nhóm không lưu trữ,...).
 - **Nghiệp vụ** — trong một transaction CSDL:
     1. Khoản đang `CONFIRMED` → hoàn tác số dư quỹ cũ.
-    2. Điều phối tới `GTransactionUpdateStrategy` tương ứng để cập nhật dữ liệu.
+    2. Điều phối tới `GTransactionUpdate` tương ứng để cập nhật dữ liệu.
     3. Nếu người sửa là Owner / Thủ quỹ → giữ nguyên trạng thái `CONFIRMED` và áp dụng số tiền mới vào quỹ. Nếu người
        sửa là thành viên thường → chuyển về `PENDING` chờ duyệt lại.
     4. Gửi sự kiện `FundBalanceChangedEvent` nếu có chênh lệch delta số dư quỹ.

@@ -14,7 +14,6 @@ import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.repository.UserRepository;
-import com.datn.financeapp.user.service.ProfileService;
 import com.datn.financeapp.wallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

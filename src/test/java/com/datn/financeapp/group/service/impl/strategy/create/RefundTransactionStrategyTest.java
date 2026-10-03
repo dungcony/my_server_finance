@@ -7,12 +7,12 @@ import static org.mockito.Mockito.when;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.MemberRepository;
+import com.datn.financeapp.group.service.MemberService;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,7 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Lớp kiểm thử cho {@link RefundTransactionStrategy}.
+ * Lớp kiểm thử cho {@link RefundTransaction}.
  * Đảm bảo logic kiểm tra hạn mức hoàn trả (không vượt số còn lại của người nhận) hoạt động đúng.
  */
 @ExtendWith(MockitoExtension.class)
@@ -36,9 +36,9 @@ class RefundTransactionStrategyTest {
     private GroupTransactionRepository transactionRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberService memberService;
 
-    private RefundTransactionStrategy strategy;
+    private RefundTransaction strategy;
 
     private UUID groupId;
     private UUID operatorId;
@@ -49,7 +49,7 @@ class RefundTransactionStrategyTest {
         groupId = UUID.randomUUID();
         operatorId = UUID.randomUUID();
         transactorId = UUID.randomUUID();
-        strategy = new RefundTransactionStrategy(transactionRepository, memberRepository);
+        strategy = new RefundTransaction(transactionRepository, memberService);
     }
 
     @Test
@@ -143,8 +143,10 @@ class RefundTransactionStrategyTest {
                 .build();
         when(transactionRepository.findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId))
                 .thenReturn(List.of(contribution));
-        Member member = Member.builder().userId(transactorId).status(MemberStatus.ACTIVE).build();
-        when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
+        MemberRes member = new MemberRes(UUID.randomUUID(), transactorId, MemberRole.MEMBER, MemberStatus.ACTIVE,
+                null, null, null, false);
+        when(memberService.getMembersWithStatusIn(groupId,
+                List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED)))
                 .thenReturn(List.of(member));
     }
 

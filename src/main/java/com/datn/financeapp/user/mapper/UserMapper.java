@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.mapper;
 
+import com.datn.financeapp.user.dto.request.UserCreateReq;
 import com.datn.financeapp.user.dto.response.*;
 import com.datn.financeapp.user.entity.RolePermission;
 import com.datn.financeapp.user.entity.User;
@@ -7,11 +8,8 @@ import com.datn.financeapp.user.entity.UserRole;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
@@ -22,7 +20,14 @@ public interface UserMapper {
     @Mapping(target = "password", source = "password")
     @Mapping(target = "isDeleted", expression = "java(user.isDeleted())")
     @Mapping(target = "roles", expression = "java(mapRoles(user))")
-    UserAccountResponse toAccountResponse(User user);
+    UserRes toResponse(User user);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "plan", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "userRoles", ignore = true)
+    User toEntity(UserCreateReq req);
 
     default List<RoleResponse> mapRoles(User user) {
         if (user == null || user.getUserRoles() == null) {
@@ -44,20 +49,4 @@ public interface UserMapper {
                 .toList();
     }
 
-    default List<String> toAuthorityStrings(List<RoleResponse> roles) {
-        if (roles == null) {
-            return List.of();
-        }
-        Set<String> authorities = new HashSet<>();
-        for (RoleResponse role : roles) {
-            authorities.add(role.name().name());
-            if (role.permissions() == null) {
-                continue;
-            }
-            for (PermissionResponse permission : role.permissions()) {
-                authorities.add(permission.name().getValue());
-            }
-        }
-        return new ArrayList<>(authorities);
-    }
 }

@@ -1,7 +1,8 @@
 package com.datn.financeapp.group.helper;
 
 import com.datn.financeapp.group.dto.response.member.MemberRes;
-import com.datn.financeapp.user.service.ProfileService;
+import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,17 +23,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MemberViewEnricher {
 
-    private final ProfileService profileService;
+    private final UserService userService;
 
     public List<MemberRes> enrich(List<MemberRes> members, UUID keeperId) {
         if (members.isEmpty())
             return members;
 
-        Map<UUID, String> names = profileService.getDisplayNames(
-                members.stream().map(MemberRes::userId).toList());
+        List<UUID> ids = members.stream()
+                .map(MemberRes::userId)
+                .toList();
 
+        Map<UUID, UserRes> names = userService.getNames(ids, null);
+        
         return members.stream()
-                .map(m -> m.withDisplay(names.get(m.userId()), m.userId().equals(keeperId)))
+                .map(m -> m.withDisplay(
+                        names.get(m.userId()).fullName(), // phẩy tách tham số ở đây
+                        m.userId().equals(keeperId)       // tham số thứ 2
+                )) // đóng ngoặc của withDisplay() và map()
                 .toList();
     }
 }

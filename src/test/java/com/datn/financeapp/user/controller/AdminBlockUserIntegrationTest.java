@@ -1,6 +1,6 @@
 package com.datn.financeapp.user.controller;
 
-import com.datn.financeapp.auth.dto.request.LoginRequest;
+import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.response.AuthResponse;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
@@ -139,7 +139,7 @@ class AdminBlockUserIntegrationTest {
     }
 
     private String loginAndGetToken(String email) {
-        AuthResponse response = authService.login(new LoginRequest(email, PASSWORD), "127.0.0.1", "junit");
+        AuthResponse response = authService.login(new EmailLoginRequest(email, PASSWORD), "127.0.0.1", "junit");
         return response.accessToken();
     }
 

@@ -2,24 +2,15 @@ package com.datn.financeapp.group.helper;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -58,7 +49,7 @@ public final class BalanceCalculator {
      */
     public static MemberBalances calculateBalances(
             List<GTransaction> allTxns,
-            List<Member> allMembers,
+            List<MemberRes> allMembers,
             UUID excludeTxnId) {
         Map<UUID, MemberBalanceAccumulator> memberMap = new HashMap<>();
 
@@ -77,7 +68,7 @@ public final class BalanceCalculator {
         List<GroupMemberPeriod> memberPeriods = (allMembers == null)
                 ? List.of()
                 : allMembers.stream()
-                .map(m -> new GroupMemberPeriod(m.getUserId(), m.getJoinedAt(), m.getLeftAt()))
+                .map(m -> new GroupMemberPeriod(m.userId(), m.joinedAt(), m.leftAt()))
                 .toList();
 
         Map<UUID, List<TransactionParticipant>> participantsByTxnId = txns.stream()

@@ -13,7 +13,6 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface MemberRepository extends JpaRepository<Member, UUID> {
     Optional<Member> findByGroupIdAndUserId(UUID groupId, UUID userId);
@@ -47,7 +46,7 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                    AND m.userId = :memberId
                    AND m.status = MemberStatus.PENDING
             """)
-    int deletePending(@Param("groupId") UUID groupId, @Param("memberId") UUID memberId);
+    int deletePending(UUID groupId, UUID memberId);
 
     // Xóa toàn bộ thành viên đang PENDING của nhóm, trả về số dòng đã xóa
     @Modifying
@@ -56,7 +55,7 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                  WHERE m.groupId = :groupId
                    AND m.status = MemberStatus.PENDING
             """)
-    int deleteAllPending(@Param("groupId") UUID groupId);
+    int deleteAllPending(UUID groupId);
 
     /**
      * Thành viên có mặt tại thời điểm giao dịch (theo pipeline.md mục 1).
@@ -72,8 +71,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                   AND (left_at IS NULL OR left_at > :occurredAt)
                 ORDER BY user_id
             """, nativeQuery = true)
-    List<UUID> findMemberUserIdsAtOccurredAt(@Param("groupId") UUID groupId,
-                                             @Param("occurredAt") Instant occurredAt);
+    List<UUID> findMemberUserIdsAtOccurredAt(UUID groupId,
+                                             Instant occurredAt);
 
     @Modifying
     @Query("""
@@ -85,11 +84,11 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                   AND gm.status = :oldStatus
             """)
     int updateStatusAndJoinedAt(
-            @Param("groupId") UUID groupId,
-            @Param("memberId") UUID memberId,
-            @Param("oldStatus") MemberStatus oldStatus,
-            @Param("newStatus") MemberStatus newStatus,
-            @Param("joinedAt") Instant joinedAt);
+            UUID groupId,
+            UUID memberId,
+            MemberStatus oldStatus,
+            MemberStatus newStatus,
+            Instant joinedAt);
 
     @Modifying
     @Query("""
@@ -100,8 +99,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
                   AND gm.status = MemberStatus.PENDING
             """)
     int approvePending(
-            @Param("groupId") UUID groupId,
-            @Param("joinedAt") Instant joinedAt);
+            UUID groupId,
+            Instant joinedAt);
 
     @Query("""
             select case
@@ -115,8 +114,8 @@ public interface MemberRepository extends JpaRepository<Member, UUID> {
             and mem.status = 'ACTIVE'
             """)
     boolean allMemberInGroup(
-            @Param("groupId") UUID groupId,
-            @Param("memberIds") Collection<UUID> memberIds);
+            UUID groupId,
+            Collection<UUID> memberIds);
 
     @Modifying
     @Query("""

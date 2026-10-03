@@ -13,7 +13,7 @@ public interface BlacklistedUserRepository extends CrudRepository<BlacklistedUse
         return existsById(userId);
     }
 
-    default void blacklist(UUID userId, String reason, long ttlSeconds) {
+    default void add(UUID userId, String reason, long ttlSeconds) {
         save(BlacklistedUserModel.builder()
                 .userId(userId)
                 .reason(reason)

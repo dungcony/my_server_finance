@@ -134,18 +134,18 @@ public class GroupServiceImpl implements GroupService {
     @Override
     public GroupDetailRes detail(UUID operatorId, UUID groupId) {
 
-        MemberRes mem = memberService.getMember(groupId, operatorId, MemberStatus.ACTIVE);
-
+        // chỉ loại nhóm đã xoá nên nhóm đã lưu trữ vẫn xem được
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        return buildGroupDetailRes(group, operatorId, mem.role());
+        // tư cách thành viên được kiểm tra khi dựng chi tiết: người ngoài nhóm bị FORBIDDEN_NOT_GROUP_MEMBER
+        return buildGroupDetailRes(group, operatorId);
     }
 
     @Override
     @Transactional
     public GroupDetailRes update(UUID operatorId, UUID groupId, GroupUpdateReq req) {
-        MemberAuthInfo memberRole = permissionValidator.getAuthInfo(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId);
 
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
@@ -168,7 +168,7 @@ public class GroupServiceImpl implements GroupService {
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
 
-        return buildGroupDetailRes(group, operatorId, memberRole.memberRole());
+        return buildGroupDetailRes(group, operatorId);
     }
 
     @Override
@@ -191,7 +191,7 @@ public class GroupServiceImpl implements GroupService {
     @Transactional
     public void unarchive(UUID operatorId, UUID groupId) {
 
-        permissionValidator.verifyOwnerAllowArchived(groupId, operatorId);
+        permissionValidator.verifyOwner(groupId, operatorId, true);
 
         Group group = groupRepository.findArchivedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_ARCHIVED));
@@ -206,7 +206,9 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional
     public void delete(UUID operatorId, UUID groupId) {
-        permissionValidator.getAuthInfo(groupId, operatorId);
+        // xoá nhóm vẫn làm được khi nhóm đã lưu trữ
+        permissionValidator.verifyOwner(groupId, operatorId, true);
+
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
@@ -259,7 +261,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupPendingCountRes pendingCount(UUID operatorId, UUID groupId) {
-        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId);
+        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, true);
 
         // chỉ người có quyền duyệt mới thấy số việc đang chờ
         long pendingTransactions = (info.isOwner() || info.isTreasurer())
@@ -274,7 +276,7 @@ public class GroupServiceImpl implements GroupService {
 
     //----------------------------------------PRIVATE------------------------------------------//
 
-    private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId, MemberRole role) {
+    private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId) {
         List<MemberRes> members = memberService.getActivateMembers(group.getId());
 
         MemberRes currentMember = members.stream()

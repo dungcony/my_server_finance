@@ -8,13 +8,13 @@ import static org.mockito.Mockito.lenient;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
+import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.MemberRepository;
+import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
 
 import java.time.Instant;
@@ -30,20 +30,24 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Kiểm thử {@link RefundUpdateStrategy}: sửa REFUND phải kiểm lại hạn mức trên số dư hiện tại,
+ * Kiểm thử {@link RefundUpdate}: sửa REFUND phải kiểm lại hạn mức trên số dư hiện tại,
  * bỏ chính khoản đang sửa ra khỏi phép tính, và chỉ kiểm khi số tiền tăng hoặc đổi người nhận.
  */
 @ExtendWith(MockitoExtension.class)
 class RefundUpdateStrategyTest {
+
+    // số dư tính trên mọi thành viên trừ người đang chờ duyệt
+    private static final List<MemberStatus> NON_PENDING_STATUSES =
+            List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED);
 
     @Mock
     private GroupTransactionPaticipantValidator transactionValidator;
     @Mock
     private GroupTransactionRepository transactionRepository;
     @Mock
-    private MemberRepository memberRepository;
+    private MemberService memberService;
 
-    private RefundUpdateStrategy strategy;
+    private RefundUpdate strategy;
 
     private UUID groupId;
     private UUID treasurerId;
@@ -53,13 +57,13 @@ class RefundUpdateStrategyTest {
 
     @BeforeEach
     void setUp() {
-        strategy = new RefundUpdateStrategy(transactionValidator, transactionRepository, memberRepository);
+        strategy = new RefundUpdate(transactionValidator, transactionRepository, memberService);
         groupId = UUID.randomUUID();
         treasurerId = UUID.randomUUID();
         userA = UUID.randomUUID();
         userB = UUID.randomUUID();
         joinedAt = Instant.now().minusSeconds(3600);
-        lenient().when(memberRepository.findByGroupIdAndStatusNotOrderByJoinedAtDesc(groupId, MemberStatus.PENDING))
+        lenient().when(memberService.getMembersWithStatusIn(groupId, NON_PENDING_STATUSES))
                 .thenReturn(List.of(member(userA), member(userB), member(treasurerId)));
     }
 
@@ -185,9 +189,9 @@ class RefundUpdateStrategyTest {
                 .thenReturn(List.of(txns));
     }
 
-    private Member member(UUID userId) {
-        return Member.builder().id(UUID.randomUUID()).groupId(groupId).userId(userId)
-                .role(MemberRole.MEMBER).status(MemberStatus.ACTIVE).joinedAt(joinedAt).build();
+    private MemberRes member(UUID userId) {
+        return new MemberRes(UUID.randomUUID(), userId, MemberRole.MEMBER, MemberStatus.ACTIVE, joinedAt, null, null,
+                false);
     }
 
     private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount) {

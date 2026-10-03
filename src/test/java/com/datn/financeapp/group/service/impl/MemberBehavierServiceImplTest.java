@@ -12,7 +12,9 @@ import com.datn.financeapp.group.helper.MemberViewEnricher;
 import com.datn.financeapp.group.mapper.MemberMapper;
 import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import com.datn.financeapp.user.service.ProfileService;
+import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.enums.UserStatus;
+import com.datn.financeapp.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,7 +55,7 @@ class MemberBehavierServiceImplTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @Mock
-    private ProfileService profileService;
+    private UserService userService;
 
     private MemberBehavierServiceImpl service;
 
@@ -64,23 +67,25 @@ class MemberBehavierServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new MemberBehavierServiceImpl(memberRepository, memberMapper, permissionValidator,
-                eventPublisher, new MemberViewEnricher(profileService));
+                eventPublisher, new MemberViewEnricher(userService));
         groupId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
         treasurerId = UUID.randomUUID();
         pendingUserId = UUID.randomUUID();
 
-        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId)).thenReturn(authInfo(ownerId, MemberRole.OWNER));
-        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId))
+        // xem danh sách là thao tác đọc nên dùng bản xác thực cho phép nhóm lưu trữ
+        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId, true))
+                .thenReturn(authInfo(ownerId, MemberRole.OWNER));
+        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId, true))
                 .thenReturn(authInfo(treasurerId, MemberRole.MEMBER));
         lenient().when(memberMapper.toResponse(any(Member.class))).thenAnswer(inv -> {
             Member m = inv.getArgument(0);
             return new MemberRes(m.getId(), m.getUserId(), m.getRole(), m.getStatus(), m.getJoinedAt());
         });
-        lenient().when(profileService.getDisplayNames(any())).thenReturn(Map.of(
-                ownerId, "Chủ nhóm",
-                treasurerId, "Thủ quỹ",
-                pendingUserId, "Người xin vào"));
+        lenient().when(userService.getNames(any(), isNull())).thenReturn(Map.of(
+                ownerId, userNamed(ownerId, "Chủ nhóm"),
+                treasurerId, userNamed(treasurerId, "Thủ quỹ"),
+                pendingUserId, userNamed(pendingUserId, "Người xin vào")));
     }
 
     @Test
@@ -140,6 +145,22 @@ class MemberBehavierServiceImplTest {
 
         assertThat(result).extracting(MemberRes::userId, MemberRes::isTreasurer)
                 .containsExactly(tuple(ownerId, false), tuple(treasurerId, true));
+    }
+
+    @Test
+    @DisplayName("Xem danh sách thành viên dùng bản xác thực cho phép nhóm lưu trữ (thao tác đọc)")
+    void listMembers_UsesAllowArchivedValidation() {
+        when(memberRepository.findAllByGroupIdAndStatusIn(eq(groupId), any())).thenReturn(List.of());
+
+        service.listMembers(ownerId, groupId, null);
+
+        verify(permissionValidator).getAuthInfo(groupId, ownerId, true);
+        verify(permissionValidator, never()).getAuthInfo(groupId, ownerId);
+    }
+
+    // bản ghi người dùng chỉ cần tên: lastName null thì tên hiển thị chính là firstName
+    private UserRes userNamed(UUID id, String firstName) {
+        return new UserRes(id, null, firstName, null, null, UserStatus.ACTIVE, null, null, null, false);
     }
 
     // người giữ quỹ của nhóm trong test luôn là treasurerId
