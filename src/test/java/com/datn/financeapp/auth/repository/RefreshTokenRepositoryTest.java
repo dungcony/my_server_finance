@@ -60,7 +60,7 @@ class RefreshTokenRepositoryTest {
 
         User user = User.builder()
                 .id(UUID.randomUUID())
-                .email("rt.repo.test@example.com")
+                .email(USER_EMAIL)
                 .password("hashed_pwd")
                 .firstName("RT")
                 .lastName("User")
@@ -73,10 +73,18 @@ class RefreshTokenRepositoryTest {
         this.userId = user.getId();
     }
 
+    private static final String USER_EMAIL = "rt.repo.test@example.com";
+
     private void createToken(String hash, boolean isRevoked) {
+        createToken(hash, isRevoked, userId, USER_EMAIL);
+    }
+
+    // cột email bắt buộc (V15), nên token nào cũng phải mang email của chủ nó
+    private void createToken(String hash, boolean isRevoked, UUID ownerId, String ownerEmail) {
         RefreshToken token = RefreshToken.builder()
                 .id(UUID.randomUUID())
-                .userId(userId)
+                .userId(ownerId)
+                .email(ownerEmail)
                 .tokenHash(hash)
                 .expiresAt(Instant.now().plus(30, ChronoUnit.DAYS))
                 .revokedAt(isRevoked ? Instant.now() : null)
@@ -147,5 +155,30 @@ class RefreshTokenRepositoryTest {
         assertThat(list).hasSize(2);
         assertThat(list).allMatch(t -> t.getRevokedAt() == null);
     }
-}
 
+    @Test
+    @DisplayName("revokeAllActiveForUser(email): Thu hồi mọi token active theo email, không đụng token của email khác")
+    void revokeAllActiveForUserByEmail_RevokesOnlyThatEmail() {
+        User other = userRepository.saveAndFlush(User.builder()
+                .id(UUID.randomUUID())
+                .email("rt.repo.other@example.com")
+                .password("hashed_pwd")
+                .firstName("RT")
+                .lastName("Other")
+                .plan(UserPlan.FREE)
+                .status(UserStatus.ACTIVE)
+                .isDeleted(false)
+                .createdAt(Instant.now())
+                .build());
+        createToken("email-a", false);
+        createToken("email-b", false);
+        createToken("email-already-revoked", true);
+        createToken("other-email-token", false, other.getId(), "rt.repo.other@example.com");
+
+        int updatedCount = refreshTokenRepository.revokeAllActiveForUser(USER_EMAIL);
+
+        assertThat(updatedCount).isEqualTo(2);
+        assertThat(refreshTokenRepository.findAllByEmailAndRevokedAtIsNull(USER_EMAIL)).isEmpty();
+        assertThat(refreshTokenRepository.findAllByEmailAndRevokedAtIsNull("rt.repo.other@example.com")).hasSize(1);
+    }
+}

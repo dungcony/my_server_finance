@@ -92,7 +92,8 @@ public class TestAuthSupport {
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return (String) token.get("access");
     }
 
     /**
@@ -150,6 +151,7 @@ public class TestAuthSupport {
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return (String) token.get("access");
     }
 }

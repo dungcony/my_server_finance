@@ -89,14 +89,15 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         if (role.getLevel() <= currentUserLevel)
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được gán vai trò có cấp bậc cao hơn hoặc bằng chính mình.");
 
-        if (!userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())) {
-            UserRole userRole = new UserRole(user.getId(), role.getId());
-            userRole.setUser(user);
-            userRole.setRole(role);
-            userRoleRepository.save(userRole);
-            user.getUserRoles().add(userRole);
-            log.info("User {} đã gán role {} cho user {}", SecurityContextUtil.currentUserId(), role.getName(), req.userId());
-        }
+        if (userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId()))
+            throw new BusinessException(ErrorCode.USER_ROLE_ALREADY_ASSIGNED);
+
+        UserRole userRole = new UserRole(user.getId(), role.getId());
+        userRole.setUser(user);
+        userRole.setRole(role);
+        userRoleRepository.save(userRole);
+        user.getUserRoles().add(userRole);
+        log.info("User {} đã gán role {} cho user {}", SecurityContextUtil.currentUserId(), role.getName(), req.userId());
     }
 
     @Transactional
@@ -115,6 +116,11 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         // (vd tránh 1 người yếu hơn tự ý gỡ role của người mạnh hơn).
         if (role.getLevel() <= currentUserLevel) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được thu hồi vai trò có cấp bậc cao hơn hoặc bằng chính mình.");
+        }
+
+        // vai trò mặc định gán lúc tạo tài khoản, gỡ đi thì người dùng mất toàn bộ quyền cơ bản
+        if (role.getName() == RoleName.ROLE_USER) {
+            throw new BusinessException(ErrorCode.USER_DEFAULT_ROLE_NOT_REMOVABLE);
         }
 
         if (userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())) {

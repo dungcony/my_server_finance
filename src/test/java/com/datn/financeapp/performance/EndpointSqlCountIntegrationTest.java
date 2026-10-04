@@ -300,7 +300,8 @@ class EndpointSqlCountIntegrationTest {
     private String loginAndGetRefreshToken(String email, String password) {
         try {
             var response = perform("/auth/login", null, Map.of("email", email, "password", password));
-            return (String) dataOf(response).get("refresh_token");
+            Map<?, ?> token = (Map<?, ?>) dataOf(response).get("token");
+            return (String) token.get("refresh");
         } catch (Exception e) {
             log.warn("Không lấy được refresh token: {}", e.toString());
             return null;

@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.repository;
 
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.enums.UserStatus;
@@ -17,7 +18,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByEmailAndStatus(String email, UserStatus status);
 
     Optional<User> findByGoogleId(String googleId);
-
 
     @Query("""
             select COUNT(u) > 0
@@ -40,10 +40,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<String> findAuthoritiesByUserId(UUID userId);
 
     /**
-     * Level của role MẠNH NHẤT user đang giữ. Quy ước "số nhỏ = quyền cao" nên role mạnh
-     * nhất ứng với MIN(level), không phải MAX. COALESCE về 2147483647 (Integer.MAX_VALUE)
-     * khi user không có role nào — phải là số CỰC LỚN (= yếu nhất), không phải 0, nếu không
-     * user không role sẽ bị hiểu nhầm là mạnh nhất hệ thống (0 nhỏ hơn mọi level thật).
+     * Level của role MẠNH NHẤT user đang giữ. Quy ước "số nhỏ = quyền cao" nên role
+     * mạnh
+     * nhất ứng với MIN(level), không phải MAX. COALESCE về 2147483647
+     * (Integer.MAX_VALUE)
+     * khi user không có role nào — phải là số CỰC LỚN (= yếu nhất), không phải 0,
+     * nếu không
+     * user không role sẽ bị hiểu nhầm là mạnh nhất hệ thống (0 nhỏ hơn mọi level
+     * thật).
      */
     @Query(value = """
             SELECT COALESCE(MIN(r.level), 2147483647) FROM roles r
@@ -53,9 +57,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     int findTopRoleLevelByUserId(UUID userId);
 
     /**
-     * CORE: chỉ trả user có role mạnh nhất YẾU HƠN {@code callerLevel} — lọc ngay trong
-     * câu truy vấn (không lấy hết rồi lọc ở code), dùng cho phân cấp quản lý (vd quản lý
-     * không được thấy admin/quản lý khác cùng hoặc cao cấp hơn mình). Vì số nhỏ = quyền cao,
+     * CORE: chỉ trả user có role mạnh nhất YẾU HƠN {@code callerLevel} — lọc ngay
+     * trong
+     * câu truy vấn (không lấy hết rồi lọc ở code), dùng cho phân cấp quản lý (vd
+     * quản lý
+     * không được thấy admin/quản lý khác cùng hoặc cao cấp hơn mình). Vì số nhỏ =
+     * quyền cao,
      * "role mạnh hơn hoặc bằng caller" nghĩa là level <= callerLevel.
      */
     @Query("""
@@ -71,10 +78,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findAllVisibleToLevel(int callerLevel);
 
     @Query("""
-            SELECT u
+            SELECT new com.datn.financeapp.user.dto.response.UserNameDisplayRes(
+                u.id,
+                u.firstName,
+                u.lastName,
+                u.status,
+                u.isDeleted
+            )
             FROM User u
-            WHERE u.email IN :emails
+            WHERE u.id IN :ids
             """)
-    List<User> findAllByEmailIn(List<String> emails);
+    List<UserNameDisplayRes> findDisplay(List<UUID> ids);
 
 }

@@ -4,6 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.user.dto.request.UserCreateReq;
 import com.datn.financeapp.user.dto.request.UserGetReq;
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.entity.UserRole;
@@ -82,31 +83,17 @@ public class UserServiceImpl implements UserService {
 
     @Transactional(readOnly = true)
     @Override
-    public Map<UUID, UserRes> getNames(List<UUID> ids, List<String> emails) {
-        Map<UUID, UserRes> result = new HashMap<>();
-        List<User> users = new ArrayList<>();
+    public Map<UUID, UserNameDisplayRes> getNames(List<UUID> ids) {
+        Map<UUID, UserNameDisplayRes> result = new HashMap<>();
 
-        if (ids != null && emails != null)
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        // không có id nào thì khỏi chạm CSDL, và tránh truyền null vào mệnh đề IN
+        if (ids == null || ids.isEmpty())
+            return result;
 
-        if (ids != null)
-            users = userRepository.findAllById(ids);
-        if (emails != null)
-            users = userRepository.findAllByEmailIn(emails);
+        var users = userRepository.findDisplay(ids);
 
         for (var u : users) {
-
-            UserRes user;
-
-            if (u.isDeleted() || u.isLocked()) {
-                user = new UserRes(
-                        "Người dùng App",
-                        u.getStatus(),
-                        u.isDeleted()
-                );
-            } else user = userMapper.toResponse(u);
-
-            result.put(u.getId(), user);
+            result.put(u.id(), u);
         }
 
         return result;
@@ -126,8 +113,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserRes updatePass(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .filter(u -> !u.isLocked() && !u.isDeleted())
+                .filter(u -> !u.isDeleted())
                 .orElseThrow(UserNotFoundException::new);
+
+        if (user.isLocked())
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
 
         if (passwordEncoder.matches(password, user.getPassword()))
             throw new BusinessException(ErrorCode.AUTH_PASSWORD_SAME_AS_OLD);
@@ -171,11 +161,13 @@ public class UserServiceImpl implements UserService {
                 .filter(u -> !u.isDeleted())
                 .orElseThrow(UserNotFoundException::new);
 
-        if (!user.isConfirm())
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
-
+        // kiểm tra khoá trước: tài khoản bị khoá không còn ở trạng thái ACTIVE nên nếu kiểm tra xác thực trước,
+        // nó sẽ bị báo nhầm là "chưa xác thực" và nhánh báo khoá không bao giờ chạy tới
         if (user.isLocked())
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
+
+        if (!user.isConfirm())
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
     }
 
 

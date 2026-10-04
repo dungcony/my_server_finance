@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -85,10 +86,14 @@ class GTransactionServiceImplTest {
         MemberAuthInfo treasurerInfo = new MemberAuthInfo(groupId, treasurerId, GroupStatus.ACTIVE, true,
                 MemberStatus.ACTIVE, MemberRole.MEMBER, treasurerId);
 
-        // hàm ghi dùng bản mặc định (chặn nhóm lưu trữ)
+        // hàm ghi dùng bản mặc định (chặn nhóm lưu trữ); bản 2 tham số và bản 3 tham số với false là cùng một việc,
+        // nhưng mock không tự chuyển tiếp nên phải stub cả hai (hàm duyệt gọi thẳng bản 3 tham số)
         lenient().when(permissionValidator.getAuthInfo(groupId, ownerId)).thenReturn(ownerInfo);
         lenient().when(permissionValidator.getAuthInfo(groupId, memberId)).thenReturn(memberInfo);
         lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId)).thenReturn(treasurerInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, ownerId, false)).thenReturn(ownerInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, memberId, false)).thenReturn(memberInfo);
+        lenient().when(permissionValidator.getAuthInfo(groupId, treasurerId, false)).thenReturn(treasurerInfo);
 
         // hàm đọc dùng bản cho phép nhóm lưu trữ
         lenient().when(permissionValidator.getAuthInfo(groupId, ownerId, true)).thenReturn(ownerInfo);
@@ -423,14 +428,14 @@ class GTransactionServiceImplTest {
 
     @Test
     @DisplayName("Lấy giao dịch đã xác nhận chỉ hỏi repository trạng thái CONFIRMED của đúng nhóm")
-    void findConfirmedTransactions_QueriesConfirmedStatusOfGroup() {
+    void streamConfirmedTransactions_QueriesConfirmedStatusOfGroup() {
         GTransaction confirmed = txn(100_000L);
-        when(transactionRepository.findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                groupId, GTransactionStatus.CONFIRMED)).thenReturn(List.of(confirmed));
+        when(transactionRepository.streamByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
+                groupId, GTransactionStatus.CONFIRMED)).thenReturn(Stream.of(confirmed));
 
-        List<GTransaction> result = service.findConfirmedTransactions(groupId);
-
-        assertThat(result).containsExactly(confirmed);
+        try (Stream<GTransaction> result = service.streamConfirmedTransactions(groupId)) {
+            assertThat(result.toList()).containsExactly(confirmed);
+        }
     }
 
     @Test
@@ -487,7 +492,7 @@ class GTransactionServiceImplTest {
 
         service.confirm(ownerId, groupId, pending.getId());
 
-        verify(permissionValidator).getAuthInfo(groupId, ownerId);
+        verify(permissionValidator).getAuthInfo(groupId, ownerId, false);
         verify(permissionValidator, never()).getAuthInfo(groupId, ownerId, true);
     }
 

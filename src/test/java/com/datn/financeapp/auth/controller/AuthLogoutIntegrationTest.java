@@ -136,7 +136,12 @@ class AuthLogoutIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return Map.of(
+                "access_token", token.get("access"),
+                "refresh_token", token.get("refresh")
+        );
     }
 
     // Mở thêm một phiên nữa cho tài khoản đã có — giả lập đăng nhập trên thiết bị thứ hai.
@@ -151,7 +156,12 @@ class AuthLogoutIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return Map.of(
+                "access_token", token.get("access"),
+                "refresh_token", token.get("refresh")
+        );
     }
 
     private void logout(String accessToken, Map<String, Object> body) throws Exception {

@@ -6,8 +6,8 @@ import com.datn.financeapp.auth.dto.request.RegisterRequest;
 import com.datn.financeapp.auth.dto.request.ResendVerificationRequest;
 import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
 import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
-import com.datn.financeapp.auth.dto.response.LoginRes;
-import com.datn.financeapp.auth.dto.response.RegisterResponse;
+import com.datn.financeapp.auth.dto.response.AuthRes;
+import com.datn.financeapp.auth.dto.response.RegisterRes;
 import com.datn.financeapp.auth.dto.response.TokenRes;
 
 import java.util.UUID;
@@ -16,10 +16,10 @@ import java.util.UUID;
 public interface AuthService {
 
     // AUTH-01: Đăng ký tài khoản mới bằng email.
-    RegisterResponse register(RegisterRequest req);
+    RegisterRes register(RegisterRequest req);
 
     // Xác thực email người dùng bằng mã OTP 6 chữ số lưu trong Redis.
-    LoginRes verifyEmail(VerifyEmailRequest req);
+    AuthRes verifyEmail(VerifyEmailRequest req);
 
     // Gửi lại mã OTP xác thực email (áp dụng rate limit cooldown 60 giây).
     void resendVerification(ResendVerificationRequest req);

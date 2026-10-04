@@ -1,10 +1,9 @@
 package com.datn.financeapp.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.datn.financeapp.auth.dto.response.LoginRes;
+import com.datn.financeapp.auth.dto.response.AuthRes;
 import com.datn.financeapp.auth.helper.ClientInfo;
 import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
 import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
@@ -156,8 +155,8 @@ class AuthBlockedDeletedAccountIntegrationTest {
         assertThatThrownBy(() -> login("da.xoa@example.com", PASSWORD))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> {
-                    assertThat(((BusinessException) ex).getCode()).isEqualTo("NOT_FOUND");
-                    assertThat(((BusinessException) ex).getHttpStatus()).isEqualTo(404);
+                    assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_CREDENTIALS_INVALID");
+                    assertThat(((BusinessException) ex).getHttpStatus()).isEqualTo(401);
                 });
     }
 
@@ -171,17 +170,17 @@ class AuthBlockedDeletedAccountIntegrationTest {
      */
     @Test
     void refresh_tokenIssuedBeforeBlocking_isRejected() {
-        LoginRes session = register("refresh.bi.khoa@example.com");
+        AuthRes session = register("refresh.bi.khoa@example.com");
         markUser("refresh.bi.khoa@example.com", u -> u.setBlocked(true));
 
         assertThatThrownBy(() -> authService.refresh(new RefreshRequest(session.token().refresh())))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_REFRESH_TOKEN_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_ACCOUNT_BLOCKED"));
     }
 
     @Test
     void refresh_tokenOfDeletedAccount_isRejected() {
-        LoginRes session = register("refresh.da.xoa@example.com");
+        AuthRes session = register("refresh.da.xoa@example.com");
         markUser("refresh.da.xoa@example.com", u -> u.setDeleted(true));
 
         assertThatThrownBy(() -> authService.refresh(new RefreshRequest(session.token().refresh())))
@@ -194,16 +193,17 @@ class AuthBlockedDeletedAccountIntegrationTest {
     // -----------------------------------------------------------------
 
     /**
-     * Vẫn không throw (Controller trả 200) nhưng KHÔNG sinh token và KHÔNG gọi notifier — trả
-     * lỗi ở đây sẽ cho kẻ xấu một cách dò xem email nào đã bị khoá.
+     * Báo rõ tài khoản bị khoá (đã chốt: cho phép lộ trạng thái ở bước quên mật khẩu), nhưng KHÔNG sinh
+     * mã và KHÔNG gọi notifier.
      */
     @Test
-    void forgotPassword_blockedAccount_silentlyDoesNothing() {
+    void forgotPassword_blockedAccount_returnsAccountBlockedAndSendsNothing() {
         register("quen.mk.bi.khoa@example.com");
         markUser("quen.mk.bi.khoa@example.com", u -> u.setBlocked(true));
 
-        assertThatCode(() -> authService.forgotPassword(new ForgotPasswordRequest("quen.mk.bi.khoa@example.com")))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> authService.forgotPassword(new ForgotPasswordRequest("quen.mk.bi.khoa@example.com")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "AUTH_ACCOUNT_BLOCKED");
 
         assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "quen.mk.bi.khoa@example.com")).isEmpty();
         Mockito.verify(emailService, Mockito.never())
@@ -211,13 +211,15 @@ class AuthBlockedDeletedAccountIntegrationTest {
     }
 
     // Chính là lỗ hổng đã vá: tài khoản đã xoá từng nhận được mã và đặt lại mật khẩu thành công.
+    // Tài khoản đã xoá coi như không tồn tại nên nhận NOT_FOUND và không có mã nào được sinh.
     @Test
-    void forgotPassword_deletedAccount_silentlyDoesNothing() {
+    void forgotPassword_deletedAccount_returnsNotFoundAndSendsNothing() {
         register("quen.mk.da.xoa@example.com");
         markUser("quen.mk.da.xoa@example.com", u -> u.setDeleted(true));
 
-        assertThatCode(() -> authService.forgotPassword(new ForgotPasswordRequest("quen.mk.da.xoa@example.com")))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> authService.forgotPassword(new ForgotPasswordRequest("quen.mk.da.xoa@example.com")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
 
         assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "quen.mk.da.xoa@example.com")).isEmpty();
         Mockito.verify(emailService, Mockito.never())
@@ -240,7 +242,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai.bi.khoa@example.com", rawCode, "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_RESET_CODE_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_ACCOUNT_BLOCKED"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches(PASSWORD, reload.getPassword())).isTrue();
@@ -254,7 +256,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai.da.xoa@example.com", rawCode, "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_RESET_CODE_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("NOT_FOUND"));
 
         User reload = userRepository.findById(user.getId()).orElseThrow();
         assertThat(passwordEncoder.matches(PASSWORD, reload.getPassword())).isTrue();
@@ -266,7 +268,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
 
     @Test
     void verifiedAccount_returnsIsConfirmTrueAndRoleUser() {
-        LoginRes response = register("truong.moi@example.com");
+        AuthRes response = register("truong.moi@example.com");
 
         // Luồng xác thực email đã làm (13/09/2026): helper register() đi qua /auth/verify-email
         // nên tài khoản đã ACTIVE. Trước đó test này kỳ vọng false vì luồng chưa tồn tại.
@@ -290,7 +292,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
         register("da.xac.thuc@example.com");
         markUser("da.xac.thuc@example.com", u -> u.setStatus(com.datn.financeapp.user.enums.UserStatus.ACTIVE));
 
-        LoginRes response = login("da.xac.thuc@example.com", PASSWORD);
+        AuthRes response = login("da.xac.thuc@example.com", PASSWORD);
 
         assertThat(response.user().isConfirm()).isTrue();
         assertThat(response.user().roles()).extracting(r -> r.name()).contains(RoleName.ROLE_USER);
@@ -307,7 +309,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
      * {@code PENDING_VERIFY}, {@code login} trên tài khoản đó ném
      * {@code AuthAccountNotVerifiedException}. Mã OTP đọc thẳng từ Redis vì test không có hộp thư.
      */
-    private LoginRes register(String email) {
+    private AuthRes register(String email) {
         authService.register(new RegisterRequest(email, PASSWORD, "Người Kiểm Thử"));
         String code = otpRepository
                 .findByTypeAndEmail(OtpType.REGISTER_OTP, email)
@@ -322,7 +324,7 @@ class AuthBlockedDeletedAccountIntegrationTest {
         return userRepository.findByEmail(email).orElseThrow();
     }
 
-    private LoginRes login(String email, String password) {
+    private AuthRes login(String email, String password) {
         return loginService.login(new EmailLoginRequest(email, password), new ClientInfo("127.0.0.1", "junit"));
     }
 

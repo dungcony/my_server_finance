@@ -11,6 +11,7 @@ import com.datn.financeapp.user.entity.User;
 import com.datn.financeapp.user.entity.UserRole;
 import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.enums.UserStatus;
+import com.datn.financeapp.user.event.publiser.UserLockedEvent;
 import com.datn.financeapp.user.mapper.UserMapper;
 import com.datn.financeapp.user.repository.RoleRepository;
 import com.datn.financeapp.user.repository.UserRepository;
@@ -104,7 +105,7 @@ class AdminUserServiceTest {
     void blockUser_SelfBlock_ThrowsValidationError() {
         BlockUserRequest req = new BlockUserRequest(adminId, "Tự khóa");
 
-        assertThatThrownBy(() -> adminUserService.lockUser(java.util.UUID.randomUUID(), req))
+        assertThatThrownBy(() -> adminUserService.lockUser(adminId, req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VALIDATION_ERROR.getCode())
                 .hasMessageContaining("Không được phép tự khóa tài khoản của chính mình.");
@@ -118,7 +119,7 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.empty());
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Vi phạm chính sách");
 
-        assertThatThrownBy(() -> adminUserService.lockUser(java.util.UUID.randomUUID(), req))
+        assertThatThrownBy(() -> adminUserService.lockUser(adminId, req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND.getCode())
                 .hasMessageContaining("Không tìm thấy người dùng.");
@@ -139,7 +140,7 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(deletedUser));
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Vi phạm");
 
-        assertThatThrownBy(() -> adminUserService.lockUser(java.util.UUID.randomUUID(), req))
+        assertThatThrownBy(() -> adminUserService.lockUser(adminId, req))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND.getCode())
                 .hasMessageContaining("Không tìm thấy người dùng.");
@@ -149,7 +150,7 @@ class AdminUserServiceTest {
     }
 
     @Test
-    @DisplayName("TC_UNIT_04: Khóa thành công - Cập nhật status BLOCKED, blacklist Redis, revoke tokens")
+    @DisplayName("TC_UNIT_04: Khóa thành công - Cập nhật status BLOCKED, blacklist Redis, phát sự kiện khoá để thu hồi phiên")
     void blockUser_Success_UpdatesStatusAndRevokesTokens() {
         stubAdminWithLevel(1);
         User user = User.builder()
@@ -162,12 +163,13 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
 
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Spam hệ thống");
-        adminUserService.lockUser(java.util.UUID.randomUUID(), req);
+        adminUserService.lockUser(adminId, req);
 
         assertThat(user.getStatus()).isEqualTo(UserStatus.BLOCKED);
         verify(userRepository).save(user);
         verify(blacklistedUserRepository).add(targetUserId, "Spam hệ thống", 3600L);
-        verify(tokenService).revokeAllByUserId(targetUserId);
+        // thu hồi token do AuthEventListener xử lý khi nhận sự kiện, service chỉ cần phát đúng sự kiện
+        verify(eventPublisher).publishEvent(new UserLockedEvent(targetUserId));
     }
 
     @Test
@@ -231,6 +233,85 @@ class AdminUserServiceTest {
                 .hasFieldOrPropertyWithValue("code", ErrorCode.FORBIDDEN.getCode());
 
         verify(userRoleRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC_UNIT_12: Gán vai trò người dùng đã có -> USER_ROLE_ALREADY_ASSIGNED, không lưu trùng")
+    void addRoleToUser_AlreadyAssigned_ThrowsConflict() {
+        User user = User.builder().id(targetUserId).email("user@example.com").isDeleted(false).build();
+        Role role = Role.builder().id(UUID.randomUUID()).name(RoleName.ROLE_USER).level(10).build();
+
+        stubAdminWithLevel(1);
+        when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
+        when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
+        when(userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.USER_ROLE_ALREADY_ASSIGNED.getCode());
+
+        verify(userRoleRepository, never()).save(any());
+    }
+
+    // người dùng đích và role đích dùng chung cho các test thu hồi vai trò
+    private Role stubRemovalTarget(RoleName roleName, int roleLevel) {
+        User user = User.builder().id(targetUserId).email("user@example.com").isDeleted(false).build();
+        Role role = Role.builder().id(UUID.randomUUID()).name(roleName).level(roleLevel).build();
+        when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
+        when(roleRepository.findByName(roleName)).thenReturn(Optional.of(role));
+        return role;
+    }
+
+    @Test
+    @DisplayName("TC_UNIT_08: Không được thu hồi vai trò mặc định ROLE_USER -> USER_DEFAULT_ROLE_NOT_REMOVABLE")
+    void removeRoleToUser_DefaultRole_ThrowsDefaultRoleNotRemovable() {
+        stubAdminWithLevel(1);
+        stubRemovalTarget(RoleName.ROLE_USER, 10);
+
+        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.USER_DEFAULT_ROLE_NOT_REMOVABLE.getCode());
+
+        verify(userRoleRepository, never()).deleteByUserIdAndRoleId(any(), any());
+    }
+
+    @Test
+    @DisplayName("TC_UNIT_09: Thu hồi vai trò không phải mặc định (cấp thấp hơn người gọi) -> xoá bản ghi như cũ")
+    void removeRoleToUser_NonDefaultRoleBelowCaller_DeletesLink() {
+        // vai trò giả định cấp 1 còn người gọi cấp 0, vì hệ thống hiện chưa có vai trò trung gian nào
+        stubAdminWithLevel(0);
+        Role role = stubRemovalTarget(RoleName.ROLE_ADMIN, 1);
+        when(userRoleRepository.existsByUserIdAndRoleId(targetUserId, role.getId())).thenReturn(true);
+
+        adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_ADMIN));
+
+        verify(userRoleRepository).deleteByUserIdAndRoleId(targetUserId, role.getId());
+    }
+
+    @Test
+    @DisplayName("TC_UNIT_10: Thu hồi vai trò cấp cao hơn hoặc bằng chính mình -> FORBIDDEN theo cấp bậc như cũ")
+    void removeRoleToUser_RoleLevelTooHigh_ThrowsForbidden() {
+        stubAdminWithLevel(1);
+        stubRemovalTarget(RoleName.ROLE_ADMIN, 1);
+
+        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_ADMIN)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.FORBIDDEN.getCode());
+
+        verify(userRoleRepository, never()).deleteByUserIdAndRoleId(any(), any());
+    }
+
+    @Test
+    @DisplayName("TC_UNIT_11: Người gọi cùng cấp với ROLE_USER thì nhận lỗi cấp bậc trước, không lộ lỗi vai trò mặc định")
+    void removeRoleToUser_CallerSameLevelAsDefaultRole_ThrowsLevelForbiddenFirst() {
+        stubAdminWithLevel(10);
+        stubRemovalTarget(RoleName.ROLE_USER, 10);
+
+        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.FORBIDDEN.getCode());
+
+        verify(userRoleRepository, never()).deleteByUserIdAndRoleId(any(), any());
     }
 }
 

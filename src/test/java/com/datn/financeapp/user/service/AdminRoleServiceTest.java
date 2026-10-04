@@ -190,8 +190,8 @@ class AdminRoleServiceTest {
     }
 
     @Test
-    @DisplayName("TC_ROLE_SVC_09: Permission đã gán cho role từ trước -> Không lưu trùng")
-    void addPermissionToRole_AlreadyAssigned_DoesNotSaveAgain() {
+    @DisplayName("TC_ROLE_SVC_09: Permission đã gán cho role từ trước -> USER_ROLE_PERMISSION_ALREADY_ASSIGNED, không lưu trùng")
+    void addPermissionToRole_AlreadyAssigned_ThrowsConflict() {
         Role role = roleWithLevel(RoleName.ROLE_USER, USER_LEVEL);
         Permission permission = permission(PermissionName.USERS_READ);
 
@@ -201,7 +201,9 @@ class AdminRoleServiceTest {
         callerHasAuthorities(PermissionName.USERS_READ.getValue());
         when(rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permId)).thenReturn(true);
 
-        adminRoleService.addPermissionToRole(roleId, PermissionName.USERS_READ);
+        assertThatThrownBy(() -> adminRoleService.addPermissionToRole(roleId, PermissionName.USERS_READ))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.USER_ROLE_PERMISSION_ALREADY_ASSIGNED.getCode());
 
         verify(rolePermissionRepository, never()).save(any());
     }

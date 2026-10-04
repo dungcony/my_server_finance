@@ -2,8 +2,7 @@ package com.datn.financeapp.user.controller;
 
 import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.RegisterRequest;
-import com.datn.financeapp.auth.dto.response.LoginRes;
-import com.datn.financeapp.auth.helper.ClientInfo;
+import com.datn.financeapp.auth.dto.response.AuthRes;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
 import com.datn.financeapp.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.auth.service.AuthService;
@@ -143,7 +142,7 @@ class AdminBlockUserIntegrationTest {
     }
 
     private String loginAndGetToken(String email) {
-        LoginRes response = loginService.login(new EmailLoginRequest(email, PASSWORD), new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "junit"));
+        AuthRes response = loginService.login(new EmailLoginRequest(email, PASSWORD), new com.datn.financeapp.auth.helper.ClientInfo("127.0.0.1", "junit"));
         return response.token().access();
     }
 
@@ -163,8 +162,8 @@ class AdminBlockUserIntegrationTest {
 
         BlockUserRequest req = new BlockUserRequest(target.getId(), "Vi phạm điều khoản sử dụng");
 
-        // When: Admin gọi PATCH /admin/user/block (userId nằm trong body, không phải trên đường dẫn)
-        mockMvc.perform(patch("/admin/user/block")
+        // Admin gọi PATCH /admin/user/lock (userId nằm trong body, không phải trên đường dẫn)
+        mockMvc.perform(patch("/admin/user/lock")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -172,18 +171,17 @@ class AdminBlockUserIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.msg").value("Khóa tài khoản người dùng thành công"));
 
-        // Then:
-        // 1. Target user status trong DB là BLOCKED
+        // Target user status trong DB là BLOCKED
         User updatedTarget = userRepository.findById(target.getId()).orElseThrow();
         assertThat(updatedTarget.getStatus()).isEqualTo(UserStatus.BLOCKED);
 
-        // 2. Refresh token của target user đã bị revoke
+        // Refresh token của target user đã bị revoke
         assertThat(refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(target.getId())).isEmpty();
 
-        // 3. Redis đã đánh dấu blacklist cho user này
+        // Redis đã đánh dấu blacklist cho user này
         assertThat(blacklistedUserRepository.isBlacklisted(target.getId().toString())).isTrue();
 
-        // 4. Target user dùng token cũ gọi API -> Bị chặn 403 AUTH_ACCOUNT_BLOCKED
+        // Target user dùng token cũ gọi API -> Bị chặn 403 AUTH_ACCOUNT_BLOCKED
         mockMvc.perform(get("/users/me")
                         .header("Authorization", "Bearer " + targetToken))
                 .andExpect(status().isForbidden())
@@ -200,7 +198,7 @@ class AdminBlockUserIntegrationTest {
         User target = createAndVerifyUser("target2@example.com");
         BlockUserRequest req = new BlockUserRequest(target.getId(), "Cố tình phá hoại");
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .header("Authorization", "Bearer " + normalUserToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -219,7 +217,7 @@ class AdminBlockUserIntegrationTest {
         UUID nonExistentId = UUID.randomUUID();
         BlockUserRequest req = new BlockUserRequest(nonExistentId, "Test 404");
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -237,7 +235,7 @@ class AdminBlockUserIntegrationTest {
 
         BlockUserRequest req = new BlockUserRequest(admin.getId(), "Tự khóa mình");
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -258,7 +256,7 @@ class AdminBlockUserIntegrationTest {
 
         // `reason` chỉ có @Size(max = 500), không bắt buộc: admin được khoá nhanh mà không phải
         // giải trình. Lý do (nếu có) đi vào blacklist Redis và log để tra ngược về sau.
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))

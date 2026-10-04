@@ -1,33 +1,15 @@
 package com.datn.financeapp.auth.controller;
 
-import com.datn.financeapp.auth.dto.request.ForgotPasswordRequest;
-import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
-import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
-import com.datn.financeapp.auth.dto.request.LogoutRequest;
-import com.datn.financeapp.auth.dto.request.RefreshRequest;
-import com.datn.financeapp.auth.dto.request.RegisterRequest;
-import com.datn.financeapp.auth.dto.request.ResendVerificationRequest;
-import com.datn.financeapp.auth.dto.request.ResetPasswordRequest;
-import com.datn.financeapp.auth.dto.request.VerifyEmailRequest;
-import com.datn.financeapp.auth.dto.response.AuthResponse;
-import com.datn.financeapp.auth.dto.response.RefreshResponse;
-import com.datn.financeapp.auth.dto.response.RegisterResponse;
+import com.datn.financeapp.auth.dto.request.*;
 import com.datn.financeapp.auth.service.AuthService;
 import com.datn.financeapp.common.response.ApiResponse;
-import com.datn.financeapp.common.security.ClientIpResolver;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-
-import java.util.Map;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * Controller chuyên trách xác thực và vòng đời phiên đăng nhập.

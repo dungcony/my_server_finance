@@ -19,7 +19,7 @@ import com.datn.financeapp.group.service.GroupService;
 import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.service.ReportService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,11 +30,8 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Triển khai {@link ReportService} — Tổng hợp báo cáo tài chính nhóm.
@@ -110,15 +107,15 @@ public class GReportServiceImpl implements ReportService {
             throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
         }
 
-        // lấy danh sách toàn bộ giao dịch đã xác nhận để tính toán số dư
-        List<GTransaction> allTxns = gTransactionService.findConfirmedTransactions(groupId);
-
         // lấy tất cả thành viên ngoại trừ trạng thái chờ duyệt
         List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
                 groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
 
-        // tính toán số dư thu chi của từng thành viên
-        MemberBalances mb = BalanceCalculator.calculateBalances(allTxns, allMembers, null);
+        // tính số dư thu chi của từng thành viên, duyệt giao dịch đã xác nhận theo luồng và đóng luồng ngay khi xong
+        MemberBalances mb;
+        try (Stream<GTransaction> txnStream = gTransactionService.streamConfirmedTransactions(groupId)) {
+            mb = BalanceCalculator.calculateBalances(txnStream, allMembers, null);
+        }
 
         // xây dựng danh sách thành viên cần hiển thị trên báo cáo
         List<MemberRes> displayMembers = buildDisplayMembers(allMembers, mb);
@@ -127,7 +124,7 @@ public class GReportServiceImpl implements ReportService {
         List<UUID> displayUserIds = displayMembers.stream()
                 .map(MemberRes::userId).toList();
 
-        Map<UUID, UserRes> userNames = userService.getNames(displayUserIds, null);
+        Map<UUID, UserNameDisplayRes> userNames = userService.getNames(displayUserIds);
 
         boolean isSettlement = Boolean.TRUE.equals(group.isSettlementEnabled());
         Long target = group.target();
@@ -163,9 +160,7 @@ public class GReportServiceImpl implements ReportService {
     }
 
     // xây dựng danh sách thành viên cần hiển thị trong báo cáo
-    private List<MemberRes> buildDisplayMembers(
-            List<MemberRes> allMembers,
-            MemberBalances mb) {
+    private List<MemberRes> buildDisplayMembers(List<MemberRes> allMembers, MemberBalances mb) {
         List<MemberRes> display = new ArrayList<>(allMembers.stream()
                 .filter(m -> m.status() == MemberStatus.ACTIVE)
                 .sorted(Comparator.comparing(m -> m.userId().toString()))
@@ -185,9 +180,9 @@ public class GReportServiceImpl implements ReportService {
     private GroupBalanceItemRes buildBalanceItem(
             MemberRes m,
             MemberBalances mb,
-            Map<UUID, UserRes> userNames) {
+            Map<UUID, UserNameDisplayRes> userNames) {
         UUID uid = m.userId();
-        UserRes user = userNames.get(uid);
+        UserNameDisplayRes user = userNames.get(uid);
         String name = user != null ? user.fullName() : "Thành viên " + uid.toString().substring(0, 8);
 
         MemberBalanceAccumulator b = mb.get(uid);

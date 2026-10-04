@@ -2,7 +2,7 @@ package com.datn.financeapp.auth.service.impl;
 
 import com.datn.financeapp.auth.dto.request.GoogleLoginRequest;
 import com.datn.financeapp.auth.dto.request.TokenCreateReq;
-import com.datn.financeapp.auth.dto.response.LoginRes;
+import com.datn.financeapp.auth.dto.response.AuthRes;
 import com.datn.financeapp.auth.helper.ClientInfo;
 import com.datn.financeapp.auth.service.GoogleService;
 import com.datn.financeapp.auth.service.LoginService;
@@ -24,13 +24,13 @@ public class GoogleLoginImpl implements LoginService<GoogleLoginRequest> {
     private final TokenService tokenService;
 
     @Override
-    public LoginRes login(GoogleLoginRequest req, ClientInfo client) {
+    public AuthRes login(GoogleLoginRequest req, ClientInfo client) {
         // Xác thực idToken
         GoogleUserInfo googleUserInfo = googleService.verifyIdToken(req.idToken());
         // Resolve user từ googleId/email
         UserRes user = userService.resolveGoogleUser(googleUserInfo.email(), googleUserInfo.googleId(), Instant.now());
         // Tạo token và trả về response
-        return new LoginRes(
+        return new AuthRes(
                 user,
                 tokenService.create(new TokenCreateReq(
                         user.id(),

@@ -2,7 +2,7 @@ package com.datn.financeapp.auth.service.impl;
 
 import com.datn.financeapp.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.auth.dto.request.TokenCreateReq;
-import com.datn.financeapp.auth.dto.response.LoginRes;
+import com.datn.financeapp.auth.dto.response.AuthRes;
 import com.datn.financeapp.auth.entity.LoginAttempt;
 import com.datn.financeapp.auth.helper.ClientInfo;
 import com.datn.financeapp.auth.repository.LoginAttemptRepository;
@@ -35,7 +35,7 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
     // phải giữ noRollbackFor, nếu không bản ghi lần đăng nhập sai bị rollback và cơ chế khoá 5 lần mất tác dụng
     @Transactional(noRollbackFor = BusinessException.class)
     @Override
-    public LoginRes login(EmailLoginRequest req, ClientInfo client) {
+    public AuthRes login(EmailLoginRequest req, ClientInfo client) {
         String email = req.email().toLowerCase().trim();
 
         if (isLockedOut(email))
@@ -68,7 +68,7 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
         if (!user.isConfirm())
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
 
-        return new LoginRes(
+        return new AuthRes(
                 user,
                 tokenService.create(new TokenCreateReq(
                         user.id(),

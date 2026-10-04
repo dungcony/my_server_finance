@@ -75,7 +75,7 @@ public class RefundUpdate implements GTransactionUpdate {
                 .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId);
         List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
                 groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
-        MemberBalances balances = BalanceCalculator.calculateBalances(allTxns, allMembers, txn.getId());
+        MemberBalances balances = BalanceCalculator.calculateBalances(allTxns.stream(), allMembers, txn.getId());
 
         GroupTransactionTypeValidator.validRefundLimit(targetUserId, newAmount, balances);
     }

@@ -23,12 +23,14 @@ import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.repository.RoleRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -70,7 +72,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, SqlCountingConfig.class})
-@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class UserServicePerfIntegrationTest {
 
     private static final String ADMIN_EMAIL = "admin@financeapp.com";
@@ -156,24 +157,21 @@ class UserServicePerfIntegrationTest {
     // readSubject là người dùng mà các hàm đọc nhắm vào: người thường ở hồ sơ tốt nhất, admin ở hồ sơ tệ nhất
     private void measureAll(Profile profile, UUID readSubjectId, String readSubjectEmail) {
         List<UUID> allIds = userRepository.findAll().stream().map(User::getId).toList();
-        List<String> allEmails = userRepository.findAll().stream().map(User::getEmail).toList();
         AtomicReference<User> target = new AtomicReference<>();
 
-        measureUserService(profile, readSubjectId, readSubjectEmail, allIds, allEmails, target);
+        measureUserService(profile, readSubjectId, readSubjectEmail, allIds, target);
         measureUserBehavierService(profile, readSubjectId, target);
         measureManagerUserService(profile, target);
         measureManagerRoleService(profile);
     }
 
     private void measureUserService(
-            Profile profile, UUID subjectId, String subjectEmail,
-            List<UUID> allIds, List<String> allEmails, AtomicReference<User> target) {
+            Profile profile, UUID subjectId, String subjectEmail, List<UUID> allIds, AtomicReference<User> target) {
         perf.measure(profile, "UserService.create",
                 () -> userService.create(UserCreateReq.forEmail(uniqueEmail(), knownPasswordHash, Instant.now())));
         perf.measure(profile, "UserService.get (theo id)", () -> userService.get(new UserGetReq(subjectId)));
         perf.measure(profile, "UserService.get (theo email)", () -> userService.get(new UserGetReq(subjectEmail)));
-        perf.measure(profile, "UserService.getNames (theo danh sách id)", () -> userService.getNames(allIds, null));
-        perf.measure(profile, "UserService.getNames (theo danh sách email)", () -> userService.getNames(null, allEmails));
+        perf.measure(profile, "UserService.getNames (theo danh sách id)", () -> userService.getNames(allIds));
         perf.measure(profile, "UserService.updateStatus",
                 () -> userService.updateStatus(plainUserEmail, UserStatus.ACTIVE));
         perf.measure(profile, "UserService.updatePass",
@@ -220,9 +218,9 @@ class UserServicePerfIntegrationTest {
         perf.measure(profile, "ManagerUserService.addRoleToUser",
                 () -> target.set(createUser(false)),
                 () -> managerUserService.addRoleToUser(new UpdateUserRoleReq(target.get().getId(), RoleName.ROLE_USER)));
-        perf.measure(profile, "ManagerUserService.removeRoleToUser",
-                () -> target.set(createUser(true)),
-                () -> managerUserService.removeRoleToUser(new UpdateUserRoleReq(target.get().getId(), RoleName.ROLE_USER)));
+        // hiện chỉ có ROLE_ADMIN (cấp ngang admin nên bị chặn cấp bậc) và ROLE_USER (vai trò mặc định, không được gỡ),
+        // nên không còn lệnh gọi nào thành công để đo; bỏ chú thích này khi hệ thống có thêm vai trò trung gian
+        perf.skip("ManagerUserService.removeRoleToUser", "chưa có vai trò nào gỡ được (ROLE_USER là mặc định, ROLE_ADMIN ngang cấp admin)");
         perf.measure(profile, "ManagerUserService.deleteByUserId",
                 () -> target.set(createUser(true)),
                 () -> managerUserService.deleteByUserId(target.get().getId()));

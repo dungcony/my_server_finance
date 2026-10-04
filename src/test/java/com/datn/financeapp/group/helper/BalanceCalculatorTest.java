@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -104,7 +105,7 @@ class BalanceCalculatorTest {
             tx2.setParticipants(List.of(p2A, p2B, p2C));
 
             MemberBalances result = BalanceCalculator.calculateBalances(
-                    List.of(tx1, tx2, tx3), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null
+                    Stream.of(tx1, tx2, tx3), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null
             );
 
             // Kiểm tra chỉ số A
@@ -159,7 +160,7 @@ class BalanceCalculatorTest {
 
             tx.setParticipants(List.of(pA, pB, pC));
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null);
+            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null);
 
             // A nhận 200k, còn lại 300k chia đều cho B và C (mỗi người 150k)
             assertThat(result.getShare(userA)).isEqualTo(200000L);
@@ -202,7 +203,7 @@ class BalanceCalculatorTest {
 
             tx.setParticipants(List.of(pA, pB, pC));
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null);
+            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null);
 
             // Tổng số tiền share phải bằng chính xác 100đ
             long totalShare = result.getShare(userA) + result.getShare(userB) + result.getShare(userC);
@@ -213,7 +214,7 @@ class BalanceCalculatorTest {
             assertThat(shares).containsExactlyInAnyOrder(34L, 33L, 33L);
 
             // Kiểm tra tính xác định (Deterministic): Chạy lại lần 2 phải cho kết quả giống hệt
-            MemberBalances result2 = BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null);
+            MemberBalances result2 = BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100)), member(userC, Instant.now().minusSeconds(100))), null);
             assertThat(result2.getShare(userA)).isEqualTo(result.getShare(userA));
             assertThat(result2.getShare(userB)).isEqualTo(result.getShare(userB));
             assertThat(result2.getShare(userC)).isEqualTo(result.getShare(userC));
@@ -276,7 +277,7 @@ class BalanceCalculatorTest {
             txDown.setParticipants(List.of(pDownA, pDownB));
             txUp.setParticipants(List.of(pUpA, pUpB));
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(txDown, txUp), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100))), null);
+            MemberBalances result = BalanceCalculator.calculateBalances(Stream.of(txDown, txUp), List.of(member(userA, Instant.now().minusSeconds(100)), member(userB, Instant.now().minusSeconds(100))), null);
 
             // Share của mỗi người: 100k - 30k = 70k
             assertThat(result.getShare(userA)).isEqualTo(70000L);
@@ -324,7 +325,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), members, null);
+            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx).stream(), members, null);
 
             // Chỉ uActive và uLeftLater chịu share (mỗi người 100k)
             assertThat(result.getShare(uActive)).isEqualTo(100000L);
@@ -359,7 +360,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), members, null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), members, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -390,7 +391,7 @@ class BalanceCalculatorTest {
 
             tx.setParticipants(List.of(pA, pB));
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -421,7 +422,7 @@ class BalanceCalculatorTest {
 
             tx.setParticipants(List.of(pA, pB));
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -449,7 +450,7 @@ class BalanceCalculatorTest {
 
             tx.setParticipants(List.of(pA));
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -478,7 +479,7 @@ class BalanceCalculatorTest {
 
             tx.setParticipants(List.of(p1, p2));
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -500,7 +501,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -526,7 +527,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -548,7 +549,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null);
+            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null);
             assertThat(result.get(userA).getRawContribution()).isEqualTo(250000L);
             assertThat(result.getNetBalance(userA)).isEqualTo(250000L);
         }
@@ -567,7 +568,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -592,7 +593,7 @@ class BalanceCalculatorTest {
             TransactionParticipant p = TransactionParticipant.builder().userId(userA).shareAmount(150000L).build();
             tx.setParticipants(List.of(p));
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -617,7 +618,7 @@ class BalanceCalculatorTest {
             TransactionParticipant p = TransactionParticipant.builder().userId(userA).shareAmount(100000L).build();
             tx.setParticipants(List.of(p));
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null);
+            MemberBalances result = BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(userA, Instant.now().minusSeconds(100)), member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null);
             assertThat(result.getShare(userA)).isEqualTo(100000L);
             assertThat(result.getNetBalance(userA)).isEqualTo(-100000L);
         }
@@ -635,7 +636,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
+            assertThatThrownBy(() -> BalanceCalculator.calculateBalances(List.of(tx).stream(), List.of(member(UUID.randomUUID(), Instant.now().minusSeconds(100))), null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> {
                         BusinessException be = (BusinessException) e;
@@ -669,7 +670,7 @@ class BalanceCalculatorTest {
                     .status(GTransactionStatus.CONFIRMED)
                     .build();
 
-            MemberBalances result = BalanceCalculator.calculateBalances(List.of(contribution, refund),
+            MemberBalances result = BalanceCalculator.calculateBalances(Stream.of(contribution, refund),
                     List.of(member(userA, now.minusSeconds(100))), null);
 
             assertThat(result.get(userA).getRawContribution()).isEqualTo(1_000_000L);
@@ -680,7 +681,7 @@ class BalanceCalculatorTest {
         @Test
         @DisplayName("MemberBalances.get(nonExistentUserId) trả về instance độc lập, không làm biến đổi state toàn cục")
         void testMemberBalances_GetNonExistentUser_ReturnsIsolatedInstance() {
-            MemberBalances balances = BalanceCalculator.calculateBalances(List.of(), List.of(), null);
+            MemberBalances balances = BalanceCalculator.calculateBalances(Stream.<GTransaction>empty(), List.of(), null);
 
             UUID user1 = UUID.randomUUID();
             UUID user2 = UUID.randomUUID();

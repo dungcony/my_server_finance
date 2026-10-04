@@ -194,7 +194,7 @@ class AuthLoginLockoutIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(correctLogin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.access_token").isNotEmpty());
+                .andExpect(jsonPath("$.data.token.access").isNotEmpty());
     }
 
     @Test

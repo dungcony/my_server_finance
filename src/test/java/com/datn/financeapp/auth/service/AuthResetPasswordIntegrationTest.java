@@ -93,11 +93,14 @@ class AuthResetPasswordIntegrationTest {
     }
 
     @Test
-    void forgotPassword_existingAndNonExistingEmail_neitherThrows_onlyExistingEmailCreatesToken() {
+    void forgotPassword_existingEmailCreatesToken_nonExistingEmailReturnsNotFound() {
         registerUser("ton.tai@example.com", "matkhaudung1", "Email Tồn Tại");
 
         authService.forgotPassword(new ForgotPasswordRequest("ton.tai@example.com"));
-        authService.forgotPassword(new ForgotPasswordRequest("khong.ton.tai@example.com"));
+        // đã chốt: email chưa đăng ký báo NOT_FOUND để người dùng biết gõ nhầm, giống các ứng dụng lớn
+        assertThatThrownBy(() -> authService.forgotPassword(new ForgotPasswordRequest("khong.ton.tai@example.com")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
 
         assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "ton.tai@example.com")).isPresent();
         assertThat(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, "khong.ton.tai@example.com")).isEmpty();
@@ -132,7 +135,7 @@ class AuthResetPasswordIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("dat.lai@example.com", rawResetCode, "khac123456")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_CODE_INVALID"));
     }
 
     @Test
@@ -144,7 +147,7 @@ class AuthResetPasswordIntegrationTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest("het.han@example.com", "123456", "matkhaumoi789")))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("RESET_CODE_INVALID"));
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("AUTH_CODE_INVALID"));
     }
 
     @Test

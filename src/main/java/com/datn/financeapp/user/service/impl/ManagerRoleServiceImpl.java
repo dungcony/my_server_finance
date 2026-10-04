@@ -87,14 +87,15 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
             throw new BusinessException(ErrorCode.FORBIDDEN,
                     "Không được gán quyền mà chính mình không có.");
 
-        if (!rolePermissionRepository.existsByRoleIdAndPermissionId(role.getId(), permission.getId())) {
-            RolePermission rolePermission = new RolePermission(role.getId(), permission.getId());
-            rolePermission.setRole(role);
-            rolePermission.setPermission(permission);
-            rolePermissionRepository.save(rolePermission);
-            role.getRolePermissions().add(rolePermission);
-            log.info("Đã gán permission {} cho role {}", permission.getName().getValue(), role.getName().name());
-        }
+        if (rolePermissionRepository.existsByRoleIdAndPermissionId(role.getId(), permission.getId()))
+            throw new BusinessException(ErrorCode.USER_ROLE_PERMISSION_ALREADY_ASSIGNED);
+
+        RolePermission rolePermission = new RolePermission(role.getId(), permission.getId());
+        rolePermission.setRole(role);
+        rolePermission.setPermission(permission);
+        rolePermissionRepository.save(rolePermission);
+        role.getRolePermissions().add(rolePermission);
+        log.info("Đã gán permission {} cho role {}", permission.getName().getValue(), role.getName().name());
     }
 
     private Role findRole(RoleName roleName) {

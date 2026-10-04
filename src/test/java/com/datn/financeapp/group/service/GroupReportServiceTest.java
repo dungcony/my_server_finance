@@ -15,7 +15,7 @@ import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupRepository;
 import com.datn.financeapp.group.service.impl.GReportServiceImpl;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 
 /**
@@ -480,7 +479,7 @@ class GroupReportServiceTest {
     }
 
     @Test
-    @DisplayName("Tên hiển thị lấy từ UserRes, thành viên không có trong kết quả tra tên thì dùng tên dự phòng theo id")
+    @DisplayName("Tên hiển thị lấy từ kết quả tra tên của UserService, thành viên không có trong kết quả tra tên thì dùng tên dự phòng theo id")
     void testGetBalances_DisplayName_FromUserResOrFallbackToId() {
         stubGroupWithThreeMembers(null, 0L);
 
@@ -566,20 +565,21 @@ class GroupReportServiceTest {
     }
 
     // dựng bản ghi người dùng chỉ cần phần tên để UserService.getNames trả về
-    private UserRes userNamed(UUID id, String firstName, String lastName) {
-        return new UserRes(id, null, firstName, lastName, null, UserStatus.ACTIVE, null, null, null, false);
+    private UserNameDisplayRes userNamed(UUID id, String firstName, String lastName) {
+        return new UserNameDisplayRes(id, firstName, lastName, UserStatus.ACTIVE, false);
     }
 
-    private void stubNames(UserRes... users) {
-        Map<UUID, UserRes> byId = new HashMap<>();
-        for (UserRes user : users) {
+    private void stubNames(UserNameDisplayRes... users) {
+        Map<UUID, UserNameDisplayRes> byId = new HashMap<>();
+        for (UserNameDisplayRes user : users) {
             byId.put(user.id(), user);
         }
-        when(userService.getNames(any(), isNull())).thenReturn(byId);
+        when(userService.getNames(any())).thenReturn(byId);
     }
 
     private void stubTransactions(GTransaction... txns) {
-        when(gTransactionService.findConfirmedTransactions(groupId)).thenReturn(List.of(txns));
+        when(gTransactionService.streamConfirmedTransactions(groupId))
+            .thenAnswer(inv -> java.util.List.of(txns).stream());
     }
 
     private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,

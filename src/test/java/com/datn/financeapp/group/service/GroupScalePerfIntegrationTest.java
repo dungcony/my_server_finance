@@ -123,6 +123,10 @@ class GroupScalePerfIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    // streamConfirmedTransactions chỉ đọc được khi đang trong transaction, nên đo trong TransactionTemplate
+    @Autowired
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
     @FunctionalInterface
     private interface Step {
         void run() throws Exception;
@@ -211,8 +215,12 @@ class GroupScalePerfIntegrationTest {
         measure(scale, "GTransactionService.listPending", () -> gTransactionService.listPending(operator, group, 1, 100));
         measure(scale, "ReportService.getSummary (toàn thời gian)", () -> reportService.getSummary(operator, group, null));
         measure(scale, "ReportService.getSummary (theo tháng)", () -> reportService.getSummary(operator, group, thisMonth));
-        measure(scale, "GTransactionService.findConfirmedTransactions",
-                () -> gTransactionService.findConfirmedTransactions(group));
+        measure(scale, "GTransactionService.streamConfirmedTransactions",
+                () -> transactionTemplate.execute(status -> {
+                    try (java.util.stream.Stream<?> s = gTransactionService.streamConfirmedTransactions(group)) {
+                        return s.count();
+                    }
+                }));
         measure(scale, "ReportService.getBalances", () -> reportService.getBalances(operator, group));
     }
 

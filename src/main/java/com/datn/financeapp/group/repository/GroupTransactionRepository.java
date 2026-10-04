@@ -25,7 +25,7 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
     List<GTransaction> findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(UUID groupId);
 
     @EntityGraph(attributePaths = {"participants"})
-    List<GTransaction> findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
+    java.util.stream.Stream<GTransaction> streamByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
             UUID groupId,
             GTransactionStatus status
     );

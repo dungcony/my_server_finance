@@ -12,6 +12,7 @@ import com.datn.financeapp.group.enums.MoneySource;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -40,7 +41,7 @@ public final class BalanceCalculator {
      * Dựa vào lịch sử giao dịch (nộp, rút, chi tiêu...), hàm sẽ tính ra số dư cuối
      * cùng của từng người.
      *
-     * @param allTxns      Toàn bộ danh sách giao dịch lấy từ database
+     * @param txnStream    Toàn bộ danh sách giao dịch lấy từ database theo kiểu stream
      * @param allMembers   Toàn bộ lịch sử thành viên lấy từ database
      * @param excludeTxnId ID của giao dịch muốn bỏ qua không tính (dùng khi đang
      *                     cập nhật hoặc xóa giao dịch)
@@ -48,20 +49,12 @@ public final class BalanceCalculator {
      * (MemberBalances)
      */
     public static MemberBalances calculateBalances(
-            List<GTransaction> allTxns,
+            Stream<GTransaction> txnStream,
             List<MemberRes> allMembers,
             UUID excludeTxnId) {
         Map<UUID, MemberBalanceAccumulator> memberMap = new HashMap<>();
 
-        if (allTxns == null || allTxns.isEmpty()) {
-            return new MemberBalances(memberMap);
-        }
-
-        List<GTransaction> txns = (excludeTxnId == null)
-                ? allTxns
-                : allTxns.stream().filter(t -> !t.getId().equals(excludeTxnId)).toList();
-
-        if (txns.isEmpty()) {
+        if (txnStream == null) {
             return new MemberBalances(memberMap);
         }
 
@@ -71,23 +64,17 @@ public final class BalanceCalculator {
                 .map(m -> new GroupMemberPeriod(m.userId(), m.joinedAt(), m.leftAt()))
                 .toList();
 
-        Map<UUID, List<TransactionParticipant>> participantsByTxnId = txns.stream()
-                .collect(Collectors.toMap(GTransaction::getId, GTransaction::getParticipants));
+        txnStream.forEach(txn -> {
+            if (excludeTxnId != null && excludeTxnId.equals(txn.getId())) {
+                return;
+            }
+            if (txn.getDeletedAt() != null) {
+                return;
+            }
+            if (txn.getStatus() != null && txn.getStatus() != GTransactionStatus.CONFIRMED) {
+                return;
+            }
 
-        // 1. Điều kiện lọc: chưa bị xóa mềm và (status == null || status == CONFIRMED)
-        // Sắp xếp theo occurredAt ASC, createdAt ASC (Mục 2)
-        Comparator<GTransaction> comparator = Comparator
-                .comparing(GTransaction::getOccurredAt, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(GTransaction::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
-
-        List<GTransaction> sortedTxns = txns.stream()
-                .filter(t -> t.getDeletedAt() == null
-                        && (t.getStatus() == null || t.getStatus() == GTransactionStatus.CONFIRMED))
-                .sorted(comparator)
-                .toList();
-
-        // 2. Duyệt tuần tự qua danh sách giao dịch
-        for (GTransaction txn : sortedTxns) {
             GTransactionType type = txn.getType();
             if (type == null) {
                 throw new IllegalStateException(
@@ -125,7 +112,7 @@ public final class BalanceCalculator {
                         }
                         memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addPaidOutOfPocket(amount);
                     }
-                    allocateShareAmongParticipants(txn, amount, 1L, memberMap, participantsByTxnId, memberPeriods);
+                    allocateShareAmongParticipants(txn, amount, 1L, memberMap, memberPeriods);
                 }
                 case REFUND -> {
                     if (uid == null) {
@@ -137,13 +124,13 @@ public final class BalanceCalculator {
                 }
                 case ADJUSTMENT_DOWN ->
                     // Quỹ hao hụt -> tăng share phải chịu (factor = +1)
-                        allocateShareAmongParticipants(txn, amount, 1L, memberMap, participantsByTxnId, memberPeriods);
+                        allocateShareAmongParticipants(txn, amount, 1L, memberMap, memberPeriods);
                 case ADJUSTMENT_UP ->
                     // Quỹ dôi ra -> giảm share phải chịu (factor = -1)
-                        allocateShareAmongParticipants(txn, amount, -1L, memberMap, participantsByTxnId, memberPeriods);
+                        allocateShareAmongParticipants(txn, amount, -1L, memberMap, memberPeriods);
                 default -> throw new IllegalStateException("Loại giao dịch chưa được hỗ trợ: " + type);
             }
-        }
+        });
 
         return new MemberBalances(memberMap);
     }
@@ -153,25 +140,21 @@ public final class BalanceCalculator {
     /**
      * Phân bổ chi phí (share) cho các thành viên tham gia giao dịch.
      *
-     * @param txn                 Giao dịch đang phân bổ chi phí
-     * @param amount              Tổng số tiền cần phân bổ
-     * @param factor              Hệ số phân bổ (+1: tăng phần share phải gánh, -1:
-     *                            giảm phần share phải gánh)
-     * @param memberMap           Map tích lũy số dư của từng thành viên
-     * @param participantsByTxnId Map danh sách người tham gia theo từng
-     *                            transactionId
-     * @param memberPeriods       Danh sách chu kỳ thời gian tham gia nhóm
+     * @param txn           Giao dịch đang phân bổ chi phí
+     * @param amount        Tổng số tiền cần phân bổ
+     * @param factor        Hệ số phân bổ (+1: tăng phần share phải gánh, -1:
+     *                      giảm phần share phải gánh)
+     * @param memberMap     Map tích lũy số dư của từng thành viên
+     * @param memberPeriods Danh sách chu kỳ thời gian tham gia nhóm
      */
     private static void allocateShareAmongParticipants(
             GTransaction txn,
             long amount,
             long factor,
             Map<UUID, MemberBalanceAccumulator> memberMap,
-            Map<UUID, List<TransactionParticipant>> participantsByTxnId,
             List<GroupMemberPeriod> memberPeriods) {
-        List<TransactionParticipant> raw = (participantsByTxnId != null && txn.getId() != null)
-                ? participantsByTxnId.getOrDefault(txn.getId(), List.of())
-                : List.of();
+        List<TransactionParticipant> raw = txn.getParticipants();
+        if (raw == null) raw = List.of();
 
         if (!raw.isEmpty()) {
             // Validate: Không trùng lặp userId và shareAmount phải > 0 (Mục 2 & Mục 8)

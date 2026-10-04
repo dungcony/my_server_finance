@@ -132,8 +132,8 @@ class AuthEmailVerificationIntegrationTest {
                 .andExpect(jsonPath("$.data.user.email").value(email))
                 // `status` thay cho cờ `is_confirm` cũ (hợp đồng mới 13/09/2026, app đã theo).
                 .andExpect(jsonPath("$.data.user.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.data.access_token").isNotEmpty())
-                .andExpect(jsonPath("$.data.refresh_token").isNotEmpty());
+                .andExpect(jsonPath("$.data.token.access").isNotEmpty())
+                .andExpect(jsonPath("$.data.token.refresh").isNotEmpty());
 
         // Kiểm tra sau khi xác thực: User đã ACTIVE và OTP trong Redis bị xóa
         User updated = userRepository.findByEmail(email).orElseThrow();
@@ -152,7 +152,7 @@ class AuthEmailVerificationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyReq)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("AUTH_VERIFICATION_CODE_INVALID"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_CODE_INVALID"));
 
         User user = userRepository.findByEmail(email).orElseThrow();
         assertThat(user.isConfirm()).isFalse();
@@ -165,7 +165,7 @@ class AuthEmailVerificationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyReq)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("AUTH_VERIFICATION_CODE_INVALID"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_CODE_INVALID"));
     }
 
     @Test

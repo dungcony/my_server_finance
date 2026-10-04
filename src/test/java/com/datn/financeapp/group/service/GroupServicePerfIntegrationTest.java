@@ -144,6 +144,9 @@ class GroupServicePerfIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
     private final ServicePerfSupport perf = new ServicePerfSupport("group");
     private final AtomicInteger counter = new AtomicInteger();
 
@@ -314,8 +317,12 @@ class GroupServicePerfIntegrationTest {
         perf.measure(profile, "GTransactionService.sumConfirmedAmount (theo kỳ)",
                 () -> gTransactionService.sumConfirmedAmount(
                         group, GTransactionType.EXPENSE, Instant.now().minusSeconds(30L * 24 * 3600), Instant.now()));
-        perf.measure(profile, "GTransactionService.findConfirmedTransactions",
-                () -> gTransactionService.findConfirmedTransactions(group));
+        perf.measure(profile, "GTransactionService.streamConfirmedTransactions",
+                () -> transactionTemplate.execute(status -> {
+                    try (java.util.stream.Stream<?> s = gTransactionService.streamConfirmedTransactions(group)) {
+                        return s.count();
+                    }
+                }));
     }
 
     // giao dịch chờ duyệt do thành viên thường (pool.get(0)) tạo trong nhóm chính

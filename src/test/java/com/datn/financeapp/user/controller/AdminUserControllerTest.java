@@ -8,6 +8,7 @@ import com.datn.financeapp.user.dto.request.UpdateUserRoleReq;
 import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.service.ManagerUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,11 +17,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Collections;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -41,6 +46,7 @@ class AdminUserControllerTest {
     @InjectMocks
     private ManagerUserController adminUserController;
 
+    private final UUID adminId = UUID.randomUUID();
     private final UUID targetUserId = UUID.randomUUID();
 
     @BeforeEach
@@ -48,15 +54,23 @@ class AdminUserControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(adminUserController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(adminId.toString(), null, Collections.emptyList())
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
     @DisplayName("TC_CTL_01: Admin block user thành công -> 200 OK với msg và success=true")
     void blockUser_Success_Returns200Ok() throws Exception {
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Vi phạm chính sách cộng đồng");
-        doNothing().when(adminUserService).lockUser(java.util.UUID.randomUUID(), req);
+        doNothing().when(adminUserService).lockUser(eq(adminId), eq(req));
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
@@ -69,7 +83,7 @@ class AdminUserControllerTest {
     void blockUser_NullUserId_Returns400ValidationError() throws Exception {
         BlockUserRequest req = new BlockUserRequest(null, "Lý do");
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
@@ -82,9 +96,9 @@ class AdminUserControllerTest {
     void blockUser_SelfBlock_Returns400ValidationError() throws Exception {
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Tự khóa");
         doThrow(new BusinessException(ErrorCode.VALIDATION_ERROR, "Không được phép tự khóa tài khoản của chính mình."))
-                .when(adminUserService).lockUser(java.util.UUID.randomUUID(), req);
+                .when(adminUserService).lockUser(eq(adminId), eq(req));
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isBadRequest())
@@ -98,9 +112,9 @@ class AdminUserControllerTest {
     void blockUser_NotFound_Returns404NotFound() throws Exception {
         BlockUserRequest req = new BlockUserRequest(targetUserId, "Lý do");
         doThrow(new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng."))
-                .when(adminUserService).lockUser(java.util.UUID.randomUUID(), req);
+                .when(adminUserService).lockUser(eq(adminId), eq(req));
 
-        mockMvc.perform(patch("/admin/user/block")
+        mockMvc.perform(patch("/admin/user/lock")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isNotFound())

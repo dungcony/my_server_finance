@@ -144,7 +144,8 @@ class AuthRefreshRotationIntegrationTest {
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("refresh_token");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return (String) token.get("refresh");
     }
 
     private UUID userIdOf(String email) {
@@ -161,15 +162,15 @@ class AuthRefreshRotationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.access_token").isNotEmpty())
-                .andExpect(jsonPath("$.data.refresh_token").isNotEmpty())
+                .andExpect(jsonPath("$.data.access").isNotEmpty())
+                .andExpect(jsonPath("$.data.refresh").isNotEmpty())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        String newRawToken = (String) data.get("refresh_token");
+        String newRawToken = (String) data.get("refresh");
         assertThat(newRawToken).isNotEqualTo(rawOldToken);
 
         List<RefreshToken> active = refreshTokenRepository.findAllByUserIdAndRevokedAtIsNull(userId);
@@ -263,7 +264,9 @@ class AuthRefreshRotationIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         Map<?, ?> parsed = objectMapper.readValue(loginResponse, Map.class);
-        String rawSecondToken = (String) ((Map<?, ?>) parsed.get("data")).get("refresh_token");
+        Map<?, ?> data = (Map<?, ?>) parsed.get("data");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        String rawSecondToken = (String) token.get("refresh");
 
         Map<String, Object> logoutBody = Map.of("refresh_token", rawFirstToken, "logout_all_devices", false);
         mockMvc.perform(post("/auth/logout")

@@ -1,8 +1,8 @@
 package com.datn.financeapp.auth.service.impl;
 
 import com.datn.financeapp.auth.dto.request.*;
-import com.datn.financeapp.auth.dto.response.LoginRes;
-import com.datn.financeapp.auth.dto.response.RegisterResponse;
+import com.datn.financeapp.auth.dto.response.AuthRes;
+import com.datn.financeapp.auth.dto.response.RegisterRes;
 import com.datn.financeapp.auth.dto.response.TokenRes;
 import com.datn.financeapp.auth.entity.OtpModel;
 import com.datn.financeapp.auth.enums.OtpType;
@@ -36,6 +36,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private static final long OTP_TTL_MINUTES = 15L;
+    private static final int MAX_OTP_ATTEMPTS = 5;
+
     private final UserService userService;
     private final TokenService tokenService;
     private final EmailService emailService;
@@ -44,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
     private final OtpRepository otpRepository;
 
     @Override
-    public RegisterResponse register(RegisterRequest req) {
+    public RegisterRes register(RegisterRequest req) {
         Instant now = Instant.now();
 
         if (userService.existByEmail(req.email()))
@@ -59,7 +62,7 @@ public class AuthServiceImpl implements AuthService {
         );
         sendEmail(req.email(), OtpType.REGISTER_OTP, now);
 
-        return new RegisterResponse(
+        return new RegisterRes(
                 user.id(),
                 req.email()
         );
@@ -67,14 +70,14 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
-    public LoginRes verifyEmail(VerifyEmailRequest req) {
+    public AuthRes verifyEmail(VerifyEmailRequest req) {
         verifyOtp(req.email(), req.code(), OtpType.REGISTER_OTP);
 
         otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, req.email());
 
         var user = userService.updateStatus(req.email(), UserStatus.ACTIVE);
 
-        return new LoginRes(
+        return new AuthRes(
                 user,
                 tokenService.create(new TokenCreateReq(
                         user.id(),
@@ -122,6 +125,10 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
         }
 
+        if (user.isBlocked()) {
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
+        }
+
         return tokenService.create(
                 new TokenCreateReq(
                         user.id(),
@@ -148,10 +155,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void forgotPassword(ForgotPasswordRequest req) {
 
+        // đếm lượt trước khi tra email: email lạ cũng tốn lượt, và hết lượt thì không có thư nào được gửi
+        forgotPasswordRateLimiter.consume(req.email());
+
         userService.validUser(req.email());
 
         sendEmail(req.email(), OtpType.PASSWORD_RESET_OTP, Instant.now());
-        forgotPasswordRateLimiter.consume(req.email());
     }
 
     @Override
@@ -165,13 +174,31 @@ public class AuthServiceImpl implements AuthService {
     }
 
     //--------------------------------------------PRIVATE----------------------------------------//
-    
+
     private void verifyOtp(String email, String otp, OtpType type) {
         OtpModel otpM = otpRepository.findByTypeAndEmail(type, email)
-                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_RESET_CODE_INVALID));
+                .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_CODE_INVALID));
 
-        if (!otpM.getCode().equals(otp))
-            throw new BusinessException(ErrorCode.AUTH_RESET_CODE_INVALID);
+        if (otpM.getCode().equals(otp))
+            return;
+
+        registerWrongAttempt(otpM, type, email);
+        throw new BusinessException(ErrorCode.AUTH_CODE_INVALID);
+    }
+
+    // đếm lần nhập sai, đủ giới hạn thì huỷ mã để không dò mã 6 chữ số từng bước được
+    private void registerWrongAttempt(OtpModel otp, OtpType type, String email) {
+        otp.setAttempts(otp.getAttempts() + 1);
+
+        if (otp.getAttempts() >= MAX_OTP_ATTEMPTS) {
+            otpRepository.deleteByTypeAndEmail(type, email);
+            return;
+        }
+
+        // lưu lại phải giữ hạn gốc, nếu không mỗi lần nhập sai lại kéo dài thêm cả hạn của mã
+        long elapsedMinutes = Duration.between(otp.getCreatedAt(), Instant.now()).toMinutes();
+        otp.setTtl(Math.max(1L, OTP_TTL_MINUTES - elapsedMinutes));
+        otpRepository.save(otp);
     }
 
     private void sendEmail(String email, OtpType type, Instant now) {
@@ -180,11 +207,16 @@ public class AuthServiceImpl implements AuthService {
                 .email(email)
                 .type(type)
                 .code(otp)
-                .ttl(15L)
+                .ttl(OTP_TTL_MINUTES)
                 .createdAt(now)
                 .build());
 
-        emailService.sendVerificationOtp(email, otp);
+        if (type.equals(OtpType.REGISTER_OTP)) {
+            emailService.sendVerificationOtp(email, otp);
+
+            return;
+        }
+        emailService.sendPasswordResetCode(email, otp);
     }
 
 }

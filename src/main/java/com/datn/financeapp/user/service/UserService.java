@@ -2,6 +2,7 @@ package com.datn.financeapp.user.service;
 
 import com.datn.financeapp.user.dto.request.UserCreateReq;
 import com.datn.financeapp.user.dto.request.UserGetReq;
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.enums.UserStatus;
 
@@ -16,7 +17,7 @@ public interface UserService {
 
     UserRes get(UserGetReq req);
 
-    Map<UUID, UserRes> getNames(List<UUID> ids, List<String> email);
+    Map<UUID, UserNameDisplayRes> getNames(List<UUID> ids);
 
     UserRes updateStatus(String email, UserStatus status);
 

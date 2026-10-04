@@ -12,7 +12,7 @@ import com.datn.financeapp.group.helper.MemberViewEnricher;
 import com.datn.financeapp.group.mapper.MemberMapper;
 import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
-import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +33,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -82,7 +81,7 @@ class MemberBehavierServiceImplTest {
             Member m = inv.getArgument(0);
             return new MemberRes(m.getId(), m.getUserId(), m.getRole(), m.getStatus(), m.getJoinedAt());
         });
-        lenient().when(userService.getNames(any(), isNull())).thenReturn(Map.of(
+        lenient().when(userService.getNames(any())).thenReturn(Map.of(
                 ownerId, userNamed(ownerId, "Chủ nhóm"),
                 treasurerId, userNamed(treasurerId, "Thủ quỹ"),
                 pendingUserId, userNamed(pendingUserId, "Người xin vào")));
@@ -159,8 +158,8 @@ class MemberBehavierServiceImplTest {
     }
 
     // bản ghi người dùng chỉ cần tên: lastName null thì tên hiển thị chính là firstName
-    private UserRes userNamed(UUID id, String firstName) {
-        return new UserRes(id, null, firstName, null, null, UserStatus.ACTIVE, null, null, null, false);
+    private UserNameDisplayRes userNamed(UUID id, String firstName) {
+        return new UserNameDisplayRes(id, firstName, null, UserStatus.ACTIVE, false);
     }
 
     // người giữ quỹ của nhóm trong test luôn là treasurerId

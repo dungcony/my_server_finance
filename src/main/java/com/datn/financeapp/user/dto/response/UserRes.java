@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * DTO nội bộ phục vụ xác thực giữa UserAccountService và AuthService.
@@ -58,6 +59,7 @@ public record UserRes(
         return status == UserStatus.ACTIVE;
     }
 
+    @JsonProperty
     public boolean hasPassword() {
         return password != null;
     }
@@ -78,6 +80,7 @@ public record UserRes(
             result.add(role.name().name());
             if (role.permissions() != null) {
                 for (PermissionResponse p : role.permissions()) {
+                    result.add(p.name().getValue());
                     result.add(p.name().name());
                 }
             }

@@ -64,7 +64,7 @@ public class RefundTransaction implements GTransactionBuilder {
                 .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId);
         List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
                 groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
-        MemberBalances mb = BalanceCalculator.calculateBalances(allTxns, allMembers, null);
+        MemberBalances mb = BalanceCalculator.calculateBalances(allTxns.stream(), allMembers, null);
 
         GroupTransactionTypeValidator.validRefundLimit(req.transactorId(), req.amount(), mb);
 

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -79,7 +80,7 @@ class AuthResetPasswordServiceTest {
         assertThat(savedOtp.getCode()).matches("\\d{6}");
         assertThat(savedOtp.getTtl()).isEqualTo(15L);
 
-        verify(emailService).sendVerificationOtp(eq(email), eq(savedOtp.getCode()));
+        verify(emailService).sendPasswordResetCode(eq(email), eq(savedOtp.getCode()));
     }
 
     @Test
@@ -92,7 +93,86 @@ class AuthResetPasswordServiceTest {
                 .hasFieldOrPropertyWithValue("code", "NOT_FOUND");
 
         verify(otpRepository, never()).save(any());
-        verify(emailService, never()).sendVerificationOtp(any(), any());
+        verify(emailService, never()).sendPasswordResetCode(any(), any());
+    }
+
+    @Test
+    @DisplayName("forgotPassword: Đếm lượt giới hạn tốc độ TRƯỚC khi tra email, để email lạ cũng tốn lượt")
+    void forgotPassword_ConsumesRateLimitBeforeLookingUpEmail() {
+        authService.forgotPassword(new ForgotPasswordRequest(email));
+
+        InOrder inOrder = inOrder(forgotPasswordRateLimiter, userService);
+        inOrder.verify(forgotPasswordRateLimiter).consume(email);
+        inOrder.verify(userService).validUser(email);
+    }
+
+    @Test
+    @DisplayName("forgotPassword: Hết lượt giới hạn tốc độ -> Ném lỗi, không tra email, không lưu OTP, không gửi thư")
+    void forgotPassword_RateLimitExceeded_StopsBeforeAnyWork() {
+        doThrow(new BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED)).when(forgotPasswordRateLimiter).consume(email);
+
+        assertThatThrownBy(() -> authService.forgotPassword(new ForgotPasswordRequest(email)))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "RATE_LIMIT_EXCEEDED");
+
+        verifyNoInteractions(userService, otpRepository, emailService);
+    }
+
+    @Test
+    @DisplayName("resetPassword: Nhập sai mã chưa đủ giới hạn -> Tăng số lần sai và giữ nguyên OTP")
+    void resetPassword_WrongCodeBelowLimit_CountsAttemptAndKeepsOtp() {
+        OtpModel otp = otpWithAttempts(2);
+        when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
+
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "999999", "newPassword123")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "AUTH_CODE_INVALID");
+
+        ArgumentCaptor<OtpModel> saved = ArgumentCaptor.forClass(OtpModel.class);
+        verify(otpRepository).save(saved.capture());
+        assertThat(saved.getValue().getAttempts()).isEqualTo(3);
+        // lưu lại không được kéo dài hạn của mã quá 15 phút kể từ lúc tạo
+        assertThat(saved.getValue().getTtl()).isBetween(1L, 15L);
+        verify(otpRepository, never()).deleteByTypeAndEmail(any(), any());
+    }
+
+    @Test
+    @DisplayName("resetPassword: Nhập sai tới giới hạn -> Huỷ OTP, mã đúng sau đó cũng vô hiệu")
+    void resetPassword_WrongCodeReachesLimit_DeletesOtp() {
+        OtpModel otp = otpWithAttempts(4);
+        when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
+
+        assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "999999", "newPassword123")))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", "AUTH_CODE_INVALID");
+
+        verify(otpRepository).deleteByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email);
+        verify(otpRepository, never()).save(any());
+        verify(userService, never()).updatePass(any(), any());
+    }
+
+    @Test
+    @DisplayName("resetPassword: Nhập đúng mã sau vài lần sai chưa đủ giới hạn -> Vẫn đặt lại được mật khẩu")
+    void resetPassword_CorrectCodeAfterSomeWrongAttempts_StillSucceeds() {
+        OtpModel otp = otpWithAttempts(3);
+        when(otpRepository.findByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email)).thenReturn(Optional.of(otp));
+
+        authService.resetPassword(new ResetPasswordRequest(email, "123456", "newPassword123"));
+
+        verify(userService).updatePass(email, "newPassword123");
+        verify(otpRepository, never()).save(any());
+    }
+
+    private OtpModel otpWithAttempts(int attempts) {
+        OtpModel otp = OtpModel.builder()
+                .email(email)
+                .type(OtpType.PASSWORD_RESET_OTP)
+                .code("123456")
+                .ttl(15L)
+                .createdAt(Instant.now())
+                .build();
+        otp.setAttempts(attempts);
+        return otp;
     }
 
     @Test
@@ -146,7 +226,7 @@ class AuthResetPasswordServiceTest {
     }
 
     @Test
-    @DisplayName("resetPassword: Mã OTP sai -> Ném BusinessException(AUTH_RESET_CODE_INVALID)")
+    @DisplayName("resetPassword: Mã OTP sai -> Ném BusinessException(AUTH_CODE_INVALID)")
     void resetPassword_WrongCode_ThrowsException() {
         OtpModel otp = OtpModel.builder()
                 .email(email)
@@ -160,7 +240,7 @@ class AuthResetPasswordServiceTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "999999", "newPassword123")))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "AUTH_RESET_CODE_INVALID");
+                .hasFieldOrPropertyWithValue("code", "AUTH_CODE_INVALID");
 
         verify(userService, never()).updatePass(any(), any());
         verify(otpRepository, never()).deleteByTypeAndEmail(any(), any());
@@ -173,7 +253,7 @@ class AuthResetPasswordServiceTest {
 
         assertThatThrownBy(() -> authService.resetPassword(new ResetPasswordRequest(email, "123456", "newPassword123")))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", "AUTH_RESET_CODE_INVALID");
+                .hasFieldOrPropertyWithValue("code", "AUTH_CODE_INVALID");
 
         verify(userService, never()).updatePass(any(), any());
     }

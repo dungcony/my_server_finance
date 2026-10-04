@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * Aggregate Root đại diện cho một giao dịch tài chính trong nhóm quỹ chung.
@@ -180,6 +181,7 @@ public class GTransaction {
             name = "group_transaction_participants",
             joinColumns = @JoinColumn(name = "group_transaction_id")
     )
+    @BatchSize(size = 100)
     @Builder.Default
     private List<TransactionParticipant> participants = new ArrayList<>();
 

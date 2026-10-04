@@ -20,11 +20,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.datn.financeapp.common.ratelimit.RateLimitProperties;
+import org.springframework.context.annotation.Import;
+
 /**
  * Kiểm tra GlobalExceptionHandler qua @WebMvcTest với controller test-only,
  * không đụng tới controller nghiệp vụ thật nào.
  */
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.TestController.class)
+@Import(RateLimitProperties.class)
 public class GlobalExceptionHandlerTest {
 
     @Autowired

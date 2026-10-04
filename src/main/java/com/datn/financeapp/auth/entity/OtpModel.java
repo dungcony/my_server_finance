@@ -27,6 +27,9 @@ public class OtpModel {
 
     private Instant createdAt;
 
+    // số lần nhập sai mã, đủ giới hạn thì mã bị huỷ để không dò mã 6 chữ số từng bước được
+    private int attempts;
+
     @Builder
     public OtpModel(OtpType type, String email, String code, Long ttl, Instant createdAt) {
         this.id = buildId(type, email);

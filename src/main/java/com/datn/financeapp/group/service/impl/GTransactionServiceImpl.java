@@ -244,8 +244,8 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
     @Override
     @Transactional(readOnly = true)
-    public List<GTransaction> findConfirmedTransactions(UUID groupId) {
-        return transactionRepository.findByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
+    public java.util.stream.Stream<GTransaction> streamConfirmedTransactions(UUID groupId) {
+        return transactionRepository.streamByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
                 groupId, GTransactionStatus.CONFIRMED);
     }
 

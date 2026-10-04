@@ -1,12 +1,9 @@
 package com.datn.financeapp.user.service;
 
-import com.datn.financeapp.user.dto.request.UpdateProfileRequest;
 import com.datn.financeapp.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.user.dto.response.UserProfileResponse;
+import com.datn.financeapp.user.dto.request.UpdateProfileRequest;
 import com.datn.financeapp.user.dto.response.UserRes;
 
-import java.util.Collection;
-import java.util.Map;
 import java.util.UUID;
 
 public interface UserBehavierService {

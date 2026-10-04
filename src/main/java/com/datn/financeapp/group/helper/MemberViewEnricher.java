@@ -1,7 +1,7 @@
 package com.datn.financeapp.group.helper;
 
 import com.datn.financeapp.group.dto.response.member.MemberRes;
-import com.datn.financeapp.user.dto.response.UserRes;
+import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -33,8 +33,8 @@ public class MemberViewEnricher {
                 .map(MemberRes::userId)
                 .toList();
 
-        Map<UUID, UserRes> names = userService.getNames(ids, null);
-        
+        Map<UUID, UserNameDisplayRes> names = userService.getNames(ids);
+
         return members.stream()
                 .map(m -> m.withDisplay(
                         names.get(m.userId()).fullName(), // phẩy tách tham số ở đây

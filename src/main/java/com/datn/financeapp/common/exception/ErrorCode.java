@@ -93,11 +93,9 @@ public enum ErrorCode {
     // Thẻ làm mới sai, hết hạn, hoặc đã bị thu hồi (kể cả do phát hiện dùng lại).
     AUTH_REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Thẻ làm mới không hợp lệ."),
 
-    // Mã đặt lại mật khẩu 6 chữ số sai, hết hạn hoặc đã dùng.
-    AUTH_RESET_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã sai, hết hạn hoặc đã dùng."),
-
-    // Mã xác thực email 6 chữ số sai hoặc đã hết hạn.
-    AUTH_VERIFICATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã xác thực không hợp lệ hoặc đã hết hạn."),
+    // Mã OTP 6 chữ số (xác thực email hoặc đặt lại mật khẩu) sai, hết hạn hoặc đã dùng. Một mã chung cho cả hai luồng
+    // vì app xử lý như nhau và không cần cho người dùng biết mã sai hay đã hết hạn.
+    AUTH_CODE_INVALID(HttpStatus.BAD_REQUEST, "Mã không hợp lệ, đã hết hạn hoặc đã được sử dụng."),
 
     // Tài khoản đã được kích hoạt trước đó.
     AUTH_ACCOUNT_ALREADY_VERIFIED(HttpStatus.BAD_REQUEST, "Tài khoản đã được xác thực."),
@@ -119,6 +117,15 @@ public enum ErrorCode {
 
     // {@code id_token} của Google không kiểm chứng được, hoặc máy chủ chưa cấu hình client id.
     AUTH_GOOGLE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Đăng nhập bằng Google thất bại. Vui lòng thử lại."),
+
+    // Thu hồi vai trò mặc định (ROLE_USER) của người dùng — mọi tài khoản phải giữ vai trò này.
+    USER_DEFAULT_ROLE_NOT_REMOVABLE(HttpStatus.FORBIDDEN, "Không thể thu hồi vai trò mặc định của người dùng."),
+
+    // Gán vai trò cho người dùng nhưng người đó đã có vai trò này.
+    USER_ROLE_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "Người dùng đã có vai trò này."),
+
+    // Gán quyền hạn cho vai trò nhưng vai trò đã có quyền hạn này.
+    USER_ROLE_PERMISSION_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "Vai trò đã có quyền hạn này."),
 
     // ---------------------------------------------------------------------
     // Ví — api/02-VI.md
