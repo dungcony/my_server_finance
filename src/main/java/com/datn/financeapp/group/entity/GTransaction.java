@@ -181,7 +181,6 @@ public class GTransaction {
             name = "group_transaction_participants",
             joinColumns = @JoinColumn(name = "group_transaction_id")
     )
-    @BatchSize(size = 100)
     @Builder.Default
     private List<TransactionParticipant> participants = new ArrayList<>();
 
