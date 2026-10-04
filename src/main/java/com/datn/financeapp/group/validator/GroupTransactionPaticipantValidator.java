@@ -47,9 +47,16 @@ public class GroupTransactionPaticipantValidator {
     public void validTransactorAndParticipants(
             UUID groupId,
             UUID transactorId,
-            @NonNull List<GroupTransactionParticipantReq> participants,
+            List<GroupTransactionParticipantReq> participants,
             long amount
     ) {
+        // nếu không truyền người chia tiền thì chỉ kiểm tra người chi tiền có trong nhóm không
+        if (participants == null || participants.isEmpty()) {
+            if (!memberService.allMemberInGroup(groupId, List.of(transactorId))) {
+                throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_IN_GROUP);
+            }
+            return;
+        }
 
         // kiểm tra có bị trùng lặp id khi gửi lên k
         List<UUID> candidateIds = new ArrayList<>(participants.stream()
@@ -57,7 +64,6 @@ public class GroupTransactionPaticipantValidator {
                 .toList());
 
         checkExists(candidateIds);
-
 
         if (!candidateIds.contains(transactorId))
             candidateIds.add(transactorId);
@@ -68,67 +74,47 @@ public class GroupTransactionPaticipantValidator {
         // kiểm tra tư cách thành viên cho toàn bộ ID cần xét
         if (!memberService.allMemberInGroup(groupId, candidateIds))
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_IN_GROUP);
-
     }
 
     //-----------------------------PRIVATE----------------------------------//
     // kiểm tra tồn tại 2 id giống nhau
     private static void checkExists(List<UUID> ids) {
 
-        // 1. Dùng Set để lấy danh sách ID không trùng lặp
+        // Dùng Set để lấy danh sách ID không trùng lặp
         Set<UUID> uniqueParticipantIds = new HashSet<>(ids);
-        // 2. So sánh size của Set với size của List ban đầu để phát hiện trùng lặp
+        // So sánh size của Set với size của List ban đầu để phát hiện trùng lặp
         if (uniqueParticipantIds.size() != ids.size()) {
             throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANT_DUPLICATED);
         }
 
     }
 
-
     /**
      * Xác thực tính hợp lệ về số tiền của danh sách người tham gia.
-     * <p>
      * Quy tắc:
-     * <ul>
-     * <li>Hoặc TẤT CẢ để trống số tiền (hệ thống tự chia đều).</li>
-     * <li>Hoặc TẤT CẢ đều nhập số tiền cụ thể.</li>
-     * <li>Không cho phép danh sách lẫn lộn người nhập, người không nhập.</li>
-     * <li>Nếu nhập số tiền cụ thể, tổng phải bằng tổng hóa đơn và mỗi khoản phải > 0.</li>
-     * </ul>
+     * - Mọi người tham gia bắt buộc phải có số tiền chia cụ thể lớn hơn 0.
+     * - Tổng số tiền chia của tất cả người tham gia phải bằng tổng tiền giao dịch.
      *
      * @param participants danh sách người tham gia chia tiền
      * @param amount       tổng số tiền của hóa đơn (giao dịch)
-     * @throws BusinessException nếu số tiền <= 0, tổng tiền không khớp, hoặc danh sách nhập tiền không đồng nhất
+     * @throws BusinessException nếu số tiền bị null, nhỏ hơn hoặc bằng 0, hoặc tổng không khớp
      */
     private void validParticipantShares(List<GroupTransactionParticipantReq> participants, long amount) {
-
-        if (participants.isEmpty())
+        if (participants.isEmpty()) {
             return;
-        
-        boolean anyNull = false;
-        boolean allNull = true;
-        long sum = 0;
-
-        for (var p : participants) {
-            if (p.shareAmount() == null) {
-                anyNull = true;
-            } else {
-                if (p.shareAmount() <= 0) {
-                    throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_AMOUNT_INVALID);
-                }
-                sum += p.shareAmount();
-                allNull = false;
-            }
-
-            if (anyNull && !allNull)
-                throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SHARE_MIXED);
         }
 
-        // Nếu tất cả đều có tiền
-        if (!anyNull) {
-            if (sum != amount) {
-                throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
+        long sum = 0;
+        for (var p : participants) {
+            if (p.shareAmount() == null || p.shareAmount() <= 0) {
+                throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_AMOUNT_INVALID,
+                        "Số tiền chia của thành viên phải lớn hơn 0");
             }
+            sum += p.shareAmount();
+        }
+
+        if (sum != amount) {
+            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
         }
     }
 }

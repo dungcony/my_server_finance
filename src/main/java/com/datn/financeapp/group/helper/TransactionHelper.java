@@ -99,32 +99,13 @@ public class TransactionHelper {
             List<GroupTransactionParticipantReq> paticipants,
             Supplier<List<UUID>> allMemberInGroup
     ) {
-        // Nhánh 1: Không chỉ định ai -> Chia đều cho toàn bộ thành viên nhóm tại thời điểm đó
+        // không chỉ định ai thì chia đều cho toàn bộ thành viên nhóm
         if (paticipants == null || paticipants.isEmpty()) {
-            List<UUID> memberIds = allMemberInGroup.get();
+            List<UUID> memberIds = allMemberInGroup != null ? allMemberInGroup.get() : List.of();
             return toParticipantEntities(splitEvenly(amount, memberIds));
         }
 
-        boolean anyNull = paticipants.stream().anyMatch(p -> p.shareAmount() == null);
-        boolean allNull = paticipants.stream().allMatch(p -> p.shareAmount() == null);
-
-        // Nhánh 2a: Người có số tiền, người không -> Vi phạm tính đồng nhất
-        if (anyNull && !allNull) {
-            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SHARE_MIXED);
-        }
-
-        // Nhánh 2b: Chỉ định danh sách nhưng không truyền số tiền -> Chia đều cho danh sách đó
-        if (allNull) {
-            List<UUID> userIds = paticipants.stream().map(GroupTransactionParticipantReq::userId).toList();
-            return toParticipantEntities(splitEvenly(amount, userIds));
-        }
-
-        // Nhánh 3: Chỉ định danh sách kèm số tiền cụ thể từng người
-        long totalSpecified = paticipants.stream().mapToLong(GroupTransactionParticipantReq::shareAmount).sum();
-        if (totalSpecified != amount) {
-            throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
-        }
-
+        // chuyển đổi danh sách người tham gia sang entity với số tiền cụ thể
         return paticipants.stream()
                 .map(p -> TransactionParticipant.builder()
                         .userId(p.userId())
@@ -139,7 +120,7 @@ public class TransactionHelper {
      * @param splitList Danh sách kết quả chia tiền
      * @return Danh sách entity người tham gia giao dịch
      */
-    private List<TransactionParticipant> toParticipantEntities(List<GroupTransactionParticipantRes> splitList) {
+    public List<TransactionParticipant> toParticipantEntities(List<GroupTransactionParticipantRes> splitList) {
         return splitList.stream()
                 .map(s -> TransactionParticipant.builder()
                         .userId(s.userId())

@@ -59,14 +59,16 @@ public class AdjustmentTransaction implements GTransactionBuilder {
             throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
         }
 
-        // tự động chia đều cho toàn bộ thành viên trong nhóm nếu client không truyền
-        // danh sách
+        // tự động chia đều cho toàn bộ thành viên trong nhóm nếu client không truyền danh sách
         List<TransactionParticipant> participants;
         if (req.participants() == null || req.participants().isEmpty()) {
-            participants = memberService.findIdAllMember(groupId).stream()
+            List<UUID> memberIds = memberService.findIdAllMember(groupId);
+            long count = memberIds.isEmpty() ? 1L : memberIds.size();
+            long share = req.amount() / count;
+            participants = memberIds.stream()
                     .map(uid -> TransactionParticipant.builder()
                             .userId(uid)
-                            .shareAmount(null)
+                            .shareAmount(share)
                             .build())
                     .toList();
         } else {
