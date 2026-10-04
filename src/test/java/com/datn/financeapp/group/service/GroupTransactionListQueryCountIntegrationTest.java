@@ -56,8 +56,8 @@ class GroupTransactionListQueryCountIntegrationTest {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final int FEW = 10;
     private static final int MANY = 100;
-    // chênh lệch cho phép khi tăng số giao dịch: tối đa một câu nạp người chia tiền thêm
-    private static final long ALLOWED_GROWTH = 1;
+    // chênh lệch cho phép khi tăng số giao dịch: tối đa hai câu nạp người chia tiền thêm (do default_batch_fetch_size = 50)
+    private static final long ALLOWED_GROWTH = 2;
 
     @Container
     @ServiceConnection

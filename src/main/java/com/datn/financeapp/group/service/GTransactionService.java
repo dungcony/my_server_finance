@@ -5,7 +5,6 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
-import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.GTransactionType;
 
 import java.time.Instant;
@@ -45,8 +44,6 @@ import java.util.UUID;
  * Output: số lượng (long).</li>
  * <li>{@link #sumConfirmedAmount}: Cộng tổng tiền giao dịch đã xác nhận theo loại, toàn thời gian hoặc trong một kỳ.
  * Input: groupId, type, [from, to). Output: tổng tiền (long).</li>
- * <li>{@link #streamConfirmedTransactions}: Lấy toàn bộ giao dịch đã xác nhận của nhóm để tính số dư thành viên.
- * Input: groupId. Output: Stream&lt;GTransaction&gt;.</li>
  * </ul>
  * </p>
  */
@@ -168,14 +165,4 @@ public interface GTransactionService {
      * @return Tổng tiền, 0 nếu trong kỳ chưa có giao dịch nào
      */
     long sumConfirmedAmount(UUID groupId, GTransactionType type, Instant from, Instant to);
-
-    /**
-     * Toàn bộ giao dịch đã xác nhận của nhóm (kèm danh sách phân bổ), xếp theo thời điểm phát sinh tăng dần.
-     * <p>Dùng để tính số dư từng thành viên. Không kiểm tra quyền — nơi gọi phải xác thực thành viên trước.</p>
-     *
-     * @param groupId ID nhóm
-     * @return Luồng giao dịch {@code CONFIRMED}, chưa xóa, theo thứ tự thời gian tăng dần. Chỉ dùng được khi đang trong
-     * một transaction và người gọi phải đóng luồng (try-with-resources)
-     */
-    java.util.stream.Stream<GTransaction> streamConfirmedTransactions(UUID groupId);
 }

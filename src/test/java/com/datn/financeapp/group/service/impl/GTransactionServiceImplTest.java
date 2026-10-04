@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -424,18 +423,6 @@ class GTransactionServiceImplTest {
         long total = service.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION, from, to);
 
         assertThat(total).isZero();
-    }
-
-    @Test
-    @DisplayName("Lấy giao dịch đã xác nhận chỉ hỏi repository trạng thái CONFIRMED của đúng nhóm")
-    void streamConfirmedTransactions_QueriesConfirmedStatusOfGroup() {
-        GTransaction confirmed = txn(100_000L);
-        when(transactionRepository.streamByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                groupId, GTransactionStatus.CONFIRMED)).thenReturn(Stream.of(confirmed));
-
-        try (Stream<GTransaction> result = service.streamConfirmedTransactions(groupId)) {
-            assertThat(result.toList()).containsExactly(confirmed);
-        }
     }
 
     @Test

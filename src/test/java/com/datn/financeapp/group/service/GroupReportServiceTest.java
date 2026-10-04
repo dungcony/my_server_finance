@@ -11,8 +11,11 @@ import com.datn.financeapp.group.dto.response.report.GroupSummaryReportRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.*;
+import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.repository.GroupRepository;
+import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.service.impl.GReportServiceImpl;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
@@ -56,6 +59,9 @@ class GroupReportServiceTest {
     private GTransactionService gTransactionService;
 
     @Mock
+    private GroupTransactionRepository transactionRepository;
+
+    @Mock
     private MemberService memberService;
 
     @Mock
@@ -83,6 +89,7 @@ class GroupReportServiceTest {
         reportService = new GReportServiceImpl(
                 groupService,
                 gTransactionService,
+                transactionRepository,
                 memberService,
                 userService,
                 permissionValidator
@@ -578,8 +585,64 @@ class GroupReportServiceTest {
     }
 
     private void stubTransactions(GTransaction... txns) {
-        when(gTransactionService.streamConfirmedTransactions(groupId))
-            .thenAnswer(inv -> java.util.List.of(txns).stream());
+        List<MemberRes> members;
+        try {
+            members = memberService.getMembersWithStatusIn(groupId, NON_PENDING_STATUSES);
+        } catch (Exception e) {
+            members = List.of();
+        }
+        if (members == null || members.isEmpty()) {
+            members = List.of(
+                    member(userA, MemberRole.OWNER, MemberStatus.ACTIVE, Instant.now().minusSeconds(86400), null),
+                    member(userB, MemberRole.MEMBER, MemberStatus.ACTIVE, Instant.now().minusSeconds(86400), null),
+                    member(userC, MemberRole.MEMBER, MemberStatus.ACTIVE, Instant.now().minusSeconds(86400), null)
+            );
+        }
+        MemberBalances mb = BalanceCalculator.calculateBalances(java.util.List.of(txns).stream(), members, null);
+        List<GroupTransactionRepository.MemberBalanceProjection> projections = mb.members().entrySet().stream()
+                .map(e -> (GroupTransactionRepository.MemberBalanceProjection) new TestMemberBalanceProjection(
+                        e.getKey(),
+                        e.getValue().getPaidOutOfPocket(),
+                        e.getValue().getRawContribution(),
+                        e.getValue().getRefunded(),
+                        e.getValue().getShare()
+                ))
+                .toList();
+
+        when(transactionRepository.aggregateMemberBalancesByGroupId(groupId)).thenReturn(projections);
+    }
+
+    private record TestMemberBalanceProjection(
+            UUID userId,
+            long paidOutOfPocket,
+            long contribution,
+            long refund,
+            long share
+    ) implements GroupTransactionRepository.MemberBalanceProjection {
+        @Override
+        public UUID getUserId() {
+            return userId;
+        }
+
+        @Override
+        public long getPaidOutOfPocket() {
+            return paidOutOfPocket;
+        }
+
+        @Override
+        public long getContribution() {
+            return contribution;
+        }
+
+        @Override
+        public long getRefund() {
+            return refund;
+        }
+
+        @Override
+        public long getShare() {
+            return share;
+        }
     }
 
     private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,

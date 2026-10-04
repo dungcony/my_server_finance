@@ -123,10 +123,6 @@ class GroupScalePerfIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    // streamConfirmedTransactions chỉ đọc được khi đang trong transaction, nên đo trong TransactionTemplate
-    @Autowired
-    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
-
     @FunctionalInterface
     private interface Step {
         void run() throws Exception;
@@ -215,12 +211,6 @@ class GroupScalePerfIntegrationTest {
         measure(scale, "GTransactionService.listPending", () -> gTransactionService.listPending(operator, group, 1, 100));
         measure(scale, "ReportService.getSummary (toàn thời gian)", () -> reportService.getSummary(operator, group, null));
         measure(scale, "ReportService.getSummary (theo tháng)", () -> reportService.getSummary(operator, group, thisMonth));
-        measure(scale, "GTransactionService.streamConfirmedTransactions",
-                () -> transactionTemplate.execute(status -> {
-                    try (java.util.stream.Stream<?> s = gTransactionService.streamConfirmedTransactions(group)) {
-                        return s.count();
-                    }
-                }));
         measure(scale, "ReportService.getBalances", () -> reportService.getBalances(operator, group));
     }
 
@@ -300,10 +290,10 @@ class GroupScalePerfIntegrationTest {
                              now() - ((g % 700) || ' days')::interval - ((g % 1440) || ' minutes')::interval,
                              'Giao dịch đo quy mô', now(), now(), 0
                       FROM generate_series({start}::bigint, {end}::bigint) AS g
-                      RETURNING id
+                      RETURNING id, amount
                     )
                     INSERT INTO group_transaction_participants (group_transaction_id, user_id, share_amount)
-                    SELECT i.id, p.user_id, NULL
+                    SELECT i.id, p.user_id, (i.amount / {participants})
                     FROM inserted i
                     CROSS JOIN (SELECT unnest({members}[1:{participants}]) AS user_id) p
                     """)

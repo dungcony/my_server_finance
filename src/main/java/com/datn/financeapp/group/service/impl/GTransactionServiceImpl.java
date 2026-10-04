@@ -32,12 +32,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Service triển khai các nghiệp vụ vòng đời của giao dịch nhóm (Group
@@ -62,9 +59,6 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     private final MemberService memberService;
     private final TransactionHelper transactionHelper;
     private final ApplicationEventPublisher eventPublisher;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     // validator
     private final GroupPermissionValidator permissionValidator;
@@ -246,20 +240,6 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     public long sumConfirmedAmount(UUID groupId, GTransactionType type, Instant from, Instant to) {
         Long total = transactionRepository.sumAmountByGroupIdAndTypeAndPeriod(groupId, type, from, to);
         return total != null ? total : 0L;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public java.util.stream.Stream<GTransaction> streamConfirmedTransactions(UUID groupId) {
-        java.util.stream.Stream<GTransaction> stream = transactionRepository
-                .streamByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
-                        groupId, GTransactionStatus.CONFIRMED);
-        AtomicInteger count = new AtomicInteger();
-        return stream.peek(txn -> {
-            if (count.incrementAndGet() % 1000 == 0) {
-                entityManager.clear();
-            }
-        }).onClose(entityManager::clear);
     }
 
     @Override
