@@ -9,10 +9,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.datn.financeapp.group.enums.GTransactionType;
+import jakarta.persistence.QueryHint;
+import org.hibernate.jpa.AvailableHints;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 
 public interface GroupTransactionRepository extends JpaRepository<GTransaction, UUID>, JpaSpecificationExecutor<GTransaction> {
 
@@ -24,6 +27,10 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
     @EntityGraph(attributePaths = {"participants"})
     List<GTransaction> findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(UUID groupId);
 
+    @QueryHints(value = {
+            @QueryHint(name = AvailableHints.HINT_FETCH_SIZE, value = "1000"),
+            @QueryHint(name = AvailableHints.HINT_READ_ONLY, value = "true")
+    })
     @EntityGraph(attributePaths = {"participants"})
     java.util.stream.Stream<GTransaction> streamByGroupIdAndStatusAndDeletedAtIsNullOrderByOccurredAtAscCreatedAtAsc(
             UUID groupId,

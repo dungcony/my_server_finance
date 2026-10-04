@@ -69,7 +69,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Slf4j
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(classes = com.datn.financeapp.App.class)
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, SqlCountingConfig.class})
 class UserServicePerfIntegrationTest {
