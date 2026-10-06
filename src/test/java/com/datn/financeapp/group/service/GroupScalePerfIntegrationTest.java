@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.common.mail.EmailService;
+import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.group.enums.GTransactionType;
+import com.datn.financeapp.group.enums.MoneySource;
+import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.performance.SqlCountingConfig;
 import com.datn.financeapp.user.entity.Role;
 import com.datn.financeapp.user.entity.User;
@@ -23,6 +26,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -123,6 +127,9 @@ class GroupScalePerfIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private GroupTransactionRepository transactionRepository;
+
     @FunctionalInterface
     private interface Step {
         void run() throws Exception;
@@ -158,6 +165,7 @@ class GroupScalePerfIntegrationTest {
 
         long seeded = 0;
         for (long scale : A_SCALES) {
+            log.warn("[PERF-SCALE] Đang chèn tới {} giao dịch...", scale);
             seeded = insertTransactionsForGroup(group, owner, seeded + 1, scale);
             insertPendingTransactions(group, owner);
             analyze();
@@ -178,6 +186,7 @@ class GroupScalePerfIntegrationTest {
 
         int created = 0;
         for (int groupScale : B_GROUP_SCALES) {
+            log.warn("[PERF-SCALE] Đang chèn tới {} nhóm...", groupScale);
             created = insertGroupRange(created + 1, groupScale);
             analyze();
             // nhóm số 1 luôn giữ nguyên kích thước, chủ nhóm tương ứng ở vị trí n % POOL_SIZE trong pool
@@ -212,6 +221,20 @@ class GroupScalePerfIntegrationTest {
         measure(scale, "ReportService.getSummary (toàn thời gian)", () -> reportService.getSummary(operator, group, null));
         measure(scale, "ReportService.getSummary (theo tháng)", () -> reportService.getSummary(operator, group, thisMonth));
         measure(scale, "ReportService.getBalances", () -> reportService.getBalances(operator, group));
+
+        // người nhận chọn ngoài phần tính giờ; hoàn 1đ cho người có số dư ròng lớn nhất để chắc chắn qua hạn mức
+        UUID recipient = richestMember(group);
+        measure(scale, "GTransactionService.create (REFUND 1đ)", () -> gTransactionService.create(operator, group,
+                new GroupTransactionCreateReq(GTransactionType.REFUND, MoneySource.FUND, 1L, Instant.now(),
+                        null, null, recipient, "Đo hoàn tiền", List.of())));
+    }
+
+    private UUID richestMember(UUID group) {
+        return transactionRepository.aggregateMemberBalancesByGroupId(group).stream()
+                .max(Comparator.comparingLong(b ->
+                        b.getContribution() + b.getPaidOutOfPocket() - b.getRefund() - b.getShare()))
+                .map(GroupTransactionRepository.MemberBalanceProjection::getUserId)
+                .orElseThrow();
     }
 
     // khởi động nguội chỉ ở mức nhỏ; Throwable gồm cả OutOfMemoryError để một hàm hết bộ nhớ không làm mất cả báo cáo
@@ -229,6 +252,8 @@ class GroupScalePerfIntegrationTest {
             cell = new Cell(-1, -1, describe(t));
         }
         results.computeIfAbsent(label, key -> new LinkedHashMap<>()).put(scale, cell);
+        log.warn("[PERF-SCALE] {} giao dịch | {} | {}", scale, label,
+                cell.error() == null ? cell.sql() + " SQL / " + cell.ms() + "ms" : "LỖI: " + cell.error());
     }
 
     private GroupTransactionFilterReq filter(int page, int size, LocalDate from, LocalDate to) {
@@ -293,9 +318,11 @@ class GroupScalePerfIntegrationTest {
                       RETURNING id, amount
                     )
                     INSERT INTO group_transaction_participants (group_transaction_id, user_id, share_amount)
-                    SELECT i.id, p.user_id, (i.amount / {participants})
+                    SELECT i.id, p.user_id,
+                           (i.amount / {participants})
+                               + CASE WHEN p.ord = {participants} THEN i.amount % {participants} ELSE 0 END
                     FROM inserted i
-                    CROSS JOIN (SELECT unnest({members}[1:{participants}]) AS user_id) p
+                    CROSS JOIN unnest({members}[1:{participants}]) WITH ORDINALITY AS p(user_id, ord)
                     """)
                     .replace("{group}", group.toString())
                     .replace("{members}", members)
@@ -373,10 +400,12 @@ class GroupScalePerfIntegrationTest {
                          'Giao dịch đo quy mô', now(), now(), 0
                   FROM perf_groups pg CROSS JOIN generate_series(1, {txns}) AS t
                   WHERE pg.n BETWEEN {from} AND {to}
-                  RETURNING id, group_id
+                  RETURNING id, group_id, amount
                 )
                 INSERT INTO group_transaction_participants (group_transaction_id, user_id, share_amount)
-                SELECT i.id, {pool}[1 + (pg.n + k) % {poolSize}], NULL
+                SELECT i.id, {pool}[1 + (pg.n + k) % {poolSize}],
+                       (i.amount / {participants})
+                           + CASE WHEN k = {participantMax} THEN i.amount % {participants} ELSE 0 END
                 FROM inserted i
                 JOIN perf_groups pg ON pg.id = i.group_id
                 CROSS JOIN generate_series(0, {participantMax}) AS k
@@ -391,6 +420,7 @@ class GroupScalePerfIntegrationTest {
                 .replace("{memberCount}", String.valueOf(B_MEMBERS_PER_GROUP))
                 .replace("{memberMax}", String.valueOf(B_MEMBERS_PER_GROUP - 1))
                 .replace("{participantMax}", String.valueOf(B_PARTICIPANTS - 1))
+                .replace("{participants}", String.valueOf(B_PARTICIPANTS))
                 .replace("{txns}", String.valueOf(B_TXNS_PER_GROUP))
                 .replace("{category}", categoryId.toString())
                 .replace("{from}", String.valueOf(fromGroup))
@@ -401,10 +431,12 @@ class GroupScalePerfIntegrationTest {
         return "(ARRAY[" + ids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(",")) + "]::uuid[])";
     }
 
-    // cập nhật thống kê để bộ lập kế hoạch truy vấn thấy đúng lượng dữ liệu vừa chèn
+    // giao dịch được chèn thẳng bằng SQL nên phải tính lại bảng tổng hợp số dư, rồi cập nhật thống kê
+    // để bộ lập kế hoạch truy vấn thấy đúng lượng dữ liệu vừa chèn
     private void analyze() {
+        jdbcTemplate.execute("SELECT fn_rebuild_group_member_balances()");
         for (String table : List.of("groups", "group_members", "group_funds", "group_transactions",
-                "group_transaction_participants"))
+                "group_transaction_participants", "group_member_balances"))
             jdbcTemplate.execute("ANALYZE " + table);
     }
 

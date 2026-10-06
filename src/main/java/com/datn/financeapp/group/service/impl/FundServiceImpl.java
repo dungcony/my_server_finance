@@ -79,7 +79,8 @@ public class FundServiceImpl implements FundService {
     @Override
     @Transactional
     public GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, FundReconcileReq req) {
-        Fund fund = fundRepository.findByGroupId(groupId)
+        // khoá dòng quỹ để hai lần kiểm kê cùng lúc không cùng tính chênh lệch trên một số dư cũ
+        Fund fund = fundRepository.findByGroupIdForUpdate(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
         return executeReconcile(operatorId, groupId, fund, req);

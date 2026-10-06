@@ -14,9 +14,9 @@ import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
 import com.datn.financeapp.group.helper.MemberBalances;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.service.GTransactionService;
 import com.datn.financeapp.group.service.GroupService;
+import com.datn.financeapp.group.service.MemberBalanceService;
 import com.datn.financeapp.group.service.MemberService;
 import com.datn.financeapp.group.service.ReportService;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
@@ -48,7 +48,7 @@ public class GReportServiceImpl implements ReportService {
 
     private final GroupService groupService;
     private final GTransactionService gTransactionService;
-    private final GroupTransactionRepository transactionRepository;
+    private final MemberBalanceService memberBalanceService;
     private final MemberService memberService;
     private final UserService userService;
     private final GroupPermissionValidator permissionValidator;
@@ -113,10 +113,8 @@ public class GReportServiceImpl implements ReportService {
         List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
                 groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
 
-        // tính số dư thu chi của từng thành viên qua truy vấn tổng hợp SQL
-        List<GroupTransactionRepository.MemberBalanceProjection> projections =
-                transactionRepository.aggregateMemberBalancesByGroupId(groupId);
-        MemberBalances mb = toMemberBalances(projections);
+        // đọc số dư thu chi của từng thành viên từ bảng tổng hợp
+        MemberBalances mb = memberBalanceService.getBalances(groupId);
 
         // xây dựng danh sách thành viên cần hiển thị trên báo cáo
         List<MemberRes> displayMembers = buildDisplayMembers(allMembers, mb);
@@ -203,19 +201,5 @@ public class GReportServiceImpl implements ReportService {
                 share,
                 net,
                 needed);
-    }
-
-    // chuyển đổi kết quả tổng hợp SQL sang đối tượng cân đối thành viên
-    private MemberBalances toMemberBalances(List<GroupTransactionRepository.MemberBalanceProjection> projections) {
-        Map<UUID, MemberBalanceAccumulator> memberMap = new HashMap<>();
-        for (var p : projections) {
-            MemberBalanceAccumulator acc = new MemberBalanceAccumulator();
-            acc.addPaidOutOfPocket(p.getPaidOutOfPocket());
-            acc.addContribution(p.getContribution());
-            acc.addRefund(p.getRefund());
-            acc.addShare(p.getShare());
-            memberMap.put(p.getUserId(), acc);
-        }
-        return new MemberBalances(memberMap);
     }
 }

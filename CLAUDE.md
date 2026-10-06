@@ -13,3 +13,7 @@ Quy tắc bắt buộc khi làm việc trong dự án backend này. Hai file dư
 ## Quy tắc khi chạy test
 
 @.agents/test-rule.md
+
+## Quy tắc viết plan
+
+@.agents/plan-rule.md

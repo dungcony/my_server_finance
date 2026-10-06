@@ -15,6 +15,7 @@ import lombok.Getter;
  * <ul>
  *   <li>Các hàm {@code add...} (Contribution, PaidOutOfPocket, Refund, Share): Cộng dồn chỉ số. Input: số tiền. Output: void.</li>
  *   <li>{@link #getNetBalance()}: Tính số dư ròng, tức số tiền người đó còn trong quỹ. Input: không. Output: số dư ròng.</li>
+ *   <li>{@link #isZero()}: Kiểm tra cả 4 chỉ số đều bằng 0. Input: không. Output: boolean.</li>
  * </ul>
  * </p>
  */
@@ -88,5 +89,14 @@ public class MemberBalanceAccumulator {
      */
     public long getNetBalance() {
         return rawContribution + paidOutOfPocket - refunded - share;
+    }
+
+    /**
+     * Kiểm tra cả 4 chỉ số đều bằng 0, dùng để bỏ qua thành viên không có chênh lệch khi ghi bảng tổng hợp.
+     *
+     * @return {@code true} nếu không có chỉ số nào khác 0
+     */
+    public boolean isZero() {
+        return rawContribution == 0L && paidOutOfPocket == 0L && refunded == 0L && share == 0L;
     }
 }

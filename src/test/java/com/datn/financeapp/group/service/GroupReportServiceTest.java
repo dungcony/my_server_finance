@@ -15,7 +15,6 @@ import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.repository.GroupRepository;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.service.impl.GReportServiceImpl;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
@@ -59,7 +58,7 @@ class GroupReportServiceTest {
     private GTransactionService gTransactionService;
 
     @Mock
-    private GroupTransactionRepository transactionRepository;
+    private MemberBalanceService memberBalanceService;
 
     @Mock
     private MemberService memberService;
@@ -89,7 +88,7 @@ class GroupReportServiceTest {
         reportService = new GReportServiceImpl(
                 groupService,
                 gTransactionService,
-                transactionRepository,
+                memberBalanceService,
                 memberService,
                 userService,
                 permissionValidator
@@ -599,50 +598,8 @@ class GroupReportServiceTest {
             );
         }
         MemberBalances mb = BalanceCalculator.calculateBalances(java.util.List.of(txns).stream(), members, null);
-        List<GroupTransactionRepository.MemberBalanceProjection> projections = mb.members().entrySet().stream()
-                .map(e -> (GroupTransactionRepository.MemberBalanceProjection) new TestMemberBalanceProjection(
-                        e.getKey(),
-                        e.getValue().getPaidOutOfPocket(),
-                        e.getValue().getRawContribution(),
-                        e.getValue().getRefunded(),
-                        e.getValue().getShare()
-                ))
-                .toList();
 
-        when(transactionRepository.aggregateMemberBalancesByGroupId(groupId)).thenReturn(projections);
-    }
-
-    private record TestMemberBalanceProjection(
-            UUID userId,
-            long paidOutOfPocket,
-            long contribution,
-            long refund,
-            long share
-    ) implements GroupTransactionRepository.MemberBalanceProjection {
-        @Override
-        public UUID getUserId() {
-            return userId;
-        }
-
-        @Override
-        public long getPaidOutOfPocket() {
-            return paidOutOfPocket;
-        }
-
-        @Override
-        public long getContribution() {
-            return contribution;
-        }
-
-        @Override
-        public long getRefund() {
-            return refund;
-        }
-
-        @Override
-        public long getShare() {
-            return share;
-        }
+        when(memberBalanceService.getBalances(groupId)).thenReturn(mb);
     }
 
     private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,

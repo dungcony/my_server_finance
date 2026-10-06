@@ -61,6 +61,9 @@ class TransactionServiceTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
+    private MemberBalanceService memberBalanceService;
+
+    @Mock
     private GTransactionBuilder expenseStrategy;
 
     @Mock
@@ -92,6 +95,7 @@ class TransactionServiceTest {
                 memberService,
                 transactionHelper,
                 eventPublisher,
+                memberBalanceService,
                 permissionValidator,
                 transactionValidator,
                 List.of(expenseStrategy, refundStrategy),

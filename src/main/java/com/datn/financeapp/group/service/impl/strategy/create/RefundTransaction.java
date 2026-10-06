@@ -4,14 +4,11 @@ package com.datn.financeapp.group.service.impl.strategy.create;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.*;
-import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberBalances;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
-import com.datn.financeapp.group.service.MemberService;
+import com.datn.financeapp.group.service.MemberBalanceService;
 import com.datn.financeapp.group.validator.GroupTransactionTypeValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -35,8 +32,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RefundTransaction implements GTransactionBuilder {
 
-    private final GroupTransactionRepository transactionRepository;
-    private final MemberService memberService;
+    private final MemberBalanceService memberBalanceService;
 
     @Override
     public boolean supports(GTransactionType type) {
@@ -59,12 +55,8 @@ public class RefundTransaction implements GTransactionBuilder {
             throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
         }
 
-        // tính toán số dư hiện tại để kiểm tra hạn mức hoàn trả
-        List<GTransaction> allTxns = transactionRepository
-                .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId);
-        List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
-                groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
-        MemberBalances mb = BalanceCalculator.calculateBalances(allTxns.stream(), allMembers, null);
+        // đọc số dư hiện tại của người nhận kèm khoá dòng để kiểm hạn mức hoàn trả
+        MemberBalances mb = memberBalanceService.getBalancesForUpdate(groupId, List.of(req.transactorId()));
 
         GroupTransactionTypeValidator.validRefundLimit(req.transactorId(), req.amount(), mb);
 

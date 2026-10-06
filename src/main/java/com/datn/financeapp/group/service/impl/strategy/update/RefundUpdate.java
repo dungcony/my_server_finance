@@ -1,17 +1,14 @@
 package com.datn.financeapp.group.service.impl.strategy.update;
 
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
-import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.MemberBalances;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.helper.GTransactionUpdate;
-import com.datn.financeapp.group.service.MemberService;
+import com.datn.financeapp.group.service.MemberBalanceService;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
 import com.datn.financeapp.group.validator.GroupTransactionTypeValidator;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * Chiến lược cập nhật giao dịch quỹ trả tiền cho thành viên (REFUND).
@@ -37,8 +35,7 @@ import java.util.UUID;
 public class RefundUpdate implements GTransactionUpdate {
 
     private final GroupTransactionPaticipantValidator transactionValidator;
-    private final GroupTransactionRepository transactionRepository;
-    private final MemberService memberService;
+    private final MemberBalanceService memberBalanceService;
 
     @Override
     public boolean supports(GTransactionType type) {
@@ -71,11 +68,10 @@ public class RefundUpdate implements GTransactionUpdate {
 
     // tính số dư hiện tại của người nhận khi coi như khoản đang sửa chưa từng tồn tại rồi kiểm hạn mức với số tiền mới
     private void validateLimitExcludingSelf(GTransaction txn, UUID groupId, UUID targetUserId, long newAmount) {
-        List<GTransaction> allTxns = transactionRepository
-                .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId);
-        List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
-                groupId, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED));
-        MemberBalances balances = BalanceCalculator.calculateBalances(allTxns.stream(), allMembers, txn.getId());
+        // khoá dòng của cả người nhận cũ lẫn mới, rồi trừ ảnh hưởng của chính khoản đang sửa ra khỏi số dư
+        MemberBalances balances = memberBalanceService
+                .getBalancesForUpdate(groupId, Stream.of(txn.getTransactorId(), targetUserId).distinct().toList())
+                .minus(BalanceCalculator.effectOf(txn));
 
         GroupTransactionTypeValidator.validRefundLimit(targetUserId, newAmount, balances);
     }

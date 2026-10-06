@@ -332,3 +332,26 @@ $$;
 
 -- Thực thi nạp 1.000.000 giao dịch và hơn 3.500.000 dòng chia tiền
 CALL seed_bulk_group_transactions(1000000, 100000);
+
+-- =============================================================
+-- TÍNH LẠI SỐ LIỆU PHÁI SINH TỪ LỊCH SỬ GIAO DỊCH
+-- Giao dịch ở trên được chèn thẳng bằng SQL, không đi qua service, nên bảng tổng hợp
+-- số dư thành viên và số dư quỹ phải được tính lại cho khớp lịch sử
+-- =============================================================
+
+-- Bảng tổng hợp số dư từng thành viên (function tạo ở migration V18)
+SELECT fn_rebuild_group_member_balances();
+
+-- Số dư quỹ theo đúng công thức TransactionHelper.calculateDelta, thay cho số gán cứng lúc tạo quỹ
+UPDATE group_funds f
+SET current_balance = COALESCE((
+    SELECT SUM(CASE
+        WHEN gt.type = 'CONTRIBUTION' AND gt.money_source = 'PERSONAL' THEN gt.amount
+        WHEN gt.type = 'EXPENSE' AND gt.money_source = 'FUND' THEN -gt.amount
+        WHEN gt.type IN ('REFUND', 'ADJUSTMENT_DOWN') THEN -gt.amount
+        WHEN gt.type = 'ADJUSTMENT_UP' THEN gt.amount
+        ELSE 0 END)
+    FROM group_transactions gt
+    WHERE gt.group_id = f.group_id
+      AND gt.status = 'CONFIRMED'
+      AND gt.deleted_at IS NULL), 0);

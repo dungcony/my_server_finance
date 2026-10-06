@@ -700,4 +700,110 @@ class BalanceCalculatorTest {
             assertThat(balances.get(user1).getShare()).isEqualTo(0L);
         }
     }
+
+    @Nested
+    @DisplayName("effectOf: ảnh hưởng của một giao dịch lên bảng tổng hợp số dư")
+    class EffectOfTests {
+
+        private final UUID userA = UUID.randomUUID();
+        private final UUID userB = UUID.randomUUID();
+        private final UUID userC = UUID.randomUUID();
+
+        private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,
+                                 GTransactionStatus status, TransactionParticipant... participants) {
+            return GTransaction.builder()
+                    .id(UUID.randomUUID())
+                    .type(type)
+                    .moneySource(source)
+                    .transactorId(transactorId)
+                    .amount(amount)
+                    .status(status)
+                    .participants(new ArrayList<>(List.of(participants)))
+                    .build();
+        }
+
+        private TransactionParticipant share(UUID userId, long amount) {
+            return TransactionParticipant.builder().userId(userId).shareAmount(amount).build();
+        }
+
+        @Test
+        @DisplayName("Nộp quỹ: người nộp được cộng vào phần đã góp")
+        void contribution_addsToContributor() {
+            MemberBalances effect = BalanceCalculator.effectOf(txn(GTransactionType.CONTRIBUTION,
+                    MoneySource.PERSONAL, userA, 100_000L, GTransactionStatus.CONFIRMED));
+
+            assertThat(effect.get(userA).getRawContribution()).isEqualTo(100_000L);
+            assertThat(effect.members()).containsOnlyKeys(userA);
+        }
+
+        @Test
+        @DisplayName("Chi tiền túi: người chi được cộng phần chi hộ, mỗi người tham gia cộng phần phải chịu")
+        void personalExpense_addsPaidOutOfPocketAndShares() {
+            MemberBalances effect = BalanceCalculator.effectOf(txn(GTransactionType.EXPENSE, MoneySource.PERSONAL,
+                    userA, 90_000L, GTransactionStatus.CONFIRMED,
+                    share(userA, 30_000L), share(userB, 30_000L), share(userC, 30_000L)));
+
+            assertThat(effect.get(userA).getPaidOutOfPocket()).isEqualTo(90_000L);
+            assertThat(effect.get(userA).getShare()).isEqualTo(30_000L);
+            assertThat(effect.get(userB).getShare()).isEqualTo(30_000L);
+            assertThat(effect.get(userC).getShare()).isEqualTo(30_000L);
+        }
+
+        @Test
+        @DisplayName("Chi từ quỹ: không ai được tính chi hộ, mỗi người tham gia cộng phần phải chịu")
+        void fundExpense_addsSharesOnly() {
+            MemberBalances effect = BalanceCalculator.effectOf(txn(GTransactionType.EXPENSE, MoneySource.FUND,
+                    userA, 90_000L, GTransactionStatus.CONFIRMED,
+                    share(userA, 30_000L), share(userB, 30_000L), share(userC, 30_000L)));
+
+            assertThat(effect.get(userA).getPaidOutOfPocket()).isZero();
+            assertThat(effect.get(userA).getShare()).isEqualTo(30_000L);
+            assertThat(effect.get(userB).getShare()).isEqualTo(30_000L);
+            assertThat(effect.get(userC).getShare()).isEqualTo(30_000L);
+        }
+
+        @Test
+        @DisplayName("Hoàn tiền: người nhận được cộng vào phần đã được hoàn")
+        void refund_addsToRecipient() {
+            MemberBalances effect = BalanceCalculator.effectOf(txn(GTransactionType.REFUND, MoneySource.FUND,
+                    userA, 50_000L, GTransactionStatus.CONFIRMED));
+
+            assertThat(effect.get(userA).getRefunded()).isEqualTo(50_000L);
+            assertThat(effect.members()).containsOnlyKeys(userA);
+        }
+
+        @Test
+        @DisplayName("Kiểm kê giảm: mỗi người tham gia phải chịu thêm phần của mình")
+        void adjustmentDown_increasesShares() {
+            MemberBalances effect = BalanceCalculator.effectOf(txn(GTransactionType.ADJUSTMENT_DOWN, MoneySource.FUND,
+                    userC, 60_000L, GTransactionStatus.CONFIRMED, share(userA, 30_000L), share(userB, 30_000L)));
+
+            assertThat(effect.get(userA).getShare()).isEqualTo(30_000L);
+            assertThat(effect.get(userB).getShare()).isEqualTo(30_000L);
+            assertThat(effect.get(userC).isZero()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Kiểm kê tăng: phần phải chịu của mỗi người tham gia giảm đi")
+        void adjustmentUp_decreasesShares() {
+            MemberBalances effect = BalanceCalculator.effectOf(txn(GTransactionType.ADJUSTMENT_UP, MoneySource.FUND,
+                    userC, 60_000L, GTransactionStatus.CONFIRMED, share(userA, 30_000L), share(userB, 30_000L)));
+
+            assertThat(effect.get(userA).getShare()).isEqualTo(-30_000L);
+            assertThat(effect.get(userB).getShare()).isEqualTo(-30_000L);
+        }
+
+        @Test
+        @DisplayName("Giao dịch chưa duyệt hoặc đã xoá không ảnh hưởng tới ai")
+        void pendingOrDeleted_hasNoEffect() {
+            GTransaction pending = txn(GTransactionType.EXPENSE, MoneySource.PERSONAL, userA, 90_000L,
+                    GTransactionStatus.PENDING, share(userA, 45_000L), share(userB, 45_000L));
+            GTransaction deleted = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 100_000L,
+                    GTransactionStatus.CONFIRMED);
+            deleted.setDeletedAt(Instant.now());
+
+            assertThat(BalanceCalculator.effectOf(pending).members()).isEmpty();
+            assertThat(BalanceCalculator.effectOf(deleted).members()).isEmpty();
+        }
+    }
 }

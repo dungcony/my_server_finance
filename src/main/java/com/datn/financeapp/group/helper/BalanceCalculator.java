@@ -25,6 +25,8 @@ import java.util.stream.Stream;
  * <ul>
  * <li>{@link #calculateBalances}: Hàm chính để chốt sổ, tính ra kết quả thu chi
  * của từng người.</li>
+ * <li>{@link #effectOf}: Tính ảnh hưởng của một giao dịch lên số dư từng thành viên, dùng để ghi chênh lệch
+ * vào bảng tổng hợp.</li>
  * <li>{@link #allocateShareAmongParticipants}: Hàm chia tiền (chia đều hoặc
  * chia theo con số cụ thể) cho những người tham gia giao dịch.</li>
  * <li>{@link #getActiveMemberIdsAt}: Lấy danh sách những người đang có mặt
@@ -135,7 +137,51 @@ public final class BalanceCalculator {
         return new MemberBalances(memberMap);
     }
 
+    /**
+     * Tính ảnh hưởng của một giao dịch lên số dư từng thành viên, theo đúng công thức của bảng
+     * {@code group_member_balances}. Giao dịch chưa {@code CONFIRMED} hoặc đã xoá không ảnh hưởng ai.
+     *
+     * @param txn Giao dịch cần tính
+     * @return Ảnh hưởng theo từng thành viên, đối tượng mới mỗi lần gọi
+     */
+    public static MemberBalances effectOf(GTransaction txn) {
+        Map<UUID, MemberBalanceAccumulator> map = new HashMap<>();
+        if (txn.getStatus() != GTransactionStatus.CONFIRMED || txn.getDeletedAt() != null) {
+            return new MemberBalances(map);
+        }
+
+        UUID uid = txn.getTransactorId();
+        long amount = txn.getAmount();
+        switch (txn.getType()) {
+            case CONTRIBUTION -> accumulatorOf(map, uid).addContribution(amount);
+            case EXPENSE -> {
+                if (txn.getMoneySource() == MoneySource.PERSONAL) {
+                    accumulatorOf(map, uid).addPaidOutOfPocket(amount);
+                }
+                addParticipantShares(txn, 1L, map);
+            }
+            case REFUND -> accumulatorOf(map, uid).addRefund(amount);
+            case ADJUSTMENT_DOWN -> addParticipantShares(txn, 1L, map);
+            case ADJUSTMENT_UP -> addParticipantShares(txn, -1L, map);
+        }
+        return new MemberBalances(map);
+    }
+
     // ---------------------------------------PRIVATE----------------------------------------------//
+
+    private static MemberBalanceAccumulator accumulatorOf(Map<UUID, MemberBalanceAccumulator> map, UUID userId) {
+        return map.computeIfAbsent(userId, k -> new MemberBalanceAccumulator());
+    }
+
+    // cộng thẳng phần chia đã ghi trong group_transaction_participants, giống câu SQL tổng hợp; từ V16 share_amount không còn null
+    private static void addParticipantShares(GTransaction txn, long factor, Map<UUID, MemberBalanceAccumulator> map) {
+        if (txn.getParticipants() == null) {
+            return;
+        }
+        for (TransactionParticipant p : txn.getParticipants()) {
+            accumulatorOf(map, p.getUserId()).addShare(p.getShareAmount() * factor);
+        }
+    }
 
     /**
      * Phân bổ chi phí (share) cho các thành viên tham gia giao dịch.

@@ -3,23 +3,25 @@ package com.datn.financeapp.group.service.impl.strategy.update;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.*;
+import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.service.MemberService;
+import com.datn.financeapp.group.helper.MemberBalances;
+import com.datn.financeapp.group.service.MemberBalanceService;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,16 +38,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class RefundUpdateStrategyTest {
 
-    // số dư tính trên mọi thành viên trừ người đang chờ duyệt
-    private static final List<MemberStatus> NON_PENDING_STATUSES =
-            List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED);
-
     @Mock
     private GroupTransactionPaticipantValidator transactionValidator;
     @Mock
-    private GroupTransactionRepository transactionRepository;
-    @Mock
-    private MemberService memberService;
+    private MemberBalanceService memberBalanceService;
 
     private RefundUpdate strategy;
 
@@ -53,18 +49,14 @@ class RefundUpdateStrategyTest {
     private UUID treasurerId;
     private UUID userA;
     private UUID userB;
-    private Instant joinedAt;
 
     @BeforeEach
     void setUp() {
-        strategy = new RefundUpdate(transactionValidator, transactionRepository, memberService);
+        strategy = new RefundUpdate(transactionValidator, memberBalanceService);
         groupId = UUID.randomUUID();
         treasurerId = UUID.randomUUID();
         userA = UUID.randomUUID();
         userB = UUID.randomUUID();
-        joinedAt = Instant.now().minusSeconds(3600);
-        lenient().when(memberService.getMembersWithStatusIn(groupId, NON_PENDING_STATUSES))
-                .thenReturn(List.of(member(userA), member(userB), member(treasurerId)));
     }
 
     @Test
@@ -182,16 +174,16 @@ class RefundUpdateStrategyTest {
         assertThat(refund.getMoneySource()).isEqualTo(MoneySource.FUND);
     }
 
-    // dùng lenient vì ca giảm / giữ nguyên số tiền không cần đọc lịch sử
+    // bảng tổng hợp giả lập bằng tổng ảnh hưởng của chính các giao dịch trong lịch sử; tính lúc được gọi để
+    // phản ánh đúng số tiền hiện tại của giao dịch, và dùng lenient vì ca giảm / giữ nguyên số tiền không đọc số dư
     private void stubAllTxns(GTransaction... txns) {
-        lenient().when(transactionRepository
-                        .findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId))
-                .thenReturn(List.of(txns));
-    }
-
-    private MemberRes member(UUID userId) {
-        return new MemberRes(UUID.randomUUID(), userId, MemberRole.MEMBER, MemberStatus.ACTIVE, joinedAt, null, null,
-                false);
+        lenient().when(memberBalanceService.getBalancesForUpdate(eq(groupId), any()))
+                .thenAnswer(invocation -> {
+                    MemberBalances total = new MemberBalances(Map.of());
+                    for (GTransaction t : txns)
+                        total = total.plus(BalanceCalculator.effectOf(t));
+                    return total;
+                });
     }
 
     private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount) {

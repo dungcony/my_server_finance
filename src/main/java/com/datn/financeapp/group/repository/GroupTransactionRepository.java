@@ -119,6 +119,5 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
             ) combined
             GROUP BY user_id
             """, nativeQuery = true)
-    List<MemberBalanceProjection> aggregateMemberBalancesByGroupId(
-            @org.springframework.data.repository.query.Param("groupId") UUID groupId);
+    List<MemberBalanceProjection> aggregateMemberBalancesByGroupId(UUID groupId);
 }

@@ -13,7 +13,9 @@ import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
+import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
+import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.helper.GTransactionUpdate;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
@@ -34,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -55,10 +58,14 @@ import java.util.UUID;
 @Transactional
 public class GTransactionServiceImpl implements GTransactionService, GTransactionReviewService {
 
+    // ảnh hưởng của giao dịch chưa tồn tại hoặc đã bị xoá
+    private static final MemberBalances NO_EFFECT = new MemberBalances(Map.of());
+
     private final GroupTransactionRepository transactionRepository;
     private final MemberService memberService;
     private final TransactionHelper transactionHelper;
     private final ApplicationEventPublisher eventPublisher;
+    private final MemberBalanceService memberBalanceService;
 
     // validator
     private final GroupPermissionValidator permissionValidator;
@@ -90,10 +97,15 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // lấy trạng thái kiểm duyệt dựa vào quyền người thực hiện
         GTransactionStatus status = strategy.determineStatus(authInfo);
 
+        // chỉ khoản được duyệt ngay mới làm đổi số dư; khoá nhóm trước khi strategy kiểm hạn mức hoàn tiền
+        if (status == GTransactionStatus.CONFIRMED)
+            memberBalanceService.lockGroupForBalanceChange(groupId);
+
         // điều phối tới đúng strategy phụ trách loại giao dịch để xây dựng entity
         GTransaction gTransaction = strategy.build(operatorId, groupId, req, status, authInfo.isSettlementEnabled());
 
         transactionRepository.save(gTransaction);
+        memberBalanceService.applyDelta(groupId, NO_EFFECT, BalanceCalculator.effectOf(gTransaction));
 
         // cập nhật số dư quỹ nếu giao dịch được duyệt tự động
         if (status == GTransactionStatus.CONFIRMED) {
@@ -163,6 +175,9 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // xác thực người thực hiện có mặt trong nhóm
         MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
+        // khoá nhóm trước khi nạp giao dịch để bản đọc ra không bị lệnh khác đổi giữa chừng
+        memberBalanceService.lockGroupForBalanceChange(groupId);
+
         // tìm giao dịch hợp lệ
         GTransaction txn = transactionRepository.findByIdAndGroupIdAndDeletedAtIsNull(transactionId, groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND));
@@ -181,6 +196,9 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                 ? transactionHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), true)
                 : 0L;
 
+        // chụp ảnh hưởng cũ bằng giá trị trước khi strategy sửa entity
+        MemberBalances before = BalanceCalculator.effectOf(txn);
+
         // điều phối strategy tương ứng cập nhật giao dịch
         updateStrategies.stream()
                 .filter(s -> s.supports(txn.getType()))
@@ -194,6 +212,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
 
         // lưu cơ sở dữ liệu và gửi sự kiện biến động quỹ nếu có chênh lệch
         transactionRepository.save(txn);
+        memberBalanceService.applyDelta(groupId, before, BalanceCalculator.effectOf(txn));
         if (delta != 0L)
             eventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, delta));
 
@@ -205,10 +224,12 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // xác thực người thực hiện và lấy thông tin quyền hạn
         MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
+        memberBalanceService.lockGroupForBalanceChange(groupId);
         GTransaction txn = findActiveTransaction(transactionId, groupId);
 
         // kiểm tra quyền xóa theo vai trò
         permissionValidator.verifyTransactionDeletePermission(txn, operatorId, authInfo);
+        MemberBalances before = BalanceCalculator.effectOf(txn);
 
         // hoàn tác số dư quỹ nếu giao dịch đã được xác nhận
         if (txn.getStatus() == GTransactionStatus.CONFIRMED) {
@@ -221,6 +242,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         txn.setDeletedAt(now);
         txn.setUpdatedAt(now);
         transactionRepository.save(txn);
+        memberBalanceService.applyDelta(groupId, before, NO_EFFECT);
     }
 
     @Override
@@ -245,9 +267,11 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     public GroupTransactionDetailRes confirm(UUID operatorId, UUID groupId, UUID transactionId) {
         requireReviewer(groupId, operatorId);
+        memberBalanceService.lockGroupForBalanceChange(groupId);
         GTransaction txn = findPendingTransaction(transactionId, groupId);
 
         updateReviewStatus(txn, GTransactionStatus.CONFIRMED, operatorId, Instant.now());
+        memberBalanceService.applyDelta(groupId, NO_EFFECT, BalanceCalculator.effectOf(txn));
         publishFundChangeEvent(groupId, deltaOf(txn));
 
         return transactionHelper.buildDetailRes(txn);
@@ -266,14 +290,20 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     public int bulkConfirm(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req) {
         requireReviewer(groupId, operatorId);
+        memberBalanceService.lockGroupForBalanceChange(groupId);
         List<GTransaction> txns = findPendingBatch(groupId, req);
 
         long totalDelta = 0L;
+        MemberBalances totalEffect = NO_EFFECT;
         Instant now = Instant.now();
         for (GTransaction t : txns) {
             updateReviewStatus(t, GTransactionStatus.CONFIRMED, operatorId, now);
             totalDelta += deltaOf(t);
+            totalEffect = totalEffect.plus(BalanceCalculator.effectOf(t));
         }
+
+        // gộp ảnh hưởng cả lô rồi ghi bảng tổng hợp một lần
+        memberBalanceService.applyDelta(groupId, NO_EFFECT, totalEffect);
 
         // cập nhật số dư quỹ 1 lần duy nhất cho cả lô
         publishFundChangeEvent(groupId, totalDelta);

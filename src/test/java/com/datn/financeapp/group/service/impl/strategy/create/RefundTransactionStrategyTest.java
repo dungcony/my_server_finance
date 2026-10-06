@@ -7,15 +7,16 @@ import static org.mockito.Mockito.when;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.group.dto.response.member.MemberRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.service.MemberService;
+import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
+import com.datn.financeapp.group.helper.MemberBalances;
+import com.datn.financeapp.group.service.MemberBalanceService;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -33,10 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class RefundTransactionStrategyTest {
 
     @Mock
-    private GroupTransactionRepository transactionRepository;
-
-    @Mock
-    private MemberService memberService;
+    private MemberBalanceService memberBalanceService;
 
     private RefundTransaction strategy;
 
@@ -49,7 +47,7 @@ class RefundTransactionStrategyTest {
         groupId = UUID.randomUUID();
         operatorId = UUID.randomUUID();
         transactorId = UUID.randomUUID();
-        strategy = new RefundTransaction(transactionRepository, memberService);
+        strategy = new RefundTransaction(memberBalanceService);
     }
 
     @Test
@@ -130,24 +128,12 @@ class RefundTransactionStrategyTest {
                 .hasFieldOrPropertyWithValue("code", ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID.getCode());
     }
 
-    // dựng lịch sử một khoản góp của người nhận để có số còn lại trong quỹ
+    // số dư của người nhận chỉ gồm một khoản góp, tương đương lịch sử một khoản CONTRIBUTION đã duyệt
     private void stubOneContribution(long amount) {
-        GTransaction contribution = GTransaction.builder()
-                .id(UUID.randomUUID())
-                .type(GTransactionType.CONTRIBUTION)
-                .moneySource(MoneySource.PERSONAL)
-                .transactorId(transactorId)
-                .amount(amount)
-                .status(GTransactionStatus.CONFIRMED)
-                .participants(List.of())
-                .build();
-        when(transactionRepository.findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(groupId))
-                .thenReturn(List.of(contribution));
-        MemberRes member = new MemberRes(UUID.randomUUID(), transactorId, MemberRole.MEMBER, MemberStatus.ACTIVE,
-                null, null, null, false);
-        when(memberService.getMembersWithStatusIn(groupId,
-                List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED)))
-                .thenReturn(List.of(member));
+        MemberBalanceAccumulator acc = new MemberBalanceAccumulator();
+        acc.addContribution(amount);
+        when(memberBalanceService.getBalancesForUpdate(groupId, List.of(transactorId)))
+                .thenReturn(new MemberBalances(Map.of(transactorId, acc)));
     }
 
     private GroupTransactionCreateReq refundReq(long amount) {

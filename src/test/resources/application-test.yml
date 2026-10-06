@@ -5,6 +5,10 @@ spring:
     locations: classpath:db/migration,classpath:db/migration
     encoding: UTF-8
     baseline-on-migrate: false
+  jpa:
+    properties:
+      hibernate:
+        default_batch_fetch_size: 50
 
 logging:
   level:
