@@ -93,8 +93,11 @@ function switchAuthSubtab(subtab) {
 
 // Xử lý sau khi nhận token thành công
 function onAuthSuccess(authResult) {
-    const token = authResult.access_token || authResult.accessToken;
-    if (!token) return;
+    const token = authResult.token?.access || authResult.token?.accessToken || authResult.access_token || authResult.accessToken;
+    if (!token) {
+        console.warn('Không tìm thấy token trong phản hồi xác thực:', authResult);
+        return;
+    }
 
     localStorage.setItem(STORAGE_KEY_TOKEN, token);
 
@@ -1585,7 +1588,7 @@ function populateTransactionMemberSelects(members) {
                     <code style="font-size: 11px; color: var(--text-muted);">${uid.substring(0, 8)}...</code>
                 </label>
                 <div style="width: 140px;">
-                    <input type="number" class="participant-amount" data-user-id="${uid}" placeholder="Tự chia đều" style="padding: 4px 6px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); width: 100%;">
+                    <input type="number" class="participant-amount" data-user-id="${uid}" placeholder="Số tiền (đ)" style="padding: 4px 6px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); width: 100%;">
                 </div>
             `;
             container.appendChild(row);
@@ -1600,6 +1603,33 @@ function toggleParticipantCustomSplit() {
     if (customList) {
         customList.style.display = isSplitEquallyAll ? 'none' : 'block';
     }
+}
+
+// Tự động chia đều số tiền giao dịch cho các thành viên được chọn
+function autoSplitSelectedParticipants() {
+    const amountStr = document.getElementById('txnAmount')?.value?.trim();
+    const amount = amountStr ? parseInt(amountStr, 10) : 0;
+    if (isNaN(amount) || amount <= 0) {
+        alert('Vui lòng nhập số tiền giao dịch hợp lệ (> 0) trước khi chia đều!');
+        return;
+    }
+
+    const checkedBoxes = document.querySelectorAll('#txnParticipantsContainer .participant-checkbox:checked');
+    const count = checkedBoxes.length;
+    if (count === 0) {
+        alert('Vui lòng tick chọn ít nhất một thành viên để chia đều!');
+        return;
+    }
+
+    const base = Math.floor(amount / count);
+    const rem = amount % count;
+    checkedBoxes.forEach((cb, index) => {
+        const uid = cb.getAttribute('data-user-id');
+        const input = document.querySelector(`.participant-amount[data-user-id="${uid}"]`);
+        if (input) {
+            input.value = base + (index < rem ? 1 : 0);
+        }
+    });
 }
 
 // Xử lý khi thay đổi loại giao dịch
@@ -1654,17 +1684,34 @@ async function createGroupTransaction() {
         const isSplitEquallyAll = document.getElementById('splitEquallyAll')?.checked ?? true;
         if (!isSplitEquallyAll) {
             const checkedBoxes = document.querySelectorAll('#txnParticipantsContainer .participant-checkbox:checked');
-            checkedBoxes.forEach(cb => {
+            if (checkedBoxes.length === 0) {
+                alert('Vui lòng tick chọn ít nhất một thành viên tham gia chia tiền!');
+                return;
+            }
+
+            const totalAmount = parseInt(amountStr, 10);
+            let totalSplit = 0;
+
+            for (const cb of checkedBoxes) {
                 const uid = cb.getAttribute('data-user-id');
                 const amountInput = document.querySelector(`.participant-amount[data-user-id="${uid}"]`);
                 const shareAmountStr = amountInput?.value?.trim();
+
+                if (!shareAmountStr || isNaN(parseInt(shareAmountStr, 10)) || parseInt(shareAmountStr, 10) <= 0) {
+                    alert('Vui lòng nhập số tiền hợp lệ (> 0) cho tất cả thành viên được chọn hoặc bấm "⚡ Tự động chia đều"!');
+                    return;
+                }
+
+                const shareAmount = parseInt(shareAmountStr, 10);
+                totalSplit += shareAmount;
                 participants.push({
                     user_id: uid,
-                    share_amount: shareAmountStr ? parseInt(shareAmountStr, 10) : null
+                    share_amount: shareAmount
                 });
-            });
-            if (participants.length === 0) {
-                alert('Vui lòng tick chọn ít nhất một thành viên tham gia chia tiền!');
+            }
+
+            if (totalSplit !== totalAmount) {
+                alert(`Tổng tiền chia (${totalSplit.toLocaleString()}đ) không khớp với số tiền giao dịch (${totalAmount.toLocaleString()}đ)! Vui lòng kiểm tra lại.`);
                 return;
             }
         }

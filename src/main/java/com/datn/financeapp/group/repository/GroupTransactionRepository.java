@@ -56,14 +56,18 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
 
     interface MemberBalanceProjection {
         UUID getUserId();
+
         long getPaidOutOfPocket();
+
         long getContribution();
+
         long getRefund();
+
         long getShare();
     }
 
     @Query(value = """
-            SELECT 
+            SELECT
                 user_id,
                 COALESCE(SUM(paid_out_of_pocket), 0) AS paid_out_of_pocket,
                 COALESCE(SUM(contribution), 0)       AS contribution,
@@ -77,27 +81,27 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
                   AND deleted_at IS NULL
                   AND type = 'EXPENSE' 
                   AND money_source = 'PERSONAL'
-
+            
                 UNION ALL
-
+            
                 SELECT transactor_id AS user_id, 0, amount, 0, 0
                 FROM group_transactions
                 WHERE group_id = :groupId 
                   AND status = 'CONFIRMED' 
                   AND deleted_at IS NULL
                   AND type = 'CONTRIBUTION'
-
+            
                 UNION ALL
-
+            
                 SELECT transactor_id AS user_id, 0, 0, amount, 0
                 FROM group_transactions
                 WHERE group_id = :groupId 
                   AND status = 'CONFIRMED' 
                   AND deleted_at IS NULL
                   AND type = 'REFUND'
-
+            
                 UNION ALL
-
+            
                 SELECT 
                     p.user_id, 
                     0, 

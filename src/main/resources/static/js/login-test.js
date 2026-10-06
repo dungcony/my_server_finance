@@ -42,7 +42,7 @@ async function sendTokenToServer(idToken) {
             statusBadge.innerText = `HTTP ${res.status} OK — Đăng nhập thành công!`;
             // Lưu token và thông tin người dùng vào bộ nhớ trình duyệt để chia sẻ với các trang test
             if (data && data.data) {
-                const token = data.data.access_token || data.data.accessToken;
+                const token = data.data.token?.access || data.data.token?.accessToken || data.data.access_token || data.data.accessToken;
                 if (token) {
                     localStorage.setItem('finance_ai_access_token', token);
                 }
@@ -137,7 +137,7 @@ async function verifyUserEmail() {
             statusBadge.className = 'status-badge status-success';
             statusBadge.innerText = `HTTP ${res.status} OK — Kích hoạt tài khoản thành công!`;
             if (data && data.data) {
-                const token = data.data.access_token || data.data.accessToken;
+                const token = data.data.token?.access || data.data.token?.accessToken || data.data.access_token || data.data.accessToken;
                 if (token) {
                     localStorage.setItem('finance_ai_access_token', token);
                 }
@@ -229,7 +229,7 @@ async function loginWithEmailPassword() {
             statusBadge.innerText = `HTTP ${res.status} OK — Đăng nhập thành công!`;
             // lưu token và thông tin người dùng vào bộ nhớ trình duyệt
             if (data && data.data) {
-                const token = data.data.access_token || data.data.accessToken;
+                const token = data.data.token?.access || data.data.token?.accessToken || data.data.access_token || data.data.accessToken;
                 if (token) {
                     localStorage.setItem('finance_ai_access_token', token);
                 }

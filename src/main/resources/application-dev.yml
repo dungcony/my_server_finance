@@ -3,6 +3,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/finance
     username: postgres
     password: 123456
+    hikari:
+      maximum-pool-size: 50
+      connection-timeout: 3000
   data:
     redis:
       host: localhost
@@ -15,8 +18,10 @@ spring:
         format_sql: false
         ddl-auto: validate
         jdbc:
-          batch_size: 25
+          batch_size: 50
         order_inserts: true
+        default_batch_fetch_size: 50
+
     open-in-view: false
 
   flyway:
@@ -32,7 +37,7 @@ app:
 
 logging:
   level:
-    com.datn.financeapp: DEBUG
+    com.datn.financeapp: INFO
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
     org.springframework.transaction: DEBUG

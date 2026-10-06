@@ -39,12 +39,8 @@ public class TransactionParticipant {
     private UUID userId;
 
     /**
-     * Số tiền phân bổ cụ thể cho người này (VNĐ).
-     * <ul>
-     *   <li>Nếu có giá trị: Người này chịu đúng số tiền được chỉ định (chia tùy chỉnh).</li>
-     *   <li>Nếu {@code null}: Người này tham gia theo hình thức chia đều với các thành viên khác.</li>
-     * </ul>
+     * Số tiền phân bổ cụ thể cho người này (VNĐ), luôn lớn hơn 0 và không được để trống.
      */
-    @Column(name = "share_amount")
+    @Column(name = "share_amount", nullable = false)
     private Long shareAmount;
 }

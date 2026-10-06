@@ -548,8 +548,9 @@
                     </label>
                 </div>
                 <div id="customParticipantsList" style="display: none; margin-top: 8px;">
-                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                        Tick chọn thành viên tham gia chia tiền. Để trống ô số tiền để tự động chia đều, hoặc điền số tiền cụ thể:
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                        <span style="font-size: 12px; color: var(--text-muted);">Tick chọn thành viên và nhập số tiền (bắt buộc nhập đủ cho mỗi người):</span>
+                        <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="autoSplitSelectedParticipants()">⚡ Tự động chia đều</button>
                     </div>
                     <div id="txnParticipantsContainer" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; padding-right: 4px;">
                         <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px;">Chưa nạp danh sách thành viên</div>
