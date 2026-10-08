@@ -17,30 +17,32 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 - [1. Quy ước Giao tiếp API Chung](#1-quy-uoc)
 - [2. Danh mục Điểm cuối API (Endpoints Summary)](#2-endpoints-summary)
 - [3. Đặc tả Chi tiết các DTO & API Endpoints Trọng Tâm](#3-dac-ta-chi-tiet)
-    - [3.1 Quản lý Nhóm & Thành viên](#31-nhom-va-thanh-vien)
+    - [3.1 Quản lý Nhóm & Thành viên (`GroupController` & `MemberController`)](#31-nhom-va-thanh-vien)
         - [Tạo nhóm mới (`POST /v1/groups`)](#311-tao-nhom)
         - [Danh sách & Chi tiết nhóm (`GET /v1/groups`, `GET /v1/groups/{id}`)](#312-danh-sach-chi-tiet-nhom)
         - [Cập nhật thông tin nhóm (`PATCH /v1/groups/{id}`)](#313-cap-nhat-nhom)
-        - [Lấy hoặc Làm mới mã mời (`POST /v1/groups/{id}/invite-code`)](#314-ma-moi)
+        - [Mã mời tham gia nhóm (`invite_code`)](#314-ma-moi)
         - [Tham gia nhóm bằng mã mời (`POST /v1/groups/join`)](#315-tham-gia-nhom)
+        - [Đếm việc chờ duyệt (`GET /v1/groups/{id}/pending-count`)](#315a-dem-viec-cho-duyet)
         - [Danh sách thành viên nhóm (`GET /v1/groups/{id}/members`)](#315b-danh-sach-thanh-vien)
-        - [Duyệt hoặc từ chối thành viên chờ](#316-duyet-thanh-vien)
-        - [Chuyển quyền chủ nhóm (`POST /v1/groups/{id}/transfer-ownership`)](#317-chuyen-quyen-chu-nhom)
+        - [Chủ nhóm thêm thành viên trực tiếp (`POST /v1/groups/{id}/members`)](#315c-them-thanh-vien)
+        - [Duyệt hoặc từ chối thành viên chờ (`approve`, `reject`, `approves`, `rejects`)](#316-duyet-thanh-vien)
+        - [Chuyển quyền chủ nhóm (`PUT /v1/groups/{id}/owner-role/{memberUserId}/`)](#317-chuyen-quyen-chu-nhom)
         - [Rời nhóm và mời thành viên rời nhóm](#318-roi-nhom)
         - [Lưu trữ và mở lại nhóm](#319-luu-tru-nhom)
         - [Xoá nhóm (`DELETE /v1/groups/{id}`)](#3110-xoa-nhom)
-    - [3.2 Quỹ Nhóm (`Fund`) — mỗi nhóm một quỹ](#32-quan-ly-quy)
-        - [Xem quỹ (`GET /v1/groups/{id}/fund`)](#321-xem-quy)
-        - [Đổi tên, bàn giao quỹ (`PATCH /v1/groups/{id}/fund`)](#322-sua-quy)
-    - [3.3 Giao dịch Nhóm (`GTransaction`)](#33-giao-dich-nhom)
+    - [3.2 Quỹ Nhóm & Bàn giao Thủ quỹ (`FundController`)](#32-quan-ly-quy)
+        - [Bàn giao thủ quỹ (`PUT /v1/groups/{id}/fund-kepper`)](#322-sua-quy)
+    - [3.3 Giao dịch Nhóm (`GroupTransactionController`)](#33-giao-dich-nhom)
         - [Tạo giao dịch nhóm (`POST /v1/groups/{id}/transactions`)](#331-tao-giao-dich)
-        - [Lịch sử & Chi tiết giao dịch](#332-lich-su-chi-tiet-giao-dich)
+        - [Lịch sử & Chi tiết giao dịch (`GET /transactions`, `mine`, `pending`, `{tId}`)](#332-lich-su-chi-tiet-giao-dich)
         - [Giao dịch quỹ trả tiền cho thành viên (`REFUND`)](#333a-tra-lai-tien)
-        - [Xác nhận hoặc từ chối giao dịch](#333b-xac-nhan-tu-choi)
+        - [Xác nhận hoặc từ chối giao dịch đơn lẻ (`confirm`, `reject`)](#333b-xac-nhan-tu-choi)
+        - [Xác nhận hoặc từ chối giao dịch hàng loạt (`bulk-confirm`, `bulk-reject`)](#333c-bulk-review)
         - [Sửa & Xóa giao dịch](#333-sua-xoa-giao-dich)
-    - [3.4 Kiểm kê Quỹ (`Reconciliation`)](#34-kiem-ke-quy)
+    - [3.4 Kiểm kê Quỹ (`FundController`)](#34-kiem-ke-quy)
         - [Kiểm kê số dư thực tế (`POST /v1/groups/{id}/fund/reconcile`)](#341-kiem-ke-thuc-te)
-    - [3.5 Tổng quan Tài chính & Bảng Phần Trong Quỹ](#35-tong-quan-tai-chinh)
+    - [3.5 Báo cáo & Phân bổ Tài chính (`GroupReportController`)](#35-tong-quan-tai-chinh)
         - [Tổng quan tài chính nhóm (`GET /v1/groups/{id}/summary`)](#351-tong-quan-summary)
         - [Bảng phần trong quỹ & Tình trạng nộp quỹ (`GET /v1/groups/{id}/balances`)](#352-bang-phan-balances)
 - [4. Bảng Ma trận Mã Lỗi Phản Hồi API (Error Code Matrix)](#4-ma-tran-ma-loi)
@@ -1267,22 +1269,22 @@ classDiagram
 
     class GroupTransactionController {
         -GTransactionService gTransactionService
-        -GTransactionReviewService transactionReviewService
         +create(groupId: UUID, req: GroupTransactionCreateReq): ApiResponse~GroupTransactionDetailRes~
-        +list(groupId: UUID, filter: GroupTransactionFilterReq): ApiResponse~GroupTransactionListRes~
-        +myList(groupId: UUID, filter: GroupTransactionFilterReq): ApiResponse~GroupTransactionListRes~
+        +list(groupId: UUID, moneySource: MoneySource, type: GTransactionType, status: GTransactionStatus, transactorId: UUID, startDate: LocalDate, endDate: LocalDate, page: int, size: int): ApiResponse~GroupTransactionListRes~
+        +myList(groupId: UUID, moneySource: MoneySource, type: GTransactionType, status: GTransactionStatus, startDate: LocalDate, endDate: LocalDate, page: int, size: int): ApiResponse~GroupTransactionListRes~
         +listPending(groupId: UUID, page: int, size: int): ApiResponse~GroupTransactionListRes~
         +detail(groupId: UUID, txnId: UUID): ApiResponse~GroupTransactionDetailRes~
+        +getParticipants(groupId: UUID, txnId: UUID): ApiResponse~List~GroupTransactionParticipantRes~~
         +update(groupId: UUID, txnId: UUID, req: GroupTransactionUpdateReq): ApiResponse~GroupTransactionDetailRes~
         +delete(groupId: UUID, txnId: UUID): ApiResponse~Void~
         +confirm(groupId: UUID, txnId: UUID): ApiResponse~GroupTransactionDetailRes~
         +reject(groupId: UUID, txnId: UUID): ApiResponse~GroupTransactionDetailRes~
-        +bulkConfirm(groupId: UUID, req: GroupTransactionBulkReviewReq): ApiResponse~GroupTransactionBulkReviewRes~
-        +bulkReject(groupId: UUID, req: GroupTransactionBulkReviewReq): ApiResponse~GroupTransactionBulkReviewRes~
+        +bulkConfirm(groupId: UUID, req: GroupTransactionBulkReviewReq): ApiResponse~Object~
+        +bulkReject(groupId: UUID, req: GroupTransactionBulkReviewReq): ApiResponse~Object~
     }
 
     class GroupReportController {
-        -GReportService reportService
+        -ReportService reportService
         +summary(groupId: UUID, month: String): ApiResponse~GroupSummaryReportRes~
         +balances(groupId: UUID): ApiResponse~GroupBalanceReportRes~
     }
@@ -1343,20 +1345,17 @@ classDiagram
         +myList(operatorId: UUID, groupId: UUID, filter: GroupTransactionFilterReq): GroupTransactionListRes
         +listPending(operatorId: UUID, groupId: UUID, page: Integer, size: Integer): GroupTransactionListRes
         +detail(operatorId: UUID, groupId: UUID, transactionId: UUID): GroupTransactionDetailRes
+        +getParticipants(operatorId: UUID, groupId: UUID, transactionId: UUID): List~GroupTransactionParticipantRes~
         +update(operatorId: UUID, groupId: UUID, transactionId: UUID, req: GroupTransactionUpdateReq): GroupTransactionDetailRes
         +delete(operatorId: UUID, groupId: UUID, transactionId: UUID): void
         +countPendingForGroup(groupId: UUID): long
-    }
-
-    class GTransactionReviewService {
-        <<Interface>>
         +confirm(operatorId: UUID, groupId: UUID, transactionId: UUID): GroupTransactionDetailRes
         +reject(operatorId: UUID, groupId: UUID, transactionId: UUID): GroupTransactionDetailRes
         +bulkConfirm(operatorId: UUID, groupId: UUID, req: GroupTransactionBulkReviewReq): GroupTransactionBulkReviewRes
         +bulkReject(operatorId: UUID, groupId: UUID, req: GroupTransactionBulkReviewReq): GroupTransactionBulkReviewRes
     }
 
-    class GReportService {
+    class ReportService {
         <<Interface>>
         +getSummary(operatorId: UUID, groupId: UUID, month: String): GroupSummaryReportRes
         +getBalances(operatorId: UUID, groupId: UUID): GroupBalanceReportRes
@@ -1366,6 +1365,5 @@ classDiagram
     MemberController --> MemberBehavierService
     FundController --> FundService
     GroupTransactionController --> GTransactionService
-    GroupTransactionController --> GTransactionReviewService
-    GroupReportController --> GReportService
+    GroupReportController --> ReportService
 ```

@@ -9,6 +9,16 @@ let currentGroupIsTreasurer = false;
 let cachedCategories = null;
 let currentGroupMembersList = [];
 
+// Tìm tên hiển thị của thành viên từ danh sách thành viên nhóm đã nạp
+function findMemberDisplayName(uid) {
+    if (!uid) return '-';
+    if (currentGroupMembersList && currentGroupMembersList.length > 0) {
+        const found = currentGroupMembersList.find(m => (m.user_id || m.userId) === uid);
+        if (found) return found.display_name || found.displayName || uid;
+    }
+    return uid;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Khôi phục session và groupId đã lưu trong localStorage
     updateAuthUI();
@@ -720,10 +730,11 @@ function renderPendingTransactions(items) {
 
     items.forEach(tx => {
         const txnId = tx.id || '';
-        const transactor = tx.transactor_name || tx.transactor_id || '-';
+        const transactorId = tx.transactor_id || tx.transactor_name || '-';
+        const transactor = tx.transactor_name || findMemberDisplayName(transactorId);
         const amount = Number(tx.amount || 0).toLocaleString('vi-VN') + ' đ';
         const moneySource = tx.money_source || '-';
-        const desc = tx.description || '-';
+        const desc = tx.note || tx.description || '-';
         const createdAt = tx.created_at ? new Date(tx.created_at).toLocaleString('vi-VN') : '-';
 
         const tr = document.createElement('tr');
@@ -1901,6 +1912,7 @@ function renderAllTransactions(items) {
         const amount = Number(tx.amount || 0).toLocaleString('vi-VN') + ' đ';
         const status = tx.status || '-';
         const transactorId = tx.transactor_id || '-';
+        const transactorName = findMemberDisplayName(transactorId);
         const note = tx.note || '-';
         const occurredAt = tx.occurred_at ? new Date(tx.occurred_at).toLocaleDateString('vi-VN') : '-';
 
@@ -1913,7 +1925,10 @@ function renderAllTransactions(items) {
             <td><span class="status-badge status-idle">${moneySource}</span></td>
             <td style="font-weight: 600; color: var(--primary);">${amount}</td>
             <td><span class="status-badge ${statusClass}">${status}</span></td>
-            <td><code style="font-size: 11px;">${transactorId.substring(0, 8)}...</code></td>
+            <td>
+                <div><strong>${transactorName}</strong></div>
+                <code style="font-size: 10px; color: var(--text-muted);">${transactorId !== '-' ? transactorId.substring(0, 8) + '...' : ''}</code>
+            </td>
             <td>${note}</td>
             <td>${occurredAt}</td>
             <td>
@@ -1928,7 +1943,7 @@ function renderAllTransactions(items) {
 
 // ----------------- TRANSACTION DETAIL MODAL -----------------
 
-// Xem chi tiết giao dịch
+// Xem chi tiết giao dịch (gọi song song API detail và API participants)
 async function showTransactionDetail(txnId) {
     const groupId = getCurrentGroupId();
     if (!groupId) return;
@@ -1940,13 +1955,19 @@ async function showTransactionDetail(txnId) {
     modal.style.display = 'flex';
     body.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 16px;">Đang tải chi tiết giao dịch...</p>';
 
-    const res = await callApi(`/v1/groups/${groupId}/transactions/${txnId}`, 'GET');
-    if (!res.ok || !res.data?.data) {
+    // Gọi song song chi tiết giao dịch và danh sách người tham gia chia tiền
+    const [detailRes, partRes] = await Promise.all([
+        callApi(`/v1/groups/${groupId}/transactions/${txnId}`, 'GET'),
+        callApi(`/v1/groups/${groupId}/transactions/${txnId}/participants`, 'GET')
+    ]);
+
+    if (!detailRes.ok || !detailRes.data?.data) {
         body.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 16px;">Không tải được chi tiết giao dịch.</p>';
         return;
     }
 
-    const tx = res.data.data;
+    const tx = detailRes.data.data;
+    const participants = (partRes.ok && Array.isArray(partRes.data?.data)) ? partRes.data.data : [];
     const fmt = v => Number(v ?? 0).toLocaleString('vi-VN');
 
     // tìm tên danh mục từ cache nếu có
@@ -1956,36 +1977,27 @@ async function showTransactionDetail(txnId) {
         if (foundCat) catName = `${foundCat.name || foundCat.id}`;
     }
 
-    // tìm tên thành viên từ cache
-    const findMemberName = uid => {
-        if (!uid) return '-';
-        if (currentGroupMembersList && currentGroupMembersList.length > 0) {
-            const found = currentGroupMembersList.find(m => (m.user_id || m.userId) === uid);
-            if (found) return found.display_name || found.displayName || uid;
-        }
-        return uid;
-    };
-
-    const transactorName = findMemberName(tx.transactor_id);
-    const createdByName = findMemberName(tx.created_by);
-    const reviewedByName = tx.reviewed_by ? findMemberName(tx.reviewed_by) : null;
+    const transactorName = findMemberDisplayName(tx.transactor_id);
+    const createdByName = findMemberDisplayName(tx.created_by);
+    const reviewedByName = tx.reviewed_by ? findMemberDisplayName(tx.reviewed_by) : null;
 
     const statusClass = tx.status === 'CONFIRMED' ? 'status-success' : tx.status === 'PENDING' ? 'status-warning' : 'status-error';
     const occurredAtStr = tx.occurred_at ? new Date(tx.occurred_at).toLocaleDateString('vi-VN') : '-';
     const createdAtStr = tx.created_at ? new Date(tx.created_at).toLocaleString('vi-VN') : '-';
     const reviewedAtStr = tx.reviewed_at ? new Date(tx.reviewed_at).toLocaleString('vi-VN') : null;
 
-    // render danh sách người tham gia chia tiền
+    // Render danh sách người tham gia chia tiền từ API participants riêng biệt
     let participantsHtml = '<p style="color: var(--text-muted); font-size: 13px; margin: 4px 0;">Không có thông tin chia tiền riêng (hoặc chia đều theo cấu hình).</p>';
-    if (Array.isArray(tx.participants) && tx.participants.length > 0) {
-        const rows = tx.participants.map(p => {
-            const mName = findMemberName(p.user_id);
+    if (participants.length > 0) {
+        const rows = participants.map(p => {
+            const uid = p.user_id || p.userId || '';
+            const mName = findMemberDisplayName(uid);
             const share = p.share_amount != null ? `${fmt(p.share_amount)} đ` : 'Tự chia đều';
             return `
                 <tr style="border-bottom: 1px solid var(--border);">
                     <td style="padding: 6px 10px;">
                         <strong>${mName}</strong>
-                        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${p.user_id}</div>
+                        <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${uid}</div>
                     </td>
                     <td style="padding: 6px 10px; text-align: right; font-weight: 600; color: var(--primary);">${share}</td>
                 </tr>
@@ -2048,14 +2060,24 @@ async function showTransactionDetail(txnId) {
         </div>` : ''}
 
         <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border);">
-            <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">👥 Danh Sách Người Tham Gia Chia Tiền (${tx.participants ? tx.participants.length : 0})</div>
+            <div style="font-size: 14px; font-weight: 600; margin-bottom: 6px;">👥 Danh Sách Người Tham Gia Chia Tiền (${participants.length})</div>
             ${participantsHtml}
         </div>
 
-        <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+            <button class="btn btn-secondary" style="font-size: 12px;" onclick="fetchAndShowParticipantsOnly('${txnId}')">
+                🔄 Gọi lại GET /participants
+            </button>
             <button class="btn btn-secondary" onclick="closeTransactionDetailModal()">Đóng</button>
         </div>
     `;
+}
+
+// Gọi riêng API GET participants để kiểm tra độc lập và in JSON ra màn hình test
+async function fetchAndShowParticipantsOnly(txnId) {
+    const groupId = getCurrentGroupId();
+    if (!groupId) return;
+    await callApi(`/v1/groups/${groupId}/transactions/${txnId}/participants`, 'GET');
 }
 
 // Đóng modal chi tiết giao dịch

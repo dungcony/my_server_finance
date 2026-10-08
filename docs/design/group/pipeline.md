@@ -48,22 +48,20 @@ SELECT DISTINCT user_id
 ## 2. Xác định người tham gia và chia đều <a id="2-xac-dinh-nguoi-tham-gia"></a>
 
 ```text
-Có dòng trong group_transaction_participants  →  đúng những người đó
-Không có dòng nào                              →  mọi thành viên có mặt tại thời điểm giao dịch (mục 1)
+Có danh sách người tham gia gửi lên  →  chia theo đúng những người đó
+Không gửi danh sách người tham gia   →  chia cho mọi thành viên có mặt tại thời điểm giao dịch (mục 1)
 ```
 
-**Chia đều** (khi `share_amount` trống):
+**Cơ chế chia đều và lưu trữ (Migration `V16`):**
+Cột `share_amount` trong bảng `group_transaction_participants` có ràng buộc `NOT NULL` và `> 0`. Khi tạo hoặc sửa giao dịch:
 
-```text
-phần cơ bản = amount / số người
-phần dư     = amount % số người    → thêm 1đ cho những người đầu danh sách
-
-500.000 chia 3 → 166.667 + 166.667 + 166.666 = 500.000
-```
-
-Phần chia **tính lúc đọc**, nên danh sách người **bắt buộc sắp theo `user_id`** trước khi chia phần dư ([rule.md](rule.md) quy tắc 5).
-
-Có `share_amount` thì dùng thẳng số đó.
+1. Nếu request không gửi `share_amount` cụ thể: Hệ thống tự động tính toán phần chia đều ngay tại thời điểm ghi nhận:
+   - Phần cơ bản: `base_share = amount / số người`
+   - Phần dư: `remainder = amount % số người`
+   - Danh sách thành viên **bắt buộc sắp xếp theo `user_id`** tăng dần; `remainder` người đầu tiên trong danh sách được cộng thêm 1đ để tổng luôn bằng đúng `amount` ([rule.md](rule.md) quy tắc 5).
+   Ví dụ: 500.000đ chia 3 người $\to$ 166.667đ + 166.667đ + 166.666đ = 500.000đ.
+2. Nếu request gửi danh sách `share_amount` cụ thể: Hệ thống kiểm tra tổng các `share_amount` phải bằng đúng `amount` của giao dịch (`GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`).
+3. Dù chia đều hay chia cụ thể, **toàn bộ các dòng người tham gia đều được lưu xuống `group_transaction_participants` với `share_amount` rõ ràng**.
 
 ---
 
@@ -93,28 +91,35 @@ current_balance = Σ ảnh hưởng của mọi khoản CONFIRMED, chưa xoá
 
 ---
 
-## 4. Phần của mỗi người trong quỹ <a id="4-phan-cua-moi-nguoi"></a>
+## 4. Phần của mỗi người trong quỹ & Bảng tích luỹ `group_member_balances` <a id="4-phan-cua-moi-nguoi"></a>
 
-Phần của mỗi người luôn được tính, dù bật hay tắt tính thừa thiếu; cờ chỉ quyết định ứng dụng có hiện phần quyết toán hay không. Đây chính là số "còn bao nhiêu trong quỹ" (`net_balance`).
+Phần của mỗi người luôn được tính, dù bật hay tắt tính thừa thiếu; cờ chỉ quyết định ứng dụng có hiện phần quyết toán hay không. Đây chính là số "còn bao nhiêu trong quỹ" (`net_balance`):
 
 ```text
-phần của X = Σ CONTRIBUTION           có transactor_id = X
-           + Σ EXPENSE (PERSONAL)      có transactor_id = X
-           − Σ REFUND                  có transactor_id = X
-           − Σ phần X chịu trong EXPENSE và ADJUSTMENT_DOWN
-           + Σ phần X hưởng trong ADJUSTMENT_UP
+net_balance = contribution + paid_out_of_pocket − refund − share
 
-Bất biến: Σ phần của mọi người = số dư quỹ
+Trong đó:
+- contribution       = Σ CONTRIBUTION (nộp quỹ)
+- paid_out_of_pocket = Σ EXPENSE nguồn PERSONAL (chi tiền túi)
+- refund             = Σ REFUND (quỹ hoàn trả tiền)
+- share              = Σ phần chịu chi phí (từ group_transaction_participants; ADJUSTMENT_UP tính âm)
+
+Bất biến trung tâm: Σ net_balance của mọi người = current_balance của quỹ
 ```
 
-- Chỉ tính khoản `CONFIRMED` và chưa xoá. "Phần X chịu / hưởng" lấy theo mục 2.
-- Số dương = **quỹ đang giữ tiền của X**; số âm = **X cần góp thêm**.
+- Số dương = **quỹ đang giữ tiền của X** (thừa); số âm = **X cần góp thêm** (thiếu).
+
+**Cơ chế lưu trữ và cộng dồn delta (Migration `V18`):**
+Để báo cáo số dư và kiểm tra hạn mức hoàn tiền đạt hiệu năng tối ưu $O(1)$ trên mỗi thành viên mà không phải quét và tổng hợp lại toàn bộ lịch sử giao dịch:
+- Dữ liệu được lưu trữ trực tiếp trong bảng `group_member_balances` cho mỗi cặp `(group_id, user_id)`.
+- Khi một giao dịch được duyệt `CONFIRMED` (hoặc hoàn tác/sửa/xoá), Service tính toán mức chênh lệch delta của 4 chỉ số và thực hiện câu lệnh `UPDATE ... SET col = col + :delta` trực tiếp trên database qua `MemberBalanceRepository.addDelta(...)`.
+- Tuyệt đối không đọc entity lên rồi gán giá trị flush Hibernate để tránh Race Condition khi có nhiều giao dịch của cùng thành viên phát sinh đồng thời.
 
 **"Phần trong quỹ" không phải là nợ giữa các thành viên.** Chênh lệch luôn giải quyết qua quỹ:
 
 | Tình huống | Cách giải quyết |
 | :--------- | :-------------- |
-| Phần của C thấp | C **góp thêm** (`CONTRIBUTION`) |
+| Phần của C thấp (âm) | C **góp thêm** (`CONTRIBUTION`) |
 | Phần của B cao vì đã trả tiền túi | Thủ quỹ **trả lại** B (`REFUND`, mục 12), hoặc để nguyên tới khi giải tán |
 | Giải tán nhóm | Trả lại mỗi người đúng phần của họ (mục 14) |
 
@@ -176,35 +181,43 @@ Lúc           [ Bây giờ ▾ ]         ← occurred_at, mặc định lúc m�
 
 1. Nhóm đang lưu trữ → chặn ([rule.md](rule.md) quy tắc 26).
 2. Kiểm tra theo [api.md](api.md) mục "Tạo giao dịch nhóm" (loại, nguồn tiền, thời điểm không ở tương lai, người trả, người tham gia, danh mục).
-3. Danh sách người tham gia đúng bằng cả nhóm có mặt tại thời điểm đó → **bỏ trống danh sách**.
+3. Xác định danh sách người tham gia:
+   - Nếu client không gửi danh sách người tham gia (hoặc để rỗng): hệ thống tự động chia đều cho toàn bộ thành viên nhóm có mặt tại thời điểm giao dịch và tính `share_amount` cho từng người (`splitEvenly`, Migration `V16`).
+   - Nếu client gửi danh sách người tham gia: kiểm tra tính hợp lệ và bắt buộc tổng các `share_amount` phải bằng đúng `amount` của giao dịch.
 4. Xác định trạng thái:
    - Người ghi là **thủ quỹ hoặc chủ nhóm** → `CONFIRMED`, `reviewed_by` = người ghi, `reviewed_at = now()`.
    - Người khác → `PENDING`, `reviewed_by` / `reviewed_at` để trống.
-5. Ghi một dòng `group_transactions`; nếu còn danh sách thì ghi các dòng `group_transaction_participants`.
-6. Chỉ khi `CONFIRMED` → khoá dòng quỹ, áp ảnh hưởng theo bảng ở mục 3.
+5. Ghi một dòng `group_transactions`; và các dòng `group_transaction_participants` (luôn có `share_amount` rõ ràng > 0).
+6. Cập nhật delta biến động tài chính của các thành viên vào bảng tích luỹ `group_member_balances` qua `memberBalanceService.applyDelta` (Migration `V18`).
+7. Chỉ khi `CONFIRMED` → khoá dòng quỹ, áp ảnh hưởng biến động lên `group_funds` (`FundBalanceChangedEvent`).
 
 ### 7.2 Xác nhận hoặc từ chối
 
 Thủ quỹ hoặc chủ nhóm, trong một transaction CSDL:
 
-| Thao tác | Điều kiện | Kết quả |
-| :------- | :-------- | :------ |
-| **Xác nhận** | Khoản đang `PENDING` | `status = CONFIRMED`, ghi `reviewed_by`, `reviewed_at`. Khoá dòng quỹ, áp ảnh hưởng theo mục 3 |
-| **Từ chối** | Khoản đang `PENDING` | `status = REJECTED`, ghi `reviewed_by`, `reviewed_at`. Không đụng tới quỹ |
+| Thao tác | Endpoint | Điều kiện | Kết quả |
+| :------- | :------- | :-------- | :------ |
+| **Xác nhận đơn lẻ** | `POST .../transactions/{txnId}/confirm` | Khoản đang `PENDING` | `status = CONFIRMED`, ghi `reviewed_by`, `reviewed_at`. Cập nhật `group_member_balances` và áp delta lên `group_funds` |
+| **Từ chối đơn lẻ** | `POST .../transactions/{txnId}/reject` | Khoản đang `PENDING` | `status = REJECTED`, ghi `reviewed_by`, `reviewed_at`. Không đụng tới quỹ và số dư thành viên |
+| **Duyệt hàng loạt** | `POST .../transactions/bulk-confirm` | Danh sách ID giao dịch `PENDING` | Chuyển tất cả sang `CONFIRMED`, gộp delta số dư quỹ và gộp biến động các thành viên cập nhật một lần duy nhất vào `group_member_balances` và `group_funds` |
+| **Từ chối hàng loạt** | `POST .../transactions/bulk-reject` | Danh sách ID giao dịch `PENDING` | Chuyển tất cả sang `REJECTED`, ghi nhận người từ chối và thời điểm |
 
 ### 7.3 Sửa
 
 Mục này dành cho `EXPENSE` / `CONTRIBUTION`, do người ghi hoặc chủ nhóm sửa. Sửa `REFUND` xem mục 12; `ADJUSTMENT_*` không sửa. Trong một transaction CSDL:
 
-1. Khoản đang `CONFIRMED` → **hoàn tác** ảnh hưởng cũ lên quỹ.
-2. Ghi giá trị mới; xoá và ghi lại người tham gia.
-3. Người sửa là **thủ quỹ hoặc chủ nhóm** → `CONFIRMED`, áp ảnh hưởng mới lên quỹ.
+1. Chụp ảnh hưởng cũ của giao dịch: `before = BalanceCalculator.effectOf(txn)`.
+2. Khoản đang `CONFIRMED` → **hoàn tác** ảnh hưởng cũ lên quỹ (`delta` âm).
+3. Ghi giá trị mới; tính toán và ghi lại danh sách người tham gia (kèm `share_amount`).
+4. Người sửa là **thủ quỹ hoặc chủ nhóm** → `CONFIRMED`, tính ảnh hưởng mới lên quỹ.
    Người khác → `PENDING`, xoá `reviewed_by` / `reviewed_at`, **không** áp gì lên quỹ.
-4. Khoản `REJECTED` được người ghi sửa → quay về `PENDING`.
+5. Khoản `REJECTED` được người ghi sửa → quay về `PENDING`.
+6. Cập nhật chênh lệch giữa `before` và ảnh hưởng mới vào `group_member_balances` qua `memberBalanceService.applyDelta`.
+7. Áp delta chênh lệch mới lên quỹ nếu giao dịch có trạng thái `CONFIRMED`.
 
 ### 7.4 Xoá
 
-**Chỉ chủ nhóm** ([rule.md](rule.md) quy tắc 21). Đặt `deleted_at = now()`; nếu khoản đang `CONFIRMED` thì hoàn tác ảnh hưởng lên quỹ.
+**Chỉ chủ nhóm** ([rule.md](rule.md) quy tắc 21). Chụp ảnh hưởng cũ `before`, đặt `deleted_at = now()`; nếu khoản đang `CONFIRMED` thì hoàn tác ảnh hưởng lên quỹ. Cập nhật hoàn tác ảnh hưởng trong `group_member_balances`.
 
 ---
 
@@ -245,7 +258,9 @@ Trong **một** transaction CSDL:
    | `difference > 0` | Sinh `ADJUSTMENT_UP`, `amount = difference` |
 
    Dòng kiểm kê: `money_source = FUND`, `transactor_id` = thủ quỹ, `created_by` = người bấm, **`status = CONFIRMED`** ngay, `reviewed_by` = người bấm.
-3. Người bị bỏ tích (nếu có) → ghi các dòng người tham gia cho những người còn lại. Không bỏ tích ai → **không ghi dòng nào** (chia đều cả nhóm, vì thường không biết ai làm lệch).
+3. Xác định người tham gia kiểm kê:
+   - Nếu client truyền danh sách người tham gia: hệ thống phân bổ theo danh sách đó.
+   - Nếu không truyền danh sách (mặc định): hệ thống tự động chia đều cho toàn bộ thành viên đang có mặt trong nhóm và tạo các dòng `group_transaction_participants` với `share_amount` tương ứng (Migration `V16`).
 4. **Cộng chênh lệch**, không ghi đè:
 
    ```sql
@@ -275,7 +290,7 @@ Hệ quả: người còn nợ mà không chịu góp thì chủ nhóm **không 
 
 Qua kiểm tra thì, trong **một** transaction CSDL:
 
-1. Người đó đang giữ quỹ → **chặn**, báo `409 GROUP_TREASURER_TRANSFER_REQUIRED`. Phải bàn giao quỹ (`PUT /v1/groups/{id}/fund-kepper`) trước.
+1. Người đó đang giữ quỹ → **chặn**, báo `409 GROUP_TREASURER_TRANSFER_REQUIRED`. Phải bàn giao quỹ (`PUT /groups/{groupId}/fund-kepper`) trước.
 2. Đặt `status` và `left_at = now()` cho bản ghi thành viên.
 3. Hệ thống tự **`REJECTED`** mọi khoản `PENDING` có `created_by` = người rời: `reviewed_by` = người kích hoạt rời (chính mình hoặc chủ nhóm mời rời), `reviewed_at = now()`.
 
@@ -299,7 +314,7 @@ Lúc rời phần đã bằng 0, nhưng nếu sau đó chủ nhóm sửa/xoá kh
 
 ## 11. Ví dụ kiểm chứng <a id="11-vi-du-kiem-chung"></a>
 
-Nhóm A, B, C bật tính thừa thiếu, mỗi người góp 1.000.000đ, A giữ quỹ. Mọi khoản dưới đây đều đã `CONFIRMED`. B và C đi chơi riêng hết 600.000đ, **bỏ tích A** — khoản này có 2 dòng người tham gia (B, C), `share_amount` trống.
+Nhóm A, B, C bật tính thừa thiếu, mỗi người góp 1.000.000đ, A giữ quỹ. Mọi khoản dưới đây đều đã `CONFIRMED`. B và C đi chơi riêng hết 600.000đ, **bỏ tích A** — khoản này có 2 dòng người tham gia (B, C), mỗi người chịu `share_amount = 300.000đ` (hệ thống tự tính và lưu theo Migration `V16`).
 
 **Trường hợp 1 — tiêu bằng tiền quỹ (`FUND`):**
 
@@ -331,7 +346,7 @@ Quỹ vẫn `3.000.000` ✅. **A không bị ảnh hưởng ở cả hai trườ
 | :--- | :----------- | :------------ | :--------- | :---------- | -----: | :--- |
 | `ADJUSTMENT_DOWN` | `FUND` | A | A | _NULL_ | 100.000 | Kiểm kê: sổ 2.400.000, thực tế 2.300.000 |
 
-Không có dòng người tham gia. Lúc kiểm kê nhóm có A, B, C; sắp theo `user_id` rồi chia: A 33.334 · B 33.333 · C 33.333. Phần mới: **966.666 · 666.667 · 666.667**, tổng **2.300.000** ✅.
+Hệ thống tự động sinh 3 dòng người tham gia cho A, B, C (sắp theo `user_id` tăng dần rồi chia đều: A 33.334đ · B 33.333đ · C 33.333đ). Phần mới: **966.666 · 666.667 · 666.667**, tổng **2.300.000** ✅.
 
 ---
 

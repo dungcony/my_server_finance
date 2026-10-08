@@ -433,15 +433,16 @@ flowchart LR
        `transactor_id`, `occurred_at`, `participants` (nếu có).
     2. Hệ thống kiểm tra toàn vẹn nghiệp vụ:
         - Kiểm tra người trả và người tham gia hợp lệ tại `occurred_at` ([pipeline.md](pipeline.md) mục 1).
-        - Nếu danh sách người tham gia bao gồm tất cả thành viên có mặt lúc đó → hệ thống tự động lưu `participants: []`
-          (rỗng = cả nhóm cùng chịu).
+        - Nếu không gửi danh sách người tham gia (hoặc gửi rỗng): hệ thống tự động chia đều cho toàn bộ thành viên nhóm có mặt tại thời điểm `occurred_at` và tính `share_amount` cho từng người (`splitEvenly`, Migration `V16`).
+        - Nếu có gửi danh sách người tham gia cụ thể: kiểm tra tổng `share_amount` phải bằng đúng `amount` của giao dịch (`GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`).
     3. Xác định trạng thái duyệt:
         - Nếu người ghi là `Treasurer` hoặc `Owner` → Gán `status = 'CONFIRMED'`, `reviewed_by = userId`,
           `reviewed_at = now()`. Nếu `money_source == 'FUND'`, khoá quỹ và trừ số dư
           `current_balance = current_balance - amount`.
         - Nếu người ghi là thành viên thường → Gán `status = 'PENDING'`, chưa tác động đến quỹ.
-    4. Lưu bản ghi `group_transactions` và các dòng `group_transaction_participants`.
-    5. Trả về `201 Created` kèm `GroupTransactionDetailRes`.
+    4. Lưu bản ghi `group_transactions` và các dòng `group_transaction_participants` (luôn có `share_amount > 0`).
+    5. Cập nhật delta biến động tài chính của các thành viên vào bảng tích luỹ `group_member_balances` qua `memberBalanceService.applyDelta` (Migration `V18`).
+    6. Trả về `201 Created` kèm `GroupTransactionDetailRes`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `400 GROUP_TXN_DATE_IN_FUTURE`: Thời điểm phát sinh ở tương lai.
     - `400 GROUP_TXN_PAYER_NOT_MEMBER` / `GROUP_TXN_PARTICIPANT_NOT_MEMBER`: Người trả hoặc người chia tiền không có mặt tại thời điểm giao
@@ -466,7 +467,7 @@ flowchart LR
         - Thủ quỹ/Chủ nhóm tự ghi → `CONFIRMED` ngay, khoá quỹ và cộng số dư
           `current_balance = current_balance + amount`.
         - Thành viên tự ghi → `PENDING` (chờ thủ quỹ nhận được tiền thật rồi duyệt).
-    4. Lưu bản ghi và trả về `201 Created`.
+    4. Lưu bản ghi, cập nhật biến động vào `group_member_balances` (Migration `V18`) và trả về `201 Created`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `400 GROUP_TXN_MONEY_SOURCE_INVALID`: Góp quỹ mà chọn nguồn tiền `FUND`.
     - `400 GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`: Góp quỹ có gắn người tham gia chia tiền.
@@ -484,13 +485,15 @@ flowchart LR
     2. Trong 1 transaction CSDL:
         - Kiểm tra các giao dịch đang `PENDING`.
         - Chuyển `status = 'CONFIRMED'`, gán `reviewed_by = userId`, `reviewed_at = now()`.
-        - **Khoá dòng quỹ (`FOR UPDATE`)** và cập nhật số dư quỹ tương ứng:
+        - Cập nhật delta biến động tài chính của các thành viên vào bảng `group_member_balances` qua `memberBalanceService.applyDelta` (Migration `V18`).
+        - **Khoá dòng quỹ (`FOR UPDATE`)** và áp delta chênh lệch lên quỹ:
             - `EXPENSE (FUND)`: Giảm quỹ.
             - `CONTRIBUTION`: Tăng quỹ.
+            - Với duyệt hàng loạt: Gộp delta số dư quỹ và gộp biến động các thành viên rồi cập nhật 1 lần duy nhất cho toàn bộ lô.
     3. Phản hồi `200 OK`.
 - **Luồng chính - Từ chối đơn lẻ / Hàng loạt:**
     1. Tác nhân gọi `POST .../{tId}/reject` hoặc `POST .../transactions/bulk-reject`.
-    2. Chuyển `status = 'REJECTED'`, gán thông tin người duyệt. Quỹ không bị tác động.
+    2. Chuyển `status = 'REJECTED'`, gán thông tin người duyệt. Quỹ và bảng số dư thành viên không bị tác động.
     3. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `403 GROUP_TREASURER_REQUIRED`: Người duyệt không phải Thủ quỹ hoặc Chủ nhóm.
@@ -506,13 +509,14 @@ flowchart LR
 - **Luồng chính (Success Flow):**
     1. Tác nhân gửi thông tin cập nhật (`PUT /v1/groups/{id}/transactions/{tId}`).
     2. Trong 1 transaction CSDL:
+        - Chụp ảnh hưởng cũ của giao dịch: `before = BalanceCalculator.effectOf(txn)`.
         - Nếu khoản đang `CONFIRMED`: Hoàn tác ảnh hưởng số tiền cũ lên quỹ.
-        - Điều phối tới `GTransactionUpdate` phụ trách loại giao dịch đó để cập nhật thông tin và danh sách
-          người tham gia (nếu có).
+        - Điều phối tới `GTransactionUpdate` phụ trách loại giao dịch đó để cập nhật thông tin và phân bổ lại danh sách người tham gia (kèm `share_amount > 0`).
         - Kiểm tra người sửa:
-            - Nếu là `Treasurer` hoặc `Owner` → Khoản giữ nguyên `CONFIRMED`, áp ảnh hưởng mới lên quỹ.
+            - Nếu là `Treasurer` hoặc `Owner` → Khoản giữ nguyên `CONFIRMED`, tính ảnh hưởng mới lên quỹ.
             - Nếu là `Member` thường → Khoản chuyển về `PENDING`, chờ duyệt lại.
             - Nếu khoản đang `REJECTED` được người tạo sửa lại → Tự động quay về `PENDING`.
+        - Cập nhật chênh lệch delta giữa `before` và ảnh hưởng mới vào `group_member_balances` (Migration `V18`).
         - Gửi sự kiện `FundBalanceChangedEvent` nếu có chênh lệch delta số dư quỹ.
     3. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
@@ -528,9 +532,11 @@ flowchart LR
 - **Luồng chính (Success Flow):**
     1. `Owner` gọi `DELETE /v1/groups/{id}/transactions/{tId}`.
     2. Trong 1 transaction CSDL:
+        - Chụp ảnh hưởng cũ `before = BalanceCalculator.effectOf(txn)`.
         - Gán `deleted_at = now()` (xoá mềm).
         - Nếu khoản đang `CONFIRMED`: Khoá quỹ và hoàn tác toàn bộ ảnh hưởng tài chính của khoản đó lên
           `group_funds.current_balance`.
+        - Hoàn tác ảnh hưởng tài chính trong `group_member_balances` qua `memberBalanceService.applyDelta(groupId, before, NO_EFFECT)` (Migration `V18`).
     3. Trả về `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `403 GROUP_OWNER_REQUIRED`: Thành viên thường hoặc thủ quỹ cố thực hiện xoá giao dịch.
@@ -548,12 +554,12 @@ flowchart LR
 - **Hậu điều kiện:**
     - Sinh bản ghi `type = 'REFUND'`, `money_source = 'FUND'`, `status = 'CONFIRMED'` ngay.
     - Trừ số dư quỹ `current_balance = current_balance - amount`.
-    - Phần trong quỹ (`net_balance`) của người nhận giảm tương ứng.
+    - Phần trong quỹ (`net_balance`) của người nhận giảm tương ứng, cập nhật vào `group_member_balances`.
 - **Luồng chính (Success Flow):**
     1. Tác nhân gửi yêu cầu tạo giao dịch (`POST /v1/groups/{id}/transactions` với `type = 'REFUND'`,
        `money_source = 'FUND'`, `transactor_id` là người nhận).
     2. Hệ thống kiểm tra điều kiện giới hạn số tiền (`RefundTransaction`).
-    3. Khoá dòng quỹ, trừ tiền quỹ, ghi nhận giao dịch `CONFIRMED`.
+    3. Khoá dòng quỹ, trừ tiền quỹ, cập nhật delta vào `group_member_balances`, ghi nhận giao dịch `CONFIRMED`.
     4. Trả về `201 Created`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `403 GROUP_TREASURER_REQUIRED`: Không có quyền thủ quỹ/chủ nhóm.
@@ -576,8 +582,8 @@ flowchart LR
         - Nếu `difference > 0`: Tạo giao dịch `ADJUSTMENT_UP` với `amount = difference`.
         - Nếu `difference < 0`: Tạo giao dịch `ADJUSTMENT_DOWN` với `amount = abs(difference)`.
         - Giao dịch có `money_source = 'FUND'`, `status = 'CONFIRMED'` ngay, không gắn danh mục.
-        - Người chịu độ lệch: Mặc định chia đều cả nhóm (`participants: []`); nếu có `excluded_user_ids` thì ghi các
-          thành viên còn lại vào `group_transaction_participants`.
+        - Người chịu độ lệch: Hệ thống tự động chia đều cho toàn bộ thành viên nhóm có mặt (hoặc thành viên không bị loại trừ) và tạo các bản ghi `group_transaction_participants` với `share_amount` tương ứng (`splitEvenly`, Migration `V16`).
+        - Cập nhật delta vào bảng tích luỹ `group_member_balances` (Migration `V18`).
         - Cập nhật số dư quỹ bằng câu lệnh cộng dồn nguyên tử: `SET current_balance = current_balance + :difference`
           (không ghi đè).
     3. Trả về `200 OK` kèm kết quả đối soát (`GroupFundReconcileRes`).
@@ -613,7 +619,8 @@ flowchart LR
        chung.
     2. Hoặc gọi `GET /v1/groups/{id}/transactions/mine` để xem toàn bộ giao dịch do mình tạo (kể cả khoản `PENDING`).
     3. Thủ quỹ / Chủ nhóm gọi `GET /v1/groups/{id}/transactions/pending` để xem danh sách các khoản cần duyệt.
-    4. Gọi `GET .../transactions/{tId}` để xem chi tiết danh sách người cùng chịu khoản chi và số tiền mỗi người chịu.
+    4. Gọi `GET .../transactions/{tId}` để xem chi tiết giao dịch.
+    5. Gọi `GET .../transactions/{tId}/participants` để lấy chi tiết danh sách người cùng chịu khoản chi và số tiền mỗi người chịu (`share_amount`).
 
 ---
 
