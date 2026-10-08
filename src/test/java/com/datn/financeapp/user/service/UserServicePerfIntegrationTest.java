@@ -38,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -71,7 +72,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 @SpringBootTest(classes = com.datn.financeapp.App.class)
 @ActiveProfiles("test")
-@org.springframework.context.annotation.Import({TestRedisConfig.class, SqlCountingConfig.class})
+@Import({TestRedisConfig.class, SqlCountingConfig.class})
 class UserServicePerfIntegrationTest {
 
     private static final String ADMIN_EMAIL = "admin@financeapp.com";

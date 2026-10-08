@@ -9,6 +9,7 @@ import com.datn.financeapp.user.entity.RolePermission;
 import com.datn.financeapp.user.enums.PermissionName;
 import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
+import com.datn.financeapp.user.helper.UserLevelCacheHelper;
 import com.datn.financeapp.user.mapper.RoleMapper;
 import com.datn.financeapp.user.repository.PermissionRepository;
 import com.datn.financeapp.user.repository.RolePermissionRepository;
@@ -63,7 +64,8 @@ class AdminRoleServiceTest {
     @BeforeEach
     void setUp() {
         RolePermissionCacheHelper rolePermissionCacheHelper = new RolePermissionCacheHelper(roleRepository, permissionRepository, roleMapper);
-        adminRoleService = new ManagerRoleServiceImpl(rolePermissionRepository, userRepository, rolePermissionCacheHelper);
+        UserLevelCacheHelper userLevelCacheHelper = new UserLevelCacheHelper(userRepository);
+        adminRoleService = new ManagerRoleServiceImpl(rolePermissionRepository, userRepository, rolePermissionCacheHelper, userLevelCacheHelper);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(callerId.toString(), null, List.of()));
     }

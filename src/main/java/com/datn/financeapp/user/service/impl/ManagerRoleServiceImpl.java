@@ -12,11 +12,13 @@ import com.datn.financeapp.user.entity.RolePermission;
 import com.datn.financeapp.user.enums.PermissionName;
 import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
+import com.datn.financeapp.user.helper.UserLevelCacheHelper;
 import com.datn.financeapp.user.repository.RolePermissionRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.service.ManagerRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
     private final RolePermissionRepository rolePermissionRepository;
     private final UserRepository userRepository;
     private final RolePermissionCacheHelper rolePermissionCacheHelper;
+    private final UserLevelCacheHelper userLevelCacheHelper;
 
     @Transactional
     @Override
@@ -64,7 +67,9 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
         UUID currentUserId = SecurityContextUtil.currentUserId();
 
         // số nhỏ = quyền cao, không được sửa quyền của role cấp cao hơn hoặc bằng mình
-        int currentUserLevel = userRepository.findTopRoleLevelByUserId(currentUserId);
+        int currentUserLevel = userLevelCacheHelper != null
+                ? userLevelCacheHelper.getUserLevel(currentUserId)
+                : userRepository.findTopRoleLevelByUserId(currentUserId);
         if (role.getLevel() <= currentUserLevel)
             throw new BusinessException(ErrorCode.FORBIDDEN,
                     "Không được gán quyền cho vai trò có cấp bậc cao hơn hoặc bằng chính mình.");

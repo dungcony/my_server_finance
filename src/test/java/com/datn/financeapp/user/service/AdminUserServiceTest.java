@@ -12,7 +12,8 @@ import com.datn.financeapp.user.entity.UserRole;
 import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.event.publiser.UserLockedEvent;
-import com.datn.financeapp.user.mapper.UserMapper;
+import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
+import com.datn.financeapp.user.helper.UserLevelCacheHelper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
 import com.datn.financeapp.user.service.impl.ManagerUserServiceImpl;
@@ -31,13 +32,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Collections;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,7 +46,9 @@ class AdminUserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private com.datn.financeapp.user.helper.RolePermissionCacheHelper rolePermissionCacheHelper;
+    private RolePermissionCacheHelper rolePermissionCacheHelper;
+    @Mock
+    private UserLevelCacheHelper userLevelCacheHelper;
 
     @Mock
     private UserRoleRepository userRoleRepository;
@@ -55,17 +56,12 @@ class AdminUserServiceTest {
     @Mock
     private AuthService authService;
 
-    @org.mockito.Mock
-    private com.datn.financeapp.auth.service.TokenService tokenService;
-
     @Mock
     private BlacklistedUserRepository blacklistedUserRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    @Mock
-    private UserMapper userMapper;
 
     @InjectMocks
     private ManagerUserServiceImpl adminUserService;
@@ -91,12 +87,7 @@ class AdminUserServiceTest {
     // Admin gán role level 1 (ROLE_ADMIN) cho chính mình trong mock repo, để pass được
     // guard "không được gán role có cấp bậc cao hơn hoặc bằng chính mình" khi test gán ROLE_USER.
     private void stubAdminWithLevel(int level) {
-        Role adminRole = Role.builder().id(UUID.randomUUID()).name(RoleName.ROLE_ADMIN).level(level).build();
-        UserRole adminUserRole = new UserRole(adminId, adminRole.getId());
-        adminUserRole.setRole(adminRole);
-        User admin = User.builder().id(adminId).email("admin@example.com").isDeleted(false).build();
-        admin.setUserRoles(Set.of(adminUserRole));
-        when(userRepository.findById(adminId)).thenReturn(Optional.of(admin));
+        when(userLevelCacheHelper.getUserLevel(adminId)).thenReturn(level);
     }
 
     @Test
@@ -152,6 +143,8 @@ class AdminUserServiceTest {
     @DisplayName("TC_UNIT_04: Khóa thành công - Cập nhật status BLOCKED, blacklist Redis, phát sự kiện khoá để thu hồi phiên")
     void blockUser_Success_UpdatesStatusAndRevokesTokens() {
         stubAdminWithLevel(1);
+        when(userLevelCacheHelper.getUserLevel(targetUserId)).thenReturn(10);
+
         User user = User.builder()
                 .id(targetUserId)
                 .email("victim@example.com")

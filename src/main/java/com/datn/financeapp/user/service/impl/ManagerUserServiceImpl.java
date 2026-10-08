@@ -15,8 +15,9 @@ import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.event.publiser.UserDeletedEvent;
 import com.datn.financeapp.user.event.publiser.UserLockedEvent;
 import com.datn.financeapp.user.exception.UserNotFoundException;
-import com.datn.financeapp.user.mapper.UserMapper;
 import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
+import com.datn.financeapp.user.helper.UserLevelCacheHelper;
+import com.datn.financeapp.user.mapper.UserMapper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
 import com.datn.financeapp.user.service.ManagerUserService;
@@ -27,7 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -41,10 +41,9 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     private final BlacklistedUserRepository blacklistedUserRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
+    private final UserLevelCacheHelper userLevelCacheHelper;
 
     private static final long DEFAULT_BLACKLIST_TTL_SECONDS = 3600;
-    // Quy ước "số nhỏ = quyền cao" — user không có role nào phải là YẾU NHẤT (số cực lớn).
-    private static final int NO_ROLE_LEVEL = Integer.MAX_VALUE;
 
     @Transactional
     @Override
@@ -97,6 +96,9 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         userRole.setRole(role);
         userRoleRepository.save(userRole);
         user.getUserRoles().add(userRole);
+        if (userLevelCacheHelper != null) {
+            userLevelCacheHelper.evictUserLevel(user.getId());
+        }
         log.info("User {} đã gán role {} cho user {}", SecurityContextUtil.currentUserId(), role.getName(), req.userId());
     }
 
@@ -126,6 +128,9 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         if (userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())) {
             userRoleRepository.deleteByUserIdAndRoleId(user.getId(), role.getId());
             user.getUserRoles().removeIf(ur -> ur.getRoleId().equals(role.getId()));
+            if (userLevelCacheHelper != null) {
+                userLevelCacheHelper.evictUserLevel(user.getId());
+            }
             log.info("User {} đã thu hồi role {} của user {}", currentUserId, role.getName(), req.userId());
         }
     }
@@ -202,13 +207,6 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     // Level của role mạnh nhất (số nhỏ nhất) mà user này đang giữ — dùng cho cả người bị
     // thao tác lẫn người đang gọi API, không riêng gì admin.
     private int getLevel(UUID userId) {
-        return userRepository.findById(userId)
-                .map(u -> u.getUserRoles().stream()
-                        .map(UserRole::getRole)
-                        .filter(Objects::nonNull)
-                        .mapToInt(Role::getLevel)
-                        .min()
-                        .orElse(NO_ROLE_LEVEL))
-                .orElse(NO_ROLE_LEVEL);
+        return userLevelCacheHelper.getUserLevel(userId);
     }
 }
