@@ -1,4 +1,4 @@
-package com.datn.financeapp.group.repository.specification;
+package com.datn.financeapp.group.helper;
 
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.group.entity.GTransaction;

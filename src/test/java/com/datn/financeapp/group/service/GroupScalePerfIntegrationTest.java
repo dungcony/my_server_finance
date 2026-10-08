@@ -8,7 +8,8 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
+import com.datn.financeapp.group.entity.MemberBalance;
+import com.datn.financeapp.group.repository.MemberBalanceRepository;
 import com.datn.financeapp.performance.SqlCountingConfig;
 import com.datn.financeapp.user.entity.Role;
 import com.datn.financeapp.user.entity.User;
@@ -128,7 +129,7 @@ class GroupScalePerfIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    private GroupTransactionRepository transactionRepository;
+    private MemberBalanceRepository memberBalanceRepository;
 
     @FunctionalInterface
     private interface Step {
@@ -230,11 +231,11 @@ class GroupScalePerfIntegrationTest {
     }
 
     private UUID richestMember(UUID group) {
-        return transactionRepository.aggregateMemberBalancesByGroupId(group).stream()
+        return memberBalanceRepository.findByGroupId(group).stream()
                 .max(Comparator.comparingLong(b ->
                         b.getContribution() + b.getPaidOutOfPocket() - b.getRefund() - b.getShare()))
-                .map(GroupTransactionRepository.MemberBalanceProjection::getUserId)
-                .orElseThrow();
+                .map(MemberBalance::getUserId)
+                .orElseGet(() -> pool.get(0));
     }
 
     // khởi động nguội chỉ ở mức nhỏ; Throwable gồm cả OutOfMemoryError để một hàm hết bộ nhớ không làm mất cả báo cáo

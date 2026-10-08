@@ -22,13 +22,12 @@ import com.datn.financeapp.group.helper.GTransactionUpdate;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
-import com.datn.financeapp.group.repository.specification.GTransactionSpecification;
+import com.datn.financeapp.group.helper.GTransactionSpecification;
 import com.datn.financeapp.group.service.*;
 import com.datn.financeapp.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.group.validator.GroupTransactionPaticipantValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -87,9 +86,8 @@ public class GTransactionServiceImpl implements GTransactionService {
         transactionValidator.timeNotFuture(req.resolveOccurredAt());
 
         // validate người thực hiện bắt buộc phải là thành viên trong nhóm
-        if (!memberService.allMemberInGroup(groupId, List.of(req.transactorId()))) {
+        if (!memberService.allMemberInGroup(groupId, List.of(req.transactorId())))
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_IN_GROUP);
-        }
 
         // tìm strategy phụ trách loại giao dịch này
         GTransactionBuilder strategy = createStrategies.stream()
@@ -380,24 +378,32 @@ public class GTransactionServiceImpl implements GTransactionService {
     }
 
     private GroupTransactionListRes buildListRes(UUID groupId, GroupTransactionFilterReq filter) {
-        // kiểm tra nếu là bộ lọc mặc định chỉ phân trang thì dùng luồng tối ưu có cache count
-        if (isDefaultPagingFilter(filter)) {
-            return buildOptimizedListRes(groupId, filter);
-        }
+        int pageNumber = Math.max(1, filter.getPageNumber());
+        int pageSize = Math.max(1, filter.getPageSize());
+        Pageable pageable = PageRequest.of(
+                pageNumber - 1,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "occurredAt")
+                        .and(Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        Page<GTransaction> txnPage = getPage(groupId, filter);
+        Specification<GTransaction> spec = GTransactionSpecification.filter(groupId, filter);
 
-        List<GroupTransactionDetailRes> items = txnPage.getContent()
-                .stream()
+        // truy vấn danh sách phân trang qua custom method findList không chạy count tự động
+        List<GTransaction> txns = transactionRepository.findList(spec, pageable);
+
+        // lấy tổng số bản ghi: ưu tiên bộ đếm cache nếu chỉ phân trang mặc định
+        boolean excludePending = filter.excludeStatus() == GTransactionStatus.PENDING;
+        long totalElements = isDefaultPagingFilter(filter)
+                ? groupTxCountHelper.getCount(groupId, excludePending)
+                : transactionRepository.count(spec);
+
+        int totalPages = (int) Math.ceil((double) totalElements / pageSize);
+
+        List<GroupTransactionDetailRes> items = txns.stream()
                 .map(transactionHelper::buildDetailRes)
                 .toList();
 
-        PageMeta meta = new PageMeta(
-                filter.getPageNumber(),
-                filter.getPageSize(),
-                txnPage.getTotalElements(),
-                txnPage.getTotalPages());
-
+        PageMeta meta = new PageMeta(pageNumber, pageSize, totalElements, totalPages);
         return GroupTransactionListRes.of(items, meta);
     }
 
@@ -411,45 +417,6 @@ public class GTransactionServiceImpl implements GTransactionService {
                 && filter.toOccurredAt() == null
                 && filter.startDate() == null
                 && filter.endDate() == null;
-    }
-
-    private GroupTransactionListRes buildOptimizedListRes(UUID groupId, GroupTransactionFilterReq filter) {
-        int pageNumber = Math.max(1, filter.getPageNumber());
-        int pageSize = Math.max(1, filter.getPageSize());
-        Pageable pageable = PageRequest.of(pageNumber - 1, pageSize);
-
-        boolean excludePending = filter.excludeStatus() == GTransactionStatus.PENDING;
-        List<GTransaction> txns;
-        if (excludePending) {
-            txns = transactionRepository.findByGroupIdAndStatusNotAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(
-                    groupId, GTransactionStatus.PENDING, pageable);
-        } else {
-            txns = transactionRepository.findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(
-                    groupId, pageable);
-        }
-
-        long totalElements = groupTxCountHelper.getCount(groupId, excludePending);
-        int totalPages = (int) Math.ceil((double) totalElements / pageSize);
-
-        List<GroupTransactionDetailRes> items = txns.stream()
-                .map(transactionHelper::buildDetailRes)
-                .toList();
-
-        PageMeta meta = new PageMeta(pageNumber, pageSize, totalElements, totalPages);
-        return GroupTransactionListRes.of(items, meta);
-    }
-
-    private Page<GTransaction> getPage(UUID groupId, GroupTransactionFilterReq filter) {
-        Pageable pageable = PageRequest.of(
-                Math.max(0, filter.getPageNumber() - 1),
-                filter.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "occurredAt")
-                        .and(Sort.by(Sort.Direction.DESC, "createdAt")));
-
-        // gọi qua specification
-        Specification<GTransaction> spec = GTransactionSpecification.filter(groupId, filter);
-
-        return transactionRepository.findAll(spec, pageable);
     }
 
     private void updateReviewStatus(GTransaction txn, GTransactionStatus status, UUID reviewerId, Instant timestamp) {

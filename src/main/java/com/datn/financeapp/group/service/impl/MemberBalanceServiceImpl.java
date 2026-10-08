@@ -1,11 +1,13 @@
 package com.datn.financeapp.group.service.impl;
 
+import com.datn.financeapp.group.helper.MemberBalanceAccumulator;
 import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.repository.FundRepository;
 import com.datn.financeapp.group.repository.MemberBalanceRepository;
 import com.datn.financeapp.group.service.MemberBalanceService;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -47,13 +49,16 @@ public class MemberBalanceServiceImpl implements MemberBalanceService {
     @Override
     @Transactional
     public void applyDelta(UUID groupId, MemberBalances before, MemberBalances after) {
-        // ghi theo thứ tự user_id cố định để hai transaction không khoá chéo nhau
-        new TreeMap<>(after.minus(before).members()).forEach((userId, delta) -> {
-            if (!delta.isZero()) {
-                memberBalanceRepository.addDelta(groupId, userId, delta.getPaidOutOfPocket(),
-                        delta.getRawContribution(), delta.getRefunded(), delta.getShare());
-            }
-        });
+        // sắp xếp theo thứ tự user_id cố định để chống deadlock
+        Map<UUID, MemberBalanceAccumulator> deltas = new TreeMap<>(after.minus(before).members());
+
+        // nếu không có thành viên nào thay đổi số dư thì không cần gọi repository
+        boolean hasChange = deltas.values().stream().anyMatch(d -> !d.isZero());
+        if (!hasChange) {
+            return;
+        }
+
+        memberBalanceRepository.batchAddDelta(groupId, deltas);
     }
 
     @Override

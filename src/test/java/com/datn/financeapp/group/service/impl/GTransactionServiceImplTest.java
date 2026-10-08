@@ -23,7 +23,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -366,15 +365,17 @@ class GTransactionServiceImplTest {
                 .extracting("code")
                 .isEqualTo(ErrorCode.GROUP_TREASURER_REQUIRED.getCode());
 
-        verify(transactionRepository, never()).findAll(any(Specification.class), any(Pageable.class));
+        verify(transactionRepository, never()).findList(any(Specification.class), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Chủ nhóm xem giao dịch chờ duyệt thì trả đúng các khoản PENDING kèm metadata phân trang")
     void listPending_ByOwner_ReturnsPendingItems() {
         GTransaction pending = pendingTxn(100_000L);
-        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(pending)));
+        when(transactionRepository.findList(any(Specification.class), any(Pageable.class)))
+                .thenReturn(List.of(pending));
+        when(transactionRepository.count(any(Specification.class)))
+                .thenReturn(1L);
 
         var res = service.listPending(ownerId, groupId, 1, 20);
 
@@ -445,8 +446,8 @@ class GTransactionServiceImplTest {
     @Test
     @DisplayName("Danh sách giao dịch chung dùng bản xác thực cho phép nhóm lưu trữ")
     void list_UsesAllowArchivedValidation() {
-        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        when(transactionRepository.findList(any(Specification.class), any(Pageable.class)))
+                .thenReturn(List.of());
 
         service.list(ownerId, groupId, new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, 20));
 
@@ -457,8 +458,8 @@ class GTransactionServiceImplTest {
     @Test
     @DisplayName("Danh sách giao dịch của tôi chỉ cần kiểm tra là thành viên và cho phép nhóm lưu trữ")
     void myList_UsesAllowArchivedValidation() {
-        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        when(transactionRepository.findList(any(Specification.class), any(Pageable.class)))
+                .thenReturn(List.of());
 
         service.myList(memberId, groupId, new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, 20));
 
@@ -468,8 +469,8 @@ class GTransactionServiceImplTest {
     @Test
     @DisplayName("Danh sách giao dịch chờ duyệt dùng bản xác thực cho phép nhóm lưu trữ")
     void listPending_UsesAllowArchivedValidation() {
-        when(transactionRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of()));
+        when(transactionRepository.findList(any(Specification.class), any(Pageable.class)))
+                .thenReturn(List.of());
 
         service.listPending(ownerId, groupId, 1, 20);
 

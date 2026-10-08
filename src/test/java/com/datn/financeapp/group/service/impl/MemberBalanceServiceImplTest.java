@@ -1,9 +1,8 @@
 package com.datn.financeapp.group.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -20,7 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -32,6 +32,9 @@ class MemberBalanceServiceImplTest {
 
     @Mock
     private FundRepository fundRepository;
+
+    @Captor
+    private ArgumentCaptor<Map<UUID, MemberBalanceAccumulator>> captor;
 
     private MemberBalanceServiceImpl service;
 
@@ -65,11 +68,12 @@ class MemberBalanceServiceImplTest {
 
         service.applyDelta(groupId, before, after);
 
-        InOrder order = inOrder(memberBalanceRepository);
-        order.verify(memberBalanceRepository).addDelta(groupId, userB, 0L, 30_000L, 0L, 0L);
-        order.verify(memberBalanceRepository).addDelta(groupId, userC, 0L, 20_000L, 0L, 0L);
-        verify(memberBalanceRepository, never())
-                .addDelta(eq(groupId), eq(userA), anyLong(), anyLong(), anyLong(), anyLong());
+        verify(memberBalanceRepository).batchAddDelta(eq(groupId), captor.capture());
+        Map<UUID, MemberBalanceAccumulator> captured = captor.getValue();
+
+        assertThat(captured.get(userB).getRawContribution()).isEqualTo(30_000L);
+        assertThat(captured.get(userC).getRawContribution()).isEqualTo(20_000L);
+        assertThat(captured.get(userA).getRawContribution()).isZero();
     }
 
     @Test
@@ -80,7 +84,8 @@ class MemberBalanceServiceImplTest {
 
         service.applyDelta(groupId, before, after);
 
-        verify(memberBalanceRepository).addDelta(groupId, userA, 0L, -100_000L, 0L, 0L);
+        verify(memberBalanceRepository).batchAddDelta(eq(groupId), captor.capture());
+        assertThat(captor.getValue().get(userA).getRawContribution()).isEqualTo(-100_000L);
     }
 
     @Test
@@ -88,7 +93,6 @@ class MemberBalanceServiceImplTest {
     void applyDelta_noChange_writesNothing() {
         service.applyDelta(groupId, contributions(userA, 100_000L), contributions(userA, 100_000L));
 
-        verify(memberBalanceRepository, never())
-                .addDelta(any(), any(), anyLong(), anyLong(), anyLong(), anyLong());
+        verify(memberBalanceRepository, never()).batchAddDelta(any(), any());
     }
 }

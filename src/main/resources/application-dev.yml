@@ -1,10 +1,10 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/finance
+    url: jdbc:postgresql://localhost:5432/finance?reWriteBatchedInserts=true
     username: postgres
     password: 123456
     hikari:
-      maximum-pool-size: 50
+      maximum-pool-size: 65
       connection-timeout: 30000
   data:
     redis:
@@ -20,8 +20,7 @@ spring:
         jdbc:
           batch_size: 50
         order_inserts: true
-        default_batch_fetch_size: 50
-
+        default_batch_fetch_size: 100
     open-in-view: false
 
   flyway:
@@ -41,3 +40,21 @@ logging:
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
     org.springframework.transaction: DEBUG
+
+server:
+  #  compression:
+  #    enabled: true
+  #    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
+  #    min-response-size: 1024
+  port: 8080
+  tomcat:
+    max-http-form-post-size: 2MB
+    max-swallow-size: 10MB
+    max-connections: 8192 # Số lượng kết nối TCP tối đa Tomcat chấp nhận cùng lúc (mặc định: 8192)
+    accept-count: 200 # Hàng đợi cấp OS khi max-connections bị đầy (mặc định: 100)
+    connection-timeout: 20000ms # Thời gian chờ client gửi dữ liệu trước khi đóng socket (20s)
+    keep-alive-timeout: 15000ms # Thời gian giữ kết nối TCP cho reuse
+    threads:
+      max: 500 # Số thread tối đa xử lý request đồng thời (mặc định: 200)
+      min-spare: 50 # Số thread tối thiểu luôn giữ sẵn (mặc định: 10)
+

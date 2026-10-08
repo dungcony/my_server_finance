@@ -18,7 +18,7 @@ import org.springframework.data.jpa.repository.Query;
  * Vắng dòng nghĩa là thành viên chưa có giao dịch nào được tính, tức mọi chỉ số bằng 0.
  * </p>
  */
-public interface MemberBalanceRepository extends JpaRepository<MemberBalance, MemberBalance.MemberBalanceId> {
+public interface MemberBalanceRepository extends JpaRepository<MemberBalance, MemberBalance.MemberBalanceId>, MemberBalanceRepositoryCustom {
 
     List<MemberBalance> findByGroupId(UUID groupId);
 
@@ -35,22 +35,4 @@ public interface MemberBalanceRepository extends JpaRepository<MemberBalance, Me
             order by b.userId
             """)
     List<MemberBalance> findForUpdate(UUID groupId, Collection<UUID> userIds);
-
-    /**
-     * Cộng dồn chênh lệch vào số dư của một thành viên, chèn dòng mới nếu chưa có.
-     * <p>
-     * Cộng ngay trong câu SQL thay vì đọc rồi ghi ở service để không ghi đè số mà lệnh khác vừa cộng.
-     * </p>
-     */
-    @Modifying
-    @Query(value = """
-            INSERT INTO group_member_balances (group_id, user_id, paid_out_of_pocket, contribution, refund, share)
-            VALUES (:groupId, :userId, :paidOutOfPocket, :contribution, :refund, :share)
-            ON CONFLICT (group_id, user_id) DO UPDATE SET
-                paid_out_of_pocket = group_member_balances.paid_out_of_pocket + EXCLUDED.paid_out_of_pocket,
-                contribution       = group_member_balances.contribution + EXCLUDED.contribution,
-                refund             = group_member_balances.refund + EXCLUDED.refund,
-                share              = group_member_balances.share + EXCLUDED.share
-            """, nativeQuery = true)
-    void addDelta(UUID groupId, UUID userId, long paidOutOfPocket, long contribution, long refund, long share);
 }

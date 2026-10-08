@@ -16,7 +16,6 @@ import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.repository.GroupRepository;
-import com.datn.financeapp.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.group.repository.MemberBalanceRepository;
 import com.datn.financeapp.group.repository.MemberRepository;
 import com.datn.financeapp.user.entity.User;
@@ -45,7 +44,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Bảng tổng hợp {@code group_member_balances} phải luôn khớp với câu SQL cộng lại từ toàn bộ lịch sử giao dịch
- * ({@code aggregateMemberBalancesByGroupId}) sau mọi thao tác ghi đi qua service. Chạy một chuỗi thao tác cố định
+ * sau mọi thao tác ghi đi qua service. Chạy một chuỗi thao tác cố định
  * để khi lệch thì lần nào cũng tái hiện được đúng bước. Không dùng {@code @Transactional} ở lớp test vì mỗi thao tác
  * phải commit thật như khi gọi từ API.
  */
@@ -75,9 +74,6 @@ class GroupMemberBalanceSyncIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private GroupTransactionRepository transactionRepository;
 
     @Autowired
     private MemberBalanceRepository memberBalanceRepository;
@@ -151,11 +147,70 @@ class GroupMemberBalanceSyncIntegrationTest {
             putIfNotZero(summary, row.getUserId(),
                     List.of(row.getPaidOutOfPocket(), row.getContribution(), row.getRefund(), row.getShare()));
 
+        String sql = """
+                SELECT
+                    user_id,
+                    COALESCE(SUM(paid_out_of_pocket), 0) AS paid_out_of_pocket,
+                    COALESCE(SUM(contribution), 0)       AS contribution,
+                    COALESCE(SUM(refund), 0)             AS refund,
+                    COALESCE(SUM(share), 0)              AS share
+                FROM (
+                    SELECT transactor_id AS user_id, amount AS paid_out_of_pocket, 0 AS contribution, 0 AS refund, 0 AS share
+                    FROM group_transactions
+                    WHERE group_id = ? 
+                      AND status = 'CONFIRMED' 
+                      AND deleted_at IS NULL
+                      AND type = 'EXPENSE' 
+                      AND money_source = 'PERSONAL'
+                
+                    UNION ALL
+                
+                    SELECT transactor_id AS user_id, 0, amount, 0, 0
+                    FROM group_transactions
+                    WHERE group_id = ? 
+                      AND status = 'CONFIRMED' 
+                      AND deleted_at IS NULL
+                      AND type = 'CONTRIBUTION'
+                
+                    UNION ALL
+                
+                    SELECT transactor_id AS user_id, 0, 0, amount, 0
+                    FROM group_transactions
+                    WHERE group_id = ? 
+                      AND status = 'CONFIRMED' 
+                      AND deleted_at IS NULL
+                      AND type = 'REFUND'
+                
+                    UNION ALL
+                
+                    SELECT 
+                        p.user_id, 
+                        0, 
+                        0, 
+                        0, 
+                        CASE 
+                            WHEN gt.type = 'ADJUSTMENT_UP' THEN -p.share_amount 
+                            ELSE p.share_amount 
+                        END AS share
+                    FROM group_transaction_participants p
+                    JOIN group_transactions gt ON gt.id = p.group_transaction_id
+                    WHERE gt.group_id = ? 
+                      AND gt.status = 'CONFIRMED' 
+                      AND gt.deleted_at IS NULL
+                ) combined
+                GROUP BY user_id
+                """;
+
         Map<UUID, List<Long>> history = new HashMap<>();
-        for (GroupTransactionRepository.MemberBalanceProjection p
-                : transactionRepository.aggregateMemberBalancesByGroupId(groupId))
-            putIfNotZero(history, p.getUserId(),
-                    List.of(p.getPaidOutOfPocket(), p.getContribution(), p.getRefund(), p.getShare()));
+        jdbcTemplate.query(sql, rs -> {
+            UUID userId = rs.getObject("user_id", UUID.class);
+            putIfNotZero(history, userId, List.of(
+                    rs.getLong("paid_out_of_pocket"),
+                    rs.getLong("contribution"),
+                    rs.getLong("refund"),
+                    rs.getLong("share")
+            ));
+        }, groupId, groupId, groupId, groupId);
 
         assertThat(summary).as("bảng tổng hợp sau bước: " + step).isEqualTo(history);
     }
