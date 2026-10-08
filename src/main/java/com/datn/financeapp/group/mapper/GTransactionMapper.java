@@ -5,8 +5,6 @@ import com.datn.financeapp.group.dto.response.transaction.GroupTransactionPartic
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.entity.TransactionParticipant;
 
-import java.util.List;
-
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -28,10 +26,7 @@ public interface GTransactionMapper {
     @Mapping(target = "note", source = "txn.note")
     @Mapping(target = "createdAt", source = "txn.createdAt")
     @Mapping(target = "updatedAt", source = "txn.updatedAt")
-    @Mapping(target = "participants", source = "participants")
-    GroupTransactionDetailRes toDetailResponse(
-            GTransaction txn,
-            List<GroupTransactionParticipantRes> participants);
+    GroupTransactionDetailRes toDetailResponse(GTransaction txn);
 
     @Mapping(target = "userId", source = "participant.userId")
     @Mapping(target = "shareAmount", source = "participant.shareAmount")

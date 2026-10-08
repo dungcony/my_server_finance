@@ -5,7 +5,6 @@ import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 public record GroupTransactionDetailRes(
@@ -23,6 +22,5 @@ public record GroupTransactionDetailRes(
         Instant occurredAt,
         String note,
         Instant createdAt,
-        Instant updatedAt,
-        List<GroupTransactionParticipantRes> participants) {
+        Instant updatedAt) {
 }

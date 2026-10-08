@@ -33,6 +33,7 @@ import java.util.function.Supplier;
  * Các hàm trong class:
  * <ul>
  *   <li>{@link #buildDetailRes}: Ánh xạ sang DTO. Input: entity giao dịch. Output: DTO chi tiết.</li>
+ *   <li>{@link #buildParticipantsRes}: Ánh xạ danh sách người tham gia sang DTO. Input: entity giao dịch. Output: danh sách DTO người tham gia.</li>
  *   <li>{@link #calculateDelta}: Tính biến động quỹ. Input: loại giao dịch, nguồn tiền, số tiền, cờ reversal. Output: mức biến động (long).</li>
  *   <li>{@link #resolveParticipants}: Khởi tạo ds người tham gia. Input: tổng tiền, yêu cầu chia tiền, supplier ds thành viên. Output: ds entity participant.</li>
  *   <li>{@link #toParticipantEntities}: Chuyển DTO sang Entity. Input: ds DTO chia tiền. Output: ds entity participant.</li>
@@ -53,17 +54,23 @@ public class TransactionHelper {
      * @return DTO chi tiết giao dịch {@link GroupTransactionDetailRes}
      */
     public GroupTransactionDetailRes buildDetailRes(GTransaction txn) {
+        return gTransactionMapper.toDetailResponse(txn);
+    }
 
+    /**
+     * Ánh xạ danh sách người tham gia chia tiền của giao dịch sang DTO.
+     *
+     * @param txn Thực thể giao dịch nhóm
+     * @return Danh sách DTO người tham gia giao dịch
+     */
+    public List<GroupTransactionParticipantRes> buildParticipantsRes(GTransaction txn) {
         List<TransactionParticipant> raw = txn.getParticipants();
-
-        List<GroupTransactionParticipantRes> participants = List.of();
-
-        if (raw != null) {
-            participants = raw.stream()
-                    .map(gTransactionMapper::toParticipantResponse)
-                    .toList();
+        if (raw == null) {
+            return List.of();
         }
-        return gTransactionMapper.toDetailResponse(txn, participants);
+        return raw.stream()
+                .map(gTransactionMapper::toParticipantResponse)
+                .toList();
     }
 
     /**

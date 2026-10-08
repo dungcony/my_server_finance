@@ -9,10 +9,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.datn.financeapp.group.enums.GTransactionType;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.*;
+import org.springframework.lang.Nullable;
 
 public interface GroupTransactionRepository extends JpaRepository<GTransaction, UUID>, JpaSpecificationExecutor<GTransaction> {
 
@@ -21,10 +21,16 @@ public interface GroupTransactionRepository extends JpaRepository<GTransaction, 
 
     List<GTransaction> findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(List<UUID> ids, UUID groupId, GTransactionStatus status);
 
-    @EntityGraph(attributePaths = {"participants"})
-    List<GTransaction> findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(UUID groupId);
+    List<GTransaction> findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(UUID groupId, Pageable pageable);
+
+    List<GTransaction> findByGroupIdAndStatusNotAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(
+            UUID groupId, GTransactionStatus excludeStatus, Pageable pageable);
 
     long countByGroupIdAndStatusAndDeletedAtIsNull(UUID groupId, GTransactionStatus status);
+
+    long countByGroupIdAndDeletedAtIsNull(UUID groupId);
+
+    long countByGroupIdAndDeletedAtIsNullAndStatusNot(UUID groupId, GTransactionStatus status);
 
     @Query("""
                 SELECT COALESCE(SUM(gt.amount), 0)

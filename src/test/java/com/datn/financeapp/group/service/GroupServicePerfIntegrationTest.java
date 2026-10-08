@@ -124,9 +124,6 @@ class GroupServicePerfIntegrationTest {
     private GTransactionService gTransactionService;
 
     @Autowired
-    private GTransactionReviewService reviewService;
-
-    @Autowired
     private FundService fundService;
 
     @Autowired
@@ -322,18 +319,18 @@ class GroupServicePerfIntegrationTest {
         AtomicReference<UUID> txn = new AtomicReference<>();
         AtomicReference<List<UUID>> txns = new AtomicReference<>();
 
-        perf.measure(profile, "GTransactionReviewService.confirm",
+        perf.measure(profile, "GTransactionService.confirm",
                 () -> txn.set(createPendingExpense(group)),
-                () -> reviewService.confirm(ownerId, group, txn.get()));
-        perf.measure(profile, "GTransactionReviewService.reject",
+                () -> gTransactionService.confirm(ownerId, group, txn.get()));
+        perf.measure(profile, "GTransactionService.reject",
                 () -> txn.set(createPendingExpense(group)),
-                () -> reviewService.reject(ownerId, group, txn.get()));
-        perf.measure(profile, "GTransactionReviewService.bulkConfirm",
+                () -> gTransactionService.reject(ownerId, group, txn.get()));
+        perf.measure(profile, "GTransactionService.bulkConfirm",
                 () -> txns.set(createPendingExpenses(group, batch)),
-                () -> reviewService.bulkConfirm(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
-        perf.measure(profile, "GTransactionReviewService.bulkReject",
+                () -> gTransactionService.bulkConfirm(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
+        perf.measure(profile, "GTransactionService.bulkReject",
                 () -> txns.set(createPendingExpenses(group, batch)),
-                () -> reviewService.bulkReject(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
+                () -> gTransactionService.bulkReject(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
     }
 
     private void measureFundService(Profile profile, UUID group, int batch) {

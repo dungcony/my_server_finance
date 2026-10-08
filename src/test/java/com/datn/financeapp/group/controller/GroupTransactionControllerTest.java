@@ -19,10 +19,10 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
+import com.datn.financeapp.group.dto.response.transaction.GroupTransactionParticipantRes;
 import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.service.GTransactionReviewService;
 import com.datn.financeapp.group.service.GTransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -59,9 +59,6 @@ class GroupTransactionControllerTest {
 
     @Mock
     private GTransactionService gTransactionService;
-
-    @Mock
-    private GTransactionReviewService transactionReviewService;
 
     @InjectMocks
     private GroupTransactionController groupTransactionController;
@@ -103,7 +100,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, req.categoryId(),
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.PENDING,
                 null, null, 150_000L, Instant.now(), "Ăn trưa nhóm",
-                Instant.now(), Instant.now(), Collections.emptyList()
+                Instant.now(), Instant.now()
         );
 
         when(gTransactionService.create(eq(userId), eq(groupId), any(GroupTransactionCreateReq.class))).thenReturn(res);
@@ -126,7 +123,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Ăn trưa",
-                Instant.now(), Instant.now(), Collections.emptyList()
+                Instant.now(), Instant.now()
         );
         GroupTransactionListRes listRes = GroupTransactionListRes.of(List.of(res), new PageMeta(1, 20, 1L, 1));
 
@@ -149,7 +146,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 null, null, 150_000L, Instant.now(), "Chi tiết",
-                Instant.now(), Instant.now(), Collections.emptyList()
+                Instant.now(), Instant.now()
         );
         when(gTransactionService.detail(userId, groupId, txnId)).thenReturn(res);
 
@@ -162,6 +159,21 @@ class GroupTransactionControllerTest {
     }
 
     @Test
+    @DisplayName("GET /groups/{groupId}/transactions/{txnId}/participants - Lấy danh sách người tham gia giao dịch")
+    void getParticipants_success() throws Exception {
+        GroupTransactionParticipantRes pRes = new GroupTransactionParticipantRes(userId, 75_000L);
+        when(gTransactionService.getParticipants(userId, groupId, txnId)).thenReturn(List.of(pRes));
+
+        mockMvc.perform(get("/groups/{groupId}/transactions/{txnId}/participants", groupId, txnId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].user_id").value(userId.toString()))
+                .andExpect(jsonPath("$.data[0].share_amount").value(75000L));
+
+        verify(gTransactionService).getParticipants(userId, groupId, txnId);
+    }
+
+    @Test
     @DisplayName("PUT /groups/{groupId}/transactions/{txnId} - Cập nhật giao dịch")
     void updateTransaction_success() throws Exception {
         GroupTransactionUpdateReq req = new GroupTransactionUpdateReq(
@@ -171,7 +183,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.PENDING,
                 null, null, 200_000L, Instant.now(), "Ghi chú mới",
-                Instant.now(), Instant.now(), Collections.emptyList()
+                Instant.now(), Instant.now()
         );
 
         when(gTransactionService.update(eq(userId), eq(groupId), eq(txnId), any(GroupTransactionUpdateReq.class))).thenReturn(res);
@@ -203,16 +215,16 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Duyệt",
-                Instant.now(), Instant.now(), Collections.emptyList()
+                Instant.now(), Instant.now()
         );
-        when(transactionReviewService.confirm(userId, groupId, txnId)).thenReturn(res);
+        when(gTransactionService.confirm(userId, groupId, txnId)).thenReturn(res);
 
         mockMvc.perform(post("/groups/{groupId}/transactions/{txnId}/confirm", groupId, txnId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
 
-        verify(transactionReviewService).confirm(userId, groupId, txnId);
+        verify(gTransactionService).confirm(userId, groupId, txnId);
     }
 
     @Test
@@ -222,16 +234,16 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.REJECTED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Từ chối",
-                Instant.now(), Instant.now(), Collections.emptyList()
+                Instant.now(), Instant.now()
         );
-        when(transactionReviewService.reject(userId, groupId, txnId)).thenReturn(res);
+        when(gTransactionService.reject(userId, groupId, txnId)).thenReturn(res);
 
         mockMvc.perform(post("/groups/{groupId}/transactions/{txnId}/reject", groupId, txnId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("REJECTED"));
 
-        verify(transactionReviewService).reject(userId, groupId, txnId);
+        verify(gTransactionService).reject(userId, groupId, txnId);
     }
 
     @Test
@@ -245,7 +257,7 @@ class GroupTransactionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(transactionReviewService).bulkConfirm(eq(userId), eq(groupId), any(GroupTransactionBulkReviewReq.class));
+        verify(gTransactionService).bulkConfirm(eq(userId), eq(groupId), any(GroupTransactionBulkReviewReq.class));
     }
 
     @Test
@@ -259,6 +271,6 @@ class GroupTransactionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(transactionReviewService).bulkReject(eq(userId), eq(groupId), any(GroupTransactionBulkReviewReq.class));
+        verify(gTransactionService).bulkReject(eq(userId), eq(groupId), any(GroupTransactionBulkReviewReq.class));
     }
 }

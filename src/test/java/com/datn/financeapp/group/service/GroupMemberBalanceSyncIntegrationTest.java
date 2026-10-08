@@ -68,9 +68,6 @@ class GroupMemberBalanceSyncIntegrationTest {
     private GTransactionService transactionService;
 
     @Autowired
-    private GTransactionReviewService reviewService;
-
-    @Autowired
     private GroupRepository groupRepository;
 
     @Autowired
@@ -119,12 +116,12 @@ class GroupMemberBalanceSyncIntegrationTest {
                 GTransactionType.EXPENSE, MoneySource.PERSONAL, 90_000L, null, null, categoryId, memberA,
                 "Ăn tối", List.of(part(memberA, 45_000L), part(memberB, 45_000L)))).id();
         assertSummaryMatchesHistory("A chi tiền túi 90k (chờ duyệt)");
-        reviewService.confirm(ownerId, groupId, expenseId);
+        transactionService.confirm(ownerId, groupId, expenseId);
         assertSummaryMatchesHistory("chủ nhóm duyệt khoản chi của A");
 
         // B tự nộp quỹ nên chờ duyệt, chủ nhóm duyệt hàng loạt
         UUID contributionB = transactionService.create(memberB, groupId, contribution(memberB, 100_000L)).id();
-        reviewService.bulkConfirm(ownerId, groupId, new GroupTransactionBulkReviewReq(List.of(contributionB)));
+        transactionService.bulkConfirm(ownerId, groupId, new GroupTransactionBulkReviewReq(List.of(contributionB)));
         assertSummaryMatchesHistory("chủ nhóm duyệt hàng loạt khoản nộp của B");
 
         // chủ nhóm sửa khoản chi: đổi số tiền, người tham gia và nguồn tiền

@@ -7,16 +7,17 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionBulkRev
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
+import com.datn.financeapp.group.dto.response.transaction.GroupTransactionParticipantRes;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.MoneySource;
-import com.datn.financeapp.group.service.GTransactionReviewService;
 import com.datn.financeapp.group.service.GTransactionService;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class GroupTransactionController {
 
     private final GTransactionService gTransactionService;
-    private final GTransactionReviewService transactionReviewService;
 
     @PostMapping("/transactions")
     @Idempotent
@@ -102,6 +102,14 @@ public class GroupTransactionController {
         return ApiResponse.of(gTransactionService.detail(userId, groupId, txnId));
     }
 
+    @GetMapping("/transactions/{txnId}/participants")
+    public ApiResponse<List<GroupTransactionParticipantRes>> getParticipants(
+            @PathVariable UUID groupId,
+            @PathVariable UUID txnId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(gTransactionService.getParticipants(userId, groupId, txnId));
+    }
+
     @PutMapping("/transactions/{txnId}")
     public ApiResponse<GroupTransactionDetailRes> update(
             @PathVariable UUID groupId,
@@ -125,7 +133,7 @@ public class GroupTransactionController {
             @PathVariable UUID groupId,
             @PathVariable UUID txnId) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(transactionReviewService.confirm(userId, groupId, txnId));
+        return ApiResponse.of(gTransactionService.confirm(userId, groupId, txnId));
     }
 
     @PostMapping("/transactions/{txnId}/reject")
@@ -133,7 +141,7 @@ public class GroupTransactionController {
             @PathVariable UUID groupId,
             @PathVariable UUID txnId) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(transactionReviewService.reject(userId, groupId, txnId));
+        return ApiResponse.of(gTransactionService.reject(userId, groupId, txnId));
     }
 
     @PostMapping("/transactions/bulk-confirm")
@@ -141,7 +149,7 @@ public class GroupTransactionController {
             @PathVariable UUID groupId,
             @Valid @RequestBody GroupTransactionBulkReviewReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(transactionReviewService.bulkConfirm(userId, groupId, req));
+        return ApiResponse.of(gTransactionService.bulkConfirm(userId, groupId, req));
     }
 
     @PostMapping("/transactions/bulk-reject")
@@ -149,7 +157,7 @@ public class GroupTransactionController {
             @PathVariable UUID groupId,
             @Valid @RequestBody GroupTransactionBulkReviewReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(transactionReviewService.bulkReject(userId, groupId, req));
+        return ApiResponse.of(gTransactionService.bulkReject(userId, groupId, req));
     }
 
 }

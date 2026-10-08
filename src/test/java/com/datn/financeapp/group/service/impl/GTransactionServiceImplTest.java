@@ -7,6 +7,7 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterR
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
+import com.datn.financeapp.group.helper.GroupTxCountHelper;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.repository.GroupTransactionRepository;
@@ -61,6 +62,8 @@ class GTransactionServiceImplTest {
     @Mock
     private MemberBalanceService memberBalanceService;
     @Mock
+    private GroupTxCountHelper groupTxCountHelper;
+    @Mock
     private GroupPermissionValidator permissionValidator;
     @Mock
     private GroupTransactionPaticipantValidator transactionValidator;
@@ -75,7 +78,7 @@ class GTransactionServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new GTransactionServiceImpl(transactionRepository, memberService, transactionHelper,
-                eventPublisher, memberBalanceService, permissionValidator, transactionValidator, List.of(), List.of());
+                eventPublisher, memberBalanceService, groupTxCountHelper, permissionValidator, transactionValidator, List.of(), List.of());
         groupId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
         memberId = UUID.randomUUID();

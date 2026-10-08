@@ -11,6 +11,7 @@ import com.datn.financeapp.group.entity.Group;
 import com.datn.financeapp.group.entity.Member;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
+import com.datn.financeapp.group.helper.GroupTxCountHelper;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.mapper.GTransactionMapper;
@@ -64,6 +65,9 @@ class TransactionServiceTest {
     private MemberBalanceService memberBalanceService;
 
     @Mock
+    private GroupTxCountHelper groupTxCountHelper;
+
+    @Mock
     private GTransactionBuilder expenseStrategy;
 
     @Mock
@@ -96,6 +100,7 @@ class TransactionServiceTest {
                 transactionHelper,
                 eventPublisher,
                 memberBalanceService,
+                groupTxCountHelper,
                 permissionValidator,
                 transactionValidator,
                 List.of(expenseStrategy, refundStrategy),

@@ -9,12 +9,14 @@ import com.datn.financeapp.group.dto.request.transaction.GroupTransactionFilterR
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.group.dto.response.transaction.GroupTransactionListRes;
+import com.datn.financeapp.group.dto.response.transaction.GroupTransactionParticipantRes;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.helper.BalanceCalculator;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
+import com.datn.financeapp.group.helper.GroupTxCountHelper;
 import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.helper.GTransactionUpdate;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
@@ -56,7 +58,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class GTransactionServiceImpl implements GTransactionService, GTransactionReviewService {
+public class GTransactionServiceImpl implements GTransactionService {
 
     // ảnh hưởng của giao dịch chưa tồn tại hoặc đã bị xoá
     private static final MemberBalances NO_EFFECT = new MemberBalances(Map.of());
@@ -66,6 +68,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     private final TransactionHelper transactionHelper;
     private final ApplicationEventPublisher eventPublisher;
     private final MemberBalanceService memberBalanceService;
+    private final GroupTxCountHelper groupTxCountHelper;
 
     // validator
     private final GroupPermissionValidator permissionValidator;
@@ -97,14 +100,11 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // lấy trạng thái kiểm duyệt dựa vào quyền người thực hiện
         GTransactionStatus status = strategy.determineStatus(authInfo);
 
-        // chỉ khoản được duyệt ngay mới làm đổi số dư; khoá nhóm trước khi strategy kiểm hạn mức hoàn tiền
-        if (status == GTransactionStatus.CONFIRMED)
-            memberBalanceService.lockGroupForBalanceChange(groupId);
-
         // điều phối tới đúng strategy phụ trách loại giao dịch để xây dựng entity
         GTransaction gTransaction = strategy.build(operatorId, groupId, req, status, authInfo.isSettlementEnabled());
 
         transactionRepository.save(gTransaction);
+        groupTxCountHelper.increment(groupId, status == GTransactionStatus.PENDING);
         memberBalanceService.applyDelta(groupId, NO_EFFECT, BalanceCalculator.effectOf(gTransaction));
 
         // cập nhật số dư quỹ nếu giao dịch được duyệt tự động
@@ -129,6 +129,17 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         GTransaction txn = findActiveTransaction(transactionId, groupId);
 
         return transactionHelper.buildDetailRes(txn);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GroupTransactionParticipantRes> getParticipants(UUID operatorId, UUID groupId, UUID transactionId) {
+        // xác thực người thực hiện đang trong group, nhóm đã lưu trữ vẫn xem được
+        permissionValidator.verifyMember(groupId, operatorId, true);
+
+        GTransaction txn = findActiveTransaction(transactionId, groupId);
+
+        return transactionHelper.buildParticipantsRes(txn);
     }
 
     @Override
@@ -174,9 +185,6 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                                             GroupTransactionUpdateReq req) {
         // xác thực người thực hiện có mặt trong nhóm
         MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
-
-        // khoá nhóm trước khi nạp giao dịch để bản đọc ra không bị lệnh khác đổi giữa chừng
-        memberBalanceService.lockGroupForBalanceChange(groupId);
 
         // tìm giao dịch hợp lệ
         GTransaction txn = transactionRepository.findByIdAndGroupIdAndDeletedAtIsNull(transactionId, groupId)
@@ -224,7 +232,6 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         // xác thực người thực hiện và lấy thông tin quyền hạn
         MemberAuthInfo authInfo = permissionValidator.getAuthInfo(groupId, operatorId);
 
-        memberBalanceService.lockGroupForBalanceChange(groupId);
         GTransaction txn = findActiveTransaction(transactionId, groupId);
 
         // kiểm tra quyền xóa theo vai trò
@@ -242,6 +249,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         txn.setDeletedAt(now);
         txn.setUpdatedAt(now);
         transactionRepository.save(txn);
+        groupTxCountHelper.decrement(groupId, txn.getStatus() == GTransactionStatus.PENDING);
         memberBalanceService.applyDelta(groupId, before, NO_EFFECT);
     }
 
@@ -267,10 +275,10 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     public GroupTransactionDetailRes confirm(UUID operatorId, UUID groupId, UUID transactionId) {
         requireReviewer(groupId, operatorId);
-        memberBalanceService.lockGroupForBalanceChange(groupId);
         GTransaction txn = findPendingTransaction(transactionId, groupId);
 
         updateReviewStatus(txn, GTransactionStatus.CONFIRMED, operatorId, Instant.now());
+        groupTxCountHelper.onTransactionReviewed(groupId);
         memberBalanceService.applyDelta(groupId, NO_EFFECT, BalanceCalculator.effectOf(txn));
         publishFundChangeEvent(groupId, deltaOf(txn));
 
@@ -290,7 +298,6 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     @Override
     public int bulkConfirm(UUID operatorId, UUID groupId, GroupTransactionBulkReviewReq req) {
         requireReviewer(groupId, operatorId);
-        memberBalanceService.lockGroupForBalanceChange(groupId);
         List<GTransaction> txns = findPendingBatch(groupId, req);
 
         long totalDelta = 0L;
@@ -303,6 +310,7 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
         }
 
         // gộp ảnh hưởng cả lô rồi ghi bảng tổng hợp một lần
+        groupTxCountHelper.onTransactionsBulkReviewed(groupId, txns.size());
         memberBalanceService.applyDelta(groupId, NO_EFFECT, totalEffect);
 
         // cập nhật số dư quỹ 1 lần duy nhất cho cả lô
@@ -372,6 +380,11 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
     }
 
     private GroupTransactionListRes buildListRes(UUID groupId, GroupTransactionFilterReq filter) {
+        // kiểm tra nếu là bộ lọc mặc định chỉ phân trang thì dùng luồng tối ưu có cache count
+        if (isDefaultPagingFilter(filter)) {
+            return buildOptimizedListRes(groupId, filter);
+        }
+
         Page<GTransaction> txnPage = getPage(groupId, filter);
 
         List<GroupTransactionDetailRes> items = txnPage.getContent()
@@ -385,6 +398,44 @@ public class GTransactionServiceImpl implements GTransactionService, GTransactio
                 txnPage.getTotalElements(),
                 txnPage.getTotalPages());
 
+        return GroupTransactionListRes.of(items, meta);
+    }
+
+    private boolean isDefaultPagingFilter(GroupTransactionFilterReq filter) {
+        return filter.moneySource() == null
+                && filter.type() == null
+                && filter.status() == null
+                && filter.transactorId() == null
+                && filter.createdBy() == null
+                && filter.fromOccurredAt() == null
+                && filter.toOccurredAt() == null
+                && filter.startDate() == null
+                && filter.endDate() == null;
+    }
+
+    private GroupTransactionListRes buildOptimizedListRes(UUID groupId, GroupTransactionFilterReq filter) {
+        int pageNumber = Math.max(1, filter.getPageNumber());
+        int pageSize = Math.max(1, filter.getPageSize());
+        Pageable pageable = PageRequest.of(pageNumber - 1, pageSize);
+
+        boolean excludePending = filter.excludeStatus() == GTransactionStatus.PENDING;
+        List<GTransaction> txns;
+        if (excludePending) {
+            txns = transactionRepository.findByGroupIdAndStatusNotAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(
+                    groupId, GTransactionStatus.PENDING, pageable);
+        } else {
+            txns = transactionRepository.findByGroupIdAndDeletedAtIsNullOrderByOccurredAtDescCreatedAtDesc(
+                    groupId, pageable);
+        }
+
+        long totalElements = groupTxCountHelper.getCount(groupId, excludePending);
+        int totalPages = (int) Math.ceil((double) totalElements / pageSize);
+
+        List<GroupTransactionDetailRes> items = txns.stream()
+                .map(transactionHelper::buildDetailRes)
+                .toList();
+
+        PageMeta meta = new PageMeta(pageNumber, pageSize, totalElements, totalPages);
         return GroupTransactionListRes.of(items, meta);
     }
 
