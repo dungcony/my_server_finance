@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>{@link #findRoleByName}: Lấy Role theo tên enum (có cache In-Memory).</li>
  *   <li>{@link #findRoleById}: Lấy Role theo UUID (có cache In-Memory).</li>
  *   <li>{@link #findAllRoles}: Lấy danh sách toàn bộ các Role tồn tại trong hệ thống (có cache In-Memory).</li>
+ *   <li>{@link #findRoleResponseByName}: Lấy thông tin RoleResponse theo tên enum từ cache In-Memory.</li>
  *   <li>{@link #findPermissionByName}: Lấy Permission theo tên enum (có cache In-Memory).</li>
  *   <li>{@link #findPermissionsByRole}: Lấy danh sách quyền hạn của một Role (có cache In-Memory).</li>
  *   <li>{@link #evictPermissionsByRole}: Hủy cache danh sách quyền của Role khi có thay đổi.</li>
@@ -88,6 +89,15 @@ public class RolePermissionCacheHelper {
                 .toList();
         allRolesCache.set(loaded);
         return loaded;
+    }
+
+    public Optional<RoleResponse> findRoleResponseByName(RoleName roleName) {
+        if (roleName == null) {
+            return Optional.empty();
+        }
+        return findAllRoles().stream()
+                .filter(r -> r.name() == roleName)
+                .findFirst();
     }
 
     public Optional<Permission> findPermissionByName(PermissionName name) {

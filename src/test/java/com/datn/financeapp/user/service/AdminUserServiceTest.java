@@ -13,7 +13,7 @@ import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.event.publiser.UserLockedEvent;
 import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
-import com.datn.financeapp.user.helper.UserLevelCacheHelper;
+import com.datn.financeapp.user.helper.UserAuthCacheHelper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
 import com.datn.financeapp.user.service.impl.ManagerUserServiceImpl;
@@ -48,7 +48,7 @@ class AdminUserServiceTest {
     @Mock
     private RolePermissionCacheHelper rolePermissionCacheHelper;
     @Mock
-    private UserLevelCacheHelper userLevelCacheHelper;
+    private UserAuthCacheHelper userAuthCacheHelper;
 
     @Mock
     private UserRoleRepository userRoleRepository;
@@ -87,7 +87,7 @@ class AdminUserServiceTest {
     // Admin gán role level 1 (ROLE_ADMIN) cho chính mình trong mock repo, để pass được
     // guard "không được gán role có cấp bậc cao hơn hoặc bằng chính mình" khi test gán ROLE_USER.
     private void stubAdminWithLevel(int level) {
-        when(userLevelCacheHelper.getUserLevel(adminId)).thenReturn(level);
+        when(userAuthCacheHelper.getUserLevel(adminId)).thenReturn(level);
     }
 
     @Test
@@ -143,7 +143,7 @@ class AdminUserServiceTest {
     @DisplayName("TC_UNIT_04: Khóa thành công - Cập nhật status BLOCKED, blacklist Redis, phát sự kiện khoá để thu hồi phiên")
     void blockUser_Success_UpdatesStatusAndRevokesTokens() {
         stubAdminWithLevel(1);
-        when(userLevelCacheHelper.getUserLevel(targetUserId)).thenReturn(10);
+        when(userAuthCacheHelper.getUserLevel(targetUserId)).thenReturn(10);
 
         User user = User.builder()
                 .id(targetUserId)

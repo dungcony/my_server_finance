@@ -12,13 +12,11 @@ import com.datn.financeapp.user.entity.RolePermission;
 import com.datn.financeapp.user.enums.PermissionName;
 import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
-import com.datn.financeapp.user.helper.UserLevelCacheHelper;
+import com.datn.financeapp.user.helper.UserAuthCacheHelper;
 import com.datn.financeapp.user.repository.RolePermissionRepository;
-import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.service.ManagerRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,22 +29,17 @@ import java.util.UUID;
 public class ManagerRoleServiceImpl implements ManagerRoleService {
 
     private final RolePermissionRepository rolePermissionRepository;
-    private final UserRepository userRepository;
     private final RolePermissionCacheHelper rolePermissionCacheHelper;
-    private final UserLevelCacheHelper userLevelCacheHelper;
-
-    @Transactional
-    @Override
-    public void addPermissionToRole(UUID roleId, PermissionName permissionName) {
-        Role role = findRole(null, roleId);
-        addPermissionInternal(role, permissionName);
-    }
+    private final UserAuthCacheHelper userAuthCacheHelper;
 
     @Transactional
     @Override
     public void addPermissionToRole(AddPermissionRoleRequest req) {
-        Role role = findRole(req.roleName(), null);
-        addPermissionInternal(role, req.permissionName());
+        if (req.permissionName() == null)
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Vui lòng cung cấp quyền hạn cần gán.");
+
+        Role role = findRole(req.roleName());
+        addPermissionInternal(SecurityContextUtil.currentUserId(), role, req.permissionName());
     }
 
     @Override
@@ -60,17 +53,12 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
         return rolePermissionCacheHelper.findPermissionsByRole(roleName);
     }
 
-    private void addPermissionInternal(Role role, PermissionName permissionName) {
-        if (permissionName == null)
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Vui lòng cung cấp quyền hạn cần gán.");
-
-        UUID currentUserId = SecurityContextUtil.currentUserId();
+    private void addPermissionInternal(UUID curId, Role role, PermissionName permissionName) {
 
         // số nhỏ = quyền cao, không được sửa quyền của role cấp cao hơn hoặc bằng mình
-        int currentUserLevel = userLevelCacheHelper != null
-                ? userLevelCacheHelper.getUserLevel(currentUserId)
-                : userRepository.findTopRoleLevelByUserId(currentUserId);
-        if (role.getLevel() <= currentUserLevel)
+        int curLevel = userAuthCacheHelper.getUserLevel(curId);
+
+        if (role.getLevel() <= curLevel)
             throw new BusinessException(ErrorCode.FORBIDDEN,
                     "Không được gán quyền cho vai trò có cấp bậc cao hơn hoặc bằng chính mình.");
 
@@ -78,7 +66,7 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy quyền hạn."));
 
         // không được gán quyền mà chính mình không có (DB lưu permission dạng getValue(), vd "users:read")
-        if (!userRepository.findAuthoritiesByUserId(currentUserId).contains(permission.getName().getValue()))
+        if (!userAuthCacheHelper.getUserAuthorities(curId).contains(permission.getName().getValue()))
             throw new BusinessException(ErrorCode.FORBIDDEN,
                     "Không được gán quyền mà chính mình không có.");
 
@@ -97,17 +85,12 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
         log.info("Đã gán permission {} cho role {}", permission.getName().getValue(), role.getName().name());
     }
 
-    private Role findRole(RoleName roleName, UUID roleId) {
-        if (roleName == null && roleId == null)
+    private Role findRole(RoleName roleName) {
+        if (roleName == null)
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Định danh vai trò không được để trống.");
 
-        if (roleName != null)
-            return rolePermissionCacheHelper.findRoleByName(roleName)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy vai trò."));
-
-        return rolePermissionCacheHelper.findRoleById(roleId)
+        return rolePermissionCacheHelper.findRoleByName(roleName)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy vai trò."));
-
     }
 
 }

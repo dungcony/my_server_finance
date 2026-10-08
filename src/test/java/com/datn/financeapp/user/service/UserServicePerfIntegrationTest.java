@@ -229,10 +229,7 @@ class UserServicePerfIntegrationTest {
 
     private void measureManagerRoleService(Profile profile) {
         // gỡ sẵn quyền khỏi ROLE_USER trước mỗi lần gọi để hàm thật sự phải chèn bản ghi mới
-        perf.measure(profile, "ManagerRoleService.addPermissionToRole (theo id vai trò)",
-                () -> removePermissionFromUserRole(PermissionName.USERS_READ),
-                () -> managerRoleService.addPermissionToRole(userRole.getId(), PermissionName.USERS_READ));
-        perf.measure(profile, "ManagerRoleService.addPermissionToRole (theo request)",
+        perf.measure(profile, "ManagerRoleService.addPermissionToRole",
                 () -> removePermissionFromUserRole(PermissionName.USERS_READ),
                 () -> managerRoleService.addPermissionToRole(
                         new AddPermissionRoleRequest(RoleName.ROLE_USER, PermissionName.USERS_READ)));
