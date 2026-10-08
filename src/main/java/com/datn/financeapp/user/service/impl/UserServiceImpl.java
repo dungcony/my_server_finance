@@ -15,7 +15,7 @@ import com.datn.financeapp.user.event.publiser.UserCreateEvent;
 import com.datn.financeapp.user.exception.UserBlockedException;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.mapper.UserMapper;
-import com.datn.financeapp.user.repository.RoleRepository;
+import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
 import com.datn.financeapp.user.service.UserService;
@@ -37,7 +37,7 @@ public class UserServiceImpl implements UserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final RolePermissionCacheHelper rolePermissionCacheHelper;
     private final UserRoleRepository userRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
@@ -206,7 +206,7 @@ public class UserServiceImpl implements UserService {
 
     private void assignDefaultRole(User user) {
         log.info("đang đăng ký roles.....");
-        roleRepository.findByName(RoleName.ROLE_USER).ifPresent(role -> {
+        rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_USER).ifPresent(role -> {
             UserRole userRole = new UserRole(user.getId(), role.getId());
             userRole.setUser(user);
             userRole.setRole(role);

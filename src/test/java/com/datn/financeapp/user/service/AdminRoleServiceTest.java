@@ -8,6 +8,8 @@ import com.datn.financeapp.user.entity.Role;
 import com.datn.financeapp.user.entity.RolePermission;
 import com.datn.financeapp.user.enums.PermissionName;
 import com.datn.financeapp.user.enums.RoleName;
+import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
+import com.datn.financeapp.user.mapper.RoleMapper;
 import com.datn.financeapp.user.repository.PermissionRepository;
 import com.datn.financeapp.user.repository.RolePermissionRepository;
 import com.datn.financeapp.user.repository.RoleRepository;
@@ -18,7 +20,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -50,7 +51,9 @@ class AdminRoleServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
+    @Mock
+    private RoleMapper roleMapper;
+
     private ManagerRoleServiceImpl adminRoleService;
 
     private final UUID roleId = UUID.randomUUID();
@@ -58,7 +61,9 @@ class AdminRoleServiceTest {
     private final UUID callerId = UUID.randomUUID();
 
     @BeforeEach
-    void loginAsCaller() {
+    void setUp() {
+        RolePermissionCacheHelper rolePermissionCacheHelper = new RolePermissionCacheHelper(roleRepository, permissionRepository, roleMapper);
+        adminRoleService = new ManagerRoleServiceImpl(rolePermissionRepository, userRepository, rolePermissionCacheHelper);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(callerId.toString(), null, List.of()));
     }

@@ -13,7 +13,6 @@ import com.datn.financeapp.user.enums.RoleName;
 import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.event.publiser.UserLockedEvent;
 import com.datn.financeapp.user.mapper.UserMapper;
-import com.datn.financeapp.user.repository.RoleRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
 import com.datn.financeapp.user.service.impl.ManagerUserServiceImpl;
@@ -48,7 +47,7 @@ class AdminUserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private RoleRepository roleRepository;
+    private com.datn.financeapp.user.helper.RolePermissionCacheHelper rolePermissionCacheHelper;
 
     @Mock
     private UserRoleRepository userRoleRepository;
@@ -202,7 +201,7 @@ class AdminUserServiceTest {
 
         stubAdminWithLevel(1);
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
-        when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
+        when(rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         when(userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())).thenReturn(false);
 
         adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER));
@@ -226,7 +225,7 @@ class AdminUserServiceTest {
 
         stubAdminWithLevel(1);
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
-        when(roleRepository.findByName(RoleName.ROLE_ADMIN)).thenReturn(Optional.of(adminRoleTarget));
+        when(rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_ADMIN)).thenReturn(Optional.of(adminRoleTarget));
 
         assertThatThrownBy(() -> adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_ADMIN)))
                 .isInstanceOf(BusinessException.class)
@@ -243,7 +242,7 @@ class AdminUserServiceTest {
 
         stubAdminWithLevel(1);
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
-        when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
+        when(rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         when(userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
@@ -258,7 +257,7 @@ class AdminUserServiceTest {
         User user = User.builder().id(targetUserId).email("user@example.com").isDeleted(false).build();
         Role role = Role.builder().id(UUID.randomUUID()).name(roleName).level(roleLevel).build();
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
-        when(roleRepository.findByName(roleName)).thenReturn(Optional.of(role));
+        when(rolePermissionCacheHelper.findRoleByName(roleName)).thenReturn(Optional.of(role));
         return role;
     }
 

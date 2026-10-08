@@ -11,10 +11,8 @@ import com.datn.financeapp.user.entity.Role;
 import com.datn.financeapp.user.entity.RolePermission;
 import com.datn.financeapp.user.enums.PermissionName;
 import com.datn.financeapp.user.enums.RoleName;
-import com.datn.financeapp.user.mapper.RoleMapper;
-import com.datn.financeapp.user.repository.PermissionRepository;
+import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
 import com.datn.financeapp.user.repository.RolePermissionRepository;
-import com.datn.financeapp.user.repository.RoleRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.service.ManagerRoleService;
 import lombok.RequiredArgsConstructor;
@@ -30,41 +28,33 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ManagerRoleServiceImpl implements ManagerRoleService {
 
-    private final RoleRepository roleRepository;
-    private final PermissionRepository permissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final UserRepository userRepository;
-
-    private final RoleMapper roleMapper;
+    private final RolePermissionCacheHelper rolePermissionCacheHelper;
 
     @Transactional
     @Override
     public void addPermissionToRole(UUID roleId, PermissionName permissionName) {
-        Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy vai trò."));
+        Role role = findRole(null, roleId);
         addPermissionInternal(role, permissionName);
     }
 
     @Transactional
     @Override
     public void addPermissionToRole(AddPermissionRoleRequest req) {
-        Role role = findRole(req.roleName());
+        Role role = findRole(req.roleName(), null);
         addPermissionInternal(role, req.permissionName());
     }
 
     @Override
     public List<RoleResponse> findRoles() {
-        return roleRepository.findAll()
-                .stream()
-                .map(roleMapper::toResponse)
-                .toList();
+        return rolePermissionCacheHelper.findAllRoles();
     }
 
     @Transactional(readOnly = true)
     @Override
     public List<PermissionResponse> findByRole(RoleName roleName) {
-        Role role = findRole(roleName);
-        return roleMapper.mapPermissions(role);
+        return rolePermissionCacheHelper.findPermissionsByRole(roleName);
     }
 
     private void addPermissionInternal(Role role, PermissionName permissionName) {
@@ -79,7 +69,7 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
             throw new BusinessException(ErrorCode.FORBIDDEN,
                     "Không được gán quyền cho vai trò có cấp bậc cao hơn hoặc bằng chính mình.");
 
-        Permission permission = permissionRepository.findByName(permissionName)
+        Permission permission = rolePermissionCacheHelper.findPermissionByName(permissionName)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy quyền hạn."));
 
         // không được gán quyền mà chính mình không có (DB lưu permission dạng getValue(), vd "users:read")
@@ -95,15 +85,24 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
         rolePermission.setPermission(permission);
         rolePermissionRepository.save(rolePermission);
         role.getRolePermissions().add(rolePermission);
+
+        // hủy cache danh sách quyền của vai trò để nạp lại mới nhất
+        rolePermissionCacheHelper.evictPermissionsByRole(role.getName());
+
         log.info("Đã gán permission {} cho role {}", permission.getName().getValue(), role.getName().name());
     }
 
-    private Role findRole(RoleName roleName) {
-        if (roleName == null)
+    private Role findRole(RoleName roleName, UUID roleId) {
+        if (roleName == null && roleId == null)
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Định danh vai trò không được để trống.");
 
-        return roleRepository.findByName(roleName)
+        if (roleName != null)
+            return rolePermissionCacheHelper.findRoleByName(roleName)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy vai trò."));
+
+        return rolePermissionCacheHelper.findRoleById(roleId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy vai trò."));
+
     }
 
 }

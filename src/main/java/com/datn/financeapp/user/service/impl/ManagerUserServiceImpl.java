@@ -16,7 +16,7 @@ import com.datn.financeapp.user.event.publiser.UserDeletedEvent;
 import com.datn.financeapp.user.event.publiser.UserLockedEvent;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.mapper.UserMapper;
-import com.datn.financeapp.user.repository.RoleRepository;
+import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
 import com.datn.financeapp.user.service.ManagerUserService;
@@ -36,7 +36,7 @@ import java.util.UUID;
 public class ManagerUserServiceImpl implements ManagerUserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final RolePermissionCacheHelper rolePermissionCacheHelper;
     private final UserRoleRepository userRoleRepository;
     private final BlacklistedUserRepository blacklistedUserRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -192,7 +192,10 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     }
 
     private Role getRole(RoleName roleName) {
-        return roleRepository.findByName(roleName)
+        if (roleName == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Định danh vai trò không được để trống.");
+        }
+        return rolePermissionCacheHelper.findRoleByName(roleName)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy vai trò."));
     }
 
