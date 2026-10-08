@@ -6,9 +6,13 @@ import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.*;
 import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.repository.GroupRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,17 +20,36 @@ import java.util.UUID;
  * Validator kiểm tra tư cách thành viên, phân quyền thao tác và tính hợp lệ của
  * nhóm tài chính.
  * <p>
- * Tái sử dụng tập trung cho các service trong module {@code group}, tránh
- * duplicate code
- * và nhất quán trong việc bắn các lỗi {@link BusinessException} liên quan đến
- * quyền truy cập.
+ * Tái sử dụng tập trung cho các service trong module {@code group}, quản lý cache
+ * Redis cho thông tin phân quyền thành viên {@link MemberAuthInfo}.
+ * </p>
+ * <p>
+ * Các hàm trong class:
+ * <ul>
+ *   <li>{@link #getAuthInfo}: Lấy và xác thực thông tin quyền thành viên (có cache Redis).</li>
+ *   <li>{@link #verifyMember}: Xác thực người dùng phải là thành viên hoạt động.</li>
+ *   <li>{@link #verifyOwner}: Xác thực quyền Trưởng nhóm (OWNER).</li>
+ *   <li>{@link #verifyOwnerOrTreasurer}: Xác thực quyền Trưởng nhóm hoặc Thủ quỹ.</li>
+ *   <li>{@link #verifyTransactionEditPermission}: Xác thực quyền sửa giao dịch nhóm.</li>
+ *   <li>{@link #verifyTransactionDeletePermission}: Xác thực quyền xóa giao dịch nhóm.</li>
+ *   <li>{@link #evictMember}: Hủy cache quyền của một thành viên cụ thể.</li>
+ *   <li>{@link #evictGroup}: Hủy cache quyền toàn bộ thành viên trong nhóm qua version.</li>
+ * </ul>
  * </p>
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GroupPermissionValidator {
 
+    private static final String KEY_PREFIX = "group:auth:";
+    private static final String VERSION_PREFIX = "group:auth_version:";
+    private static final Duration TTL = Duration.ofMinutes(30);
+
     private final GroupRepository groupRepository;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final ObjectMapper objectMapper;
+
 
     /**
      * Lấy thông tin auth và xác thực trạng thái nhóm (ACTIVE) và tư cách thành viên (ACTIVE).
@@ -55,9 +78,88 @@ public class GroupPermissionValidator {
         }
 
         return validateAuthInfo(
-                groupRepository.findAuthInfo(groupId, operatorId),
+                findAuthInfoCached(groupId, operatorId),
                 allowArchived
         );
+    }
+
+    /**
+     * Hủy cache quyền của một thành viên cụ thể trong nhóm khi thay đổi vai trò hoặc trạng thái.
+     *
+     * @param groupId ID nhóm
+     * @param userId  ID người dùng cần xóa cache
+     */
+    public void evictMember(UUID groupId, UUID userId) {
+        if (stringRedisTemplate == null || groupId == null || userId == null) {
+            return;
+        }
+        try {
+            long version = getGroupVersion(groupId);
+            stringRedisTemplate.delete(buildKey(groupId, version, userId));
+        } catch (Exception e) {
+            log.warn("Lỗi xóa cache quyền thành viên nhóm {} user {}: {}", groupId, userId, e.getMessage());
+        }
+    }
+
+    /**
+     * Hủy cache toàn bộ thành viên trong nhóm bằng cách tăng số phiên bản của nhóm.
+     *
+     * @param groupId ID nhóm cần vô hiệu hóa cache
+     */
+    public void evictGroup(UUID groupId) {
+        if (stringRedisTemplate == null || groupId == null) {
+            return;
+        }
+        try {
+            stringRedisTemplate.opsForValue().increment(VERSION_PREFIX + groupId);
+        } catch (Exception e) {
+            log.warn("Lỗi tăng phiên bản cache nhóm {}: {}", groupId, e.getMessage());
+        }
+    }
+
+    private Optional<MemberAuthInfo> findAuthInfoCached(UUID groupId, UUID userId) {
+        if (stringRedisTemplate == null || objectMapper == null) {
+            return groupRepository.findAuthInfo(groupId, userId);
+        }
+
+        long version = getGroupVersion(groupId);
+        String key = buildKey(groupId, version, userId);
+
+        try {
+            String json = stringRedisTemplate.opsForValue().get(key);
+            if (json != null) {
+                return Optional.of(objectMapper.readValue(json, MemberAuthInfo.class));
+            }
+        } catch (Exception e) {
+            log.warn("Không thể đọc cache quyền thành viên nhóm {} user {}: {}", groupId, userId, e.getMessage());
+        }
+
+        // truy vấn csdl khi cache miss hoặc redis lỗi
+        Optional<MemberAuthInfo> infoOpt = groupRepository.findAuthInfo(groupId, userId);
+        infoOpt.ifPresent(info -> setCache(key, info));
+        return infoOpt;
+    }
+
+    private long getGroupVersion(UUID groupId) {
+        try {
+            String val = stringRedisTemplate.opsForValue().get(VERSION_PREFIX + groupId);
+            return val != null ? Long.parseLong(val) : 0L;
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    private void setCache(String key, MemberAuthInfo info) {
+        try {
+            String json = objectMapper.writeValueAsString(info);
+            stringRedisTemplate.opsForValue().set(key, json, TTL);
+        } catch (Exception e) {
+            log.warn("Lỗi ghi cache quyền thành viên: {}", e.getMessage());
+        }
+    }
+
+    private String buildKey(UUID groupId, long version, UUID userId) {
+        return KEY_PREFIX + groupId + ":" + version + ":" + userId;
     }
 
     /**

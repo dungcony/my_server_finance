@@ -16,4 +16,12 @@ Quy tắc bắt buộc khi làm việc trong dự án backend này. Hai file dư
 
 ## Quy tắc viết plan
 
-@.agent/plan-rule.md
+@.agents/plan-rule.md
+
+## Quy tắc viết javadocs
+
+@.agents/java-docs.md
+
+## Quy tắc khi thêm comment code
+
+@.agents/comment-rule.md

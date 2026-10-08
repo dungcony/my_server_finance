@@ -3,6 +3,8 @@ package com.datn.financeapp.group.helper;
 import com.datn.financeapp.group.enums.GroupStatus;
 import com.datn.financeapp.group.enums.MemberRole;
 import com.datn.financeapp.group.enums.MemberStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ import java.util.UUID;
  * @param memberRole          Vai trò của thành viên trong nhóm ({@link MemberRole})
  * @param keepperId            ID của thành viên đang chịu trách nhiệm giữ quỹ nhóm (Thủ quỹ), có thể null
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record MemberAuthInfo(
         UUID groupId,
         UUID myId,
@@ -63,6 +66,7 @@ public record MemberAuthInfo(
      *
      * @return {@code true} nếu vai trò là {@link MemberRole#OWNER}, ngược lại {@code false}
      */
+    @JsonIgnore
     public boolean isOwner() {
         return memberRole == MemberRole.OWNER;
     }
@@ -72,6 +76,7 @@ public record MemberAuthInfo(
      *
      * @return {@code true} nếu {@code myId} khớp với {@code keepperId}, ngược lại {@code false}
      */
+    @JsonIgnore
     public boolean isTreasurer() {
         return keepperId != null && keepperId.equals(myId);
     }

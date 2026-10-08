@@ -110,6 +110,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         member.setStatus(MemberStatus.LEFT);
         member.setLeftAt(Instant.now());
         memberRepository.save(member);
+        permissionValidator.evictMember(groupId, operatorId);
     }
 
     @Override
@@ -129,17 +130,20 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         if (rowsUpdated == 0) {
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND);
         }
+        permissionValidator.evictMember(groupId, memberId);
     }
 
     @Override
     public int approveAll(UUID operatorId, UUID groupId) {
-        // 1. Kiểm tra quyền Owner và nhóm phải đang ACTIVE
+        // Kiểm tra quyền Owner và nhóm phải đang ACTIVE
         permissionValidator.verifyOwner(groupId, operatorId);
 
-        // 2. Chạy đúng 1 câu UPDATE toàn bộ những người PENDING -> ACTIVE
+        // Cập nhật toàn bộ người PENDING -> ACTIVE
         int approvedCount = memberRepository.approvePending(
                 groupId,
                 Instant.now());
+
+        permissionValidator.evictGroup(groupId);
 
         log.info("Chủ nhóm {} đã duyệt toàn bộ {} thành viên chờ vào nhóm {}",
                 operatorId, approvedCount, groupId);
@@ -155,6 +159,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         // không có dòng PENDING nào khớp thì báo không tìm thấy
         if (memberRepository.deletePending(groupId, memberId) == 0)
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND);
+        permissionValidator.evictMember(groupId, memberId);
     }
 
     @Override
@@ -164,6 +169,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
         // một câu DELETE xóa toàn bộ người đang PENDING
         int rejectedCount = memberRepository.deleteAllPending(groupId);
+        permissionValidator.evictGroup(groupId);
 
         log.info("Chủ nhóm {} đã từ chối toàn bộ {} thành viên chờ vào nhóm {}",
                 operatorId, rejectedCount, groupId);
@@ -193,6 +199,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         member.setStatus(MemberStatus.REMOVED);
         member.setLeftAt(Instant.now());
         memberRepository.save(member);
+        permissionValidator.evictMember(groupId, memberId);
     }
 
     @Override
@@ -204,8 +211,11 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
         permissionValidator.verifyOwner(groupId, operatorId);
 
-        if (memberRepository.swapOwner(groupId, operatorId, memberId) == 2)
+        if (memberRepository.swapOwner(groupId, operatorId, memberId) == 2) {
+            permissionValidator.evictMember(groupId, operatorId);
+            permissionValidator.evictMember(groupId, memberId);
             return;
+        }
 
         // đổi thất bại: tìm lý do để báo đúng mã lỗi, transaction sẽ rollback khi ném exception
         if (!memberRepository.existsByGroupIdAndUserIdAndStatus(groupId, memberId, MemberStatus.ACTIVE))

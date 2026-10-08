@@ -83,7 +83,7 @@ class GroupReportServiceTest {
         userB = UUID.randomUUID();
         userC = UUID.randomUUID();
 
-        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository);
+        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository, null, null);
 
         reportService = new GReportServiceImpl(
                 groupService,

@@ -20,6 +20,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -33,14 +38,25 @@ class GroupPermissionValidatorTest {
     @Mock
     private GroupRepository groupRepository;
 
+    @Mock
+    private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+
+    @Mock
+    private org.springframework.data.redis.core.ValueOperations<String, String> valueOperations;
+
+    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
     private GroupPermissionValidator validator;
+    private GroupPermissionValidator cachedValidator;
 
     private UUID groupId;
     private UUID userId;
 
     @BeforeEach
     void setUp() {
-        validator = new GroupPermissionValidator(groupRepository);
+        objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        validator = new GroupPermissionValidator(groupRepository, null, null);
+        cachedValidator = new GroupPermissionValidator(groupRepository, stringRedisTemplate, objectMapper);
         groupId = UUID.randomUUID();
         userId = UUID.randomUUID();
     }
@@ -178,6 +194,79 @@ class GroupPermissionValidatorTest {
 
         assertThatThrownBy(() -> validator.verifyMember(groupId, userId, true))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("Cache hit: Lấy thông tin quyền từ Redis mà không gọi CSDL")
+    void getAuthInfo_CacheHit_ReturnsFromRedisWithoutCallingDb() throws Exception {
+        MemberAuthInfo expectedInfo = info(GroupStatus.ACTIVE, MemberRole.MEMBER);
+        String json = objectMapper.writeValueAsString(expectedInfo);
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("group:auth_version:" + groupId)).thenReturn("1");
+        when(valueOperations.get("group:auth:" + groupId + ":1:" + userId)).thenReturn(json);
+
+        MemberAuthInfo result = cachedValidator.getAuthInfo(groupId, userId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.groupId()).isEqualTo(groupId);
+        assertThat(result.myId()).isEqualTo(userId);
+        assertThat(result.memberRole()).isEqualTo(MemberRole.MEMBER);
+        verify(groupRepository, never()).findAuthInfo(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
+    @DisplayName("Cache miss: Gọi CSDL và lưu kết quả vào Redis")
+    void getAuthInfo_CacheMiss_CallsDbAndSetsRedis() {
+        MemberAuthInfo expectedInfo = info(GroupStatus.ACTIVE, MemberRole.MEMBER);
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("group:auth_version:" + groupId)).thenReturn(null);
+        when(valueOperations.get("group:auth:" + groupId + ":0:" + userId)).thenReturn(null);
+        when(groupRepository.findAuthInfo(groupId, userId)).thenReturn(Optional.of(expectedInfo));
+
+        MemberAuthInfo result = cachedValidator.getAuthInfo(groupId, userId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.groupId()).isEqualTo(groupId);
+        verify(groupRepository).findAuthInfo(groupId, userId);
+        verify(valueOperations).set(eq("group:auth:" + groupId + ":0:" + userId), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Redis lỗi: Tự động fallback truy vấn CSDL bình thường")
+    void getAuthInfo_RedisError_FallsBackToDb() {
+        MemberAuthInfo expectedInfo = info(GroupStatus.ACTIVE, MemberRole.OWNER);
+
+        when(stringRedisTemplate.opsForValue()).thenThrow(new RuntimeException("Redis connection refused"));
+        when(groupRepository.findAuthInfo(groupId, userId)).thenReturn(Optional.of(expectedInfo));
+
+        MemberAuthInfo result = cachedValidator.getAuthInfo(groupId, userId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.memberRole()).isEqualTo(MemberRole.OWNER);
+        verify(groupRepository).findAuthInfo(groupId, userId);
+    }
+
+    @Test
+    @DisplayName("evictMember: Xóa đúng key cache của thành viên theo phiên bản nhóm")
+    void evictMember_DeletesRedisKey() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("group:auth_version:" + groupId)).thenReturn("3");
+
+        cachedValidator.evictMember(groupId, userId);
+
+        verify(stringRedisTemplate).delete("group:auth:" + groupId + ":3:" + userId);
+    }
+
+    @Test
+    @DisplayName("evictGroup: Tăng atomic biến đếm phiên bản nhóm")
+    void evictGroup_IncrementsVersionKey() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        cachedValidator.evictGroup(groupId);
+
+        verify(valueOperations).increment("group:auth_version:" + groupId);
     }
 
     // thành viên ACTIVE của nhóm với trạng thái nhóm và vai trò cho trước

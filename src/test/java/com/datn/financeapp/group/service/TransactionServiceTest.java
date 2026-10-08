@@ -89,7 +89,7 @@ class TransactionServiceTest {
         fundId = UUID.randomUUID();
         categoryId = UUID.randomUUID();
 
-        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository);
+        GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository, null, null);
         GroupTransactionPaticipantValidator transactionValidator = new GroupTransactionPaticipantValidator(memberService);
         GTransactionMapper gTransactionMapper = Mappers.getMapper(GTransactionMapper.class);
         TransactionHelper transactionHelper = new TransactionHelper(gTransactionMapper);

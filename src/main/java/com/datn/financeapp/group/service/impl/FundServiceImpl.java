@@ -69,6 +69,7 @@ public class FundServiceImpl implements FundService {
             if (!memberService.allMemberInGroup(groupId, List.of(req.keepperId())))
                 throw new BusinessException(ErrorCode.GROUP_FUND_HOLDER_NOT_MEMBER);
             fund.setKeepperId(req.keepperId());
+            permissionValidator.evictGroup(groupId);
         }
 
         fund = fundRepository.save(fund);

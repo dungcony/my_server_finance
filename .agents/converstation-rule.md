@@ -26,7 +26,8 @@
 - Ưu tiên giải pháp đơn giản, rõ ràng và dễ bảo trì.
 - Không thêm dependency mới nếu không thực sự cần thiết.
 - Giữ nguyên coding style và convention hiện tại của project.
-- Khi chạy kiểm thử hoặc build nền (Background Tasks), sau khi có kết quả phải chủ động gọi `manage_task(kill)` để đóng task, không để task treo trên giao diện.
+- Khi chạy kiểm thử hoặc build nền (Background Tasks), sau khi có kết quả phải chủ động gọi `manage_task(kill)` để đóng
+  task, không để task treo trên giao diện.
 - luôn đưa ra những file sửa trước khi bắt đầu
 - luôn đưa ra 1 file lan để tôi đọc và đưa ra comment và cần tôi xác nhận đồng ý trước khi bắt đầu thực hiện thay đổi
 
@@ -47,17 +48,11 @@
 - Không tự ý refactor diện rộng khi người dùng chỉ yêu cầu một thay đổi nhỏ.
 - Không tự ý sửa code nếu người dùng chỉ yêu cầu giải thích, phân tích hoặc review.
 - Nếu người dùng yêu cầu sửa code rõ ràng thì có thể thực hiện mà không cần hỏi lại.
-- Chỉ hỏi lại khi yêu cầu chưa rõ, có nhiều hướng xử lý quan trọng, hoặc thay đổi có thể vượt ra ngoài phạm vi người dùng yêu cầu.
+- Chỉ hỏi lại khi yêu cầu chưa rõ, có nhiều hướng xử lý quan trọng, hoặc thay đổi có thể vượt ra ngoài phạm vi người
+  dùng yêu cầu.
 - Không tự ý xóa code, đổi API, thay đổi database schema hoặc thay đổi hành vi hiện tại nếu chưa được yêu cầu.
 - Ưu tiên thay đổi nhỏ nhất có thể để giải quyết đúng vấn đề.
 - Khi viết cmt hãy viết theo // + giải thích không cần phải ghi 1. 2.
-
-## QUY TẮC COMMENT CODE (BẮT BUỘC):
-
-- TUYỆT ĐỐI KHÔNG đánh số thứ tự trong comment (CẤM: `// 1.`, `// 2.`, `// 1/`, `// Bước 1:`...).
-- ĐÚNG: `// xác thực người thực hiện`
-- SAI: `// 1. xác thực người thực hiện`
-- Trước khi trả code, bắt buộc rà soát lại: nếu thấy có số thứ tự trong comment thì phải xóa ngay.
 
 ## Python
 
@@ -66,7 +61,8 @@
 - Không tạo class/abstraction không cần thiết cho script hay hàm đơn giản.
 - Tận dụng thư viện chuẩn hoặc dependency đã có trong project trước khi thêm mới.
 - Giữ đúng cấu trúc module/package hiện tại của project.
-- Nếu project dùng framework cụ thể (FastAPI, Flask, Django...), giữ đúng kiến trúc, convention và cách tổ chức route/service/model hiện tại của framework đó.
+- Nếu project dùng framework cụ thể (FastAPI, Flask, Django...), giữ đúng kiến trúc, convention và cách tổ chức
+  route/service/model hiện tại của framework đó.
 
 ## Spring Boot
 

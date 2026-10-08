@@ -159,8 +159,10 @@ public class GroupServiceImpl implements GroupService {
         if (req.target() != null)
             group.setTarget(req.target());
 
-        if (req.isSettlementEnabled() != null)
+        if (req.isSettlementEnabled() != null) {
             group.setIsSettlementEnabled(req.isSettlementEnabled());
+            permissionValidator.evictGroup(groupId);
+        }
 
         if (req.isJoinWithoutConfirm() != null)
             group.setIsJoinWithoutConfirm(req.isJoinWithoutConfirm());
@@ -184,6 +186,7 @@ public class GroupServiceImpl implements GroupService {
         group.setStatus(GroupStatus.ARCHIVED);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
+        permissionValidator.evictGroup(groupId);
         log.info("nhóm đã được lưu trữ");
     }
 
@@ -199,6 +202,7 @@ public class GroupServiceImpl implements GroupService {
         group.setStatus(GroupStatus.ACTIVE);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
+        permissionValidator.evictGroup(groupId);
 
         log.info("nhóm đã được hoạt động trở lại");
     }
@@ -222,6 +226,7 @@ public class GroupServiceImpl implements GroupService {
         group.setStatus(GroupStatus.DELETED);
         group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
+        permissionValidator.evictGroup(groupId);
 
         log.info("deleted {} is completed", group.getId());
     }
