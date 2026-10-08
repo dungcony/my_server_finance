@@ -32,7 +32,6 @@ public abstract class UserMapper {
     @Mapping(target = "plan", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "userRoles", ignore = true)
-    @Mapping(target = "isNew", ignore = true)
     public abstract User toEntity(UserCreateReq req);
 
     protected List<RoleResponse> mapRoles(User user) {

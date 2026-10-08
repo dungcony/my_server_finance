@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.user.enums.RoleName;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,7 +28,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Role {
+public class Role extends AssignedIdEntity {
 
     @Id
     private UUID id;

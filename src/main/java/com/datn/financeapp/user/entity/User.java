@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.user.enums.UserPlan;
 import com.datn.financeapp.user.enums.UserStatus;
 import jakarta.persistence.Column;
@@ -35,25 +36,10 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User implements Persistable<UUID> {
+public class User extends AssignedIdEntity {
 
     @Id
     private UUID id;
-
-    @Transient
-    @Builder.Default
-    private boolean isNew = true;
-
-    @Override
-    public boolean isNew() {
-        return isNew;
-    }
-
-    @PostLoad
-    @PostPersist
-    void markNotNew() {
-        this.isNew = false;
-    }
 
     // CHECK (email = lower(email)) ở DB — Service phải lowercase trước khi lưu.
     @Column(name = "email", nullable = false, unique = true)

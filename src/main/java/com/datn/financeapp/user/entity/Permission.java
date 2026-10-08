@@ -1,5 +1,6 @@
 package com.datn.financeapp.user.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.user.enums.PermissionName;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +22,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Permission {
+public class Permission extends AssignedIdEntity {
 
     @Id
     private UUID id;
