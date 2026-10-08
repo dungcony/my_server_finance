@@ -1,24 +1,30 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 import crypto from 'k6/crypto';
 import encoding from 'k6/encoding';
 
-// Cấu hình tăng dần CCU hướng tới mục tiêu 10.000 người dùng đồng thời
+// Số request thực hiện trong mỗi vòng lặp user journey
+const REQUESTS_PER_ITERATION = 4;
+const targetRps = Number(__ENV.RPS) || 1500;
+
 export const options = {
-  stages: [
-    { duration: '1m', target: 500 },    // Khởi động với 500 CCU
-    { duration: '2m', target: 2000 },   // Nâng tải lên 2.000 CCU
-    { duration: '2m', target: 5000 },   // Nâng tải lên 5.000 CCU
-    { duration: '3m', target: 10000 },  // Đạt đỉnh 10.000 CCU đồng thời
-    { duration: '1m', target: 0 },      // Hạ tải về 0
-  ],
+  scenarios: {
+    custom_cli_test: {
+      executor: 'constant-arrival-rate',
+      // Tự động chia số lượng iteration để đạt đúng tổng số RPS mong muốn
+      rate: Math.round(targetRps / REQUESTS_PER_ITERATION),
+      timeUnit: '1s',
+      duration: __ENV.DURATION || '1m',
+      preAllocatedVUs: 200,
+      maxVUs: 3000,
+    },
+  },
   thresholds: {
-    // Tỉ lệ lỗi tổng thể cho phép dưới 5% khi ở tải cực hạn
     http_req_failed: ['rate<0.05'],
-    // 95% số request hoàn thành dưới 3 giây
     http_req_duration: ['p(95)<3000'],
   },
 };
+
 
 const BASE_URL = 'http://localhost:8080/v1';
 
@@ -75,7 +81,6 @@ export default function () {
   });
 
   if (!isListSuccess) {
-    sleep(1);
     return;
   }
 
@@ -88,12 +93,8 @@ export default function () {
   }
 
   if (!targetGroupId) {
-    sleep(1);
     return;
   }
-
-  // Thời gian dừng đọc màn hình trước khi thực hiện giao dịch
-  sleep(1);
 
   // Người dùng nộp tiền vào quỹ nhóm
   const createTxPayload = JSON.stringify({
@@ -114,9 +115,6 @@ export default function () {
     'Tạo giao dịch thành công': (r) => r.status === 201 || r.status === 200,
   });
 
-  // Thời gian dừng trước khi xem danh sách lịch sử giao dịch
-  sleep(1);
-
   // Người dùng xem danh sách giao dịch trong nhóm
   const listTxRes = http.get(
     `${BASE_URL}/groups/${targetGroupId}/transactions?page=1&page_size=20`,
@@ -126,9 +124,6 @@ export default function () {
   check(listTxRes, {
     'Xem danh sách giao dịch thành công': (r) => r.status === 200,
   });
-
-  // Thời gian dừng trước khi xem báo cáo số dư
-  sleep(1);
 
   // Người dùng xem tổng tiền quỹ và số dư công nợ của các thành viên
   const balancesRes = http.get(
@@ -142,7 +137,6 @@ export default function () {
 
   // Các CCU thuộc nhóm siêu lớn thực hiện truy vấn bảng 1 triệu dòng
   if (__VU <= 100) {
-    sleep(1);
     const superGroupTxRes = http.get(
       `${BASE_URL}/groups/${SUPER_GROUP_ID}/transactions?page=1&page_size=20`,
       authHeader
@@ -151,7 +145,4 @@ export default function () {
       'Query Nhóm Siêu Lớn 1 triệu dòng thành công': (r) => r.status === 200,
     });
   }
-
-  // Nghỉ giữa các chu kỳ của người dùng ảo
-  sleep(2);
 }

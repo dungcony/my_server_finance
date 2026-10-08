@@ -7,13 +7,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.domain.Persistable;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -30,7 +34,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserRole {
+public class UserRole implements Persistable<UserRole.UserRoleId> {
 
     @Id
     @Column(name = "user_id", nullable = false)
@@ -39,6 +43,26 @@ public class UserRole {
     @Id
     @Column(name = "role_id", nullable = false)
     private UUID roleId;
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
+
+    @Override
+    public UserRoleId getId() {
+        return new UserRoleId(userId, roleId);
+    }
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.isNew = false;
+    }
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
@@ -51,6 +75,7 @@ public class UserRole {
     public UserRole(UUID userId, UUID roleId) {
         this.userId = userId;
         this.roleId = roleId;
+        this.isNew = true;
     }
 
     @Getter

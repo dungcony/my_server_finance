@@ -16,7 +16,7 @@ import com.datn.financeapp.user.event.publiser.UserDeletedEvent;
 import com.datn.financeapp.user.event.publiser.UserLockedEvent;
 import com.datn.financeapp.user.exception.UserNotFoundException;
 import com.datn.financeapp.user.helper.RolePermissionCacheHelper;
-import com.datn.financeapp.user.helper.UserLevelCacheHelper;
+import com.datn.financeapp.user.helper.UserAuthCacheHelper;
 import com.datn.financeapp.user.mapper.UserMapper;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
@@ -41,7 +41,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     private final BlacklistedUserRepository blacklistedUserRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
-    private final UserLevelCacheHelper userLevelCacheHelper;
+    private final UserAuthCacheHelper userAuthCacheHelper;
 
     private static final long DEFAULT_BLACKLIST_TTL_SECONDS = 3600;
 
@@ -64,10 +64,10 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         user.setStatus(UserStatus.BLOCKED);
         userRepository.save(user);
 
-        // 1. Blacklist token trong Redis
+        // blacklist token trong Redis
         blacklistedUserRepository.add(req.userId(), req.reason(), DEFAULT_BLACKLIST_TTL_SECONDS);
 
-        // 2. Thu hồi toàn bộ Refresh Tokens
+        // thu hồi toàn bộ Refresh Tokens
         eventPublisher.publishEvent(new UserLockedEvent(req.userId()));
 
         log.info("User {} đã khóa tài khoản user {} với lý do: {}", managerId, req.userId(), req.reason());
@@ -96,9 +96,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         userRole.setRole(role);
         userRoleRepository.save(userRole);
         user.getUserRoles().add(userRole);
-        if (userLevelCacheHelper != null) {
-            userLevelCacheHelper.evictUserLevel(user.getId());
-        }
+        userAuthCacheHelper.evictUserAuth(user.getId());
         log.info("User {} đã gán role {} cho user {}", SecurityContextUtil.currentUserId(), role.getName(), req.userId());
     }
 
@@ -128,9 +126,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         if (userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())) {
             userRoleRepository.deleteByUserIdAndRoleId(user.getId(), role.getId());
             user.getUserRoles().removeIf(ur -> ur.getRoleId().equals(role.getId()));
-            if (userLevelCacheHelper != null) {
-                userLevelCacheHelper.evictUserLevel(user.getId());
-            }
+            userAuthCacheHelper.evictUserAuth(user.getId());
             log.info("User {} đã thu hồi role {} của user {}", currentUserId, role.getName(), req.userId());
         }
     }
@@ -155,6 +151,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
 
         user.setDeleted(true);
         userRepository.save(user);
+        userAuthCacheHelper.evictUserAuth(userId);
 
         eventPublisher.publishEvent(new UserDeletedEvent(userId));
 
@@ -207,6 +204,6 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     // Level của role mạnh nhất (số nhỏ nhất) mà user này đang giữ — dùng cho cả người bị
     // thao tác lẫn người đang gọi API, không riêng gì admin.
     private int getLevel(UUID userId) {
-        return userLevelCacheHelper.getUserLevel(userId);
+        return userAuthCacheHelper.getUserLevel(userId);
     }
 }

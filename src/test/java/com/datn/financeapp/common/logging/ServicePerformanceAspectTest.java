@@ -4,10 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import jakarta.persistence.EntityManagerFactory;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,13 +26,7 @@ class ServicePerformanceAspectTest {
     private static final long SLOW_MS = 300;
 
     @Mock
-    private EntityManagerFactory entityManagerFactory;
-
-    @Mock
-    private SessionFactory sessionFactory;
-
-    @Mock
-    private Statistics statistics;
+    private SqlStatementInspector statementInspector;
 
     @Mock
     private ProceedingJoinPoint pjp;
@@ -46,9 +37,7 @@ class ServicePerformanceAspectTest {
 
     @BeforeEach
     void setUp() {
-        when(entityManagerFactory.unwrap(SessionFactory.class)).thenReturn(sessionFactory);
-        when(sessionFactory.getStatistics()).thenReturn(statistics);
-        aspect = new ServicePerformanceAspect(entityManagerFactory, new PerformanceProperties(SQL_THRESHOLD, SLOW_MS));
+        aspect = new ServicePerformanceAspect(statementInspector, new PerformanceProperties(SQL_THRESHOLD, SLOW_MS));
 
         aspectLogger = (Logger) LoggerFactory.getLogger(ServicePerformanceAspect.class);
         aspectLogger.setLevel(Level.DEBUG);
@@ -63,9 +52,15 @@ class ServicePerformanceAspectTest {
     }
 
     @Test
-    @DisplayName("Khởi tạo: bật thống kê Hibernate để có bộ đếm SQL")
-    void constructor_EnablesHibernateStatistics() {
-        verify(statistics).setStatisticsEnabled(true);
+    @DisplayName("Thực thi method: gọi enter và exit trên statementInspector")
+    void measure_ManagesInspectorLifecycle() throws Throwable {
+        stubTarget();
+        when(statementInspector.getCount()).thenReturn(0L, 1L);
+
+        aspect.measure(pjp);
+
+        verify(statementInspector).enter();
+        verify(statementInspector).exit();
     }
 
     @Test
@@ -73,7 +68,7 @@ class ServicePerformanceAspectTest {
     void measure_ReturnsOriginalResult() throws Throwable {
         stubTarget();
         when(pjp.proceed()).thenReturn("ket-qua");
-        when(statistics.getPrepareStatementCount()).thenReturn(0L, 0L);
+        when(statementInspector.getCount()).thenReturn(0L, 0L);
 
         Object result = aspect.measure(pjp);
 
@@ -86,7 +81,7 @@ class ServicePerformanceAspectTest {
         stubTarget();
         IllegalStateException boom = new IllegalStateException("loi nghiep vu");
         when(pjp.proceed()).thenThrow(boom);
-        when(statistics.getPrepareStatementCount()).thenReturn(0L, 3L);
+        when(statementInspector.getCount()).thenReturn(0L, 3L);
 
         assertThatThrownBy(() -> aspect.measure(pjp)).isSameAs(boom);
 
@@ -99,7 +94,7 @@ class ServicePerformanceAspectTest {
     void measure_UnderThresholds_LogsInfo() throws Throwable {
         stubTarget();
         when(pjp.proceed()).thenReturn(null);
-        when(statistics.getPrepareStatementCount()).thenReturn(5L, 8L);
+        when(statementInspector.getCount()).thenReturn(5L, 8L);
 
         aspect.measure(pjp);
 
@@ -116,7 +111,7 @@ class ServicePerformanceAspectTest {
     void measure_SqlCountEqualsThreshold_LogsInfo() throws Throwable {
         stubTarget();
         when(pjp.proceed()).thenReturn(null);
-        when(statistics.getPrepareStatementCount()).thenReturn(0L, (long) SQL_THRESHOLD);
+        when(statementInspector.getCount()).thenReturn(0L, (long) SQL_THRESHOLD);
 
         aspect.measure(pjp);
 
@@ -128,7 +123,7 @@ class ServicePerformanceAspectTest {
     void measure_OverSqlThreshold_LogsWarnSuspectNPlusOne() throws Throwable {
         stubTarget();
         when(pjp.proceed()).thenReturn(null);
-        when(statistics.getPrepareStatementCount()).thenReturn(100L, 123L);
+        when(statementInspector.getCount()).thenReturn(100L, 123L);
 
         aspect.measure(pjp);
 
@@ -145,7 +140,7 @@ class ServicePerformanceAspectTest {
             Thread.sleep(SLOW_MS + 50);
             return null;
         });
-        when(statistics.getPrepareStatementCount()).thenReturn(0L, 1L);
+        when(statementInspector.getCount()).thenReturn(0L, 1L);
 
         aspect.measure(pjp);
 

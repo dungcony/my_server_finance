@@ -1,9 +1,8 @@
 package com.datn.financeapp.user.repository;
 
 import com.datn.financeapp.user.dto.response.UserNameDisplayRes;
-import com.datn.financeapp.user.dto.response.UserRes;
 import com.datn.financeapp.user.entity.User;
-import com.datn.financeapp.user.enums.UserStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -13,9 +12,12 @@ import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    Optional<User> findByEmail(String email);
+    @Override
+    @EntityGraph(attributePaths = {"userRoles.role"})
+    Optional<User> findById(UUID id);
 
-    boolean existsByEmailAndStatus(String email, UserStatus status);
+    @EntityGraph(attributePaths = {"userRoles.role"})
+    Optional<User> findByEmail(String email);
 
     Optional<User> findByGoogleId(String googleId);
 
@@ -69,7 +71,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             SELECT DISTINCT u FROM User u
             LEFT JOIN FETCH u.userRoles ur
             LEFT JOIN FETCH ur.role r
-            LEFT JOIN FETCH r.rolePermissions
             WHERE NOT EXISTS (
                 SELECT 1 FROM UserRole ur2 JOIN ur2.role r2
                 WHERE ur2.userId = u.id AND r2.level <= :callerLevel

@@ -31,15 +31,18 @@ spring:
 # ngưỡng cảnh báo của ServicePerformanceAspect (chỉ chạy ở profile dev)
 app:
   perf:
-    sql-warn-threshold: 10
-    slow-ms: 300
+    sql-warn-threshold: 1000
+    slow-ms: 1000
 
 logging:
   level:
-    com.datn.financeapp: INFO
+    com.zaxxer.hikari.pool.HikariPool: warn
+    com.datn.financeapp: WARN
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
-    org.springframework.transaction: DEBUG
+    org.springframework.transaction: warn
+  file:
+    name: target/server.log
 
 server:
   #  compression:
@@ -51,7 +54,7 @@ server:
     max-http-form-post-size: 2MB
     max-swallow-size: 10MB
     max-connections: 8192 # Số lượng kết nối TCP tối đa Tomcat chấp nhận cùng lúc (mặc định: 8192)
-    accept-count: 200 # Hàng đợi cấp OS khi max-connections bị đầy (mặc định: 100)
+    accept-count: 300 # Hàng đợi cấp OS khi max-connections bị đầy (mặc định: 100)
     connection-timeout: 20000ms # Thời gian chờ client gửi dữ liệu trước khi đóng socket (20s)
     keep-alive-timeout: 15000ms # Thời gian giữ kết nối TCP cho reuse
     threads:
