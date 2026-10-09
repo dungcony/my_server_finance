@@ -1,0 +1,23 @@
+info:
+  name: 01. Đăng ký tài khoản
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/register"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{email}}",
+        "password": "Password123@"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Đăng ký tài khoản mới bằng email và mật khẩu.

@@ -1,0 +1,31 @@
+﻿info:
+  name: 08. Chuyển tiền giữa các ví
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/wallets/transfer"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "source_wallet_id": "{{walletId}}",
+        "destination_wallet_id": "{{destinationWalletId}}",
+        "amount": 100000,
+        "fee": 0,
+        "date": "2026-09-11",
+        "note": "Rút tiền từ tài khoản sang ví mặt"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Chuyển tiền giữa 2 ví, tự sinh giao dịch chuyển khoản và cập nhật số dư cả 2 ví.

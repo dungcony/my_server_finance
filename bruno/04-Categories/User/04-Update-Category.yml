@@ -1,0 +1,25 @@
+﻿info:
+  name: 04. Cập nhật danh mục
+  type: http
+  seq: 4
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/categories/{{categoryId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ăn tiệm & Cà phê",
+        "color": "#E67E22"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Cập nhật tên, icon, màu sắc của danh mục.

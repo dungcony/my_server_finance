@@ -1,0 +1,32 @@
+info:
+  name: 04. Đăng nhập
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/login"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{email}}",
+        "password": "Password123@"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data && res.body.data.access_token) {
+      bru.setEnvVar("accessToken", res.body.data.access_token);
+      if (res.body.data.refresh_token) {
+        bru.setEnvVar("refreshToken", res.body.data.refresh_token);
+      }
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Đăng nhập bằng email và mật khẩu. Tự động lưu accessToken và refreshToken vào environment.

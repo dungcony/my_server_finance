@@ -1,0 +1,26 @@
+info:
+  name: 20. Sửa khoản rút tiền góp
+  type: http
+  seq: 20
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/groups/{{groupId}}/withdrawals/{{groupTxnId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "from_user_id": "{{memberUserId}}",
+        "amount": 400000,
+        "note": "Sửa khoản rút tiền góp"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Chỉnh sửa thông tin khoản rút tiền góp khỏi quỹ."

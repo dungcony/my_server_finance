@@ -409,12 +409,20 @@ public enum ErrorCode {
         this.defaultMessage = defaultMessage;
     }
 
-    // Mã lỗi đi ra JSON — chính là tên hằng số. Giữ nguyên tên là giữ nguyên hợp đồng với app.
+    /**
+     * Lấy mã lỗi dạng chuỗi (chính là tên của hằng số enum).
+     *
+     * @return mã lỗi dạng String
+     */
     public String getCode() {
         return name();
     }
 
-    // HTTP status dạng số, tiện cho {@code ResponseEntity.status(...)}.
+    /**
+     * Lấy mã trạng thái HTTP dạng số tương ứng với lỗi.
+     *
+     * @return mã HTTP status (ví dụ: 400, 404, 500)
+     */
     public int getHttpStatus() {
         return status.value();
     }

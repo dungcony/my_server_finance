@@ -1,0 +1,30 @@
+info:
+  name: 08. Tạo giao dịch nhóm
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "type": "EXPENSE",
+        "money_source": "FUND",
+        "amount": 250000,
+        "date": "2026-03-20",
+        "category_id": "{{categoryId}}",
+        "note": "Ăn tối hải sản",
+        "participants": []
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Mọi thành viên có thể ghi chi tiêu (EXPENSE) hoặc nộp tiền quỹ (CONTRIBUTION). Khoản ghi bởi thành viên thường sẽ ở trạng thái PENDING chờ duyệt.

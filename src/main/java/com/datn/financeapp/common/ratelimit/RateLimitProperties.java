@@ -2,12 +2,13 @@ package com.datn.financeapp.common.ratelimit;
 
 import java.time.Duration;
 import java.util.List;
+
 import org.springframework.stereotype.Component;
 
 /**
  * Bảng cấu hình rate limit 3 tầng đã chốt ở D-16 — hardcode (không đọc từ application.yml)
  * để giữ đơn giản, nhưng đặt trong bean để dễ mock/test.
- *
+ * <p>
  * | Nhóm    | Quota      | Đếm theo |
  * |---------|------------|----------|
  * | auth    | 5/phút     | IP       |

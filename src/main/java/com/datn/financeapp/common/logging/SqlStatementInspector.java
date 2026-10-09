@@ -1,6 +1,7 @@
 package com.datn.financeapp.common.logging;
 
 import java.util.Map;
+
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;

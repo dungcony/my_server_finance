@@ -1,0 +1,35 @@
+﻿info:
+  name: 06. Ghi nhận trả nợ
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/debts/{{debtId}}/payments"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "amount": 500000,
+        "wallet_id": "{{walletId}}",
+        "paid_date": "2026-09-15",
+        "note": "Trả đợt 1 qua chuyển khoản"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("paymentId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Ghi một lần thu/trả nợ từng phần hoặc toàn bộ. Tự động sinh giao dịch tài chính.

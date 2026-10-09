@@ -1,0 +1,28 @@
+info:
+  name: 01. Cập nhật nhóm
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/groups/{{groupId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Chuyến đi Đà Nẵng 2026",
+        "description": "Quỹ ăn chơi hè 2026 đã cập nhật",
+        "target": 20000000,
+        "is_settlement_enabled": true,
+        "is_join_without_confirm": true
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Cập nhật tên, mô tả, mục tiêu quỹ và cấu hình xét duyệt của nhóm."

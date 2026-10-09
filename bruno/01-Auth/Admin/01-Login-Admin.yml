@@ -1,0 +1,32 @@
+info:
+  name: 01. Đăng nhập Admin
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/login"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{adminEmail}}",
+        "password": "{{adminPassword}}"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data && res.body.data.access_token) {
+      bru.setEnvVar("adminAccessToken", res.body.data.access_token);
+      if (res.body.data.refresh_token) {
+        bru.setEnvVar("adminRefreshToken", res.body.data.refresh_token);
+      }
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Đăng nhập bằng tài khoản Quản trị viên (Admin). Tự động lưu adminAccessToken và adminRefreshToken vào environment.

@@ -1,0 +1,131 @@
+name: Local
+variables:
+  - name: baseUrl
+    value: http://localhost:8080/v1
+    enabled: true
+    secret: false
+    type: text
+  - name: email
+    value: user@example.com
+    enabled: true
+    secret: false
+    type: text
+  - name: accessToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: refreshToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: adminEmail
+    value: admin@financeapp.com
+    enabled: true
+    secret: false
+    type: text
+  - name: adminPassword
+    value: Admin@123
+    enabled: true
+    secret: false
+    type: text
+  - name: adminAccessToken
+    value: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzZjQzYmNlOC0xN2I5LTRhYjMtYmJmNy1lYjg2NDUxZDBmMTkiLCJwbGFuIjoiUFJFTUlVTSIsImF1dGhvcml0aWVzIjpbImFkbWluOmNhdGVnb3JpZXM6bWFuYWdlIiwiYWRtaW46c3lzdGVtOnZpZXdfc3RhdHMiLCJhZG1pbjp1c2VyczptYW5hZ2UiLCJhZG1pbjp1c2VyczpyZWFkIiwiUk9MRV9BRE1JTiIsIlJPTEVfVVNFUiJdLCJpYXQiOjE3ODkxOTc3NzMsImV4cCI6MTc4OTIwMTM3M30.oZeqbzSSN0Qw6Caep0Rpon40wcUTrOd3JXwPsOM29Qg
+    enabled: true
+    secret: false
+    type: text
+  - name: adminRefreshToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: walletId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: destinationWalletId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: categoryId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: iconId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: transactionId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: budgetId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: debtId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: paymentId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: recurringId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: goalId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: contributionId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: notificationId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: exportJobId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: userId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: groupId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: draftId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: memberUserId
+    value: ""
+    description: ""
+  - name: groupTxnId
+    value: ""
+    description: ""
+  - name: newOwnerId
+    value: ""
+    description: ""

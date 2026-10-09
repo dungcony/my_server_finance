@@ -1,0 +1,16 @@
+info:
+  name: 13. Từ chối giao dịch
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/{{groupTxnId}}/reject"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Từ chối khoản giao dịch PENDING của thành viên."

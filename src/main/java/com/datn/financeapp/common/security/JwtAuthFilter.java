@@ -8,10 +8,12 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
@@ -27,7 +29,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * nếu hợp lệ. Nếu thiếu header hoặc token không hợp lệ, KHÔNG set SecurityContext, để
  * chain.doFilter tiếp tục — Spring Security tự trả 401 ở entry point cho endpoint yêu
  * cầu auth (qua GlobalExceptionHandler.handleAuthentication).
- *
+ * <p>
  * Bắt riêng ExpiredJwtException để set request attribute phân biệt TOKEN_EXPIRED vs
  * TOKEN_INVALID cho tầng sau (entry point/controller) dùng khi cần.
  */

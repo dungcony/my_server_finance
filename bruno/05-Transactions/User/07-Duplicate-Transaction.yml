@@ -1,0 +1,26 @@
+﻿info:
+  name: 07. Sao chép giao dịch
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{baseUrl}}/transactions/{{transactionId}}/duplicate"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "date": "2026-09-11"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Tạo một giao dịch mới với nội dung giống hệt giao dịch đã có.

@@ -1,0 +1,16 @@
+info:
+  name: 07. Lưu trữ nhóm
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/archive"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Lưu trữ nhóm (chỉ xem, không được ghi thêm khoản mới; yêu cầu không còn khoản chờ)."

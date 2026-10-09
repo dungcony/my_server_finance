@@ -1,0 +1,26 @@
+﻿info:
+  name: 05. Cập nhật khoản nợ
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/debts/{{debtId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "counterparty_name": "Nguyễn Văn B",
+        "due_date": "2026-10-25",
+        "note": "Gia hạn thêm 2 tuần"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Cập nhật ngày hạn trả, tên đối tác hoặc ghi chú khoản nợ.

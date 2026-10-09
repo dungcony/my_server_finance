@@ -1,0 +1,26 @@
+﻿info:
+  name: 01. Danh sách thông báo
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/notifications"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: is_read
+      value: ""
+      type: query
+    - name: page
+      value: "1"
+      type: query
+    - name: page_size
+      value: "20"
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: Lấy danh sách thông báo trong ứng dụng (cảnh báo ngân sách, nhắc nợ).

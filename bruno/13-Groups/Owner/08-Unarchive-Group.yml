@@ -1,0 +1,16 @@
+info:
+  name: 08. Mở lại nhóm lưu trữ
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/unarchive"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Mở lại nhóm đã lưu trữ về trạng thái hoạt động bình thường."

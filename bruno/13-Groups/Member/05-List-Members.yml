@@ -1,0 +1,16 @@
+info:
+  name: 05. Danh sách thành viên
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{baseUrl}}/groups/{{groupId}}/members"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Lấy danh sách thành viên trong nhóm kèm vai trò và trạng thái tham gia.

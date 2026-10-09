@@ -1,0 +1,25 @@
+info:
+  name: 06. Thu hồi vai trò của người dùng
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/admin/user/role"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "user_id": "{{userId}}",
+        "role_name": "ROLE_USER"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Thu hồi vai trò (role) của người dùng theo userId."

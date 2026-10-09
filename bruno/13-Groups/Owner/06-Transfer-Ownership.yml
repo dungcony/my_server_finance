@@ -1,0 +1,24 @@
+info:
+  name: 06. Chuyển quyền chủ nhóm
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/transfer-ownership"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "new_owner_user_id": "{{newOwnerId}}"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Chuyển nhượng vai trò chủ nhóm cho một thành viên ACTIVE khác."

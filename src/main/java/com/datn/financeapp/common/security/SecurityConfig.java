@@ -22,16 +22,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * SecurityFilterChain STATELESS — không session, xác thực hoàn toàn qua JWT mỗi request.
- * Endpoint /auth/register|login|google|refresh|forgot-password|reset-password công khai, còn lại
+ * SecurityFilterChain STATELESS — không session, xác thực hoàn toàn qua JWT mỗi
+ * request.
+ * Endpoint /auth/register|login|google|refresh|forgot-password|reset-password
+ * công khai, còn lại
  * yêu cầu Bearer token hợp lệ.
  * <p>
- * D-18: RateLimitFilter đặt SAU JwtAuthFilter để tầng ai/default đọc được user_id từ
+ * D-18: RateLimitFilter đặt SAU JwtAuthFilter để tầng ai/default đọc được
+ * user_id từ
  * SecurityContext đã được JwtAuthFilter set trước đó trong cùng request.
  * <p>
- * {@code exceptionHandling(authenticationEntryPoint)} BẮT BUỘC: thiếu nó thì request
+ * {@code exceptionHandling(authenticationEntryPoint)} BẮT BUỘC: thiếu nó thì
+ * request
  * thiếu/hỏng token trả 403 (anonymous → AccessDeniedException) thay vì 401, và
- * {@code GlobalExceptionHandler.handleAuthentication} không bao giờ chạy vì Spring Security
+ * {@code GlobalExceptionHandler.handleAuthentication} không bao giờ chạy vì
+ * Spring Security
  * xử lý lỗi xác thực ngay trong filter chain, trước DispatcherServlet.
  */
 @Configuration
@@ -51,10 +56,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(
-                                PathRequest.toStaticResources().atCommonLocations()
-                        ).permitAll()
+                                PathRequest.toStaticResources().atCommonLocations())
+                        .permitAll()
                         .requestMatchers(
                                 "/", "/index.html", "/login-test.html", "/*.html",
+                                "/favicon.ico", "swagger-ui/**", "/v3/api-docs/**",
                                 "/static/**", "/pages/**", "/css/**", "/js/**", "/sass/**",
                                 "/auth/register", "/auth/login", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/reset-password",
@@ -69,17 +75,17 @@ public class SecurityConfig {
         return http.build();
     }
 
-
     // 2. Thêm Bean corsConfigurationSource vào SecurityConfig:
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Cho phép các domain frontend khi dev (hoặc lấy từ file cấu hình application.yml)
+        // Cho phép các domain frontend khi dev (hoặc lấy từ file cấu hình
+        // application.yml)
         configuration.setAllowedOriginPatterns(List.of(
-             "*"
-        ));
+                "*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        configuration
+                .setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         configuration.setExposedHeaders(List.of("Authorization")); // Cho phép frontend đọc header Authorization nếu cần
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

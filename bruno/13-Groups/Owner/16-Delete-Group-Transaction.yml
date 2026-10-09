@@ -1,0 +1,16 @@
+info:
+  name: 16. Xóa giao dịch nhóm
+  type: http
+  seq: 16
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/{{groupTxnId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành riêng cho Chủ nhóm (OWNER): Xóa mềm giao dịch nhóm, cập nhật lại số dư quỹ và phần chia tiền."

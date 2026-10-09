@@ -1,0 +1,24 @@
+info:
+  name: 01. Đăng xuất
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/logout"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "refresh_token": "{{refreshToken}}"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Đăng xuất người dùng hiện tại, thu hồi refresh token và đưa access token vào danh sách đen (blacklist).

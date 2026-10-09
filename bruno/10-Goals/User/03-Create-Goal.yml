@@ -1,0 +1,37 @@
+﻿info:
+  name: 03. Tạo mục tiêu mới
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/goals"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Mua máy tính mới",
+        "target_amount": 25000000,
+        "target_date": "2026-12-31",
+        "wallet_id": "{{walletId}}",
+        "icon_id": null,
+        "initial_amount": 5000000
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("goalId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Tạo mục tiêu tiết kiệm mới. Tự động lưu goalId.

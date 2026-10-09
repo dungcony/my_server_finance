@@ -1,0 +1,37 @@
+﻿info:
+  name: 04. Tạo ví mới
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/wallets"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ví tiền mặt",
+        "type": "cash",
+        "initial_balance": 500000,
+        "include_in_total": true,
+        "icon": "wallet",
+        "color": "#2ECC71"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("walletId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Tạo ví tiền mới. Hỗ trợ Idempotency-Key chống trùng. Tự động lưu walletId.

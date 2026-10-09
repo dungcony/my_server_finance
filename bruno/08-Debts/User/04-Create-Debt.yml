@@ -1,0 +1,38 @@
+﻿info:
+  name: 04. Thêm khoản nợ mới
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/debts"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "type": "lending",
+        "counterparty_name": "Nguyễn Văn B",
+        "principal_amount": 1000000,
+        "wallet_id": "{{walletId}}",
+        "issued_date": "2026-09-11",
+        "due_date": "2026-10-11",
+        "note": "Cho vay tiền tiêu dùng"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("debtId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Tạo khoản cho vay (lending) hoặc đi vay (borrowing). Tự động cập nhật số dư ví và lưu debtId.

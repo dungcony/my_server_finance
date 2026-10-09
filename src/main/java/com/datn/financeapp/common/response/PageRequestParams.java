@@ -1,8 +1,12 @@
 package com.datn.financeapp.common.response;
 
 /**
- * Tham số phân trang/sắp xếp chuẩn hoá, theo api/00-QUY-UOC-CHUNG.md mục 7.
- * Dựng sẵn ở Phase 1 (CORE-02) cho Phase 2 dùng lại — chưa có endpoint phân trang ở Phase 1.
+ * Tham số phân trang/sắp xếp chuẩn hoá.
+ *
+ * @param page      số trang
+ * @param pageSize  số lượng phần tử trên trang
+ * @param sortBy    trường dùng để sắp xếp
+ * @param sortOrder thứ tự sắp xếp (asc hoặc desc)
  */
 public record PageRequestParams(int page, int pageSize, String sortBy, String sortOrder) {
 

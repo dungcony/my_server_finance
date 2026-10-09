@@ -1,0 +1,26 @@
+﻿info:
+  name: 01. Danh sách danh mục
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/categories"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: type
+      value: "expense"
+      type: query
+    - name: as_tree
+      value: "true"
+      type: query
+    - name: roots_only
+      value: "false"
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: Lấy cây danh mục thu/chi hoặc danh sách phẳng.

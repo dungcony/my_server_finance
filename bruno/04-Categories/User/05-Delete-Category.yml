@@ -1,0 +1,20 @@
+﻿info:
+  name: 05. Xóa danh mục
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/categories/{{categoryId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: replacement_category_id
+      value: ""
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: Xóa danh mục. Có thể truyền replacement_category_id để chuyển các giao dịch sang danh mục mới.

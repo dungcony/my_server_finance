@@ -1,0 +1,33 @@
+info:
+  name: 06. Làm mới Access Token
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/refresh"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "refresh_token": "{{refreshToken}}"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data) {
+      if (res.body.data.access_token) {
+        bru.setEnvVar("accessToken", res.body.data.access_token);
+      }
+      if (res.body.data.refresh_token) {
+        bru.setEnvVar("refreshToken", res.body.data.refresh_token);
+      }
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Sử dụng refresh token để lấy access token mới khi token cũ hết hạn.

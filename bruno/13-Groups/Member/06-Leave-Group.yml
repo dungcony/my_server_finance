@@ -1,0 +1,16 @@
+info:
+  name: 06. Rời nhóm
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/leave"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Thành viên tự rời khỏi nhóm. Chủ nhóm phải chuyển quyền trước khi rời nhóm.

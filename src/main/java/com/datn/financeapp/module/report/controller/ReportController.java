@@ -1,0 +1,200 @@
+package com.datn.financeapp.module.report.controller;
+
+import com.datn.financeapp.common.idempotency.Idempotent;
+import com.datn.financeapp.common.response.ApiResponse;
+import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.report.dto.response.CategoryBreakdownResponse;
+import com.datn.financeapp.module.report.dto.response.CategoryGroupBreakdownResponse;
+import com.datn.financeapp.module.report.dto.response.DailyTrendResponse;
+import com.datn.financeapp.module.report.dto.response.ExportJobResponse;
+import com.datn.financeapp.module.report.dto.request.ExportRequest;
+import com.datn.financeapp.module.report.dto.response.MonthlyTrendResponse;
+import com.datn.financeapp.module.report.dto.response.ReportHomeResponse;
+import com.datn.financeapp.module.report.dto.response.ReportSummaryResponse;
+import com.datn.financeapp.module.report.service.ExportService;
+import com.datn.financeapp.module.report.service.ReportQueryService;
+import jakarta.validation.Valid;
+
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.UUID;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * REST Controller quản lý các điểm cuối truy vấn báo cáo và xuất báo cáo CSV.
+ * Tương tác với {@link ReportQueryService} cho báo cáo thống kê và {@link ExportService} cho các tác vụ xuất dữ liệu.
+ */
+@RestController
+@RequestMapping("/reports")
+@RequiredArgsConstructor
+public class ReportController {
+
+    private final ReportQueryService reportQueryService;
+    private final ExportService exportService;
+
+    /**
+     * Lấy báo cáo tổng quan trang chủ.
+     *
+     * @param period   chu kỳ thống kê (month, week, year)
+     * @param walletId ID ví lọc dữ liệu (tùy chọn)
+     * @return {@link ApiResponse} chứa {@link ReportHomeResponse}
+     */
+    @GetMapping("/home")
+    public ApiResponse<ReportHomeResponse> home(
+            @RequestParam(required = false, defaultValue = "month") String period,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(reportQueryService.home(userId, period, walletId));
+    }
+
+    /**
+     * Lấy báo cáo tóm tắt tình hình thu chi.
+     *
+     * @param period   chu kỳ thống kê
+     * @param fromDate ngày bắt đầu (nếu lọc theo khoảng thời gian tùy chỉnh)
+     * @param toDate   ngày kết thúc (nếu lọc theo khoảng thời gian tùy chỉnh)
+     * @param walletId ID ví (tùy chọn)
+     * @return {@link ApiResponse} chứa {@link ReportSummaryResponse}
+     */
+    @GetMapping("/summary")
+    public ApiResponse<ReportSummaryResponse> summary(
+            @RequestParam(required = false) String period,
+            @RequestParam(name = "from_date", required = false) LocalDate fromDate,
+            @RequestParam(name = "to_date", required = false) LocalDate toDate,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(reportQueryService.summary(userId, period, fromDate, toDate, walletId));
+    }
+
+    /**
+     * Lấy báo cáo phân tích theo nhóm danh mục.
+     *
+     * @param period   chu kỳ thống kê
+     * @param fromDate ngày bắt đầu
+     * @param toDate   ngày kết thúc
+     * @param type     loại giao dịch (expense/income)
+     * @param walletId ID ví
+     * @return {@link ApiResponse} chứa {@link CategoryGroupBreakdownResponse}
+     */
+    @GetMapping("/by-category-group")
+    public ApiResponse<CategoryGroupBreakdownResponse> byCategoryGroup(
+            @RequestParam(required = false) String period,
+            @RequestParam(name = "from_date", required = false) LocalDate fromDate,
+            @RequestParam(name = "to_date", required = false) LocalDate toDate,
+            @RequestParam(required = false, defaultValue = "expense") String type,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(reportQueryService.byCategoryGroup(userId, period, fromDate, toDate, type, walletId));
+    }
+
+    /**
+     * Lấy báo cáo cơ cấu chi tiết theo danh mục.
+     *
+     * @param period   chu kỳ thống kê
+     * @param fromDate ngày bắt đầu
+     * @param toDate   ngày kết thúc
+     * @param type     loại giao dịch (expense/income)
+     * @param level    cấp độ danh mục (parent/sub)
+     * @param limit    số lượng danh mục tối đa
+     * @param walletId ID ví
+     * @return {@link ApiResponse} chứa {@link CategoryBreakdownResponse}
+     */
+    @GetMapping("/by-category")
+    public ApiResponse<CategoryBreakdownResponse> byCategory(
+            @RequestParam(required = false) String period,
+            @RequestParam(name = "from_date", required = false) LocalDate fromDate,
+            @RequestParam(name = "to_date", required = false) LocalDate toDate,
+            @RequestParam(required = false, defaultValue = "expense") String type,
+            @RequestParam(required = false, defaultValue = "parent") String level,
+            @RequestParam(required = false, defaultValue = "10") int limit,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(
+                reportQueryService.byCategory(userId, period, fromDate, toDate, type, level, limit, walletId));
+    }
+
+    /**
+     * Lấy xu hướng thu chi theo từng ngày trong tháng.
+     *
+     * @param month    tháng cần xem dạng YYYY-MM
+     * @param walletId ID ví
+     * @return {@link ApiResponse} chứa {@link DailyTrendResponse}
+     */
+    @GetMapping("/daily-trend")
+    public ApiResponse<DailyTrendResponse> dailyTrend(
+            @RequestParam(required = false) String month,
+            @RequestParam(name = "wallet_id", required = false) UUID walletId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        YearMonth ym = month == null ? null : YearMonth.parse(month);
+        return ApiResponse.of(reportQueryService.dailyTrend(userId, ym, walletId));
+    }
+
+    /**
+     * Lấy xu hướng thu chi theo các tháng gần nhất.
+     *
+     * @param monthsCount số tháng cần xem xu hướng
+     * @return {@link ApiResponse} chứa {@link MonthlyTrendResponse}
+     */
+    @GetMapping("/monthly-trend")
+    public ApiResponse<MonthlyTrendResponse> monthlyTrend(
+            @RequestParam(name = "months_count", required = false, defaultValue = "6") int monthsCount) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(reportQueryService.monthlyTrend(userId, monthsCount));
+    }
+
+    /**
+     * Tạo tiến trình xuất báo cáo dữ liệu CSV.
+     *
+     * @param req thông tin yêu cầu xuất báo cáo
+     * @return {@link ApiResponse} chứa {@link ExportJobResponse}
+     */
+    @PostMapping("/export")
+    @Idempotent
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ApiResponse<ExportJobResponse> export(@Valid @RequestBody ExportRequest req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(exportService.createJob(userId, req));
+    }
+
+    /**
+     * Kiểm tra trạng thái của tiến trình xuất báo cáo CSV.
+     *
+     * @param jobId ID tiến trình xuất dữ liệu
+     * @return {@link ApiResponse} chứa {@link ExportJobResponse}
+     */
+    @GetMapping("/export/{jobId}")
+    public ApiResponse<ExportJobResponse> exportStatus(@PathVariable UUID jobId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(exportService.getStatus(userId, jobId));
+    }
+
+    /**
+     * Tải xuống tệp CSV báo cáo đã xuất thành công.
+     *
+     * @param jobId ID tiến trình xuất dữ liệu
+     * @return {@link ResponseEntity} chứa tệp {@link Resource} CSV
+     */
+    @GetMapping("/export/{jobId}/download")
+    public ResponseEntity<Resource> download(@PathVariable UUID jobId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        Resource resource = exportService.download(userId, jobId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + jobId + ".csv\"")
+                .body(resource);
+    }
+}

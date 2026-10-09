@@ -1,0 +1,27 @@
+info:
+  name: 11. Kiểm kê quỹ thực tế
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/fund/reconcile"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "actual_balance": 5000000,
+        "date": "2026-03-20",
+        "note": "Kiểm kê tiền mặt thực tế",
+        "excluded_user_ids": []
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Đối chiếu số dư thực tế, tự động sinh giao dịch điều chỉnh (ADJUSTMENT_UP hoặc ADJUSTMENT_DOWN)."

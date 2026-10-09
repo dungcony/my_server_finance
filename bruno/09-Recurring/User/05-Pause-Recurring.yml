@@ -1,0 +1,24 @@
+info:
+  name: 05. Tạm dừng / Tiếp tục lịch
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/recurring/{{recurringId}}/pause"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "is_enabled": false
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Tạm dừng hoặc bật lại việc tự động sinh giao dịch của lịch.

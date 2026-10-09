@@ -6,13 +6,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.auth.repository.OtpRepository;
+import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -386,7 +388,8 @@ class EndpointSqlCountIntegrationTest {
     // prepare chạy trước mỗi lần gọi và không được tính vào số đo (vd lấy refresh token mới)
     private record Endpoint(String label, Runnable prepare, HttpAction action) {
         static Endpoint of(String label, HttpAction action) {
-            return new Endpoint(label, () -> { }, action);
+            return new Endpoint(label, () -> {
+            }, action);
         }
     }
 

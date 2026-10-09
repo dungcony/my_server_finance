@@ -1,0 +1,24 @@
+info:
+  name: 04. Cập nhật vai trò thành viên
+  type: http
+  seq: 4
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/groups/{{groupId}}/members/{{memberUserId}}/role"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "role": "MEMBER"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Cập nhật vai trò của thành viên trong nhóm."

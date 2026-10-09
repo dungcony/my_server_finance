@@ -1,0 +1,25 @@
+﻿info:
+  name: 07. Cập nhật ngân sách
+  type: http
+  seq: 7
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/budgets/{{budgetId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "limit_amount": 2500000,
+        "auto_renew": true
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Điều chỉnh hạn mức hoặc chế độ tự động gia hạn của ngân sách.

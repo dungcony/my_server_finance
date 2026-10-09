@@ -1,0 +1,16 @@
+info:
+  name: 10. Chi tiết giao dịch nhóm
+  type: http
+  seq: 10
+
+http:
+  method: GET
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/{{groupTxnId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Xem chi tiết giao dịch nhóm kèm danh sách thành viên chia sẻ chi phí.

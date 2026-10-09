@@ -1,0 +1,16 @@
+﻿info:
+  name: 07. Hủy một lần trả nợ
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/debts/{{debtId}}/payments/{{paymentId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Hủy một lần trả nợ đã ghi nhận nhầm và hoàn tác giao dịch trên ví.

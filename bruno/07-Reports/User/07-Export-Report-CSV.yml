@@ -1,0 +1,36 @@
+﻿info:
+  name: 07. Yêu cầu xuất báo cáo (CSV)
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{baseUrl}}/reports/export"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "format": "csv",
+        "period": "month",
+        "from_date": null,
+        "to_date": null,
+        "include": "all"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 202 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("exportJobId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Tạo tiến trình xuất dữ liệu giao dịch ra file CSV bất đồng bộ. Tự lưu exportJobId.

@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * Test hành vi thật của {@link IdempotencyAspect} qua Testcontainers PostgreSQL — cần hành vi
  * UNIQUE constraint / ON CONFLICT thật, mock không chứng minh được (D-23).
- *
+ * <p>
  * Giả lập Authentication giống hệt {@code JwtAuthFilter} thật: principal là chuỗi UUID trần
  * (không dùng {@code @WithMockUser} vì principal của nó là {@code UserDetails}, không khớp
  * với {@code SecurityContextUtil.currentUserId()} vốn parse trực tiếp {@code principal.toString()}).

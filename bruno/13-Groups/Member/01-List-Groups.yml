@@ -1,0 +1,16 @@
+info:
+  name: 01. Danh sách nhóm
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/groups"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Lấy danh sách các nhóm gia đình/bạn bè mà người dùng hiện tại tham gia.

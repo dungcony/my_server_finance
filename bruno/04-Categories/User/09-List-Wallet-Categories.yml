@@ -1,0 +1,16 @@
+info:
+  name: 09. Danh sách danh mục theo ví
+  type: http
+  seq: 9
+
+http:
+  method: GET
+  url: "{{baseUrl}}/wallets/{{walletId}}/categories"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Lấy cây danh mục kèm cờ bật/tắt (is_enabled) của một ví cụ thể.

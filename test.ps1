@@ -36,7 +36,8 @@ param (
     [switch]$Help
 )
 
-if ($Help) {
+if ($Help)
+{
     Get-Help $MyInvocation.MyCommand.Path -Detailed
     exit 0
 }
@@ -45,16 +46,22 @@ $ErrorActionPreference = "Stop"
 
 # Xac dinh thu muc backend chua pom.xml
 $ScriptDir = $PSScriptRoot
-if (-not $ScriptDir) {
+if (-not $ScriptDir)
+{
     $ScriptDir = (Get-Location).Path
 }
 
 $ServerDir = $null
-if (Test-Path (Join-Path $ScriptDir "pom.xml")) {
+if (Test-Path (Join-Path $ScriptDir "pom.xml"))
+{
     $ServerDir = $ScriptDir
-} elseif (Test-Path (Join-Path $ScriptDir "source\finance-ai-server\pom.xml")) {
+}
+elseif (Test-Path (Join-Path $ScriptDir "source\finance-ai-server\pom.xml"))
+{
     $ServerDir = (Join-Path $ScriptDir "source\finance-ai-server")
-} else {
+}
+else
+{
     Write-Host "[ERROR] Khong tim thay thu muc backend chua pom.xml!" -ForegroundColor Red
     exit 1
 }
@@ -66,51 +73,68 @@ Write-Host "       FINANCE AI SERVER - TEST RUNNER                " -ForegroundC
 Write-Host "======================================================" -ForegroundColor Cyan
 
 # Kiem tra Maven
-try {
+try
+{
     $mvnVer = mvn -v 2>&1 | Out-String
-    if ($LASTEXITCODE -ne 0 -or -not $mvnVer) {
+    if ($LASTEXITCODE -ne 0 -or -not $mvnVer)
+    {
         throw "Maven khong kha dung."
     }
     $firstMvnLine = ($mvnVer -split "`r?`n")[0]
     Write-Host "[OK] Maven: $firstMvnLine" -ForegroundColor Green
-} catch {
+}
+catch
+{
     Write-Host "[ERROR] Khong tim thay Maven trong PATH!" -ForegroundColor Red
     exit 1
 }
 
 # Kiem tra Docker (Ho tro ca Windows va WSL)
-function Check-DockerStatus {
+function Check-DockerStatus
+{
     # Kiem tra Docker trong WSL truoc (vi da phan backend dev chay tren WSL)
-    try {
-        if (Get-Command "wsl" -ErrorAction SilentlyContinue) {
+    try
+    {
+        if (Get-Command "wsl" -ErrorAction SilentlyContinue)
+        {
             $wslDockerRes = wsl -e docker ps 2>&1 | Out-String
-            if ($wslDockerRes -match "CONTAINER ID") {
+            if ($wslDockerRes -match "CONTAINER ID")
+            {
                 return @{ Found = $true; Type = "WSL" }
             }
         }
-    } catch {
+    }
+    catch
+    {
         # ignore
     }
 
     # Kiem tra Docker tren Windows
     $winDocker = $false
-    try {
+    try
+    {
         $dockerCmd = "docker"
-        if (-not (Get-Command "docker" -ErrorAction SilentlyContinue)) {
+        if (-not (Get-Command "docker" -ErrorAction SilentlyContinue))
+        {
             $defaultDockerPath = "C:\Program Files\Docker\Docker\resources\bin\docker.exe"
-            if (Test-Path $defaultDockerPath) {
+            if (Test-Path $defaultDockerPath)
+            {
                 $dockerCmd = $defaultDockerPath
             }
         }
         $res = & $dockerCmd info 2>&1 | Out-String
-        if ($res -and $res -notmatch "failed to connect|cannot find the file|error during connect") {
+        if ($res -and $res -notmatch "failed to connect|cannot find the file|error during connect")
+        {
             $winDocker = $true
         }
-    } catch {
+    }
+    catch
+    {
         $winDocker = $false
     }
 
-    if ($winDocker) {
+    if ($winDocker)
+    {
         return @{ Found = $true; Type = "WINDOWS" }
     }
 
@@ -118,58 +142,68 @@ function Check-DockerStatus {
 }
 
 # Chon module tuong tac qua danh sach danh so
-function Select-ModuleInteractive {
+function Select-ModuleInteractive
+{
     param (
         [string]$PromptTitle = "Chon module",
         [bool]$AllowManualInput = $false
     )
 
-    $modulesDir = Join-Path $ServerDir "src\test\java\com\datn\financeapp"
-    if (-not (Test-Path $modulesDir)) {
+    $modulesDir = Join-Path $ServerDir "src\test\java\com\datn\financeapp\module"
+    if (-not (Test-Path $modulesDir))
+    {
         Write-Host "[ERROR] Khong tim thay thu muc: $modulesDir" -ForegroundColor Red
         return $null
     }
 
     $modules = Get-ChildItem -Path $modulesDir -Directory | Sort-Object Name
-    if ($modules.Count -eq 0) {
+    if ($modules.Count -eq 0)
+    {
         Write-Host "[CANH BAO] Khong tim thay module nao!" -ForegroundColor Yellow
         return $null
     }
 
     Write-Host ""
     Write-Host "$PromptTitle`:" -ForegroundColor Yellow
-    if ($AllowManualInput) {
+    if ($AllowManualInput)
+    {
         Write-Host "   0. [Tu nhap ten class thu cong]" -ForegroundColor Gray
     }
     for ($i = 0; $i -lt $modules.Count; $i++) {
         $idxStr = ($i + 1).ToString().PadLeft(2, ' ')
-        Write-Host "  $idxStr. $($modules[$i].Name)" -ForegroundColor White
+        Write-Host "  $idxStr. $( $modules[$i].Name )" -ForegroundColor White
     }
     Write-Host ""
 
-    while ($true) {
+    while ($true)
+    {
         $inputVal = Read-Host "Nhap so thu tu module hoac ten module (hoac 'q' de huy)"
         $inputVal = $inputVal.Trim()
 
-        if ($inputVal -ieq "q") {
+        if ($inputVal -ieq "q")
+        {
             Write-Host "[THOAT] Da huy chon." -ForegroundColor Gray
             exit 0
         }
 
-        if ($AllowManualInput -and $inputVal -eq "0") {
+        if ($AllowManualInput -and $inputVal -eq "0")
+        {
             return "MANUAL"
         }
 
-        if ($inputVal -match '^\d+$') {
+        if ($inputVal -match '^\d+$')
+        {
             $selIndex = [int]$inputVal - 1
-            if ($selIndex -ge 0 -and $selIndex -lt $modules.Count) {
+            if ($selIndex -ge 0 -and $selIndex -lt $modules.Count)
+            {
                 return $modules[$selIndex].Name
             }
         }
 
         # Kiem tra neu nhap chuoi ten module truc tiep
         $matched = $modules | Where-Object { $_.Name -ieq $inputVal }
-        if ($matched) {
+        if ($matched)
+        {
             return $matched.Name
         }
 
@@ -178,49 +212,58 @@ function Select-ModuleInteractive {
 }
 
 # Chon class test qua menu phan cap (Module -> Layer/Muc -> Test Class)
-function Select-TestClassInteractive {
+function Select-TestClassInteractive
+{
     $selectedModule = Select-ModuleInteractive -PromptTitle "Chon module chua test class" -AllowManualInput $true
-    if (-not $selectedModule) {
+    if (-not $selectedModule)
+    {
         return $null
     }
-    if ($selectedModule -eq "MANUAL") {
+    if ($selectedModule -eq "MANUAL")
+    {
         $customName = Read-Host "Nhap ten class test (vi du: JwtServiceTest)"
         return $customName.Trim()
     }
 
     $modulePath = Join-Path $ServerDir "src\test\java\com\datn\financeapp\$selectedModule"
-    
+
     # Quet cac thu muc con (layer nhu service, controller, repository...)
     $layers = Get-ChildItem -Path $modulePath -Directory | Where-Object {
         (Get-ChildItem -Path $_.FullName -Recurse -Filter "*Test.java" -File).Count -gt 0
     } | Sort-Object Name
 
     $searchTargetDir = $modulePath
-    if ($layers.Count -gt 0) {
+    if ($layers.Count -gt 0)
+    {
         Write-Host ""
         Write-Host "Chon muc trong module '$selectedModule':" -ForegroundColor Yellow
         Write-Host "   0. [Xem tat ca cac class trong module $selectedModule]" -ForegroundColor Gray
         for ($i = 0; $i -lt $layers.Count; $i++) {
             $idxStr = ($i + 1).ToString().PadLeft(2, ' ')
-            Write-Host "  $idxStr. $($layers[$i].Name)" -ForegroundColor White
+            Write-Host "  $idxStr. $( $layers[$i].Name )" -ForegroundColor White
         }
         Write-Host ""
 
-        while ($true) {
-            $layerInput = (Read-Host "Nhap lua chon muc (0-$($layers.Count)) [Mac dinh: 0]").Trim()
-            if ([string]::IsNullOrWhiteSpace($layerInput) -or $layerInput -eq "0") {
+        while ($true)
+        {
+            $layerInput = (Read-Host "Nhap lua chon muc (0-$( $layers.Count )) [Mac dinh: 0]").Trim()
+            if ([string]::IsNullOrWhiteSpace($layerInput) -or $layerInput -eq "0")
+            {
                 $searchTargetDir = $modulePath
                 break
             }
-            if ($layerInput -match '^\d+$') {
+            if ($layerInput -match '^\d+$')
+            {
                 $layerIdx = [int]$layerInput - 1
-                if ($layerIdx -ge 0 -and $layerIdx -lt $layers.Count) {
+                if ($layerIdx -ge 0 -and $layerIdx -lt $layers.Count)
+                {
                     $searchTargetDir = $layers[$layerIdx].FullName
                     break
                 }
             }
             $matchedLayer = $layers | Where-Object { $_.Name -ieq $layerInput }
-            if ($matchedLayer) {
+            if ($matchedLayer)
+            {
                 $searchTargetDir = $matchedLayer.FullName
                 break
             }
@@ -230,7 +273,8 @@ function Select-TestClassInteractive {
 
     # Quet danh sach class test trong thu muc da chon
     $testFiles = Get-ChildItem -Path $searchTargetDir -Recurse -Filter "*Test.java" -File | Sort-Object Name
-    if ($testFiles.Count -eq 0) {
+    if ($testFiles.Count -eq 0)
+    {
         Write-Host "[CANH BAO] Khong tim thay class test nao trong: $searchTargetDir" -ForegroundColor Yellow
         return $null
     }
@@ -244,24 +288,29 @@ function Select-TestClassInteractive {
     }
     Write-Host ""
 
-    while ($true) {
+    while ($true)
+    {
         $classInput = (Read-Host "Nhap so thu tu class test (hoac 'q' de huy)").Trim()
-        if ($classInput -ieq "q") {
+        if ($classInput -ieq "q")
+        {
             Write-Host "[THOAT] Da huy chon." -ForegroundColor Gray
             exit 0
         }
-        if ($classInput -match '^\d+$') {
+        if ($classInput -match '^\d+$')
+        {
             $cIdx = [int]$classInput - 1
-            if ($cIdx -ge 0 -and $cIdx -lt $testFiles.Count) {
+            if ($cIdx -ge 0 -and $cIdx -lt $testFiles.Count)
+            {
                 return [System.IO.Path]::GetFileNameWithoutExtension($testFiles[$cIdx].Name)
             }
         }
 
         # Kiem tra neu nguoi dung nhap truc tiep ten class
-        $matchedFile = $testFiles | Where-Object { 
-            [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -ieq $classInput 
+        $matchedFile = $testFiles | Where-Object {
+            [System.IO.Path]::GetFileNameWithoutExtension($_.Name) -ieq $classInput
         }
-        if ($matchedFile) {
+        if ($matchedFile)
+        {
             return [System.IO.Path]::GetFileNameWithoutExtension($matchedFile.Name)
         }
 
@@ -274,20 +323,31 @@ $testMode = ""
 $targetTestPattern = ""
 $targetModule = ""
 
-if ($Name) {
+if ($Name)
+{
     $targetTestPattern = $Name
     $testMode = "CUSTOM"
-} elseif ($Module) {
+}
+elseif ($Module)
+{
     $targetModule = $Module.Trim()
     $targetTestPattern = "com/datn/financeapp/$targetModule/**"
     $testMode = "MODULE"
-} elseif ($Unit) {
+}
+elseif ($Unit)
+{
     $testMode = "UNIT"
-} elseif ($Integration) {
+}
+elseif ($Integration)
+{
     $testMode = "INTEGRATION"
-} elseif ($All) {
+}
+elseif ($All)
+{
     $testMode = "ALL"
-} else {
+}
+else
+{
     Write-Host ""
     Write-Host "Chon che do kiem thu:" -ForegroundColor Yellow
     Write-Host "  1. Chi chay Unit Test (Nhanh, KHONG can Docker) - Mac dinh" -ForegroundColor White
@@ -298,13 +358,19 @@ if ($Name) {
     Write-Host ""
     $choice = Read-Host "Nhap lua chon (1/2/3/4/5) [Mac dinh: 1]"
 
-    switch ($choice.Trim()) {
-        "2" { $testMode = "ALL" }
-        "3" { $testMode = "INTEGRATION" }
+    switch ( $choice.Trim())
+    {
+        "2" {
+            $testMode = "ALL"
+        }
+        "3" {
+            $testMode = "INTEGRATION"
+        }
         "4" {
             $testMode = "CUSTOM"
             $targetTestPattern = Select-TestClassInteractive
-            if ([string]::IsNullOrWhiteSpace($targetTestPattern)) {
+            if ( [string]::IsNullOrWhiteSpace($targetTestPattern))
+            {
                 Write-Host "[ERROR] Chua chon class test!" -ForegroundColor Red
                 exit 1
             }
@@ -312,43 +378,56 @@ if ($Name) {
         "5" {
             $testMode = "MODULE"
             $targetModule = Select-ModuleInteractive -PromptTitle "Chon module muon chay test"
-            if ([string]::IsNullOrWhiteSpace($targetModule)) {
+            if ( [string]::IsNullOrWhiteSpace($targetModule))
+            {
                 Write-Host "[ERROR] Chua chon module!" -ForegroundColor Red
                 exit 1
             }
-            $targetTestPattern = "com/datn/financeapp/$targetModule/**"
+            $targetTestPattern = "com/datn/financeapp/module/$targetModule/**"
         }
-        default { $testMode = "UNIT" }
+        default {
+            $testMode = "UNIT"
+        }
     }
 }
 
 # Kiem tra Docker neu can chay Integration Test
-if ($testMode -in @("ALL", "INTEGRATION", "CUSTOM", "MODULE") -and -not $Force) {
+if ($testMode -in @("ALL", "INTEGRATION", "CUSTOM", "MODULE") -and -not $Force)
+{
     Write-Host ""
     Write-Host "[Dang kiem tra Docker...]" -ForegroundColor Gray
     $dockerInfo = Check-DockerStatus
-    if ($dockerInfo.Found) {
-        if ($dockerInfo.Type -eq "WSL") {
-            try {
+    if ($dockerInfo.Found)
+    {
+        if ($dockerInfo.Type -eq "WSL")
+        {
+            try
+            {
                 $wslIp = (wsl -e hostname -I).Trim().Split(" ")[0]
                 $env:DOCKER_HOST = "tcp://${wslIp}:2375"
                 $env:TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE = "/var/run/docker.sock"
                 $env:TESTCONTAINERS_RYUK_DISABLED = "true"
-                
+
                 # Tu dong dong bo vao ~/.testcontainers.properties de moi IDE va Maven deu nhan
                 $tcFile = [System.IO.Path]::Combine($env:USERPROFILE, ".testcontainers.properties")
                 $tcContent = "docker.host=tcp\://${wslIp}\:2375`ntestcontainers.reuse.enable=true`nryuk.disabled=true`n"
                 [System.IO.File]::WriteAllText($tcFile, $tcContent)
 
                 Write-Host "[OK] Da ket noi Docker trong WSL qua tcp://${wslIp}:2375" -ForegroundColor Green
-            } catch {
+            }
+            catch
+            {
                 Write-Host "[CANH BAO] Khong the lay IP WSL, thu dung localhost:2375" -ForegroundColor Yellow
                 $env:DOCKER_HOST = "tcp://127.0.0.1:2375"
             }
-        } else {
+        }
+        else
+        {
             Write-Host "[OK] Docker Engine tren Windows dang hoat dong tot." -ForegroundColor Green
         }
-    } else {
+    }
+    else
+    {
         Write-Host "[CANH BAO] Khong phat hien Docker dang chay tren Windows hoac WSL!" -ForegroundColor Yellow
         Write-Host "Integration Test su dung Testcontainers nen can Docker de khoi tao DB test." -ForegroundColor Yellow
     }
@@ -356,7 +435,8 @@ if ($testMode -in @("ALL", "INTEGRATION", "CUSTOM", "MODULE") -and -not $Force) 
 
 # Thiet lap tham so Maven Surefire
 $surefirePattern = ""
-switch ($testMode) {
+switch ($testMode)
+{
     "UNIT" {
         Write-Host ""
         Write-Host "-> Dang chay: UNIT TESTS (bo qua Integration Tests)" -ForegroundColor Cyan
@@ -385,19 +465,25 @@ switch ($testMode) {
 }
 
 Write-Host "------------------------------------------------------" -ForegroundColor Cyan
-if ($surefirePattern) {
+if ($surefirePattern)
+{
     Write-Host "Lenh thuc thi: mvn test -Dtest=`"$surefirePattern`"" -ForegroundColor Gray
     & mvn test "-Dtest=$surefirePattern"
-} else {
+}
+else
+{
     Write-Host "Lệnh thuc thi: mvn test" -ForegroundColor Gray
     & mvn test
 }
 
 $exitCode = $LASTEXITCODE
 Write-Host "------------------------------------------------------" -ForegroundColor Cyan
-if ($exitCode -eq 0) {
+if ($exitCode -eq 0)
+{
     Write-Host "[SUCCESS] Kiem thu hoan thanh thanh cong!" -ForegroundColor Green
-} else {
+}
+else
+{
     Write-Host "[FAILED] Kiem thu that bai (Exit code: $exitCode)." -ForegroundColor Red
 }
 

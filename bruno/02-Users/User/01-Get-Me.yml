@@ -1,0 +1,16 @@
+﻿info:
+  name: 01. Thông tin cá nhân (Me)
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/users/me"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Lấy toàn bộ thông tin tài khoản, hồ sơ cá nhân và gói dịch vụ của người dùng hiện tại.

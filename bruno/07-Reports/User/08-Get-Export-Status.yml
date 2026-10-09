@@ -1,0 +1,16 @@
+﻿info:
+  name: 08. Kiểm tra tiến độ xuất file
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/reports/export/{{exportJobId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Kiểm tra trạng thái xử lý job xuất dữ liệu (PENDING, COMPLETED, FAILED).

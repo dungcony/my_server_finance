@@ -9,9 +9,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -21,10 +23,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Rate limit 3 tầng (CORE-04, D-16 đến D-21) — Bucket4j in-memory + Caffeine tự evict.
- *
+ * <p>
  * Đặt SAU {@code JwtAuthFilter} trong SecurityFilterChain (D-18) để tầng ai/default đọc được
  * user_id từ SecurityContext (đã được JwtAuthFilter set trước đó).
- *
+ * <p>
  * D-19: header X-RateLimit-Limit/Remaining/Reset trả trên MỌI response, không chỉ khi bị chặn.
  * D-20: vượt quota -> 429 kèm mã RATE_LIMIT_EXCEEDED — ghi JSON thô trực tiếp (KHÔNG qua
  * GlobalExceptionHandler vì Filter chạy TRƯỚC DispatcherServlet, không thể ném exception để
@@ -74,8 +76,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             res.getWriter()
                     .write(
                             """
-                {"success":false,"error":{"code":"RATE_LIMIT_EXCEEDED","message":"Bạn đã gọi quá nhiều lần, vui lòng thử lại sau."}}
-                """);
+                                    {"success":false,"error":{"code":"RATE_LIMIT_EXCEEDED","message":"Bạn đã gọi quá nhiều lần, vui lòng thử lại sau."}}
+                                    """);
             return;
         }
         chain.doFilter(req, res);

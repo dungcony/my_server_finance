@@ -17,9 +17,9 @@ public interface UploadService {
     /**
      * Tải tệp lên hệ thống lưu trữ.
      *
-     * @param file tệp tải lên nhận từ client
-     * @param path đường dẫn thư mục phụ
-     * @param value định danh hoặc tên tệp mong muốn
+     * @param file      tệp tải lên nhận từ client
+     * @param path      đường dẫn thư mục phụ
+     * @param value     định danh hoặc tên tệp mong muốn
      * @param overwrite cờ xác định có ghi đè nếu trùng định danh hay không
      * @return {@link UploadRes} thông tin phản hồi chứa url và public_id
      */

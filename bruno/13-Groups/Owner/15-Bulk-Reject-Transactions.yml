@@ -1,0 +1,26 @@
+info:
+  name: 15. Từ chối hàng loạt giao dịch
+  type: http
+  seq: 15
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/bulk-reject"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "transaction_ids": [
+          "{{groupTxnId}}"
+        ]
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Từ chối cùng lúc nhiều khoản giao dịch PENDING."

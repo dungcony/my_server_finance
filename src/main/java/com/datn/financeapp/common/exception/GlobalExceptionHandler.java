@@ -4,9 +4,11 @@ import com.datn.financeapp.common.logging.RequestLoggingFilter;
 import com.datn.financeapp.common.response.ErrorResponse;
 import com.datn.financeapp.common.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.core.Ordered;
@@ -29,17 +31,14 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
- * Gom mọi exception thành khung phản hồi thống nhất {success:false, error:{...}}
- * theo api/00-QUY-UOC-CHUNG.md mục 4.3/4.4/6.
+ * Xử lý ngoại lệ toàn cục, gom mọi exception thành khung phản hồi thống nhất {@link ErrorResponse}.
+ * Cung cấp các phương thức xử lý lỗi như {@link #handleValidation}, {@link #handleBusinessException} và các handler khác.
  *
- * Ranh giới rò rỉ thông tin nội bộ (T-02-02): catch-all Exception.class KHÔNG đưa
+ * <p>Ranh giới rò rỉ thông tin nội bộ: catch-all Exception.class KHÔNG đưa
  * message/stack trace gốc ra response, chỉ log SLF4J ở server-side.
  */
 @Slf4j
 @RestControllerAdvice
-// Phải chạy TRƯỚC DefaultHandlerExceptionResolver của Spring MVC — nếu không, resolver mặc định
-// giành xử lý MissingServletRequestParameter/MethodArgumentTypeMismatch trước và trả 400 với thân
-// rỗng, sau đó Spring Security thấy response chưa commit nên entry point ghi đè thành 401.
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class GlobalExceptionHandler {
 
@@ -68,9 +67,9 @@ public class GlobalExceptionHandler {
      * gõ sai tham số và làm nhiễu log lỗi thật.
      */
     @ExceptionHandler({
-        MissingServletRequestParameterException.class,
-        MethodArgumentTypeMismatchException.class,
-        HttpMessageNotReadableException.class
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            HttpMessageNotReadableException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
         String field = null;
@@ -139,8 +138,8 @@ public class GlobalExceptionHandler {
         String message = "TOKEN_EXPIRED".equals(code)
                 ? "Thẻ truy cập đã hết hạn."
                 : "TOKEN_INVALID".equals(code)
-                        ? "Thẻ truy cập không hợp lệ."
-                        : "Vui lòng đăng nhập để tiếp tục.";
+                ? "Thẻ truy cập không hợp lệ."
+                : "Vui lòng đăng nhập để tiếp tục.";
         request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, code + ": " + message);
         log.debug("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));

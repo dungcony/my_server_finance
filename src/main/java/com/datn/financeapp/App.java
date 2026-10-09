@@ -12,6 +12,10 @@ import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServic
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Lớp khởi chạy ứng dụng Spring Boot chính.
+ * Cung cấp phương thức {@link #main} để khởi động ứng dụng và {@link #loadDotenvIfPresent} để nạp biến môi trường từ file .env.
+ */
 @SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableScheduling
 @EnableAsync

@@ -1,0 +1,37 @@
+﻿info:
+  name: 03. Tạo danh mục
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/categories"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ăn uống ngoài",
+        "type": "expense",
+        "icon_id": "{{iconId}}",
+        "color": "#E74C3C",
+        "parent_category_id": null,
+        "category_group_id": null
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("categoryId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Tạo danh mục mới. Có thể tạo danh mục con bằng cách truyền parent_category_id.
