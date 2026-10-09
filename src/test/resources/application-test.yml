@@ -39,3 +39,10 @@ server:
       max: 500 # Số thread tối đa xử lý request đồng thời (mặc định: 200)
       min-spare: 50 # Số thread tối thiểu luôn giữ sẵn (mặc định: 10)
 
+
+cloudinary:
+  cloud-name: dquhqtugn
+  api-key: 296567242598283
+  api-secret: gysEFTIu0GIg-mNlrudzPmtLMqY
+  folder: ${CLOUDINARY_FOLDER:dungcony}
+  max-file-size-bytes: ${CLOUDINARY_MAX_FILE_SIZE_BYTES:10485760}

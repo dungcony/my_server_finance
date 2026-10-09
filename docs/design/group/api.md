@@ -35,7 +35,8 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
         - [Bàn giao thủ quỹ (`PUT /v1/groups/{id}/fund-kepper`)](#322-sua-quy)
     - [3.3 Giao dịch Nhóm (`GroupTransactionController`)](#33-giao-dich-nhom)
         - [Tạo giao dịch nhóm (`POST /v1/groups/{id}/transactions`)](#331-tao-giao-dich)
-        - [Lịch sử & Chi tiết giao dịch (`GET /transactions`, `mine`, `pending`, `{tId}`)](#332-lich-su-chi-tiet-giao-dich)
+        - [Lịch sử & Chi tiết giao dịch (`GET /transactions`, `mine`, `pending`,
+          `{tId}`)](#332-lich-su-chi-tiet-giao-dich)
         - [Giao dịch quỹ trả tiền cho thành viên (`REFUND`)](#333a-tra-lai-tien)
         - [Xác nhận hoặc từ chối giao dịch đơn lẻ (`confirm`, `reject`)](#333b-xac-nhan-tu-choi)
         - [Xác nhận hoặc từ chối giao dịch hàng loạt (`bulk-confirm`, `bulk-reject`)](#333c-bulk-review)
@@ -279,7 +280,8 @@ Khởi tạo nhóm mới, tự động gắn User gọi API làm `OWNER` và t�
 - **Nghiệp vụ:**
     - Kiểm tra tính hợp lệ của mã mời: Đối chiếu `invite_code` trong bảng `groups` (trừ nhóm trạng thái `DELETED`). Nếu
       mã không tồn tại hoặc sai ký tự, hệ thống trả về lỗi `404 INVITE_CODE_INVALID` (*"Mã mời không chính xác"*).
-    - Kiểm tra người dùng đã là thành viên (`ACTIVE` hoặc `PENDING`) chưa: nếu rồi trả về lỗi `409 GROUP_MEMBER_ALREADY_EXISTS`.
+    - Kiểm tra người dùng đã là thành viên (`ACTIVE` hoặc `PENDING`) chưa: nếu rồi trả về lỗi
+      `409 GROUP_MEMBER_ALREADY_EXISTS`.
     - Nhóm đang lưu trữ → `409 GROUP_ARCHIVED`.
     - Nếu nhóm có `is_join_without_confirm = true`: Tạo `group_members` với `status = ACTIVE`, `joined_at = now()`.
     - Nếu `is_join_without_confirm = false`: Tạo `group_members` với `status = PENDING`, `joined_at = NULL`. Thành viên
@@ -431,14 +433,15 @@ Nhóm luôn có **đúng một** `OWNER` đang `ACTIVE` ([rule.md](rule.md) quy 
 - **`DELETE /v1/groups/{id}/members/{userId}`** — chủ nhóm mời rời (với người đang `ACTIVE`)
     - **Phân quyền:** Chỉ `OWNER`.
     - Không mời chính mình rời: `409 GROUP_OWNER_NOT_REMOVABLE`.
-    - Người đó đang giữ quỹ → **chặn** với `409 GROUP_TREASURER_TRANSFER_REQUIRED`. Chủ nhóm bàn giao quỹ (`PATCH /fund`)
+    - Người đó đang giữ quỹ → **chặn** với `409 GROUP_TREASURER_TRANSFER_REQUIRED`. Chủ nhóm bàn giao quỹ
+      (`PATCH /fund`)
       trước rồi mới mời rời.
 
 - **Kiểm tra chung khi bật tính thừa thiếu** ([rule.md](rule.md) quy tắc 27) — tắt thì bỏ qua:
 
-| # | Kiểm tra                                  | Lỗi                                                                   |
-|:-:|:------------------------------------------|:----------------------------------------------------------------------|
-| 1 | Nhóm không còn khoản `PENDING`            | `409 GROUP_PENDING_TXN_EXIST`                                        |
+| # | Kiểm tra                                  | Lỗi                                                                         |
+|:-:|:------------------------------------------|:----------------------------------------------------------------------------|
+| 1 | Nhóm không còn khoản `PENDING`            | `409 GROUP_PENDING_TXN_EXIST`                                               |
 | 2 | Phần của người rời (`net_balance`) bằng 0 | `409 GROUP_MEMBER_SHARE_NOT_ZERO`, `details` ghi phần hiện tại của người đó |
 
 Phần dương → thủ quỹ ghi loại `REFUND` qua `POST /transactions` trả đúng số đó. Phần âm → người đó góp thêm
@@ -478,9 +481,9 @@ nợ mà không góp thì chủ nhóm cũng không mời ra được ([pipeline.
 - **Phân quyền:** Chỉ `OWNER`.
 - **Điều kiện** ([rule.md](rule.md) quy tắc 23):
 
-| # | Điều kiện                                                                              | Lỗi                                    |
-|:-:|:---------------------------------------------------------------------------------------|:---------------------------------------|
-| 1 | Không còn khoản `PENDING`                                                              | `409 GROUP_PENDING_TXN_EXIST`         |
+| # | Điều kiện                                                                              | Lỗi                                 |
+|:-:|:---------------------------------------------------------------------------------------|:------------------------------------|
+| 1 | Không còn khoản `PENDING`                                                              | `409 GROUP_PENDING_TXN_EXIST`       |
 | 2 | Số dư quỹ bằng 0                                                                       | `409 GROUP_DELETE_BALANCE_NOT_ZERO` |
 | 3 | **Bật tính thừa thiếu** → phần của mọi thành viên (kể cả thành viên đã rời) đều bằng 0 | `409 GROUP_DELETE_BALANCE_NOT_ZERO` |
 
@@ -521,8 +524,8 @@ phép âm**.
     - `keepper_id`: `@NotNull`
 - **Nghiệp vụ:**
 
-| Trường       | Kiểm tra                             | Lỗi                     |
-|:-------------|:-------------------------------------|:------------------------|
+| Trường       | Kiểm tra                             | Lỗi                                |
+|:-------------|:-------------------------------------|:-----------------------------------|
 | `keepper_id` | Phải là thành viên `ACTIVE` của nhóm | `400 GROUP_FUND_HOLDER_NOT_MEMBER` |
 
 Quỹ đi theo vòng đời của nhóm, không có trường `status`.
@@ -649,19 +652,19 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 
 | #  | Kiểm tra                                                                                                                                                                                                                                     | Lỗi                                                          |
 |:--:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------------------------------------------------------------|
-| 1  | `type` là `EXPENSE` hoặc `CONTRIBUTION`                                                                                                                                                                                                      | `400 GROUP_TXN_TYPE_NOT_ALLOWED`                           |
-| 2  | `transactor_id` (người trả / người góp) là thành viên **có mặt trong nhóm tại `occurred_at`**; riêng `CONTRIBUTION` cho phép `transactor_id` là thành viên đã rời (`LEFT` / `REMOVED`) nếu đang có phần âm trong quỹ (để góp bù theo Cách A) | `400 GROUP_TXN_PAYER_NOT_MEMBER`                                       |
-| 3  | Mỗi `participants[].user_id` là thành viên **có mặt trong nhóm tại `occurred_at`**, và không trùng nhau                                                                                                                                      | `400 GROUP_TXN_PARTICIPANT_NOT_MEMBER`                                 |
-| 4  | `share_amount` trong một khoản **trống hết hoặc có hết**                                                                                                                                                                                     | `400 GROUP_TXN_PARTICIPANTS_SHARE_MIXED`                               |
-| 5  | Nếu có hết `share_amount`: tổng = `amount`, mỗi phần > 0                                                                                                                                                                                     | `400 GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`                              |
-| 6  | `CONTRIBUTION` không được có `participants`                                                                                                                                                                                                  | `400 GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`                               |
+| 1  | `type` là `EXPENSE` hoặc `CONTRIBUTION`                                                                                                                                                                                                      | `400 GROUP_TXN_TYPE_NOT_ALLOWED`                             |
+| 2  | `transactor_id` (người trả / người góp) là thành viên **có mặt trong nhóm tại `occurred_at`**; riêng `CONTRIBUTION` cho phép `transactor_id` là thành viên đã rời (`LEFT` / `REMOVED`) nếu đang có phần âm trong quỹ (để góp bù theo Cách A) | `400 GROUP_TXN_PAYER_NOT_MEMBER`                             |
+| 3  | Mỗi `participants[].user_id` là thành viên **có mặt trong nhóm tại `occurred_at`**, và không trùng nhau                                                                                                                                      | `400 GROUP_TXN_PARTICIPANT_NOT_MEMBER`                       |
+| 4  | `share_amount` trong một khoản **trống hết hoặc có hết**                                                                                                                                                                                     | `400 GROUP_TXN_PARTICIPANTS_SHARE_MIXED`                     |
+| 5  | Nếu có hết `share_amount`: tổng = `amount`, mỗi phần > 0                                                                                                                                                                                     | `400 GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`                    |
+| 6  | `CONTRIBUTION` không được có `participants`                                                                                                                                                                                                  | `400 GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`                     |
 | 7  | Danh sách `participants` **đúng bằng** toàn bộ thành viên có mặt tại thời điểm đó, `share_amount` trống hết                                                                                                                                  | Không lỗi — service **lưu thành rỗng** (vắng dòng = cả nhóm) |
-| 8  | `PUT` không đổi `type` của giao dịch                                                                                                                                                                                                         | `400 GROUP_TXN_TYPE_NOT_ALLOWED`                           |
-| 9  | `occurred_at` không ở tương lai (≤ thời điểm máy chủ nhận request)                                                                                                                                                                           | `400 GROUP_TXN_DATE_IN_FUTURE`                                         |
-| 10 | `money_source` khớp loại: `CONTRIBUTION` chỉ nhận `PERSONAL` ([rule.md](rule.md) quy tắc 24)                                                                                                                                                 | `400 GROUP_TXN_MONEY_SOURCE_INVALID`                                   |
-| 11 | `EXPENSE` bắt buộc có `category_id`                                                                                                                                                                                                          | `400 GROUP_TXN_CATEGORY_REQUIRED`                          |
+| 8  | `PUT` không đổi `type` của giao dịch                                                                                                                                                                                                         | `400 GROUP_TXN_TYPE_NOT_ALLOWED`                             |
+| 9  | `occurred_at` không ở tương lai (≤ thời điểm máy chủ nhận request)                                                                                                                                                                           | `400 GROUP_TXN_DATE_IN_FUTURE`                               |
+| 10 | `money_source` khớp loại: `CONTRIBUTION` chỉ nhận `PERSONAL` ([rule.md](rule.md) quy tắc 24)                                                                                                                                                 | `400 GROUP_TXN_MONEY_SOURCE_INVALID`                         |
+| 11 | `EXPENSE` bắt buộc có `category_id`                                                                                                                                                                                                          | `400 GROUP_TXN_CATEGORY_REQUIRED`                            |
 | 12 | `category_id` tồn tại trong hệ thống                                                                                                                                                                                                         | `404 CATEGORY_NOT_FOUND`                                     |
-| 13 | `category_id` là danh mục hệ thống, loại chi ([rule.md](rule.md) quy tắc 6)                                                                                                                                                                  | `400 GROUP_TXN_SYSTEM_CATEGORY_REQUIRED`                               |
+| 13 | `category_id` là danh mục hệ thống, loại chi ([rule.md](rule.md) quy tắc 6)                                                                                                                                                                  | `400 GROUP_TXN_SYSTEM_CATEGORY_REQUIRED`                     |
 | 14 | Nhóm không đang lưu trữ                                                                                                                                                                                                                      | `409 GROUP_ARCHIVED`                                         |
 
 - **Trạng thái khi tạo** ([pipeline.md](pipeline.md) mục 7.1): người ghi là thủ quỹ / chủ nhóm → `CONFIRMED` và cập nhật
@@ -1193,41 +1196,41 @@ quỹ. `total_refunded` là tổng tiền quỹ đã trả lại cho người đ
 
 ## 4. Bảng Ma trận Mã Lỗi Phản Hồi API (Error Code Matrix) <a id="4-ma-tran-ma-loi"></a>
 
-| HTTP Status | Error Code                         | Ý nghĩa nghiệp vụ                                                                                                                                                                                     |
-|:-----------:|:-----------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|    `400`    | `TRANSACTION_AMOUNT_INVALID`                   | Số tiền không hợp lệ (nhỏ hơn hoặc bằng 0 hoặc vượt trần)                                                                                                                                             |
-|    `400`    | `GROUP_TXN_CATEGORY_REQUIRED`    | Giao dịch chi tiêu bắt buộc phải có danh mục                                                                                                                                                          |
-|    `400`    | `GROUP_TXN_SYSTEM_CATEGORY_REQUIRED`         | Giao dịch nhóm chỉ được chọn danh mục hệ thống                                                                                                                                                        |
-|    `400`    | `GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`        | Tổng `share_amount` của người tham gia không khớp với `amount`                                                                                                                                        |
-|    `400`    | `GROUP_TXN_PARTICIPANTS_SHARE_MIXED`         | Trong một khoản có dòng `share_amount` trống lẫn dòng có số                                                                                                                                           |
-|    `400`    | `GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`         | Khoản góp quỹ không được có người tham gia                                                                                                                                                            |
-|    `400`    | `GROUP_TXN_PARTICIPANT_NOT_MEMBER`           | Người tham gia không có mặt trong nhóm tại thời điểm giao dịch, hoặc bị trùng                                                                                                                         |
-|    `400`    | `GROUP_TXN_PAYER_NOT_MEMBER`                 | Người trả / người góp / người nhận tiền không có mặt trong nhóm tại thời điểm giao dịch                                                                                                               |
-|    `400`    | `GROUP_TXN_TYPE_NOT_ALLOWED`     | Tạo giao dịch với loại không được hỗ trợ bởi chiến lược tạo, hoặc đổi `type` khi sửa giao dịch                                                                                                        |
-|    `400`    | `GROUP_TXN_MONEY_SOURCE_INVALID`             | Nguồn tiền không khớp loại giao dịch                                                                                                                                                                  |
-|    `400`    | `GROUP_FUND_HOLDER_NOT_MEMBER`                | Người được giao giữ quỹ không phải thành viên `ACTIVE`                                                                                                                                                |
-|    `400`    | `GROUP_NEW_OWNER_NOT_MEMBER`             | Người nhận quyền chủ nhóm không phải thành viên `ACTIVE`                                                                                                                                              |
-|    `400`    | `GROUP_TRANSFER_TO_SELF`          | Chủ nhóm chuyển quyền cho chính mình                                                                                                                                                                  |
-|    `400`    | `GROUP_TXN_DATE_IN_FUTURE`                   | Thời điểm giao dịch hoặc kiểm kê ở tương lai                                                                                                                                                          |
-|    `409`    | `GROUP_DELETE_BALANCE_NOT_ZERO` | Xoá nhóm khi quỹ khác 0, hoặc (bật tính thừa thiếu) còn thành viên có phần khác 0                                                                                                                     |
-|    `409`    | `GROUP_TXN_NOT_PENDING`          | Xác nhận / từ chối một khoản không còn ở trạng thái `PENDING`                                                                                                                                         |
-|    `409`    | `CONCURRENT_MODIFICATION`          | Hai yêu cầu cùng duyệt / sửa một giao dịch: yêu cầu đến sau bị từ chối, app tải lại rồi thử lại nếu cần                                                                                               |
-|    `409`    | `GROUP_PENDING_TXN_EXIST`         | Lưu trữ nhóm, xoá nhóm, hoặc rời nhóm (bật tính thừa thiếu) khi còn khoản chờ xác nhận                                                                                                                |
-|    `409`    | `GROUP_MEMBER_SHARE_NOT_ZERO`            | Rời nhóm hoặc bị mời rời khi phần của người đó khác 0 (bật tính thừa thiếu)                                                                                                                           |
-|    `409`    | `GROUP_ARCHIVED`                   | Thao tác ghi trên nhóm đang lưu trữ                                                                                                                                                                   |
-|    `400`    | `GROUP_TXN_REFUND_EXCEEDS_BALANCE`     | Quỹ trả (`REFUND`) nhiều hơn phần hiện có của người nhận, dù bật hay tắt tính thừa thiếu                                                                                                              |
-|    `409`    | `GROUP_OWNER_TRANSFER_REQUIRED`        | Chủ nhóm tự rời nhóm khi chưa chuyển quyền                                                                                                                                                            |
-|    `409`    | `GROUP_TREASURER_TRANSFER_REQUIRED`    | Thủ quỹ tự rời hoặc bị mời rời khi chưa bàn giao quỹ cho người khác                                                                                                                                   |
-|    `409`    | `GROUP_OWNER_NOT_REMOVABLE`              | Chủ nhóm mời chính mình rời nhóm                                                                                                                                                                      |
-|    `401`    | `UNAUTHORIZED`                     | Token đăng nhập không hợp lệ hoặc đã hết hạn                                                                                                                                                          |
-|    `403`    | `GROUP_MEMBER_REQUIRED`       | Nhóm có thật nhưng người dùng không phải thành viên `ACTIVE` (gồm cả người đang `PENDING` và người đã rời nhóm). **Cố ý trả 403, không trả 404** — ngoại lệ đã chốt, xem [rule.md](rule.md) quy tắc 8 |
-|    `403`    | `GROUP_OWNER_REQUIRED`         | Thao tác chỉ dành cho Chủ nhóm (`OWNER`)                                                                                                                                                              |
-|    `403`    | `GROUP_TREASURER_REQUIRED`     | Kiểm kê, ghi hoặc sửa khoản quỹ trả lại tiền (`REFUND`), xác nhận hoặc từ chối giao dịch — chỉ thủ quỹ hoặc Chủ nhóm                                                                                  |
-|    `403`    | `GROUP_TXN_EDIT_FORBIDDEN`       | Sửa giao dịch không phải do mình ghi, và không phải Chủ nhóm                                                                                                                                          |
-|    `404`    | `GROUP_NOT_FOUND`                  | Nhóm không tồn tại hoặc người dùng không có quyền xem                                                                                                                                                 ||
-|    `404`    | `CATEGORY_NOT_FOUND`               | Danh mục chi tiêu không tồn tại trong hệ thống                                                                                                                                                        |
-|    `404`    | `TRANSACTION_NOT_FOUND`            | Giao dịch không tồn tại trong nhóm                                                                                                                                                                    |
-|    `409`    | `GROUP_MEMBER_ALREADY_EXISTS`                 | Người dùng đã là thành viên trong nhóm                                                                                                                                                                |
+| HTTP Status | Error Code                            | Ý nghĩa nghiệp vụ                                                                                                                                                                                     |
+|:-----------:|:--------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|    `400`    | `TRANSACTION_AMOUNT_INVALID`          | Số tiền không hợp lệ (nhỏ hơn hoặc bằng 0 hoặc vượt trần)                                                                                                                                             |
+|    `400`    | `GROUP_TXN_CATEGORY_REQUIRED`         | Giao dịch chi tiêu bắt buộc phải có danh mục                                                                                                                                                          |
+|    `400`    | `GROUP_TXN_SYSTEM_CATEGORY_REQUIRED`  | Giao dịch nhóm chỉ được chọn danh mục hệ thống                                                                                                                                                        |
+|    `400`    | `GROUP_TXN_PARTICIPANTS_SUM_MISMATCH` | Tổng `share_amount` của người tham gia không khớp với `amount`                                                                                                                                        |
+|    `400`    | `GROUP_TXN_PARTICIPANTS_SHARE_MIXED`  | Trong một khoản có dòng `share_amount` trống lẫn dòng có số                                                                                                                                           |
+|    `400`    | `GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`  | Khoản góp quỹ không được có người tham gia                                                                                                                                                            |
+|    `400`    | `GROUP_TXN_PARTICIPANT_NOT_MEMBER`    | Người tham gia không có mặt trong nhóm tại thời điểm giao dịch, hoặc bị trùng                                                                                                                         |
+|    `400`    | `GROUP_TXN_PAYER_NOT_MEMBER`          | Người trả / người góp / người nhận tiền không có mặt trong nhóm tại thời điểm giao dịch                                                                                                               |
+|    `400`    | `GROUP_TXN_TYPE_NOT_ALLOWED`          | Tạo giao dịch với loại không được hỗ trợ bởi chiến lược tạo, hoặc đổi `type` khi sửa giao dịch                                                                                                        |
+|    `400`    | `GROUP_TXN_MONEY_SOURCE_INVALID`      | Nguồn tiền không khớp loại giao dịch                                                                                                                                                                  |
+|    `400`    | `GROUP_FUND_HOLDER_NOT_MEMBER`        | Người được giao giữ quỹ không phải thành viên `ACTIVE`                                                                                                                                                |
+|    `400`    | `GROUP_NEW_OWNER_NOT_MEMBER`          | Người nhận quyền chủ nhóm không phải thành viên `ACTIVE`                                                                                                                                              |
+|    `400`    | `GROUP_TRANSFER_TO_SELF`              | Chủ nhóm chuyển quyền cho chính mình                                                                                                                                                                  |
+|    `400`    | `GROUP_TXN_DATE_IN_FUTURE`            | Thời điểm giao dịch hoặc kiểm kê ở tương lai                                                                                                                                                          |
+|    `409`    | `GROUP_DELETE_BALANCE_NOT_ZERO`       | Xoá nhóm khi quỹ khác 0, hoặc (bật tính thừa thiếu) còn thành viên có phần khác 0                                                                                                                     |
+|    `409`    | `GROUP_TXN_NOT_PENDING`               | Xác nhận / từ chối một khoản không còn ở trạng thái `PENDING`                                                                                                                                         |
+|    `409`    | `CONCURRENT_MODIFICATION`             | Hai yêu cầu cùng duyệt / sửa một giao dịch: yêu cầu đến sau bị từ chối, app tải lại rồi thử lại nếu cần                                                                                               |
+|    `409`    | `GROUP_PENDING_TXN_EXIST`             | Lưu trữ nhóm, xoá nhóm, hoặc rời nhóm (bật tính thừa thiếu) khi còn khoản chờ xác nhận                                                                                                                |
+|    `409`    | `GROUP_MEMBER_SHARE_NOT_ZERO`         | Rời nhóm hoặc bị mời rời khi phần của người đó khác 0 (bật tính thừa thiếu)                                                                                                                           |
+|    `409`    | `GROUP_ARCHIVED`                      | Thao tác ghi trên nhóm đang lưu trữ                                                                                                                                                                   |
+|    `400`    | `GROUP_TXN_REFUND_EXCEEDS_BALANCE`    | Quỹ trả (`REFUND`) nhiều hơn phần hiện có của người nhận, dù bật hay tắt tính thừa thiếu                                                                                                              |
+|    `409`    | `GROUP_OWNER_TRANSFER_REQUIRED`       | Chủ nhóm tự rời nhóm khi chưa chuyển quyền                                                                                                                                                            |
+|    `409`    | `GROUP_TREASURER_TRANSFER_REQUIRED`   | Thủ quỹ tự rời hoặc bị mời rời khi chưa bàn giao quỹ cho người khác                                                                                                                                   |
+|    `409`    | `GROUP_OWNER_NOT_REMOVABLE`           | Chủ nhóm mời chính mình rời nhóm                                                                                                                                                                      |
+|    `401`    | `UNAUTHORIZED`                        | Token đăng nhập không hợp lệ hoặc đã hết hạn                                                                                                                                                          |
+|    `403`    | `GROUP_MEMBER_REQUIRED`               | Nhóm có thật nhưng người dùng không phải thành viên `ACTIVE` (gồm cả người đang `PENDING` và người đã rời nhóm). **Cố ý trả 403, không trả 404** — ngoại lệ đã chốt, xem [rule.md](rule.md) quy tắc 8 |
+|    `403`    | `GROUP_OWNER_REQUIRED`                | Thao tác chỉ dành cho Chủ nhóm (`OWNER`)                                                                                                                                                              |
+|    `403`    | `GROUP_TREASURER_REQUIRED`            | Kiểm kê, ghi hoặc sửa khoản quỹ trả lại tiền (`REFUND`), xác nhận hoặc từ chối giao dịch — chỉ thủ quỹ hoặc Chủ nhóm                                                                                  |
+|    `403`    | `GROUP_TXN_EDIT_FORBIDDEN`            | Sửa giao dịch không phải do mình ghi, và không phải Chủ nhóm                                                                                                                                          |
+|    `404`    | `GROUP_NOT_FOUND`                     | Nhóm không tồn tại hoặc người dùng không có quyền xem                                                                                                                                                 ||
+|    `404`    | `CATEGORY_NOT_FOUND`                  | Danh mục chi tiêu không tồn tại trong hệ thống                                                                                                                                                        |
+|    `404`    | `TRANSACTION_NOT_FOUND`               | Giao dịch không tồn tại trong nhóm                                                                                                                                                                    |
+|    `409`    | `GROUP_MEMBER_ALREADY_EXISTS`         | Người dùng đã là thành viên trong nhóm                                                                                                                                                                |
 
 ---
 

@@ -40,3 +40,10 @@ jwt:
 rate-limit:
   max-request-email-forgot-password: 5
   reset-request-email-forgot-password: 1h
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  folder: ${CLOUDINARY_FOLDER:finance}
+  max-file-size-bytes: ${CLOUDINARY_MAX_FILE_SIZE_BYTES:10485760}

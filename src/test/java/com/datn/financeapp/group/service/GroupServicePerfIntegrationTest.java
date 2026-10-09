@@ -31,6 +31,7 @@ import com.datn.financeapp.user.enums.UserStatus;
 import com.datn.financeapp.user.repository.RoleRepository;
 import com.datn.financeapp.user.repository.UserRepository;
 import com.datn.financeapp.user.repository.UserRoleRepository;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,7 +60,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 /**
  * Đo hiệu năng (số câu SQL + thời gian) của từng hàm trong module {@code group}: {@link GroupService},
  * {@link MemberService}, {@link MemberBehavierService}, {@link GTransactionService},
- * {@link GTransactionReviewService}, {@link FundService}, {@link ReportService}. Khung đo và cách đọc báo cáo
+ * , {@link FundService}, {@link ReportService}. Khung đo và cách đọc báo cáo
  * xem {@link com.datn.financeapp.performance.ServicePerfSupport}.
  *
  * <p>Hồ sơ dữ liệu của nhóm chính mà các hàm đọc nhắm vào:
@@ -161,7 +163,7 @@ class GroupServicePerfIntegrationTest {
                 "SELECT id FROM categories WHERE user_id IS NULL AND type = 'expense' LIMIT 1", UUID.class);
 
         // pool.get(0) là thành viên thường của nhóm chính, cũng là người tạo giao dịch chờ duyệt
-        mainGroupId = newGroup(FEW_MEMBERS - 1, true);
+        mainGroupId = newGroup(FEW_MEMBERS - 1);
 
         measureAll(Profile.TOT_NHAT, BATCH_FEW);
 
@@ -222,10 +224,10 @@ class GroupServicePerfIntegrationTest {
         List<UUID> activeIds = memberService.findIdAllMember(group);
 
         perf.measure(profile, "MemberService.create",
-                () -> fresh.set(newGroup(batch, true)),
+                () -> fresh.set(newGroup(batch)),
                 () -> memberService.create(new MemberCreateReq(fresh.get(), joiner(), MemberRole.MEMBER, MemberStatus.ACTIVE)));
         perf.measure(profile, "MemberService.creates",
-                () -> fresh.set(newGroup(batch, true)),
+                () -> fresh.set(newGroup(batch)),
                 () -> memberService.creates(joinerRequests(fresh.get(), batch)));
         perf.measure(profile, "MemberService.countActiveMembers", () -> memberService.countActiveMembers(group));
         perf.measure(profile, "MemberService.countPendingMembers", () -> memberService.countPendingMembers(group));
@@ -280,8 +282,8 @@ class GroupServicePerfIntegrationTest {
 
     private void measureTransactionService(Profile profile, UUID group) {
         AtomicReference<UUID> txn = new AtomicReference<>();
-        GroupTransactionFilterReq defaultPage = filter(1, 20);
-        GroupTransactionFilterReq largestPage = filter(1, 100);
+        GroupTransactionFilterReq defaultPage = filter(20);
+        GroupTransactionFilterReq largestPage = filter(100);
 
         perf.measure(profile, "GTransactionService.create (chi tiêu, chia đều cho cả nhóm)",
                 () -> gTransactionService.create(ownerId, group, expenseRequest(ownerId)));
@@ -344,7 +346,7 @@ class GroupServicePerfIntegrationTest {
         perf.measure(profile, "FundService.reconcileFund",
                 () -> fresh.set(newGroupDetail(batch, true)),
                 () -> fundService.reconcileFund(ownerId, fresh.get().id(),
-                        new FundReconcileReq(100_000L, LocalDate.now(VIETNAM_ZONE), "Kiểm kê đo hiệu năng", List.of(pool.get(0)))));
+                        new FundReconcileReq(100_000L, "Kiểm kê đo hiệu năng", List.of(pool.get(0)))));
         perf.measure(profile, "FundService.adjustBalance", () -> fundService.adjustBalance(fundId, 1L));
     }
 
@@ -377,7 +379,7 @@ class GroupServicePerfIntegrationTest {
             createdPending += trySeed(() -> gTransactionService.create(pool.get(0), mainGroupId,
                     expenseRequest(pool.get(0))));
         for (int i = 0; i < EXTRA_GROUPS; i++)
-            newGroup(1, true);
+            newGroup(1);
 
         log.warn("[PERF] dựng hồ sơ tệ nhất: {}/{} giao dịch đã duyệt, {}/{} giao dịch chờ duyệt",
                 created, CONFIRMED_TRANSACTIONS, createdPending, PENDING_TRANSACTIONS);
@@ -398,8 +400,8 @@ class GroupServicePerfIntegrationTest {
         return groupService.create(ownerId, groupRequest(memberIds(0, memberCount), joinWithoutConfirm));
     }
 
-    private UUID newGroup(int memberCount, boolean joinWithoutConfirm) {
-        return newGroupDetail(memberCount, joinWithoutConfirm).id();
+    private UUID newGroup(int memberCount) {
+        return newGroupDetail(memberCount, true).id();
     }
 
     // nhóm cần duyệt thành viên, đã có pendingCount người xin vào ở trạng thái chờ
@@ -437,8 +439,8 @@ class GroupServicePerfIntegrationTest {
         return requests;
     }
 
-    private GroupTransactionFilterReq filter(int page, int size) {
-        return new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, page, size);
+    private GroupTransactionFilterReq filter(int size) {
+        return new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, size);
     }
 
     private GroupTransactionCreateReq expenseRequest(UUID transactor) {

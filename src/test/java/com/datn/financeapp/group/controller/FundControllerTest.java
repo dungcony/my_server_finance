@@ -1,30 +1,15 @@
 package com.datn.financeapp.group.controller;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.group.dto.request.fund.FundReconcileReq;
-import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.dto.response.fund.FundRes;
+import com.datn.financeapp.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.service.FundService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.UUID;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +25,19 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.time.Instant;
+import java.util.Collections;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
 class FundControllerTest {
@@ -102,7 +100,7 @@ class FundControllerTest {
     @Test
     @DisplayName("POST /groups/{groupId}/fund/reconcile - Kiểm kê số dư quỹ thành công")
     void reconcileFund_success() throws Exception {
-        FundReconcileReq req = new FundReconcileReq(600_000L, LocalDate.now(), "Kiểm quỹ tháng", null);
+        FundReconcileReq req = new FundReconcileReq(600_000L, "Kiểm quỹ tháng", null);
         GroupFundReconcileRes res = new GroupFundReconcileRes(
                 500_000L, 600_000L, 100_000L, GTransactionType.ADJUSTMENT_UP, UUID.randomUUID()
         );

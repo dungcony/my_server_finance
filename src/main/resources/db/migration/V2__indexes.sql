@@ -55,7 +55,10 @@ CREATE INDEX idx_gc_goal ON goal_contributions (goal_id, contributed_date);
 
 -- Nhóm Thông báo & Báo cáo xuất dữ liệu
 CREATE INDEX idx_notif_user ON notifications (user_id, is_read, created_at DESC);
-CREATE UNIQUE INDEX uq_notif_budget_alert ON notifications (user_id, reference_id, (created_at::date)) WHERE type = 'budget_alert' AND reference_id IS NOT NULL;
+
+CREATE UNIQUE INDEX uq_notif_budget_alert
+ON notifications (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date))
+WHERE type = 'budget_alert' AND reference_id IS NOT NULL;
 
 CREATE INDEX idx_export_user ON export_jobs (user_id, created_at DESC);
 CREATE INDEX idx_export_expires ON export_jobs (expires_at) WHERE status = 'completed';

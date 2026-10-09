@@ -121,7 +121,18 @@ public record AdjustBalanceCommand(
     * `@return`: Dữ liệu trả về (kèm trường hợp trả về `null` hoặc `Optional.empty()`).
     * `@throws`: Liệt kê các Exception nghiệp vụ có thể ném ra và nguyên nhân.
 
-### 4.2. Quy tắc đối với Private Method (Internal Implementation)
+### 4.2. Quy tắc đối với Method Override từ Interface (Tầng Implementation / Impl)
+
+Hàm `@Override` từ Interface đã được thừa hưởng toàn bộ hợp đồng API (`@param`, `@return`) thông qua cơ chế Javadoc Inheritance của Java và IDE.
+
+* **KHÔNG ĐƯỢC:**
+    * Lặp lại các thẻ `@param` và `@return` từ Interface nếu không thay đổi định dạng hoặc ngữ nghĩa (vi phạm nguyên tắc DRY).
+* **NÊN:**
+    * Sử dụng tag `{@inheritDoc}` ở dòng đầu tiên.
+    * Giải thích ngắn gọn cách cài đặt cụ thể hoặc kỹ thuật đặc thù (VD: gọi SDK bên thứ 3, xử lý cache, validate bổ sung...).
+    * Bổ sung các thẻ `@throws` cụ thể của class triển khai (nếu có ngoại lệ ném ra trong quá trình thực thi).
+
+### 4.3. Quy tắc đối với Private Method (Internal Implementation)
 
 Hàm `private` là chi tiết cài đặt nội bộ, phục vụ trực tiếp cho việc chia nhỏ logic (refactor). **Tuyệt đối KHÔNG áp
 dụng mẫu Javadoc đầy đủ (`@param`, `@return`, `@throws`) cho hàm private.**
@@ -266,6 +277,7 @@ void approveExpense(UUID expenseId);
 - [ ] Đã loại bỏ các thông tin dễ lỗi thời (version migration, ID ticket...) khỏi comment chưa?
 - [ ] Các Record có đầy đủ tag `@param` giải thích các field và đơn vị đo lường (VND, ms...) chưa?
 - [ ] Các method `public`/`protected` có đầy đủ `@param`, `@return`, `@throws` chưa?
+- [ ] **Các method `@Override` từ Interface có bị lặp lại vô nghĩa `@param`, `@return` không? (Bắt buộc dùng `{@inheritDoc}` và chỉ bổ sung `@throws` / chi tiết cài đặt).**
 - [ ] **Các method `private` có bị viết thừa thãi (`@param`, `@return`) không? (Chỉ ghi tóm tắt 1 dòng nếu có thuật toán
   phức tạp, còn lại ưu tiên tên hàm tự giải thích).**
 - [ ] Các method có `@Transactional` kết hợp Lock (`FOR UPDATE`) có cảnh báo deadlock và thời gian giữ kết nối chưa?

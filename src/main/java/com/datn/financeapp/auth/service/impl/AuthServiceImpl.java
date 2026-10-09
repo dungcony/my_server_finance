@@ -199,6 +199,9 @@ public class AuthServiceImpl implements AuthService {
         long elapsedMinutes = Duration.between(otp.getCreatedAt(), Instant.now()).toMinutes();
         otp.setTtl(Math.max(1L, OTP_TTL_MINUTES - elapsedMinutes));
         otpRepository.save(otp);
+
+        log.info("user nhập sai quá nhiều hủy mã thành công");
+
     }
 
     private void sendEmail(String email, OtpType type, Instant now) {

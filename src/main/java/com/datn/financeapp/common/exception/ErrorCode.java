@@ -313,11 +313,11 @@ public enum ErrorCode {
 
     GROUP_MEMBER_NOT_IN_GROUP(HttpStatus.BAD_REQUEST, "Tồn tại thành viên không trong group"),
 
-    GROUP_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "Bạn đã là thành viên của nhóm này."),
+    GROUP_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "Người dùng đã là thành viên trong nhóm"),
 
-    GROUP_MEMBER_PENDING(HttpStatus.CONFLICT, "Bạn đã xin vào nhóm này rồi."),
+    GROUP_MEMBER_PENDING(HttpStatus.CONFLICT, "Người dùng đã xin vào nhóm này rồi."),
 
-    GROUP_MEMBER_REQUIRED(HttpStatus.FORBIDDEN, "Bạn không phải thành viên của nhóm này."),
+    GROUP_MEMBER_REQUIRED(HttpStatus.FORBIDDEN, "Người dùng không phải thành viên của nhóm này."),
 
     GROUP_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho chủ nhóm."),
 

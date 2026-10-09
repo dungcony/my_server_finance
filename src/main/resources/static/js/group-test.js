@@ -1301,18 +1301,23 @@ async function reconcileFund() {
     if (!groupId) return;
 
     const actualBalanceStr = document.getElementById('reconcileActualBalance').value.trim();
-    const reconcileDate = document.getElementById('reconcileDate').value.trim();
     const reason = document.getElementById('reconcileReason').value.trim();
+    const excludedUserIdsStr = document.getElementById('reconcileExcludedUserIds').value.trim();
 
     if (!actualBalanceStr) {
         alert('Vui lòng nhập số dư thực tế kiểm kê!');
         return;
     }
 
+    let excludedUserIds = [];
+    if (excludedUserIdsStr) {
+        excludedUserIds = excludedUserIdsStr.split(',').map(id => id.trim()).filter(id => id);
+    }
+
     const payload = {
         actual_balance: parseInt(actualBalanceStr, 10),
-        reconcile_date: reconcileDate || new Date().toISOString().split('T')[0],
-        reason: reason || 'Kiểm kê đối soát định kỳ'
+        reason: reason || 'Kiểm kê đối soát định kỳ',
+        excluded_user_ids: excludedUserIds.length > 0 ? excludedUserIds : null
     };
 
     await callApi(`/v1/groups/${groupId}/fund/reconcile`, 'POST', payload);

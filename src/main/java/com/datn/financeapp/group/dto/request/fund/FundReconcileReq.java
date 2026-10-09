@@ -10,13 +10,11 @@ import java.util.UUID;
 /**
  *
  * @param actualBalance   tiền thực tế
- * @param date            ngày đối chiếu
- * @param note            lý do
+ * @param reason          lý do
  * @param excludedUserIds những người không tham gia
  */
 public record FundReconcileReq(
         @NotNull Long actualBalance,
-        @NotNull LocalDate date,
-        @Size(max = 255) String note,
+        @Size(max = 255) String reason,
         List<UUID> excludedUserIds) {
 }

@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -86,7 +87,7 @@ public class FundServiceImpl implements FundService {
         Fund fund = fundRepository.findByGroupIdForUpdate(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
-        return executeReconcile(operatorId, groupId, fund, req);
+        return executeReconcile(operatorId, fund, req);
     }
 
     @Override
@@ -97,45 +98,37 @@ public class FundServiceImpl implements FundService {
 
     }
 
-    private GroupFundReconcileRes executeReconcile(UUID operatorId, UUID groupId, Fund fund,
+    private GroupFundReconcileRes executeReconcile(UUID operatorId, Fund fund,
                                                    FundReconcileReq req) {
-        permissionValidator.verifyOwnerOrTreasurer(groupId, operatorId, fund.getKeepperId());
+
+        if (Objects.equals(req.actualBalance(), fund.getCurrentBalance()))
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "không thể kiểm kê nếu tiền đang là chính xác");
+
+        // xác định chủ nhóm hoc thử qũy
+        permissionValidator.verifyReconciPermission(fund.getGroupId(), operatorId, fund.getKeepperId());
+
+        Instant now = Instant.now();
 
         // chặn kiểm kê khi còn giao dịch chờ duyệt
-        if (gTransactionService.countPendingForGroup(groupId) > 0) {
+        if (gTransactionService.countPendingForGroup(fund.getGroupId()) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
-        }
 
-        Long currentBalance = fund.getCurrentBalance();
-        long previousBalance = currentBalance != null ? currentBalance : 0L;
-        
-        Long reqActualBalance = req.actualBalance();
-        long actualBalance = reqActualBalance != null ? reqActualBalance : 0L;
-        
-        long difference = actualBalance - previousBalance;
-
-        if (difference == 0) {
-            return new GroupFundReconcileRes(
-                    previousBalance,
-                    actualBalance,
-                    0L,
-                    null,
-                    null);
-        }
+        // độ chênh lệch
+        long difference = req.actualBalance() - fund.getCurrentBalance();
+        long amount = Math.abs(difference);
 
         GTransactionType adjustmentType = difference > 0
                 ? GTransactionType.ADJUSTMENT_UP
                 : GTransactionType.ADJUSTMENT_DOWN;
-        long amount = Math.abs(difference);
 
-        Instant now = Instant.now();
         List<GroupTransactionParticipantReq> participantReqs = null;
+
         if (req.excludedUserIds() != null && !req.excludedUserIds().isEmpty()) {
-            List<UUID> allMemberIds = memberService.findIdAllMember(groupId);
+            List<UUID> allMemberIds = memberService.findIdAllMember(fund.getGroupId());
             List<UUID> includedIds = allMemberIds.stream()
                     .filter(id -> !req.excludedUserIds().contains(id))
                     .toList();
-            
+
             participantReqs = transactionHelper.splitEvenly(amount, includedIds).stream()
                     .map(p -> new GroupTransactionParticipantReq(p.userId(), p.shareAmount()))
                     .toList();
@@ -149,15 +142,15 @@ public class FundServiceImpl implements FundService {
                 null,
                 null,
                 fund.getKeepperId(),
-                req.note(),
+                req.reason(),
                 participantReqs
         );
 
-        GroupTransactionDetailRes transactionDetail = gTransactionService.create(operatorId, groupId, createReq);
+        GroupTransactionDetailRes transactionDetail = gTransactionService.create(operatorId, fund.getGroupId(), createReq);
 
         return new GroupFundReconcileRes(
-                previousBalance,
-                actualBalance,
+                fund.getCurrentBalance(),
+                req.actualBalance(),
                 difference,
                 adjustmentType,
                 transactionDetail.id());

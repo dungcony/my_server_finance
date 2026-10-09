@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
  *   <li>{@link #measure(ProceedingJoinPoint)}: Đo thời gian thực thi và số lượng câu lệnh SQL của method service.</li>
  * </ul>
  * </p>
- *
+ * <p>
  * Đặt order cao nhất để aspect nằm ngoài {@code @Transactional}, đếm được cả câu SQL phát sinh lúc
  * flush/commit.
  */

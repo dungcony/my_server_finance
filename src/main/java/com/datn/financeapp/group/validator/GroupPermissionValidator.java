@@ -29,7 +29,7 @@ import java.util.UUID;
  *   <li>{@link #getAuthInfo}: Lấy và xác thực thông tin quyền thành viên (có cache Redis).</li>
  *   <li>{@link #verifyMember}: Xác thực người dùng phải là thành viên hoạt động.</li>
  *   <li>{@link #verifyOwner}: Xác thực quyền Trưởng nhóm (OWNER).</li>
- *   <li>{@link #verifyOwnerOrTreasurer}: Xác thực quyền Trưởng nhóm hoặc Thủ quỹ.</li>
+ *   <li>{@link #verifyReconciPermission(UUID, UUID, UUID)}: Xác thực quyền Trưởng nhóm hoặc Thủ quỹ.</li>
  *   <li>{@link #verifyTransactionEditPermission}: Xác thực quyền sửa giao dịch nhóm.</li>
  *   <li>{@link #verifyTransactionDeletePermission}: Xác thực quyền xóa giao dịch nhóm.</li>
  *   <li>{@link #evictMember}: Hủy cache quyền của một thành viên cụ thể.</li>
@@ -225,7 +225,7 @@ public class GroupPermissionValidator {
     }
 
     /**
-     * Xác thực người dùng phải là Trưởng nhóm (OWNER) hoặc Thủ quỹ (người đang giữ quỹ).
+     * Xác thực quyền kiểm kê quỹ
      *
      * @param groupId    ID nhóm
      * @param operatorId ID người dùng đang thực hiện thao tác
@@ -233,7 +233,7 @@ public class GroupPermissionValidator {
      * @throws BusinessException nếu không phải Owner và không phải Thủ quỹ
      *                           ({@link ErrorCode#GROUP_TREASURER_REQUIRED})
      */
-    public void verifyOwnerOrTreasurer(UUID groupId, UUID operatorId, UUID keepperId) {
+    public void verifyReconciPermission(UUID groupId, UUID operatorId, UUID keepperId) {
         var info = getAuthInfo(groupId, operatorId);
         boolean isOwner = info.memberRole() == MemberRole.OWNER;
         boolean isTreasurer = keepperId != null && keepperId.equals(operatorId);
