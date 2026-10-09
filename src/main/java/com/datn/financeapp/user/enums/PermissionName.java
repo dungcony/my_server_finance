@@ -3,9 +3,11 @@ package com.datn.financeapp.user.enums;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
@@ -62,7 +64,7 @@ public enum PermissionName {
     /**
      * Nhóm quyền theo tài nguyên — dùng để lọc/hiển thị permission theo từng resource.
      */
-    public static java.util.List<PermissionName> byResource(Resource resource) {
+    public static List<PermissionName> byResource(Resource resource) {
         return Stream.of(values()).filter(p -> p.resource == resource).toList();
     }
 
@@ -98,8 +100,8 @@ public enum PermissionName {
         }
     }
 
-    @jakarta.persistence.Converter(autoApply = true)
-    public static class Converter implements AttributeConverter<PermissionName, String> {
+    @Converter(autoApply = true)
+    public static class PermissionNameConverter implements AttributeConverter<PermissionName, String> {
         @Override
         public String convertToDatabaseColumn(PermissionName attribute) {
             return attribute != null ? attribute.getValue() : null;

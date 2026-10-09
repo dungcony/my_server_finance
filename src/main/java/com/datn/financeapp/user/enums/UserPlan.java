@@ -2,6 +2,7 @@ package com.datn.financeapp.user.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import jakarta.persistence.Converter;
 
 public enum UserPlan {
     PREMIUM,
@@ -18,8 +19,8 @@ public enum UserPlan {
         return UserPlan.valueOf(value.toUpperCase());
     }
 
-    @jakarta.persistence.Converter(autoApply = true)
-    public static class Converter extends LowercaseEnumConverter<UserPlan> {
-        public Converter() { super(UserPlan.class); }
+    @Converter(autoApply = true)
+    public static class UserPlanConverter extends LowercaseEnumConverter<UserPlan> {
+        public UserPlanConverter() { super(UserPlan.class); }
     }
 }

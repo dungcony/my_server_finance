@@ -110,6 +110,7 @@ public class ServicePerfSupport {
         try {
             action.run();
         } catch (Throwable t) {
+            t.printStackTrace();
             error = describe(t);
         }
         long ms = (System.nanoTime() - start) / 1_000_000;
@@ -180,7 +181,6 @@ public class ServicePerfSupport {
         while (root.getCause() != null && root.getCause() != root)
             root = root.getCause();
         String message = root.getMessage() == null ? "" : ": " + root.getMessage().replaceAll("\\s+", " ");
-        String text = root.getClass().getSimpleName() + message;
-        return text.length() > MAX_ERROR_LENGTH ? text.substring(0, MAX_ERROR_LENGTH) + "..." : text;
+        return root.getClass().getSimpleName() + message;
     }
 }

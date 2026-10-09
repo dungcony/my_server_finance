@@ -6,6 +6,7 @@ import com.datn.financeapp.group.enums.GTransactionStatus;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.validator.GroupTransactionTypeValidator;
 import org.springframework.stereotype.Component;
 
@@ -34,7 +35,7 @@ public class ContributionTransaction implements GTransactionBuilder {
     }
 
     @Override
-    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(MemberAuthInfo authInfo) {
         if (authInfo.isOwner() || authInfo.isTreasurer()) {
             return GTransactionStatus.CONFIRMED;
         }

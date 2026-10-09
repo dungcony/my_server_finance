@@ -8,6 +8,7 @@ import com.datn.financeapp.group.entity.TransactionParticipant;
 import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.enums.GTransactionStatus;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
 import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
 import com.datn.financeapp.group.service.MemberService;
@@ -44,7 +45,7 @@ public class AdjustmentTransaction implements GTransactionBuilder {
     }
 
     @Override
-    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(MemberAuthInfo authInfo) {
         if (authInfo.isOwner()) {
             return GTransactionStatus.CONFIRMED;
         }

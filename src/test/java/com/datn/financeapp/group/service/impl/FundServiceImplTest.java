@@ -45,6 +45,8 @@ class FundServiceImplTest {
     private FundMapper fundMapper;
     @Mock
     private MemberService memberService;
+    @Mock
+    private com.datn.financeapp.group.helper.TransactionHelper transactionHelper;
 
     private FundServiceImpl service;
 
@@ -56,7 +58,7 @@ class FundServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new FundServiceImpl(fundRepository, gTransactionService, permissionValidator, fundMapper,
-                memberService);
+                memberService, transactionHelper);
         groupId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
         newKeeperId = UUID.randomUUID();
@@ -72,7 +74,7 @@ class FundServiceImplTest {
     @Test
     @DisplayName("Đổi thủ quỹ sang thành viên ACTIVE thì cập nhật keepperId và lưu lại")
     void updateFundKeepper_ActiveMember_UpdatesKeeper() {
-        when(fundRepository.findByGroupId(groupId)).thenReturn(Optional.of(fund));
+        when(fundRepository.findByGroupIdForUpdate(groupId)).thenReturn(Optional.of(fund));
         when(memberService.allMemberInGroup(groupId, List.of(newKeeperId))).thenReturn(true);
         when(fundRepository.save(fund)).thenReturn(fund);
 
@@ -85,7 +87,7 @@ class FundServiceImplTest {
     @Test
     @DisplayName("Đổi thủ quỹ sang người không còn ACTIVE trong nhóm thì lỗi GROUP_FUND_HOLDER_NOT_MEMBER và giữ nguyên thủ quỹ cũ")
     void updateFundKeepper_NotActiveMember_Rejected() {
-        when(fundRepository.findByGroupId(groupId)).thenReturn(Optional.of(fund));
+        when(fundRepository.findByGroupIdForUpdate(groupId)).thenReturn(Optional.of(fund));
         when(memberService.allMemberInGroup(groupId, List.of(newKeeperId))).thenReturn(false);
 
         assertThatThrownBy(() -> service.updateFundKeepper(ownerId, groupId, new FundKepperUpdateReq(newKeeperId)))

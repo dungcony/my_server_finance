@@ -1,15 +1,21 @@
 package com.datn.financeapp.common.exception;
 
-import com.datn.financeapp.user.controller.ManagerRoleController;
-import com.datn.financeapp.user.controller.ManagerUserController;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
+import com.datn.financeapp.common.ratelimit.RateLimitProperties;
+import com.datn.financeapp.common.security.JwtAuthFilter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,15 +26,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.datn.financeapp.common.ratelimit.RateLimitProperties;
-import org.springframework.context.annotation.Import;
-
 /**
  * Kiểm tra GlobalExceptionHandler qua @WebMvcTest với controller test-only,
  * không đụng tới controller nghiệp vụ thật nào.
  */
-@WebMvcTest(controllers = GlobalExceptionHandlerTest.TestController.class)
-@Import(RateLimitProperties.class)
+@WebMvcTest(controllers = GlobalExceptionHandlerTest.TestController.class,
+        excludeAutoConfiguration = {
+                SecurityAutoConfiguration.class,
+                SecurityFilterAutoConfiguration.class
+        },
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.ASSIGNABLE_TYPE,
+                classes = {JwtAuthFilter.class, RateLimitFilter.class}
+        ))
+@AutoConfigureMockMvc(addFilters = false)
+@Import({RateLimitProperties.class, GlobalExceptionHandlerTest.TestController.class})
 public class GlobalExceptionHandlerTest {
 
     @Autowired

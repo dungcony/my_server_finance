@@ -1,5 +1,6 @@
 package com.datn.financeapp.common.ratelimit;
 
+import com.datn.financeapp.common.logging.RequestLoggingFilter;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bucket;
@@ -66,7 +67,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                         .getEpochSecond()));
 
         if (!probe.isConsumed()) {
-            req.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "RATE_LIMIT_EXCEEDED: Bạn đã gọi quá nhiều lần, vui lòng thử lại sau.");
+            req.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "RATE_LIMIT_EXCEEDED: Bạn đã gọi quá nhiều lần, vui lòng thử lại sau.");
             log.debug("Rate limit vượt ngưỡng tại {} {}: bucketKey={}", req.getMethod(), req.getRequestURI(), bucketKey);
             res.setStatus(429);
             res.setContentType("application/json");

@@ -38,6 +38,7 @@
 - Ưu tiên readability, maintainability và tính nhất quán với codebase hiện tại.
 - Không tạo abstraction, interface hoặc layer mới nếu chưa có nhu cầu thực tế.
 - Tránh over-engineering.
+- Luôn sử dụng import rồi viết class (import com.x.Y rồi gọi Y) chứ k được gọi theo dạng com.x.Y
 
 ## Code Changes
 
@@ -52,7 +53,6 @@
   dùng yêu cầu.
 - Không tự ý xóa code, đổi API, thay đổi database schema hoặc thay đổi hành vi hiện tại nếu chưa được yêu cầu.
 - Ưu tiên thay đổi nhỏ nhất có thể để giải quyết đúng vấn đề.
-- Khi viết cmt hãy viết theo // + giải thích không cần phải ghi 1. 2.
 
 ## Python
 

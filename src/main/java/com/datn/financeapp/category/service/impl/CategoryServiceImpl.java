@@ -1,5 +1,6 @@
 package com.datn.financeapp.category.service.impl;
 
+import com.datn.financeapp.category.entity.WalletCategorySetting;
 import com.datn.financeapp.category.service.CategoryService;
 
 import com.datn.financeapp.category.dto.response.CategoryDetailResponse;
@@ -22,6 +23,7 @@ import com.datn.financeapp.category.repository.WalletCategorySettingRepository;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.wallet.repository.WalletRepository;
+
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -33,6 +35,7 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -44,7 +47,6 @@ import org.springframework.transaction.annotation.Transactional;
  * buộc ở mục 3 làm lớp phòng thủ đầu; trigger DB {@code fn_categories_validate}/
  * {@code fn_categories_block_demote} là lớp phòng thủ cuối cùng nếu Service bị lách (race
  * condition hiếm) — Service vẫn catch fallback exception CSDL để không lộ lỗi CHECK thô.
- *
  * {@code @Transactional} đặt TRÊN TỪNG PUBLIC METHOD theo mẫu {@code WalletService}.
  */
 @Service
@@ -87,7 +89,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         Map<UUID, List<CategoryResponse>> childrenByParent = flat.stream()
                 .filter(c -> c.parentCategoryId() != null)
-                .collect(Collectors.groupingBy(c -> c.parentCategoryId(), LinkedHashMap::new, Collectors.toList()));
+                .collect(Collectors.groupingBy(CategoryResponse::parentCategoryId, LinkedHashMap::new, Collectors.toList()));
 
         return flat.stream()
                 .filter(c -> c.parentCategoryId() == null)
@@ -103,7 +105,7 @@ public class CategoryServiceImpl implements CategoryService {
         Map<UUID, Boolean> flagsByCategory = walletCategorySettingRepository.findAllByWalletId(walletId)
                 .stream()
                 .collect(Collectors.toMap(
-                        s -> s.getCategoryId(), s -> s.getIsEnabled(), (a, b) -> b, HashMap::new));
+                        WalletCategorySetting::getCategoryId, WalletCategorySetting::getIsEnabled, (a, b) -> b, HashMap::new));
 
         return list(userId, null, true, false).stream()
                 .map(root -> root.withEnabled(
@@ -530,7 +532,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     // Wrapper cho phản hồi {@code {group: [...], total: N}} của GET /icons.
-    
+
 
     private CategoryResponse withChildren(CategoryResponse parent, List<CategoryResponse> children) {
         List<CategoryResponse> sortedChildren =

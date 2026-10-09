@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -330,7 +331,7 @@ public class GoalServiceImpl implements GoalService {
 
         List<UUID> transactionIds = goalContributionRepository.findByGoalId(goalId).stream()
                 .map(c -> c.getTransactionId())
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .toList();
 
         savingsGoalRepository.delete(goal);

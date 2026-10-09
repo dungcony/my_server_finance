@@ -14,6 +14,7 @@ import com.datn.financeapp.group.enums.GTransactionType;
 import com.datn.financeapp.group.enums.MoneySource;
 import com.datn.financeapp.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.group.events.MemberLeaveEvent;
+import com.datn.financeapp.group.helper.TransactionHelper;
 import com.datn.financeapp.group.mapper.FundMapper;
 import com.datn.financeapp.group.repository.FundRepository;
 import com.datn.financeapp.group.service.FundService;
@@ -39,6 +40,7 @@ public class FundServiceImpl implements FundService {
     private final GroupPermissionValidator permissionValidator;
     private final FundMapper fundMapper;
     private final MemberService memberService;
+    private final TransactionHelper transactionHelper;
 
     @Transactional
     @Override
@@ -61,7 +63,7 @@ public class FundServiceImpl implements FundService {
     public FundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req) {
         permissionValidator.verifyOwner(groupId, operatorId);
 
-        Fund fund = fundRepository.findByGroupId(groupId)
+        Fund fund = fundRepository.findByGroupIdForUpdate(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
         if (req.keepperId() != null) {
@@ -104,8 +106,12 @@ public class FundServiceImpl implements FundService {
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
         }
 
-        long previousBalance = fund.getCurrentBalance();
-        long actualBalance = req.actualBalance();
+        Long currentBalance = fund.getCurrentBalance();
+        long previousBalance = currentBalance != null ? currentBalance : 0L;
+        
+        Long reqActualBalance = req.actualBalance();
+        long actualBalance = reqActualBalance != null ? reqActualBalance : 0L;
+        
         long difference = actualBalance - previousBalance;
 
         if (difference == 0) {
@@ -126,9 +132,12 @@ public class FundServiceImpl implements FundService {
         List<GroupTransactionParticipantReq> participantReqs = null;
         if (req.excludedUserIds() != null && !req.excludedUserIds().isEmpty()) {
             List<UUID> allMemberIds = memberService.findIdAllMember(groupId);
-            participantReqs = allMemberIds.stream()
+            List<UUID> includedIds = allMemberIds.stream()
                     .filter(id -> !req.excludedUserIds().contains(id))
-                    .map(id -> new GroupTransactionParticipantReq(id, null))
+                    .toList();
+            
+            participantReqs = transactionHelper.splitEvenly(amount, includedIds).stream()
+                    .map(p -> new GroupTransactionParticipantReq(p.userId(), p.shareAmount()))
                     .toList();
         }
 
@@ -160,7 +169,7 @@ public class FundServiceImpl implements FundService {
     @EventListener
     @Transactional
     public void onMemberLeave(MemberLeaveEvent event) {
-        fundRepository.findByGroupId(event.groupId()).ifPresent(fund -> {
+        fundRepository.findByGroupIdForUpdate(event.groupId()).ifPresent(fund -> {
             if (fund.getKeepperId().equals(event.memberId())) {
                 fund.setKeepperId(event.ownerId());
                 fundRepository.save(fund);

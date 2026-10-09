@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -99,7 +100,7 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
             @Param("name") String name,
             @Param("excludeId") UUID excludeId);
 
-    @org.springframework.data.jpa.repository.Modifying
+    @Modifying
     @Query("""
             UPDATE Category c SET c.sortOrder = :order WHERE c.id = :id AND c.userId = :currentUser
             AND ((:parentCategoryId IS NULL AND c.parentCategoryId IS NULL) OR c.parentCategoryId = :parentCategoryId)

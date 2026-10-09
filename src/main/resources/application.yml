@@ -1,10 +1,10 @@
 server:
   servlet:
-    context-path: ${API_PATH}
+    context-path: ${API_PATH:}
 
 spring:
   profiles:
-    active: ${PROFILES_ACTIVE}
+    active: ${PROFILES_ACTIVE:}
   application:
     name: financeapp
   jackson:

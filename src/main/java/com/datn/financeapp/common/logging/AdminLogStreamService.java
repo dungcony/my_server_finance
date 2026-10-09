@@ -28,6 +28,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -40,8 +42,8 @@ public class AdminLogStreamService {
     private static final int SEND_QUEUE_CAPACITY = 2000;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
             .withZone(ZoneId.systemDefault());
-    private static final java.util.regex.Pattern HTTP_ACCESS_PATTERN =
-            java.util.regex.Pattern.compile("^<--\\s+([A-Z]+)\\s+([^\\s|]+)\\s+\\|\\s+status=(\\d+)\\s+\\|\\s+time=(\\d+)ms");
+    private static final Pattern HTTP_ACCESS_PATTERN =
+            Pattern.compile("^<--\\s+([A-Z]+)\\s+([^\\s|]+)\\s+\\|\\s+status=(\\d+)\\s+\\|\\s+time=(\\d+)ms");
 
     private final AtomicLong seq = new AtomicLong(0);
     private final Deque<AdminLogEvent> buffer = new ArrayDeque<>(MAX_BUFFER_SIZE);
@@ -225,7 +227,7 @@ public class AdminLogStreamService {
 
             String rawMessage = eventObject.getFormattedMessage();
             if (rawMessage != null && rawMessage.startsWith("<-- ")) {
-                java.util.regex.Matcher matcher = HTTP_ACCESS_PATTERN.matcher(rawMessage);
+                Matcher matcher = HTTP_ACCESS_PATTERN.matcher(rawMessage);
                 if (matcher.find()) {
                     String path = matcher.group(2);
                     int qIdx = path.indexOf('?');

@@ -8,6 +8,7 @@ import com.datn.financeapp.report.dto.response.ExportJobResponse;
 import com.datn.financeapp.report.dto.request.ExportRequest;
 import com.datn.financeapp.report.entity.ExportJob;
 import com.datn.financeapp.report.export.ExportAsyncRunner;
+import com.datn.financeapp.report.mapper.ReportMapper;
 import com.datn.financeapp.report.repository.ExportJobRepository;
 import java.io.File;
 import java.time.Instant;
@@ -31,7 +32,7 @@ public class ExportServiceImpl implements ExportService {
 
     private final ExportJobRepository exportJobRepository;
     private final ExportAsyncRunner exportAsyncRunner;
-    private final com.datn.financeapp.report.mapper.ReportMapper reportMapper;
+    private final ReportMapper reportMapper;
 
     @Transactional
     public ExportJobResponse createJob(UUID userId, ExportRequest req) {

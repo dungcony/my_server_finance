@@ -1,166 +1,9 @@
 -- =============================================================
--- V3 — Module Danh mục thu chi & Biểu tượng (Category & Icon)
+-- V4 — Dữ liệu khởi tạo hệ thống (Master Seed Data)
 -- =============================================================
 
--- -------------------------------------------------------------
--- 1. icons — Kho biểu tượng hệ thống
--- -------------------------------------------------------------
-CREATE TABLE icons (
-    id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    code            VARCHAR(50)  NOT NULL,
-    display_name    VARCHAR(100) NOT NULL,
-    path_data       TEXT         NOT NULL,
-    icon_group      VARCHAR(30)  NOT NULL,
-    search_keywords TEXT,
-    sort_order      INTEGER      NOT NULL DEFAULT 0,
-    is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
-
-    CONSTRAINT uq_icons_code  UNIQUE (code),
-    CONSTRAINT ck_icons_group CHECK (icon_group IN (
-        'an_uong', 'di_lai', 'mua_sam', 'giai_tri',
-        'suc_khoe', 'hoc_tap', 'tai_chinh', 'khac'
-    ))
-);
-
-COMMENT ON COLUMN icons.path_data IS 'Đường vẽ SVG biểu tượng';
-
-CREATE INDEX idx_icons_group ON icons (icon_group, sort_order) WHERE is_active;
-
--- -------------------------------------------------------------
--- 2. category_groups — Nhóm lớn (phục vụ biểu đồ báo cáo)
--- -------------------------------------------------------------
-CREATE TABLE category_groups (
-    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    name       VARCHAR(50) NOT NULL,
-    icon_id    UUID,
-    color      CHAR(7)     NOT NULL,
-    sort_order INTEGER     NOT NULL DEFAULT 0,
-
-    CONSTRAINT fk_cg_icon  FOREIGN KEY (icon_id) REFERENCES icons (id) ON DELETE SET NULL,
-    CONSTRAINT uq_cg_name  UNIQUE (name),
-    CONSTRAINT ck_cg_color CHECK (color ~ '^#[0-9A-Fa-f]{6}$')
-);
-
--- -------------------------------------------------------------
--- 3. categories — Cây danh mục thu chi (tối đa 2 cấp)
--- -------------------------------------------------------------
-CREATE TABLE categories (
-    id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id            UUID,
-    parent_category_id UUID,
-    category_group_id  UUID,
-    name               VARCHAR(50) NOT NULL,
-    type               VARCHAR(10) NOT NULL,
-    icon_id            UUID        NOT NULL,
-    color              CHAR(7)     NOT NULL,
-    sort_order         INTEGER     NOT NULL DEFAULT 0,
-    is_deleted         BOOLEAN     NOT NULL DEFAULT FALSE,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_cat_user   FOREIGN KEY (user_id)            REFERENCES users           (id) ON DELETE CASCADE,
-    CONSTRAINT fk_cat_parent FOREIGN KEY (parent_category_id) REFERENCES categories      (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_cat_group  FOREIGN KEY (category_group_id)  REFERENCES category_groups (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_id)            REFERENCES icons           (id) ON DELETE RESTRICT,
-
-    CONSTRAINT ck_cat_type   CHECK (type IN ('expense', 'income')),
-    CONSTRAINT ck_cat_color  CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
-    CONSTRAINT ck_cat_root_needs_group CHECK (
-        parent_category_id IS NOT NULL OR category_group_id IS NOT NULL
-    )
-);
-
-COMMENT ON COLUMN categories.user_id            IS 'NULL = danh mục mặc định của hệ thống, dùng chung cho mọi người';
-COMMENT ON COLUMN categories.parent_category_id IS 'NULL = danh mục cấp cha. Có giá trị = danh mục con';
-
-CREATE UNIQUE INDEX uq_cat_name_root
-    ON categories (COALESCE(user_id, '00000000-0000-0000-0000-000000000000'::uuid), type, lower(name))
-    WHERE parent_category_id IS NULL AND NOT is_deleted;
-CREATE UNIQUE INDEX uq_cat_name_child
-    ON categories (parent_category_id, lower(name))
-    WHERE parent_category_id IS NOT NULL AND NOT is_deleted;
-
-CREATE INDEX idx_cat_user   ON categories (user_id, type) WHERE NOT is_deleted;
-CREATE INDEX idx_cat_parent ON categories (parent_category_id) WHERE NOT is_deleted;
-
--- -------------------------------------------------------------
--- Triggers bảo đảm cây danh mục tối đa 2 cấp
--- -------------------------------------------------------------
-CREATE OR REPLACE FUNCTION fn_categories_validate()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_parent categories%ROWTYPE;
-BEGIN
-    IF NEW.parent_category_id IS NULL THEN
-        RETURN NEW;
-    END IF;
-
-    IF NEW.parent_category_id = NEW.id THEN
-        RAISE EXCEPTION 'Danh mục không thể là cha của chính nó'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    SELECT * INTO v_parent FROM categories WHERE id = NEW.parent_category_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Danh mục cha không tồn tại'
-            USING ERRCODE = 'foreign_key_violation';
-    END IF;
-
-    IF v_parent.parent_category_id IS NOT NULL THEN
-        RAISE EXCEPTION 'Danh mục chỉ được tối đa hai cấp (MAX_DEPTH_EXCEEDED)'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    IF v_parent.type <> NEW.type THEN
-        RAISE EXCEPTION 'Danh mục con phải cùng loại với cha (TYPE_MISMATCH_WITH_PARENT)'
-            USING ERRCODE = 'check_violation';
-    END IF;
-
-    NEW.category_group_id := v_parent.category_group_id;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_categories_validate
-    BEFORE INSERT OR UPDATE OF parent_category_id, type ON categories
-    FOR EACH ROW EXECUTE FUNCTION fn_categories_validate();
-
-CREATE OR REPLACE FUNCTION fn_categories_block_demote()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.parent_category_id IS NOT NULL
-       AND OLD.parent_category_id IS NULL
-       AND EXISTS (SELECT 1 FROM categories
-                   WHERE parent_category_id = NEW.id AND NOT is_deleted) THEN
-        RAISE EXCEPTION 'Danh mục đang có con, không thể chuyển thành cấp con (CATEGORY_HAS_CHILDREN)'
-            USING ERRCODE = 'check_violation';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_categories_block_demote
-    BEFORE UPDATE OF parent_category_id ON categories
-    FOR EACH ROW EXECUTE FUNCTION fn_categories_block_demote();
-
--- -------------------------------------------------------------
--- 4. wallet_category_settings — Bật/tắt danh mục theo từng ví
--- -------------------------------------------------------------
-CREATE TABLE wallet_category_settings (
-    wallet_id   UUID    NOT NULL,
-    category_id UUID    NOT NULL,
-    is_enabled  BOOLEAN NOT NULL DEFAULT TRUE,
-
-    PRIMARY KEY (wallet_id, category_id),
-    CONSTRAINT fk_wcs_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id) ON DELETE CASCADE,
-    CONSTRAINT fk_wcs_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
-);
-
-COMMENT ON TABLE wallet_category_settings IS
-    'Danh mục bị TẮT ở một ví cụ thể. Vắng dòng = đang bật. Truy vấn đọc dùng LEFT JOIN + COALESCE(is_enabled, TRUE)';
-
 -- =============================================================
--- SEED DATA: Kho biểu tượng, Nhóm lớn và Danh mục mặc định
+-- KHO BIỂU TƯỢNG HỆ THỐNG (ICONS)
 -- =============================================================
 INSERT INTO icons (code, display_name, path_data, icon_group, search_keywords, sort_order) VALUES
 -- Ăn uống
@@ -210,6 +53,9 @@ INSERT INTO icons (code, display_name, path_data, icon_group, search_keywords, s
 ('gia_dinh',   'Nhóm người',   'M9 11a3 3 0 100-6 3 3 0 000 6zM3 20a6 6 0 0112 0M17 11a3 3 0 100-6M18 20a6 6 0 00-2-4.5', 'khac', 'gia đình nhóm chung', 92)
 ON CONFLICT (code) DO NOTHING;
 
+-- =============================================================
+-- NHÓM DANH MỤC LỚN (CATEGORY GROUPS)
+-- =============================================================
 INSERT INTO category_groups (name, color, icon_id, sort_order) VALUES
 ('Thiết yếu', '#4e9e76', (SELECT id FROM icons WHERE code = 'thiet_yeu'), 1),
 ('Giải trí',  '#8ecaa9', (SELECT id FROM icons WHERE code = 'giai_tri'),  2),
@@ -218,11 +64,15 @@ INSERT INTO category_groups (name, color, icon_id, sort_order) VALUES
 ('Khác',      '#4a463f', (SELECT id FROM icons WHERE code = 'khac'),      5)
 ON CONFLICT (name) DO NOTHING;
 
--- Danh mục mặc định cấp CHA
+-- =============================================================
+-- DANH MỤC THU CHI MẶC ĐỊNH (CATEGORIES)
+-- =============================================================
+
+-- Danh mục mặc định cấp cha
 INSERT INTO categories (user_id, parent_category_id, category_group_id, name, type, icon_id, color, sort_order)
 SELECT NULL, NULL, g.id, v.name, v.type, i.id, v.color, v.sort_order
 FROM (VALUES
-    -- Danh mục CHI
+    -- Danh mục chi
     ('Ăn uống',           'expense', 'Thiết yếu', 'an_uong',   '#3d6b7d', 1),
     ('Đi lại',            'expense', 'Thiết yếu', 'xe_may',    '#4a6f5c', 2),
     ('Nhà ở & Hoá đơn',   'expense', 'Thiết yếu', 'nha',       '#2f8272', 3),
@@ -233,7 +83,7 @@ FROM (VALUES
     ('Cho vay',           'expense', 'Khác',      'cho_vay',   '#5b6b7a', 8),
     ('Trả nợ',            'expense', 'Khác',      'the',       '#6b5b7a', 9),
     ('Khác',              'expense', 'Khác',      'khac',      '#5b5b5b', 10),
-    -- Danh mục THU
+    -- Danh mục thu
     ('Lương',             'income',  'Khác',      'luong',     '#3f7d55', 20),
     ('Thưởng',            'income',  'Khác',      'thuong',    '#8a7a3f', 21),
     ('Đầu tư',            'income',  'Khác',      'dau_tu',    '#3f6b8a', 22),
@@ -245,7 +95,7 @@ JOIN category_groups g ON g.name = v.group_name
 JOIN icons           i ON i.code = v.icon_code
 ON CONFLICT DO NOTHING;
 
--- Danh mục CON mẫu
+-- Danh mục con mẫu
 INSERT INTO categories (user_id, parent_category_id, category_group_id, name, type, icon_id, color, sort_order)
 SELECT NULL, p.id, p.category_group_id, v.name, p.type, i.id, p.color, v.sort_order
 FROM (VALUES
@@ -282,7 +132,7 @@ JOIN categories p ON p.name = v.parent_name
 JOIN icons      i ON i.code = v.icon_code
 ON CONFLICT DO NOTHING;
 
--- Danh mục hệ thống cho điều chỉnh kiểm kê ví (V8)
+-- Danh mục hệ thống cho điều chỉnh kiểm kê ví
 INSERT INTO categories (user_id, parent_category_id, category_group_id, name, type, icon_id, color, sort_order)
 SELECT NULL, NULL, g.id, v.name, v.type, i.id, v.color, v.sort_order
 FROM (VALUES
@@ -292,3 +142,68 @@ FROM (VALUES
 JOIN category_groups g ON g.name = v.group_name
 JOIN icons           i ON i.code = v.icon_code
 ON CONFLICT DO NOTHING;
+
+-- =============================================================
+-- KHỐI VAI TRÒ & PHÂN QUYỀN (ROLES & PERMISSIONS)
+-- =============================================================
+INSERT INTO roles (name, level, description) VALUES
+    ('ROLE_ADMIN', 1,  'Quản trị viên toàn quyền hệ thống'),
+    ('ROLE_USER',  10, 'Người dùng ứng dụng thông thường')
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO permissions (name, description) VALUES
+    ('users:read',             'Xem danh sách và chi tiết người dùng'),
+    ('users:update',           'Khóa, mở khóa hoặc cập nhật thông tin người dùng'),
+    ('users:delete',           'Xoá tài khoản người dùng'),
+    ('roles:read',             'Xem danh sách vai trò và quyền hạn'),
+    ('roles:update',           'Sửa thông tin vai trò (tên, mô tả, cấp bậc)'),
+    ('roles:delete',           'Xoá vai trò'),
+    ('user_role:read',         'Xem vai trò đã gán cho người dùng'),
+    ('user_role:update',       'Gán vai trò cho người dùng'),
+    ('user_role:delete',       'Thu hồi vai trò đã gán của người dùng'),
+    ('role_permission:read',   'Xem quyền hạn đã gán cho vai trò'),
+    ('role_permission:update', 'Gán quyền hạn cho vai trò'),
+    ('role_permission:delete', 'Thu hồi quyền hạn đã gán của vai trò'),
+    ('categories:manage',      'Quản lý danh mục và biểu tượng mặc định hệ thống'),
+    ('system:view_stats',      'Xem báo cáo thống kê toàn hệ thống')
+ON CONFLICT (name) DO NOTHING;
+
+-- Gán toàn bộ quyền quản trị cho ROLE_ADMIN
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r, permissions p
+WHERE r.name = 'ROLE_ADMIN'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- =============================================================
+-- TÀI KHOẢN QUẢN TRỊ VIÊN MẶC ĐỊNH
+-- =============================================================
+INSERT INTO users (
+    email,
+    password_hash,
+    first_name,
+    last_name,
+    plan,
+    status,
+    is_deleted,
+    created_at
+) VALUES (
+    'admin@financeapp.com',
+    '$2a$12$7humJ1hfArXzq9mpOqwJLuY46gx7wAgg4RJgu8Ht3vi/Qwb4qx60G',
+    'Hệ thống',
+    'Quản trị viên',
+    'premium',
+    'active',
+    false,
+    now()
+)
+ON CONFLICT (email) DO NOTHING;
+
+-- Gán vai trò cho tài khoản Admin
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM users u
+CROSS JOIN roles r
+WHERE u.email = 'admin@financeapp.com'
+  AND r.name IN ('ROLE_ADMIN', 'ROLE_USER')
+ON CONFLICT (user_id, role_id) DO NOTHING;

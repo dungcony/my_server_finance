@@ -1,6 +1,7 @@
 package com.datn.financeapp.budget.repository;
 
 import com.datn.financeapp.budget.entity.Budget;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,8 +70,8 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
             @Param("currentUser") UUID currentUser,
             @Param("categoryId") UUID categoryId,
             @Param("walletId") UUID walletId,
-            @Param("startDate") java.time.LocalDate startDate,
-            @Param("endDate") java.time.LocalDate endDate);
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
 
     /**
      * JOB-02 (D-57, api/05 mục 8) — ngân sách {@code auto_renew=true}, đang hiệu lực, đã hết kỳ
@@ -83,7 +84,7 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
                     AND b.end_date < :today
                     """,
             nativeQuery = true)
-    List<Budget> findAutoRenewExpired(@Param("today") java.time.LocalDate today);
+    List<Budget> findAutoRenewExpired(@Param("today") LocalDate today);
 
     /**
      * Lớp bảo vệ Java TRƯỚC khi tạo kỳ mới trong {@code renewOneBudget} — kiểm tra chống trùng khi
@@ -103,6 +104,6 @@ public interface BudgetRepository extends JpaRepository<Budget, UUID> {
             @Param("userId") UUID userId,
             @Param("categoryId") UUID categoryId,
             @Param("walletId") UUID walletId,
-            @Param("newStart") java.time.LocalDate newStart,
-            @Param("newEnd") java.time.LocalDate newEnd);
+            @Param("newStart") LocalDate newStart,
+            @Param("newEnd") LocalDate newEnd);
 }

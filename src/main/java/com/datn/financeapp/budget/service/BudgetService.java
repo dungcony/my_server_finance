@@ -7,6 +7,8 @@ import com.datn.financeapp.budget.dto.response.BudgetImpactResponse;
 import com.datn.financeapp.budget.dto.response.BudgetListItemResponse;
 import com.datn.financeapp.budget.dto.response.BudgetSuggestionResponse;
 import com.datn.financeapp.budget.dto.response.BudgetSummaryResponse;
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.report.dto.response.ReportHomeResponse;
 import java.time.LocalDate;
 import java.util.List;
@@ -48,8 +50,8 @@ public interface BudgetService {
             case "month" -> startDate.plusMonths(1).minusDays(1);
             case "quarter" -> startDate.plusMonths(3).minusDays(1);
             case "year" -> startDate.plusYears(1).minusDays(1);
-            default -> throw new com.datn.financeapp.common.exception.BusinessException(
-                    com.datn.financeapp.common.exception.ErrorCode.VALIDATION_ERROR, "Loại kỳ ngân sách không hợp lệ.");
+            default -> throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR, "Loại kỳ ngân sách không hợp lệ.");
         };
     }
 }

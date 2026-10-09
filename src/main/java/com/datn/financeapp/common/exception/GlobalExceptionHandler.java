@@ -1,27 +1,32 @@
 package com.datn.financeapp.common.exception;
 
+import com.datn.financeapp.common.logging.RequestLoggingFilter;
 import com.datn.financeapp.common.response.ErrorResponse;
 import com.datn.financeapp.common.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.util.List;
 
 /**
  * Gom mọi exception thành khung phản hồi thống nhất {success:false, error:{...}}
@@ -45,8 +50,8 @@ public class GlobalExceptionHandler {
                 .toList();
         String detail = fields.stream()
                 .map(fe -> fe.field() + ": " + fe.message())
-                .collect(java.util.stream.Collectors.joining(", "));
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "VALIDATION_ERROR: " + detail);
+                .collect(Collectors.joining(", "));
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "VALIDATION_ERROR: " + detail);
         log.debug("Validation thất bại tại {} {}: {}", request.getMethod(), request.getRequestURI(), fields);
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("VALIDATION_ERROR", "Dữ liệu gửi lên không hợp lệ.", fields, null));
@@ -75,7 +80,7 @@ public class GlobalExceptionHandler {
             field = e.getName();
         }
         String detail = field != null ? field + ": Thiếu hoặc sai định dạng." : "Dữ liệu gửi lên không đọc được.";
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "VALIDATION_ERROR: " + detail);
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "VALIDATION_ERROR: " + detail);
         log.debug("Yêu cầu không hợp lệ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         List<ErrorResponse.FieldError> fields = field == null
                 ? null
@@ -88,7 +93,7 @@ public class GlobalExceptionHandler {
     // Đường dẫn không tồn tại → 404 NOT_FOUND, không phải 500.
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(Exception ex, HttpServletRequest request) {
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "NOT_FOUND: " + ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "NOT_FOUND: " + ex.getMessage());
         log.debug("Không tìm thấy tài nguyên tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("NOT_FOUND", "Không tìm thấy tài nguyên."));
@@ -98,7 +103,7 @@ public class GlobalExceptionHandler {
     // Sai phương thức HTTP → 405, không phải 500.
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "METHOD_NOT_ALLOWED: " + ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "METHOD_NOT_ALLOWED: " + ex.getMessage());
         log.debug("Phương thức không được hỗ trợ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("METHOD_NOT_ALLOWED", "Phương thức không được hỗ trợ."));
@@ -107,7 +112,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, ex.getCode() + ": " + ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, ex.getCode() + ": " + ex.getMessage());
         log.debug("Nghiệp vụ từ chối tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), ex.getCode(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody(ex.getCode(), ex.getMessage(), ex.getDetail()));
@@ -119,7 +124,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex,
                                                               HttpServletRequest request) {
         ErrorCode errorCode = ErrorCode.CONCURRENT_MODIFICATION;
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL,
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL,
                 errorCode.getCode() + ": " + ex.getMessage());
         log.debug("Xung đột ghi đồng thời tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
@@ -136,7 +141,7 @@ public class GlobalExceptionHandler {
                 : "TOKEN_INVALID".equals(code)
                         ? "Thẻ truy cập không hợp lệ."
                         : "Vui lòng đăng nhập để tiếp tục.";
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, code + ": " + message);
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, code + ": " + message);
         log.debug("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
@@ -144,7 +149,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "FORBIDDEN: Bạn không có quyền truy cập tài nguyên này.");
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "FORBIDDEN: Bạn không có quyền truy cập tài nguyên này.");
         log.debug("Từ chối quyền truy cập tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("FORBIDDEN", "Bạn không có quyền truy cập tài nguyên này."));
@@ -158,10 +163,10 @@ public class GlobalExceptionHandler {
      * dọn dẹp và không trả response body.
      */
     @ExceptionHandler({
-            org.apache.catalina.connector.ClientAbortException.class,
-            org.springframework.web.context.request.async.AsyncRequestTimeoutException.class,
-            org.springframework.web.context.request.async.AsyncRequestNotUsableException.class,
-            java.io.IOException.class
+            ClientAbortException.class,
+            AsyncRequestTimeoutException.class,
+            AsyncRequestNotUsableException.class,
+            IOException.class
     })
     public void handleClientDisconnection(Exception ex, HttpServletRequest request) {
         log.debug("Client đã ngắt kết nối SSE tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
@@ -185,8 +190,8 @@ public class GlobalExceptionHandler {
             return null;
         }
 
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_DETAIL, "INTERNAL_SERVER_ERROR" + (msg.isBlank() ? "" : ": " + msg));
-        request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_ERROR_EXCEPTION, ex);
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "INTERNAL_SERVER_ERROR" + (msg.isBlank() ? "" : ": " + msg));
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_EXCEPTION, ex);
         log.debug("Lỗi ngoài dự kiến tại {} {}: {}", request.getMethod(), request.getRequestURI(), msg);
 
         var body = new ErrorResponse(false,

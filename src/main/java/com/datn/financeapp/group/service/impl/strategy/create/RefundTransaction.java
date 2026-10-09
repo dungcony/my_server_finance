@@ -6,8 +6,9 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.group.entity.GTransaction;
 import com.datn.financeapp.group.enums.*;
-import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.helper.GTransactionBuilder;
+import com.datn.financeapp.group.helper.MemberAuthInfo;
+import com.datn.financeapp.group.helper.MemberBalances;
 import com.datn.financeapp.group.service.MemberBalanceService;
 import com.datn.financeapp.group.validator.GroupTransactionTypeValidator;
 import lombok.RequiredArgsConstructor;
@@ -40,11 +41,11 @@ public class RefundTransaction implements GTransactionBuilder {
     }
 
     @Override
-    public GTransactionStatus determineStatus(com.datn.financeapp.group.helper.MemberAuthInfo authInfo) {
+    public GTransactionStatus determineStatus(MemberAuthInfo authInfo) {
         if (authInfo.isOwner() || authInfo.isTreasurer()) {
             return GTransactionStatus.CONFIRMED;
         }
-        throw new com.datn.financeapp.common.exception.BusinessException(com.datn.financeapp.common.exception.ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED);
+        throw new BusinessException(ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED);
     }
 
     @Override

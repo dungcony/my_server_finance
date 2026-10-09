@@ -68,7 +68,7 @@ public class User extends AssignedIdEntity {
 
     @Builder.Default
     @Column(name = "status", nullable = false)
-    private UserStatus status = UserStatus.ACTIVE;
+    private UserStatus status = UserStatus.PENDING_VERIFY;
 
     // Người dùng tự xoá tài khoản — xoá MỀM.
     @Builder.Default

@@ -23,9 +23,6 @@ INSERT INTO users (
     last_name,
     plan,
     status,
-    role,
-    is_confirm,
-    is_blocked,
     is_deleted,
     created_at
 )
@@ -37,9 +34,6 @@ SELECT
     'Số ' || s,
     'free',
     'active',
-    'USER',
-    true,
-    false,
     false,
     now()
 FROM generate_series(1, 100000) AS s
@@ -355,3 +349,6 @@ SET current_balance = COALESCE((
     WHERE gt.group_id = f.group_id
       AND gt.status = 'CONFIRMED'
       AND gt.deleted_at IS NULL), 0);
+
+
+VACUUM ANALYZE group_transactions
