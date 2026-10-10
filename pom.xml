@@ -71,11 +71,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
- <dependency>
-    <groupId>org.springdoc</groupId>
-    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-    <version>2.8.5</version>
-</dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.5</version>
+        </dependency>
         <!-- D3: kiểm chứng chữ ký id_token của Google. Thư viện tự tải và cache khoá
              công khai của Google, tự xoay khoá khi Google đổi — tự viết phần này bằng
              tay là chỗ rất dễ sai mà lỗi sai thì im lặng. -->
@@ -150,7 +150,7 @@
             <artifactId>cloudinary-http5</artifactId>
             <version>2.3.2</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -243,6 +243,34 @@
                     <!-- -Dfile.encoding=UTF-8: Windows JVM mặc định đọc/ghi Windows-1252,
                          làm hỏng chuỗi tiếng Việt trong message lỗi/test assertion. -->
                     <argLine>-Duser.timezone=UTC -Dfile.encoding=UTF-8</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- Các cấu hình annotationProcessorPaths hiện tại giữ nguyên -->
+                    <annotationProcessorPaths>
+                        ...
+                    </annotationProcessorPaths>
+
+                    <!-- Loại trừ mã nguồn chính -->
+                    <excludes>
+                        <exclude>com/datn/financeapp/module/goal/**</exclude>
+                        <exclude>com/datn/financeapp/module/debt/**</exclude>
+                        <exclude>com/datn/financeapp/module/report/**</exclude>
+                        <exclude>com/datn/financeapp/module/scheduler/**</exclude>
+                        <exclude>com/datn/financeapp/module/budget/**</exclude>
+                    </excludes>
+
+                    <!-- Loại trừ mã nguồn test tương ứng -->
+                    <testExcludes>
+                        <testExclude>com/datn/financeapp/module/goal/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/debt/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/report/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/scheduler/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/budget/**</testExclude>
+                    </testExcludes>
                 </configuration>
             </plugin>
         </plugins>

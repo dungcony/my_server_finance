@@ -1,21 +1,23 @@
 package com.datn.financeapp.module.category.dto.request;
 
-import java.util.UUID;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 /**
- * Update cate
+ * Yêu cầu cập nhật danh mục (chỉ admin). Trường {@code null} nghĩa là giữ nguyên giá trị cũ.
  *
- * @param name
- * @param description
- * @param iconId
- * @param color
- * @param parentCode  khi muốn thay đổi cha
+ * @param name        Tên mới (tối đa 50 ký tự)
+ * @param description Mô tả mới
+ * @param iconCode    Mã biểu tượng mới trong kho {@code icons}
+ * @param color       Mã màu mới (định dạng Hex #RRGGBB)
+ * @param parentCode  Mã danh mục cha mới; {@code null} là giữ nguyên cha (không hỗ trợ chuyển lên gốc)
  */
 public record CategoryUpdateReq(
-        String name,
+        @Size(max = 50) String name,
         String description,
-        UUID iconId,
-        String color,
-        String parentCode
+        String iconCode,
+        @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.") String color,
+        @NotBlank String parentCode
 ) {
 }

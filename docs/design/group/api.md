@@ -3,7 +3,7 @@
 ## KIẾN TRÚC MÔ HÌNH HAI SỔ GHI TÁCH BIỆT (TWO SEPARATE LEDGERS)
 
 > **Tài liệu chuẩn hóa kiến trúc:** Thiết kế RESTful API cho phân hệ Nhóm chung quỹ dựa trên mô hình thực thể hai sổ ghi
-> độc lập (`Group`, `Member`, `Fund`, `GTransactionSpecification`, `TransactionParticipant`).  
+> độc lập (`Group`, `Member`, `Fund`, `TransactionSpecification`, `TransactionParticipant`).  
 > **Quy chuẩn kỹ thuật:** RESTful API, JSON Payload, Jakarta Validation, HTTP Status Code chuẩn RFC 7231, kiến trúc phân
 > tầng Spring Boot Controller ➔ Service ➔ Repository.  
 > **Tài liệu nền

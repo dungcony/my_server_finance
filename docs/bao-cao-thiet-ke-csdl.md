@@ -48,42 +48,39 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 9. **`Wallet` (`wallets`):** Các ví tiền cá nhân của người dùng (tiền mặt, tài khoản ngân hàng, ví điện tử, thẻ tín
    dụng).
 10. **`Icon` (`icons`):** Kho biểu tượng đồ họa hệ thống (SVG paths) dùng chung cho danh mục và mục tiêu tài chính.
-11. **`CategoryGroup` (`category_groups`):** Nhóm phân loại cha (ví dụ: Thiết yếu, Giải trí, Giáo dục, Y tế) phục vụ
-    tổng hợp biểu đồ báo cáo.
-12. **`Category` (`categories`):** Cây danh mục thu/chi phân cấp tối đa 2 cấp (danh mục gốc và danh mục con). Danh mục
-    có `user_id = NULL` là danh mục mặc định của hệ thống.
-13. **`WalletCategorySetting` (`wallet_category_settings`):** Cấu hình bật/tắt hiển thị từng danh mục theo từng ví tiền
-    cụ thể.
+11. **`Category` (`categories`):** Cây danh mục thu/chi nhiều cấp do admin quản lý, dùng chung cho mọi người dùng.
+    Không phân biệt thu/chi: danh mục không có cha là danh mục gốc. Mỗi nút giữ `level`, `path` và `is_leaf`; giao dịch
+    chỉ được gắn vào danh mục lá.
 
 ### 1.3 Phân hệ Giao dịch & Kế hoạch tài chính cá nhân (Transaction & Financial Planning)
 
-14. **`Transaction` (`transactions`):** Thực thể trung tâm lưu trữ toàn bộ giao dịch chi tiêu (`expense`), thu nhập
+12. **`Transaction` (`transactions`):** Thực thể trung tâm lưu trữ toàn bộ giao dịch chi tiêu (`expense`), thu nhập
     (`income`) và chuyển tiền giữa các ví (`transfer`).
-15. **`RecurringTransaction` (`recurring_transactions`):** Thiết lập các khoản thu/chi định kỳ lặp lại tự động theo
+13. **`RecurringTransaction` (`recurring_transactions`):** Thiết lập các khoản thu/chi định kỳ lặp lại tự động theo
     ngày/tuần/tháng/năm.
-16. **`AiDraft` (`ai_drafts`):** Bản nháp giao dịch được AI trích xuất tự động từ văn bản tự nhiên hoặc ảnh hóa đơn
+14. **`AiDraft` (`ai_drafts`):** Bản nháp giao dịch được AI trích xuất tự động từ văn bản tự nhiên hoặc ảnh hóa đơn
     (OCR).
-17. **`Budget` (`budgets`):** Hạn mức ngân sách chi tiêu được thiết lập theo danh mục, ví tiền và chu kỳ thời gian.
-18. **`Debt` (`debts`):** Sổ theo dõi công nợ cá nhân (cho vay - `lending` hoặc đi vay - `borrowing`).
-19. **`DebtPayment` (`debt_payments`):** Lịch sử các lần thanh toán, trả bớt hoặc tất toán từng khoản nợ.
-20. **`SavingsGoal` (`savings_goals`):** Mục tiêu tích lũy tài chính trong tương lai kèm số tiền đích và hạn định.
-21. **`GoalContribution` (`goal_contributions`):** Lịch sử các đợt nạp tiền tích lũy vào mục tiêu tiết kiệm.
-22. **`Notification` (`notifications`):** Hộp thư thông báo trong ứng dụng (cảnh báo vượt ngân sách, nhắc nợ, tự động
+15. **`Budget` (`budgets`):** Hạn mức ngân sách chi tiêu được thiết lập theo danh mục và chu kỳ thời gian, kèm số đã chi trong kỳ.
+16. **`Debt` (`debts`):** Sổ theo dõi công nợ cá nhân (cho vay - `lending` hoặc đi vay - `borrowing`).
+17. **`DebtPayment` (`debt_payments`):** Lịch sử các lần thanh toán, trả bớt hoặc tất toán từng khoản nợ.
+18. **`SavingsGoal` (`savings_goals`):** Mục tiêu tích lũy tài chính trong tương lai kèm số tiền đích và hạn định.
+19. **`GoalContribution` (`goal_contributions`):** Lịch sử các đợt nạp tiền tích lũy vào mục tiêu tiết kiệm.
+20. **`Notification` (`notifications`):** Hộp thư thông báo trong ứng dụng (cảnh báo vượt ngân sách, nhắc nợ, tự động
     ghi sổ).
-23. **`ExportJob` (`export_jobs`):** Quản lý tiến trình tác vụ xuất báo cáo tài chính bất đồng bộ (CSV, Excel, PDF).
+21. **`ExportJob` (`export_jobs`):** Quản lý tiến trình tác vụ xuất báo cáo tài chính bất đồng bộ (CSV, Excel, PDF).
 
 ### 1.4 Phân hệ Nhóm chung quỹ (Group - Mô hình hai sổ độc lập)
 
-24. **`Group` (`groups`):** Không gian quản lý chi tiêu nhóm, độc lập hoàn toàn với sổ ghi cá nhân.
-25. **`GroupMember` (`group_members`):** Tư cách thành viên của người dùng trong nhóm trong từng khoảng thời gian
+22. **`Group` (`groups`):** Không gian quản lý chi tiêu nhóm, độc lập hoàn toàn với sổ ghi cá nhân.
+23. **`GroupMember` (`group_members`):** Tư cách thành viên của người dùng trong nhóm trong từng khoảng thời gian
     (`joined_at` đến `left_at`).
-26. **`GroupFund` (`group_funds`):** Quỹ tiền mặt/tài khoản chung duy nhất của nhóm do một thành viên (thủ quỹ -
+24. **`GroupFund` (`group_funds`):** Quỹ tiền mặt/tài khoản chung duy nhất của nhóm do một thành viên (thủ quỹ -
     `keepper_id`) nắm giữ.
-27. **`GroupTransaction` (`group_transactions`):** Lịch sử các giao dịch phát sinh của nhóm (`EXPENSE`, `CONTRIBUTION`,
+25. **`GroupTransaction` (`group_transactions`):** Lịch sử các giao dịch phát sinh của nhóm (`EXPENSE`, `CONTRIBUTION`,
     `REFUND`, `ADJUSTMENT_UP`, `ADJUSTMENT_DOWN`).
-28. **`GroupTransactionParticipant` (`group_transaction_participants`):** Danh sách thành viên cùng chịu trách nhiệm chi
+26. **`GroupTransactionParticipant` (`group_transaction_participants`):** Danh sách thành viên cùng chịu trách nhiệm chi
     phí kèm số tiền phân bổ (`share_amount`).
-29. **`GroupMemberBalance` (`group_member_balances`):** Bảng tổng hợp số dư tích luỹ của từng thành viên (tiền chi hộ,
+27. **`GroupMemberBalance` (`group_member_balances`):** Bảng tổng hợp số dư tích luỹ của từng thành viên (tiền chi hộ,
     góp quỹ, hoàn trả, phần chia chịu) phục vụ quyết toán nợ nội bộ.
 
 ---
@@ -230,34 +227,21 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 - `sort_order` (INTEGER, NOT NULL, DEFAULT 0): Thứ tự hiển thị.
 - `is_active` (BOOLEAN, NOT NULL, DEFAULT TRUE): Trạng thái khả dụng.
 
-#### `category_groups` (Nhóm lớn danh mục)
-
-- `id` (UUID, PK): Định danh nhóm danh mục.
-- `name` (VARCHAR (50), UK, NOT NULL): Tên nhóm lớn (Thiết yếu, Giải trí, Giáo dục...).
-- `icon_id` (UUID, FK $\rightarrow$ `icons.id`, NULL): Biểu tượng đại diện nhóm.
-- `color` (CHAR (7), NOT NULL): Mã màu đại diện HEX.
-- `sort_order` (INTEGER, NOT NULL, DEFAULT 0): Thứ tự sắp xếp.
-
 #### `categories` (Cây danh mục thu/chi)
 
 - `id` (UUID, PK): Định danh danh mục.
-- `user_id` (UUID, FK $\rightarrow$ `users.id`, NULL): NULL = danh mục hệ thống dùng chung, có giá trị = danh mục tùy
-  chỉnh của user.
-- `parent_category_id` (UUID, FK $\rightarrow$ `categories.id`, NULL): NULL = danh mục cha, có giá trị = danh mục con.
-- `category_group_id` (UUID, FK $\rightarrow$ `category_groups.id`, NULL): Nhóm lớn tương ứng.
-- `name` (VARCHAR (50), NOT NULL): Tên danh mục (Ăn uống, Tiền điện, Lương...).
-- `type` (VARCHAR (10), NOT NULL): Loại (`expense` - chi tiêu, `income` - thu nhập).
+- `code` (VARCHAR (50), UK, NOT NULL): Mã danh mục duy nhất toàn hệ thống, kể cả danh mục đã xóa mềm.
+- `name` (VARCHAR (50), NOT NULL): Tên danh mục (Ăn uống, Tiền điện, Lương...), duy nhất toàn cây trong số danh mục
+  chưa xóa.
+- `description` (VARCHAR (255), NULL): Mô tả danh mục.
+- `parent_id` (UUID, FK $\rightarrow$ `categories.id`, NULL): NULL = danh mục gốc, có giá trị = danh mục con.
 - `icon_id` (UUID, FK $\rightarrow$ `icons.id`, NOT NULL): Biểu tượng hiển thị.
 - `color` (CHAR (7), NOT NULL): Mã màu hiển thị.
-- `sort_order` (INTEGER, NOT NULL, DEFAULT 0): Thứ tự hiển thị.
-- `is_deleted` (BOOLEAN, NOT NULL, DEFAULT FALSE): Cờ xóa mềm.
+- `level` (INTEGER, NOT NULL, DEFAULT 0): Độ sâu trong cây, gốc = 0.
+- `is_leaf` (BOOLEAN, NOT NULL, DEFAULT TRUE): Còn con hay không; giao dịch chỉ gắn vào danh mục lá.
+- `path` (VARCHAR (255), NOT NULL): Chuỗi `code` từ gốc tới danh mục, nối bằng `/` (vd. `an_uong/an_sang`).
+- `deleted` (BOOLEAN, NOT NULL, DEFAULT FALSE): Cờ xóa mềm.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT now ()): Thời điểm tạo.
-
-#### `wallet_category_settings` (Bật/tắt danh mục theo ví)
-
-- `wallet_id` (UUID, PK, FK $\rightarrow$ `wallets.id`): Ví được áp dụng.
-- `category_id` (UUID, PK, FK $\rightarrow$ `categories.id`): Danh mục được cấu hình.
-- `is_enabled` (BOOLEAN, NOT NULL, DEFAULT TRUE): Trạng thái bật/tắt hiển thị.
 
 ---
 
@@ -326,10 +310,9 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 - `id` (UUID, PK): Định danh ngân sách.
 - `user_id` (UUID, FK $\rightarrow$ `users.id`, NOT NULL): Người sở hữu.
 - `category_id` (UUID, FK $\rightarrow$ `categories.id`, NOT NULL): Danh mục chi tiêu được kiểm soát.
-- `wallet_id` (UUID, FK $\rightarrow$ `wallets.id`, NULL): NULL = áp dụng toàn bộ ví, có giá trị = chỉ kiểm soát trên ví
-  đó.
+- `spent` (BIGINT, NOT NULL, DEFAULT 0): Số tiền đã chi trong kỳ, cộng trừ nguyên tử khi giao dịch chi thay đổi.
 - `limit_amount` (BIGINT, NOT NULL): Số tiền hạn mức tối đa ($> 0$).
-- `period_type` (VARCHAR (10), NOT NULL): Chu kỳ (`week`, `month`, `quarter`, `year`).
+- `period_type` (VARCHAR (10), NOT NULL): Chu kỳ (`WEEK`, `MONTH`, `QUARTER`, `YEAR`).
 - `start_date` (DATE, NOT NULL), `end_date` (DATE, NOT NULL): Khoảng thời gian hiệu lực.
 - `auto_renew` (BOOLEAN, NOT NULL, DEFAULT FALSE): Tự động gia hạn sang chu kỳ kế tiếp.
 - `is_active` (BOOLEAN, NOT NULL, DEFAULT TRUE): Trạng thái kích hoạt.
@@ -516,14 +499,9 @@ erDiagram
 %% KHỐI VÍ & DANH MỤC
 %% ==========================================
     users ||--o{ wallets: "sở hữu"
-    users ||--o{ categories: "tùy biến"
-    icons ||--o{ category_groups: "biểu tượng"
     icons ||--o{ categories: "biểu tượng"
     icons ||--o{ savings_goals: "biểu tượng"
-    category_groups ||--o{ categories: "gom nhóm"
     categories ||--o{ categories: "cha-con (đệ quy)"
-    wallets ||--o{ wallet_category_settings: "cấu hình"
-    categories ||--o{ wallet_category_settings: "áp dụng"
 %% ==========================================
 %% KHỐI GIAO DỊCH, NGÂN SÁCH, NỢ & TIẾT KIỆM
 %% ==========================================
@@ -539,7 +517,6 @@ erDiagram
     ai_drafts ||--o| transactions: "xác nhận thành"
     users ||--o{ budgets: "thiết lập"
     categories ||--o{ budgets: "áp dụng"
-    wallets ||--o{ budgets: "giới hạn trên ví"
     users ||--o{ debts: "quản lý"
     wallets ||--o{ debts: "liên kết"
     transactions ||--|| debts: "gốc nợ"
@@ -596,13 +573,14 @@ erDiagram
 
     categories {
         uuid id PK
-        uuid user_id FK "NULL = hệ thống"
-        uuid parent_category_id FK "NULL = cấp cha"
-        uuid category_group_id FK
+        varchar code UK
+        uuid parent_id FK "NULL = gốc"
         varchar name
-        varchar type
         uuid icon_id FK
-        boolean is_deleted
+        int level
+        boolean is_leaf
+        varchar path
+        boolean deleted
     }
 
     transactions {
@@ -701,43 +679,40 @@ Dưới đây là tập hợp toàn bộ các lược đồ quan hệ trong hệ
    sort_order, is_deleted, created_at)
     - *Ràng buộc duy nhất có điều kiện:* `[UK](user_id, lower(name))` khi chưa bị xóa mềm.
 10. **ICONS** (<u>id</u>, code [UK], display_name, path_data, icon_group, search_keywords, sort_order, is_active)
-11. **CATEGORY_GROUPS** (<u>id</u>, name [UK], #icon_id, color, sort_order)
-12. **CATEGORIES** (<u>id</u>, #user_id, #parent_category_id, #category_group_id, name, type, #icon_id, color,
-    sort_order, is_deleted, created_at)
-13. **WALLET_CATEGORY_SETTINGS** (<u>#wallet_id</u>, <u>#category_id</u>, is_enabled)
-    - *Khóa chính kết hợp:* `(wallet_id, category_id)`
+11. **CATEGORIES** (<u>id</u>, code [UK], name, description, #parent_id, #icon_id, color, level, is_leaf, path,
+    deleted, created_at)
 
 ### 1.3 Khối Giao dịch, Giao dịch định kỳ & Kế hoạch tài chính cá nhân
 
-14. **TRANSACTIONS** (<u>id</u>, #user_id, #wallet_id, #destination_wallet_id, #category_id, type, amount, date, note,
+12. **TRANSACTIONS** (<u>id</u>, #user_id, #wallet_id, #destination_wallet_id, #category_id, type, amount, date, note,
     display_name, source, #recurring_id, #draft_id, receipt_url, is_deleted, created_at, updated_at, counts_in_report)
-15. **RECURRING_TRANSACTIONS** (<u>id</u>, #user_id, #wallet_id, #category_id, type, amount, display_name, note,
+13. **RECURRING_TRANSACTIONS** (<u>id</u>, #user_id, #wallet_id, #category_id, type, amount, display_name, note,
     frequency, interval, start_date, end_date, next_run_date, last_run_date, is_enabled, created_at)
-16. **AI_DRAFTS** (<u>id</u>, #user_id, method, raw_input, ai_result, confidence, status, transaction_id,
+14. **AI_DRAFTS** (<u>id</u>, #user_id, method, raw_input, ai_result, confidence, status, transaction_id,
     user_corrections, model_version, created_at)
-17. **BUDGETS** (<u>id</u>, #user_id, #category_id, #wallet_id, limit_amount, period_type, start_date, end_date,
+15. **BUDGETS** (<u>id</u>, #user_id, #category_id, spent, limit_amount, period_type, start_date, end_date,
     auto_renew, is_active, created_at)
-18. **DEBTS** (<u>id</u>, #user_id, #wallet_id, type, counterparty_name, principal_amount, paid_amount, issued_date,
+16. **DEBTS** (<u>id</u>, #user_id, #wallet_id, type, counterparty_name, principal_amount, paid_amount, issued_date,
     due_date, note, status, #origin_transaction_id, created_at)
-19. **DEBT_PAYMENTS** (<u>id</u>, #debt_id, #transaction_id [UK], amount, paid_date, note, created_at)
-20. **SAVINGS_GOALS** (<u>id</u>, #user_id, #wallet_id, name, target_amount, saved_amount, target_date, #icon_id,
+17. **DEBT_PAYMENTS** (<u>id</u>, #debt_id, #transaction_id [UK], amount, paid_date, note, created_at)
+18. **SAVINGS_GOALS** (<u>id</u>, #user_id, #wallet_id, name, target_amount, saved_amount, target_date, #icon_id,
     status, created_at)
-21. **GOAL_CONTRIBUTIONS** (<u>id</u>, #goal_id, #transaction_id, amount, contributed_date, created_at)
-22. **NOTIFICATIONS** (<u>id</u>, #user_id, type, title, content, reference_id, is_read, created_at)
-23. **EXPORT_JOBS** (<u>id</u>, #user_id, format, status, file_path, error_message, expires_at, created_at)
+19. **GOAL_CONTRIBUTIONS** (<u>id</u>, #goal_id, #transaction_id, amount, contributed_date, created_at)
+20. **NOTIFICATIONS** (<u>id</u>, #user_id, type, title, content, reference_id, is_read, created_at)
+21. **EXPORT_JOBS** (<u>id</u>, #user_id, format, status, file_path, error_message, expires_at, created_at)
 
 ### 1.4 Khối Nhóm chung quỹ
 
-24. **GROUPS** (<u>id</u>, name, description, invite_code [UK], status, target, is_settlement_enabled,
+22. **GROUPS** (<u>id</u>, name, description, invite_code [UK], status, target, is_settlement_enabled,
     is_join_without_confirm, created_at, updated_at)
-25. **GROUP_MEMBERS** (<u>id</u>, #group_id, #user_id, role, status, joined_at, left_at)
+23. **GROUP_MEMBERS** (<u>id</u>, #group_id, #user_id, role, status, joined_at, left_at)
     - *Ràng buộc duy nhất có điều kiện:* `[UK](group_id, user_id)` khi `status IN ('PENDING', 'ACTIVE')`.
-26. **GROUP_FUNDS** (<u>id</u>, #group_id [UK], #keepper_id, current_balance, created_at)
-27. **GROUP_TRANSACTIONS** (<u>id</u>, #group_id, money_source, #transactor_id, #created_by, #category_id, type, status,
+24. **GROUP_FUNDS** (<u>id</u>, #group_id [UK], #keepper_id, current_balance, created_at)
+25. **GROUP_TRANSACTIONS** (<u>id</u>, #group_id, money_source, #transactor_id, #created_by, #category_id, type, status,
     #reviewed_by, reviewed_at, amount, occurred_at, note, created_at, updated_at, deleted_at, version)
-28. **GROUP_TRANSACTION_PARTICIPANTS** (<u>#group_transaction_id</u>, <u>#user_id</u>, share_amount)
+26. **GROUP_TRANSACTION_PARTICIPANTS** (<u>#group_transaction_id</u>, <u>#user_id</u>, share_amount)
     - *Khóa chính kết hợp:* `(group_transaction_id, user_id)`
-29. **GROUP_MEMBER_BALANCES** (<u>#group_id</u>, <u>#user_id</u>, paid_out_of_pocket, contribution, refund, share)
+27. **GROUP_MEMBER_BALANCES** (<u>#group_id</u>, <u>#user_id</u>, paid_out_of_pocket, contribution, refund, share)
     - *Khóa chính kết hợp:* `(group_id, user_id)`
 
 ---
@@ -859,10 +834,6 @@ Dưới đây là tập phụ thuộc hàm $F$ tiêu biểu của các quan hệ
     - Đối với các bảng có khóa chính kết hợp (Composite Primary Key):
         - `role_permissions` (PK: `role_id, permission_id`): Không có thuộc tính ngoài khóa $\rightarrow$ Đạt 2NF.
         - `user_roles` (PK: `user_id, role_id`): Không có thuộc tính ngoài khóa $\rightarrow$ Đạt 2NF.
-        - `wallet_category_settings` (PK: `wallet_id, category_id`): Thuộc tính ngoài khóa duy nhất là `is_enabled`. Giá
-          trị này chỉ có ý nghĩa khi xác định đồng thời cả ví và danh mục cụ thể. Do
-          đó: $\{wallet\_id, category\_id\} \xrightarrow{\text{đầy đủ}} is\_enabled$. Không có phụ thuộc vào riêng
-          lẻ $wallet\_id$ hay $category\_id$ $\rightarrow$ Đạt 2NF.
         - `group_transaction_participants` (PK: `group_transaction_id, user_id`): Thuộc tính ngoài khóa duy nhất là
           `share_amount`. Tiền chia của một người chỉ tồn tại trong một giao dịch nhóm cụ thể. Không thể suy
           ra $share\_amount$ chỉ từ riêng $user\_id$ hay riêng $group\_transaction\_id$. Phụ

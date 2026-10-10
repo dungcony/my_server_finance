@@ -174,7 +174,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             @Param("minAmount") Long minAmount,
             @Param("maxAmount") Long maxAmount);
 
-    // Projection cho {@link #summary} — Spring Data JPA tự map cột theo tên getter.
     interface SummaryProjection {
         Long getTotalIncome();
 

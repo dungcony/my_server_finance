@@ -1,7 +1,6 @@
 package com.datn.financeapp.module.category.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
-import com.datn.financeapp.module.category.enums.CateType;
 import jakarta.persistence.*;
 
 import java.time.Instant;
@@ -17,7 +16,9 @@ import lombok.Setter;
 
 /**
  * Entity ánh xạ với bảng {@code categories}, đại diện cho danh mục thu/chi tài chính trong hệ thống.
- * Quản lý thông tin danh mục bao gồm cây danh mục 2 cấp (danh mục cha/con), danh mục hệ thống hoặc cá nhân.
+ * Danh mục là cây nhiều cấp do admin quản lý: {@code level} là độ sâu (gốc = 0), {@code path} là chuỗi
+ * {@code code} từ gốc tới nó nối bằng {@code /}, {@code isLeaf} cho biết còn con hay không
+ * (giao dịch chỉ gắn vào danh mục lá).
  */
 @Entity
 @Table(name = "categories")
@@ -35,11 +36,6 @@ public class Category extends AssignedIdEntity {
     @NotNull
     @Column(name = "name", nullable = false, length = 50)
     private String name;
-
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 10)
-    private CateType type;               // EXPENSE | INCOME
 
     @Size(max = 50)
     @Column(name = "code", nullable = false, length = 50)
@@ -64,10 +60,12 @@ public class Category extends AssignedIdEntity {
 
     @NotNull
     @Column(name = "level", nullable = false)
+    @Builder.Default
     private Integer level = 0;
 
     @NotNull
     @Column(name = "is_leaf", nullable = false)
+    @Builder.Default
     private Boolean isLeaf = true;
 
     @NotNull
@@ -77,5 +75,10 @@ public class Category extends AssignedIdEntity {
 
     @NotNull
     @Column(name = "deleted", nullable = false)
+    @Builder.Default
     private Boolean deleted = false;
+
+    @NotNull
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 }

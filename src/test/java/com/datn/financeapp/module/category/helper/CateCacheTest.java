@@ -1,6 +1,5 @@
 package com.datn.financeapp.module.category.helper;
 
-import com.datn.financeapp.module.category.repository.CategoryCodeView;
 import com.datn.financeapp.module.category.repository.CategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,7 +11,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,10 +93,34 @@ class CateCacheTest {
         assertThat(cateCache.findId("SALARY")).contains(SALARY_ID);
     }
 
+    @Test
+    void lookups_returnEmpty_whenArgumentIsNull() {
+        assertThat(cateCache.findCode(null)).isEmpty();
+        assertThat(cateCache.findId(null)).isEmpty();
+        assertThat(cateCache.existsCode(null)).isFalse();
+    }
+
+    @Test
+    void register_returnsFalse_whenIdOrCodeIsNullOrBlank() {
+        assertThat(cateCache.register(null, "TRAVEL")).isFalse();
+        assertThat(cateCache.register(UUID.randomUUID(), null)).isFalse();
+        assertThat(cateCache.register(UUID.randomUUID(), "  ")).isFalse();
+        assertThat(cateCache.changeCode(FOOD_ID, " ")).isFalse();
+        assertThat(cateCache.findCode(FOOD_ID)).contains("FOOD");
+    }
+
+    @Test
+    void loadAll_dropsEntriesNoLongerInDatabase() {
+        when(categoryRepository.findAllCodes()).thenReturn(List.of(view(SALARY_ID, "SALARY")));
+
+        cateCache.loadAll();
+
+        assertThat(cateCache.existsCode("FOOD")).isFalse();
+        assertThat(cateCache.findCode(FOOD_ID)).isEmpty();
+        assertThat(cateCache.findId("SALARY")).contains(SALARY_ID);
+    }
+
     private static CategoryCodeView view(UUID id, String code) {
-        CategoryCodeView view = mock(CategoryCodeView.class);
-        when(view.getId()).thenReturn(id);
-        when(view.getCode()).thenReturn(code);
-        return view;
+        return new CategoryCodeView(id, code);
     }
 }

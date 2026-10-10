@@ -157,29 +157,20 @@ public enum ErrorCode {
     // Trùng tên danh mục ở cùng một cấp.
     CATEGORY_NAME_EXISTS(HttpStatus.CONFLICT, "Đã có danh mục cùng tên ở cấp này."),
 
-    // Danh mục chỉ được tối đa hai cấp — quy tắc nghiệp vụ số 1.
-    CATEGORY_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "Danh mục chỉ được tối đa hai cấp."),
+    // Mã danh mục đã có người giữ (kể cả danh mục đã xóa mềm) — mã duy nhất toàn hệ thống.
+    CATEGORY_CODE_EXISTS(HttpStatus.CONFLICT, "Mã danh mục đã tồn tại."),
 
-    // Danh mục cha bắt buộc thuộc một nhóm lớn.
-    CATEGORY_GROUP_REQUIRED(HttpStatus.BAD_REQUEST, "Danh mục cha bắt buộc có nhóm lớn."),
+    // Danh mục cha mới là chính nó hoặc nằm trong cây con của nó — sẽ tạo vòng lặp.
+    CATEGORY_PARENT_INVALID(HttpStatus.BAD_REQUEST, "Danh mục cha không hợp lệ."),
 
-    // Chuyển danh mục thành cấp con trong khi nó đang có con. Khác {@link #CATEGORY_CHILDREN_EXIST}.
+    // Chuyển danh mục thành cấp con trong khi nó đang có con.
     CATEGORY_HAS_CHILDREN(HttpStatus.CONFLICT, "Danh mục đang có con, không thể chuyển thành cấp con."),
-
-    // Xoá danh mục khi còn danh mục con. Khác {@link #CATEGORY_HAS_CHILDREN}.
-    CATEGORY_CHILDREN_EXIST(HttpStatus.CONFLICT, "Còn danh mục con, phải xoá con trước."),
 
     // Xoá danh mục còn giao dịch mà chưa chỉ định danh mục thay thế.
     CATEGORY_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Còn giao dịch, cần chỉ định danh mục thay thế."),
 
     // Không tìm thấy danh mục.
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy danh mục."),
-
-    // Danh mục con phải cùng loại thu/chi với cha.
-    CATEGORY_TYPE_MISMATCH_PARENT(HttpStatus.BAD_REQUEST, "Danh mục con phải cùng loại thu/chi với cha."),
-
-    // Đổi loại thu/chi của danh mục đã có — không cho sửa.
-    CATEGORY_TYPE_NOT_EDITABLE(HttpStatus.BAD_REQUEST, "Không đổi được loại thu/chi."),
 
     // Sửa danh mục do hệ thống tạo sẵn.
     SYSTEM_CATEGORY_NOT_EDITABLE(HttpStatus.FORBIDDEN, "Danh mục hệ thống không sửa được."),
@@ -188,7 +179,7 @@ public enum ErrorCode {
     SYSTEM_CATEGORY_NOT_DELETABLE(HttpStatus.FORBIDDEN, "Danh mục hệ thống không xoá được."),
 
     // Biểu tượng không tồn tại trong kho {@code icons} hoặc đã ngừng dùng.
-    CATEGORY_ICON_INVALID(HttpStatus.BAD_REQUEST, "Biểu tượng không tồn tại hoặc đã ngừng dùng."),
+    ICON_NOT_FOUND(HttpStatus.NOT_FOUND, "Biểu tượng không tồn tại hoặc đã ngừng dùng."),
 
     /**
      * Thiếu danh mục hệ thống mà nghiệp vụ sổ nợ cần (lỗi dữ liệu nền, không phải lỗi người dùng). Là 500 chứ không phải 404 — đổi tên từ {@code CATEGORY_NOT_FOUND} cũ vì tên đó gợi nhầm sang lỗi tra cứu 404 thông thường (E1 mục 3).
@@ -211,6 +202,12 @@ public enum ErrorCode {
     // Gán danh mục thu cho khoản chi hoặc ngược lại.
     TRANSACTION_CATEGORY_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "Danh mục thu gán cho khoản chi hoặc ngược lại."),
 
+    // Giao dịch chỉ được gắn vào danh mục lá, danh mục còn con thì không.
+    TRANSACTION_CATEGORY_NOT_LEAF(HttpStatus.BAD_REQUEST, "Giao dịch chỉ được gắn vào danh mục lá."),
+
+    // Giao dịch chưa xảy ra — ngày giao dịch sau hôm nay.
+    TRANSACTION_DATE_IN_FUTURE(HttpStatus.BAD_REQUEST, "Ngày giao dịch không được sau hôm nay."),
+
     // Giao dịch chuyển tiền bắt buộc có ví đích.
     TRANSACTION_DEST_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch chuyển phải có ví đích."),
 
@@ -230,9 +227,6 @@ public enum ErrorCode {
 
     // Đã có ngân sách cho danh mục này trong cùng kỳ.
     BUDGET_ALREADY_EXISTS(HttpStatus.CONFLICT, "Đã có ngân sách cho danh mục này trong kỳ."),
-
-    // Chỉ đặt được ngân sách cho danh mục chi.
-    BUDGET_CATEGORY_NOT_EXPENSE(HttpStatus.BAD_REQUEST, "Chỉ đặt ngân sách cho danh mục chi."),
 
     // Đổi danh mục hoặc kỳ của ngân sách đã tạo — phải xoá và tạo lại.
     BUDGET_CATEGORY_NOT_EDITABLE(HttpStatus.BAD_REQUEST,

@@ -44,10 +44,10 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * BUDGET-08 — test riêng tư ưu tiên cao nhất của Phase 4 (D-58).
  *
- * <p>Chốt VĨNH VIỄN lỗ hổng đã vá ở {@code V6__va_loi_bao_mat.sql}: bản {@code v_budget_progress}
- * gốc ở V3 cộng MỌI giao dịch thuộc cây danh mục, không hề giới hạn theo chủ sở hữu. Hậu quả là
- * hai người dùng bất kỳ dùng chung một danh mục HỆ THỐNG (đa số danh mục là hệ thống) sẽ thấy chi
- * tiêu của nhau lẫn vào ngân sách cá nhân mình — vi phạm nguyên tắc "riêng tư mặc định".
+ * <p>Chốt hồi quy lỗ hổng từng gặp ở {@code v_budget_progress} bản đầu: cộng MỌI giao dịch thuộc cây
+ * danh mục, không giới hạn theo chủ sở hữu, nên hai người dùng dùng chung một danh mục sẽ thấy chi
+ * tiêu của nhau lẫn vào ngân sách cá nhân mình — vi phạm nguyên tắc "riêng tư mặc định". Nay
+ * {@code spent} lưu sẵn và {@code BudgetSpendService.addExpense} chỉ cộng vào ngân sách của đúng người ghi.
  *
  * <p>Lỗi thuộc loại nguy hiểm nhất: con số vẫn "trông hợp lý", không exception nào ném ra, không ai
  * nghi ngờ cho tới khi có người nhận ra ngân sách của mình tăng dù mình không tiêu gì.
@@ -114,7 +114,6 @@ class BudgetPrivacyIntegrationTest {
         jdbcTemplate.update("DELETE FROM transactions");
         refreshTokenRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM wallets");
-        jdbcTemplate.update("DELETE FROM categories WHERE user_id IS NOT NULL");
         userRepository.deleteAll();
     }
 
@@ -122,11 +121,10 @@ class BudgetPrivacyIntegrationTest {
         return authSupport.registerAndGetAccessToken(email);
     }
 
-    // Danh mục CHI hệ thống ({@code user_id IS NULL}) — cả A và B đều nhìn thấy và dùng chung.
-    private String findSharedSystemExpenseCategoryId() {
+    // Danh mục dùng chung cho mọi người dùng — cả A và B đều nhìn thấy và dùng chung.
+    private String findSharedCategoryId() {
         return jdbcTemplate.queryForObject(
-                "SELECT id FROM categories WHERE user_id IS NULL AND type = 'expense' "
-                        + "AND parent_category_id IS NULL AND NOT is_deleted ORDER BY sort_order LIMIT 1",
+                "SELECT id FROM categories WHERE parent_id IS NULL AND deleted = FALSE ORDER BY name LIMIT 1",
                 String.class);
     }
 
@@ -170,8 +168,8 @@ class BudgetPrivacyIntegrationTest {
         String tokenA = registerAndGetAccessToken("nguoi.a.rieng.tu@example.com");
         String tokenB = registerAndGetAccessToken("nguoi.b.rieng.tu@example.com");
 
-        // Cùng một danh mục HỆ THỐNG — đây chính là điều kiện làm lộ lỗ hổng bản V3.
-        String sharedCategoryId = findSharedSystemExpenseCategoryId();
+        // Cùng một danh mục dùng chung — nếu cộng chi tiêu không lọc theo người dùng thì lỗ hổng sẽ lộ ra ở đây.
+        String sharedCategoryId = findSharedCategoryId();
 
         String budgetOfA = createBudget(tokenA, sharedCategoryId, 3_000_000);
 
@@ -191,7 +189,7 @@ class BudgetPrivacyIntegrationTest {
                 .andExpect(jsonPath("$.data.length()").value(0));
 
         // Đối chứng: chính A chi 1 triệu thì con số PHẢI nhảy — chứng minh test không "xanh giả"
-        // do view trả 0 cho mọi trường hợp.
+        // do spent luôn bằng 0.
         createExpenseTransaction(tokenA, firstWalletId(tokenA), sharedCategoryId, 1_000_000);
         mockMvc.perform(get("/budgets/" + budgetOfA).header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())

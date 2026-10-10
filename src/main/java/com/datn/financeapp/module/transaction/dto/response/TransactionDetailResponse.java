@@ -5,10 +5,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * GET /transactions/{id} (api/04-GIAO-DICH.md mục 3) — mọi field như {@link
- * TransactionListItemResponse} kèm thêm {@code relatedDebt}/{@code recurring} (Phase 4 — Phase 3
- * LUÔN trả {@code null}, không bịa dữ liệu) và {@code aiDrafts} (rút gọn từ bảng {@code
- * ai_drafts}, đã tồn tại từ V2, chỉ SELECT — không cần nghiệp vụ AI thật).
+ * Một phần tử giao dịch, dùng cho GET /transactions (list/detail — plan 03-03) và phản hồi
+ * create/update/duplicate ở plan này (api/04-GIAO-DICH.md mục 1 và mục 4).
  */
 public record TransactionDetailResponse(
         UUID id,
@@ -20,18 +18,10 @@ public record TransactionDetailResponse(
         String source,
         // Xem {@link TransactionListItemResponse#countsInReport()}.
         Boolean countsInReport,
-        TransactionListItemResponse.WalletRef wallet,
-        TransactionListItemResponse.WalletRef destinationWallet,
-        TransactionListItemResponse.CategoryRef category,
         String receiptUrl,
         UUID recurringId,
         UUID draftId,
         Instant createdAt,
-        Instant updatedAt,
-        Object relatedDebt,
-        Object recurring,
-        AiDraftRef aiDrafts) {
+        Instant updatedAt) {
 
-    public record AiDraftRef(UUID id, String method, String rawInput, Double confidence) {
-    }
 }

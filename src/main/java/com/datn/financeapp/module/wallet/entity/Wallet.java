@@ -52,15 +52,9 @@ public class Wallet {
 
     @Column(name = "icon")
     private String icon;
-
-    // Cột Postgres CHAR(7) -> Postgres báo physical type là "bpchar" (không phải
-    // "char" hay "varchar"). Phải khai đúng columnDefinition="bpchar(7)" để Hibernate
-    // ddl-auto=validate khớp type, nếu không sẽ luôn báo lệch dù length đúng.
+    
     @Column(name = "color", columnDefinition = "bpchar(7)")
     private String color;
-
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder;
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;

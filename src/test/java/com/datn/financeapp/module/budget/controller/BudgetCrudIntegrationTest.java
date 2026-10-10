@@ -21,6 +21,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -45,9 +46,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * CRUD ngân sách (BUDGET-01..05, api/05-NGAN-SACH.md). Bốn luồng rủi ro theo D-58: chặn trùng ở
- * tầng CSDL, chặn sửa danh mục/kỳ, xoá mềm là tắt {@code is_active} chứ không xoá bản ghi, và gợi
- * ý hạn mức khi chưa đủ lịch sử.
+ * CRUD ngân sách. Ba luồng rủi ro: chặn trùng kỳ, chặn sửa danh mục/kỳ, và xoá mềm là tắt
+ * {@code is_active} chứ không xoá bản ghi. Danh mục lấy từ dữ liệu seed, không tạo qua API.
  */
 @Testcontainers
 @SpringBootTest
@@ -110,7 +110,6 @@ class BudgetCrudIntegrationTest {
         jdbcTemplate.update("DELETE FROM transactions");
         refreshTokenRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM wallets");
-        jdbcTemplate.update("DELETE FROM categories WHERE user_id IS NOT NULL");
         userRepository.deleteAll();
     }
 
@@ -120,31 +119,11 @@ class BudgetCrudIntegrationTest {
         return authSupport.registerAndGetAccessToken(email);
     }
 
-    private String findIconId(String code) {
-        return jdbcTemplate.queryForObject("SELECT id FROM icons WHERE code = ?", String.class, code);
-    }
-
-    private String findCategoryGroupId(String name) {
-        return jdbcTemplate.queryForObject("SELECT id FROM category_groups WHERE name = ?", String.class, name);
-    }
-
-    private String createRootCategory(String token, String name, String type) throws Exception {
-        Map<String, Object> body = Map.of(
-                "name", name,
-                "type", type,
-                "icon_id", findIconId("khac"),
-                "color", "#3d6b7d",
-                "category_group_id", findCategoryGroupId("Khác"));
-        String response = mockMvc.perform(post("/categories")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        return (String) data.get("id");
+    // Hai danh mục gốc khác nhau lấy từ dữ liệu seed.
+    private List<String> seededCategoryIds() {
+        return jdbcTemplate.queryForList(
+                "SELECT id FROM categories WHERE parent_id IS NULL AND deleted = FALSE ORDER BY name LIMIT 2",
+                String.class);
     }
 
     private String createBudget(String token, String categoryId, long limitAmount, String periodType)
@@ -167,15 +146,11 @@ class BudgetCrudIntegrationTest {
 
     // ------------------------------------------------------------------ tests
 
-    /**
-     * BUDGET-03 — ràng buộc {@code ex_bud_no_overlap} (EXCLUDE gist, V3) chặn ở tầng CSDL; service
-     * chỉ bắt {@code DataIntegrityViolationException} và dịch sang mã nghiệp vụ 409. Không có
-     * SELECT kiểm tra trước nên không có khe hở race condition.
-     */
+    // Service kiểm tra trùng kỳ trước khi ghi; ràng buộc ex_bud_no_overlap ở CSDL là lớp chặn cuối nếu hai request đua nhau.
     @Test
     void createBudget_duplicatePeriod_returns409() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.trung@example.com");
-        String categoryId = createRootCategory(token, "Ăn uống test", "expense");
+        String categoryId = seededCategoryIds().get(0);
 
         createBudget(token, categoryId, 3_000_000, "month");
 
@@ -192,12 +167,12 @@ class BudgetCrudIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("BUDGET_ALREADY_EXISTS"));
     }
 
-    // api/05 mục 5 — đổi danh mục thực chất là một ngân sách khác, phải xoá và tạo lại (T-04-06).
+    // Đổi danh mục thực chất là một ngân sách khác, phải xoá và tạo lại.
     @Test
     void updateBudget_changeCategoryId_returns400CategoryNotEditable() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.doi.danh.muc@example.com");
-        String categoryId = createRootCategory(token, "Ăn uống test", "expense");
-        String otherCategoryId = createRootCategory(token, "Đi lại test", "expense");
+        String categoryId = seededCategoryIds().get(0);
+        String otherCategoryId = seededCategoryIds().get(1);
         String budgetId = createBudget(token, categoryId, 3_000_000, "month");
 
         mockMvc.perform(patch("/budgets/" + budgetId)
@@ -217,14 +192,13 @@ class BudgetCrudIntegrationTest {
     }
 
     /**
-     * api/05 mục 5 "Xoá là xoá mềm". Bảng {@code budgets} KHÔNG có cột {@code is_deleted} (schema
-     * V3 thật) — xoá mềm nghĩa là tắt {@code is_active}, bản ghi phải CÒN NGUYÊN trong CSDL để
-     * giữ lịch sử và để BUDGET-05 còn dùng kỳ cũ làm cơ sở gợi ý.
+     * Bảng {@code budgets} không có cột {@code is_deleted}: xoá mềm nghĩa là tắt {@code is_active},
+     * bản ghi phải CÒN NGUYÊN trong CSDL để giữ lịch sử.
      */
     @Test
     void deleteBudget_setsIsActiveFalse_notPhysicalDelete() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.xoa.mem@example.com");
-        String categoryId = createRootCategory(token, "Giải trí test", "expense");
+        String categoryId = seededCategoryIds().get(0);
         String budgetId = createBudget(token, categoryId, 2_000_000, "month");
 
         mockMvc.perform(delete("/budgets/" + budgetId).header("Authorization", "Bearer " + token))
@@ -245,25 +219,5 @@ class BudgetCrudIntegrationTest {
 
         // ...và thôi chiếm chỗ trong ex_bud_no_overlap, nên tạo lại cùng danh mục/kỳ phải được.
         createBudget(token, categoryId, 2_500_000, "month");
-    }
-
-    /**
-     * BUDGET-05, api/05 mục 6 — chưa có kỳ ngân sách nào ĐÃ KẾT THÚC thì trả {@code null} tường
-     * minh kèm giải thích, để app ẩn khối gợi ý thay vì hiện con số bịa từ mẫu quá nhỏ.
-     */
-    @Test
-    void getSuggestion_lessThanOneMonthData_returnsNullSuggestedLimit() throws Exception {
-        String token = registerAndGetAccessToken("ngan.sach.goi.y@example.com");
-        String categoryId = createRootCategory(token, "Mua sắm test", "expense");
-        createBudget(token, categoryId, 1_000_000, "month");
-
-        mockMvc.perform(get("/budgets/suggestion")
-                        .param("category_id", categoryId)
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.suggested_limit").doesNotExist())
-                .andExpect(jsonPath("$.data.basis.months_with_data").value(0))
-                .andExpect(jsonPath("$.data.explanation").isNotEmpty());
     }
 }

@@ -1,16 +1,13 @@
 package com.datn.financeapp.module.transaction.service.impl;
 
-import com.datn.financeapp.module.transaction.service.TransactionBulkService;
 import com.datn.financeapp.module.transaction.service.TransactionService;
-import com.datn.financeapp.module.transaction.service.TransactionWriteCommand;
-import com.datn.financeapp.module.transaction.service.TransactionWriter;
+import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
+import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.transaction.dto.response.BulkCreateTransactionResponse;
 import com.datn.financeapp.module.transaction.dto.request.CreateTransactionRequest;
-import com.datn.financeapp.module.transaction.dto.response.TransactionListItemResponse;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.dto.request.BulkCreateTransactionRequest;
 import com.datn.financeapp.module.wallet.service.WalletService;
@@ -26,20 +23,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-/**
- * {@code POST /transactions/bulk} (TXN-04, D-34/D-35/D-35a). KHÔNG {@code @Transactional} ở bất
- * kỳ method nào của class này — mấu chốt để mỗi lời gọi {@code transactionWriter.write(...)}
- * bên trong vòng lặp {@link #createBulk} tự mở một transaction RIÊNG qua Spring AOP proxy thật
- * của {@link TransactionWriter} (bean khác), đạt D-34 "mỗi dòng một DB transaction riêng" mà
- * KHÔNG cần {@code propagation = REQUIRES_NEW} tường minh.
- *
- * <p>{@code @Idempotent} (D-35) chỉ bọc NGOÀI ở tầng Controller — method này không mang
- * {@code @Transactional} nên {@code IdempotencyAspect} không mở transaction bao trùm cả lô
- * (D-35a).
- */
+
 @Service
 @RequiredArgsConstructor
-public class TransactionBulkServiceImpl implements TransactionBulkService {
+public class TransactionBulkServiceImpl {
 
     private static final int MAX_ROWS = 50;
 

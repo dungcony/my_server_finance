@@ -18,8 +18,8 @@ import com.datn.financeapp.module.goal.mapper.GoalMapper;
 import com.datn.financeapp.module.goal.repository.GoalContributionRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.transaction.service.TransactionService;
-import com.datn.financeapp.module.transaction.service.TransactionWriteCommand;
-import com.datn.financeapp.module.transaction.service.TransactionWriter;
+import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
+import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
 

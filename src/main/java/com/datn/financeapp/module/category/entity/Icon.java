@@ -46,4 +46,15 @@ public class Icon extends AssignedIdEntity {
     @NotNull
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
+
+    @NotNull
+    @Column(name = "icon_group", nullable = false, length = 30)
+    private String iconGroup;
+
+    @Column(name = "search_keywords")
+    private String searchKeywords;
+
+    @NotNull
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder;
 }

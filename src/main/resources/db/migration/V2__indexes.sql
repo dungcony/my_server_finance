@@ -23,10 +23,8 @@ CREATE INDEX idx_wallets_user ON wallets (user_id, sort_order) WHERE NOT is_dele
 
 CREATE INDEX idx_icons_group ON icons (icon_group, sort_order) WHERE is_active;
 
-CREATE UNIQUE INDEX uq_cat_name_root ON categories (COALESCE(user_id, '00000000-0000-0000-0000-000000000000'::uuid), type, lower(name)) WHERE parent_category_id IS NULL AND NOT is_deleted;
-CREATE UNIQUE INDEX uq_cat_name_child ON categories (parent_category_id, lower(name)) WHERE parent_category_id IS NOT NULL AND NOT is_deleted;
-CREATE INDEX idx_cat_user ON categories (user_id, type) WHERE NOT is_deleted;
-CREATE INDEX idx_cat_parent ON categories (parent_category_id) WHERE NOT is_deleted;
+CREATE UNIQUE INDEX uq_cat_name ON categories (lower(name)) WHERE NOT deleted;
+CREATE INDEX idx_cat_parent ON categories (parent_id) WHERE NOT deleted;
 
 -- Nhóm Giao dịch, Giao dịch định kỳ & Bản nháp
 CREATE INDEX idx_draft_user_status ON ai_drafts (user_id, status, created_at DESC);

@@ -2,7 +2,7 @@ package com.datn.financeapp.module.report.service.impl;
 
 import com.datn.financeapp.module.report.service.ReportQueryService;
 
-import com.datn.financeapp.module.budget.service.BudgetService;
+import com.datn.financeapp.module.budget.service.BudgetOverviewService;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.report.dto.response.CategoryBreakdownResponse;
 import com.datn.financeapp.module.report.dto.response.CategoryGroupBreakdownResponse;
@@ -46,7 +46,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     private final ReportRepository reportRepository;
     private final CategoryService categoryService;
     private final WalletService walletService;
-    private final BudgetService budgetService;
+    private final BudgetOverviewService budgetOverviewService;
     private final JdbcTemplate jdbcTemplate;
 
     // ------------------------------------------------------------ 2. summary
@@ -424,10 +424,12 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                     wallet == null ? null : new ReportHomeResponse.WalletRef(wallet.name())));
         }
 
-        // Hình dạng riêng theo api/06 mục 1 — KHÔNG dùng lại budgetService.alerts() (hợp đồng
-        // của api/05 mục 7, tên khoá khác hẳn). Xem BudgetService.attentionItems().
+        // Hình dạng riêng theo api/06 mục 1: đổi từ cảnh báo của budget sang mục "cần chú ý" của báo cáo
         List<ReportHomeResponse.BudgetAttentionItem> budgetsNeedingAttention =
-                budgetService.attentionItems(userId);
+                budgetOverviewService.alerts(userId).stream()
+                        .map(alert -> new ReportHomeResponse.BudgetAttentionItem(
+                                alert.budgetId(), alert.category(), alert.ratio(), alert.status().code()))
+                        .toList();
 
         return new ReportHomeResponse(
                 new ReportHomeResponse.Balance(

@@ -1,9 +1,8 @@
 package com.datn.financeapp.module.budget.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
+import com.datn.financeapp.module.budget.enums.PeriodType;
+import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,18 +15,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Entity cho bảng {@code budgets}
- *
- * <p>CỐ Ý KHÔNG CÓ cột "đã chi": {@code spent_amount} tính tại chỗ mỗi lần đọc qua view
- * {@code v_budget_progress} (CLAUDE.md quy tắc bất biến §6). Một kỳ ngân sách chỉ vài chục
- * giao dịch nên tính trực tiếp luôn chính xác, không cần đồng bộ.
- *
- * <p>CŨNG KHÔNG CÓ cột {@code is_deleted} — đối chiếu schema V3 thật (CORE-11): xoá ngân sách là
- * tắt {@code is_active}, không xoá bản ghi và không thêm cột mới.
- *
- * <p>Ba lớp phòng thủ ở tầng CSDL mà service dựa vào thay vì tự SELECT kiểm tra trước:
- * {@code ex_bud_no_overlap} (EXCLUDE gist chặn ngân sách trùng), {@code ck_bud_owner} (cá nhân
- * HOẶC nhóm), và trigger {@code trg_budgets_validate} (chỉ danh mục chi).
+ * Bảng lưu hạn mức chi theo danh mục trong 1 kỳ
+ * ví dụ: ăn uống tối đa 3tr
  */
 @Entity
 @Table(name = "budgets")
@@ -36,7 +25,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Budget {
+public class Budget extends AssignedIdEntity {
 
     @Id
     private UUID id;
@@ -47,16 +36,18 @@ public class Budget {
     @Column(name = "category_id", nullable = false)
     private UUID categoryId;
 
-    // NULL = áp dụng cho mọi ví.
-    @Column(name = "wallet_id")
-    private UUID walletId;
+    // đã tiêu
+    @Column(name = "spent", nullable = false)
+    private Long spent;
 
+    // giới hạn chi tiêu vượt quá sẽ nhắc nhở
     @Column(name = "limit_amount", nullable = false)
     private Long limitAmount;
 
-    // CHECK IN ('week','month','quarter','year') — ck_bud_period.
+    // kiểu giai đoạn
+    @Enumerated(EnumType.STRING)
     @Column(name = "period_type", nullable = false)
-    private String periodType;
+    private PeriodType periodType;
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
@@ -64,6 +55,7 @@ public class Budget {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
+    // tự động tạo
     @Column(name = "auto_renew", nullable = false)
     private Boolean autoRenew;
 

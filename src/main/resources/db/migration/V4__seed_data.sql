@@ -54,94 +54,70 @@ INSERT INTO icons (code, display_name, path_data, icon_group, search_keywords, s
 ON CONFLICT (code) DO NOTHING;
 
 -- =============================================================
--- NHÓM DANH MỤC LỚN (CATEGORY GROUPS)
--- =============================================================
-INSERT INTO category_groups (name, color, icon_id, sort_order) VALUES
-('Thiết yếu', '#4e9e76', (SELECT id FROM icons WHERE code = 'thiet_yeu'), 1),
-('Giải trí',  '#8ecaa9', (SELECT id FROM icons WHERE code = 'giai_tri'),  2),
-('Giáo dục',  '#c9a26b', (SELECT id FROM icons WHERE code = 'hoc_tap'),   3),
-('Y tế',      '#9b968c', (SELECT id FROM icons WHERE code = 'suc_khoe'),  4),
-('Khác',      '#4a463f', (SELECT id FROM icons WHERE code = 'khac'),      5)
-ON CONFLICT (name) DO NOTHING;
-
--- =============================================================
 -- DANH MỤC THU CHI MẶC ĐỊNH (CATEGORIES)
+-- Cây nhiều cấp, không phân biệt thu/chi: không có cha thì là gốc.
+-- level, path, is_leaf do service duy trì khi chạy; seed tự tính cho khớp.
 -- =============================================================
 
--- Danh mục mặc định cấp cha
-INSERT INTO categories (user_id, parent_category_id, category_group_id, name, type, icon_id, color, sort_order)
-SELECT NULL, NULL, g.id, v.name, v.type, i.id, v.color, v.sort_order
+-- Danh mục gốc: level 0, path = code, mặc định là lá
+INSERT INTO categories (code, name, icon_id, color, level, path)
+SELECT v.code, v.name, i.id, v.color, 0, v.code
 FROM (VALUES
-    -- Danh mục chi
-    ('Ăn uống',           'expense', 'Thiết yếu', 'an_uong',   '#3d6b7d', 1),
-    ('Đi lại',            'expense', 'Thiết yếu', 'xe_may',    '#4a6f5c', 2),
-    ('Nhà ở & Hoá đơn',   'expense', 'Thiết yếu', 'nha',       '#2f8272', 3),
-    ('Mua sắm',           'expense', 'Giải trí',  'mua_sam',   '#7a5f8a', 4),
-    ('Giải trí',          'expense', 'Giải trí',  'giai_tri',  '#3a6ea5', 5),
-    ('Sức khoẻ',          'expense', 'Y tế',      'suc_khoe',  '#8a5b52', 6),
-    ('Học tập',           'expense', 'Giáo dục',  'hoc_tap',   '#4a7f8a', 7),
-    ('Cho vay',           'expense', 'Khác',      'cho_vay',   '#5b6b7a', 8),
-    ('Trả nợ',            'expense', 'Khác',      'the',       '#6b5b7a', 9),
-    ('Khác',              'expense', 'Khác',      'khac',      '#5b5b5b', 10),
-    -- Danh mục thu
-    ('Lương',             'income',  'Khác',      'luong',     '#3f7d55', 20),
-    ('Thưởng',            'income',  'Khác',      'thuong',    '#8a7a3f', 21),
-    ('Đầu tư',            'income',  'Khác',      'dau_tu',    '#3f6b8a', 22),
-    ('Thu nợ',            'income',  'Khác',      'cho_vay',   '#4a7f6b', 23),
-    ('Đi vay',            'income',  'Khác',      'ngan_hang', '#7a6b4a', 24),
-    ('Khác',              'income',  'Khác',      'khac',      '#5b5b5b', 25)
-) AS v(name, type, group_name, icon_code, color, sort_order)
-JOIN category_groups g ON g.name = v.group_name
-JOIN icons           i ON i.code = v.icon_code
-ON CONFLICT DO NOTHING;
+    ('an_uong',        'Ăn uống',          'an_uong',   '#3d6b7d'),
+    ('di_lai',         'Đi lại',           'xe_may',    '#4a6f5c'),
+    ('nha_o_hoa_don',  'Nhà ở & Hoá đơn',  'nha',       '#2f8272'),
+    ('mua_sam',        'Mua sắm',          'mua_sam',   '#7a5f8a'),
+    ('giai_tri',       'Giải trí',         'giai_tri',  '#3a6ea5'),
+    ('suc_khoe',       'Sức khoẻ',         'suc_khoe',  '#8a5b52'),
+    ('hoc_tap',        'Học tập',          'hoc_tap',   '#4a7f8a'),
+    ('cho_vay',        'Cho vay',          'cho_vay',   '#5b6b7a'),
+    ('tra_no',         'Trả nợ',           'the',       '#6b5b7a'),
+    ('khac',           'Khác',             'khac',      '#5b5b5b'),
+    ('luong',          'Lương',            'luong',     '#3f7d55'),
+    ('thuong',         'Thưởng',           'thuong',    '#8a7a3f'),
+    ('dau_tu',         'Đầu tư',           'dau_tu',    '#3f6b8a'),
+    ('thu_no',         'Thu nợ',           'cho_vay',   '#4a7f6b'),
+    ('di_vay',         'Đi vay',           'ngan_hang', '#7a6b4a'),
+    ('cap_nhat_so_du', 'Cập nhật số dư',   'vi_tien',   '#6b6b6b')
+) AS v(code, name, icon_code, color)
+JOIN icons i ON i.code = v.icon_code;
 
--- Danh mục con mẫu
-INSERT INTO categories (user_id, parent_category_id, category_group_id, name, type, icon_id, color, sort_order)
-SELECT NULL, p.id, p.category_group_id, v.name, p.type, i.id, p.color, v.sort_order
+-- Danh mục con: level = level cha + 1, path = path cha + '/' + code, màu thừa hưởng từ cha
+INSERT INTO categories (code, name, parent_id, icon_id, color, level, path)
+SELECT v.code, v.name, p.id, i.id, p.color, p.level + 1, p.path || '/' || v.code
 FROM (VALUES
-    ('Ăn uống',         'Ăn sáng',        'banh_mi',   1),
-    ('Ăn uống',         'Ăn trưa',        'an_uong',   2),
-    ('Ăn uống',         'Ăn tối',         'an_uong',   3),
-    ('Ăn uống',         'Cà phê',         'ca_phe',    4),
-    ('Ăn uống',         'Ăn vặt',         'banh_mi',   5),
-    ('Ăn uống',         'Đi chợ',         'sieu_thi',  6),
-    ('Đi lại',          'Xăng xe',        'xang_dau',  1),
-    ('Đi lại',          'Taxi, Grab',     'o_to',      2),
-    ('Đi lại',          'Gửi xe',         'xe_may',    3),
-    ('Đi lại',          'Vé tàu xe',      'xe_bus',    4),
-    ('Nhà ở & Hoá đơn', 'Tiền thuê nhà',  'nha',       1),
-    ('Nhà ở & Hoá đơn', 'Điện',           'dien',      2),
-    ('Nhà ở & Hoá đơn', 'Nước',           'nuoc',      3),
-    ('Nhà ở & Hoá đơn', 'Internet',       'internet',  4),
-    ('Nhà ở & Hoá đơn', 'Điện thoại',     'dien_thoai',5),
-    ('Mua sắm',         'Quần áo',        'quan_ao',   1),
-    ('Mua sắm',         'Đồ điện tử',     'dien_thoai',2),
-    ('Mua sắm',         'Quà tặng',       'qua_tang',  3),
-    ('Giải trí',        'Xem phim',       'giai_tri',  1),
-    ('Giải trí',        'Du lịch',        'du_lich',   2),
-    ('Giải trí',        'Thể thao',       'the_thao',  3),
-    ('Sức khoẻ',        'Thuốc',          'thuoc',     1),
-    ('Sức khoẻ',        'Khám bệnh',      'suc_khoe',  2),
-    ('Học tập',         'Sách vở',        'sach',      1),
-    ('Học tập',         'Khoá học',       'hoc_tap',   2)
-) AS v(parent_name, name, icon_code, sort_order)
-JOIN categories p ON p.name = v.parent_name
-                 AND p.user_id IS NULL
-                 AND p.parent_category_id IS NULL
-                 AND p.type = 'expense'
-JOIN icons      i ON i.code = v.icon_code
-ON CONFLICT DO NOTHING;
+    ('an_uong',       'an_sang',       'Ăn sáng',       'banh_mi'),
+    ('an_uong',       'an_trua',       'Ăn trưa',       'an_uong'),
+    ('an_uong',       'an_toi',        'Ăn tối',        'an_uong'),
+    ('an_uong',       'ca_phe',        'Cà phê',        'ca_phe'),
+    ('an_uong',       'an_vat',        'Ăn vặt',        'banh_mi'),
+    ('an_uong',       'di_cho',        'Đi chợ',        'sieu_thi'),
+    ('di_lai',        'xang_xe',       'Xăng xe',       'xang_dau'),
+    ('di_lai',        'taxi_grab',     'Taxi, Grab',    'o_to'),
+    ('di_lai',        'gui_xe',        'Gửi xe',        'xe_may'),
+    ('di_lai',        've_tau_xe',     'Vé tàu xe',     'xe_bus'),
+    ('nha_o_hoa_don', 'tien_thue_nha', 'Tiền thuê nhà', 'nha'),
+    ('nha_o_hoa_don', 'dien',          'Điện',          'dien'),
+    ('nha_o_hoa_don', 'nuoc',          'Nước',          'nuoc'),
+    ('nha_o_hoa_don', 'internet',      'Internet',      'internet'),
+    ('nha_o_hoa_don', 'dien_thoai',    'Điện thoại',    'dien_thoai'),
+    ('mua_sam',       'quan_ao',       'Quần áo',       'quan_ao'),
+    ('mua_sam',       'do_dien_tu',    'Đồ điện tử',    'dien_thoai'),
+    ('mua_sam',       'qua_tang',      'Quà tặng',      'qua_tang'),
+    ('giai_tri',      'xem_phim',      'Xem phim',      'giai_tri'),
+    ('giai_tri',      'du_lich',       'Du lịch',       'du_lich'),
+    ('giai_tri',      'the_thao',      'Thể thao',      'the_thao'),
+    ('suc_khoe',      'thuoc',         'Thuốc',         'thuoc'),
+    ('suc_khoe',      'kham_benh',     'Khám bệnh',     'suc_khoe'),
+    ('hoc_tap',       'sach_vo',       'Sách vở',       'sach'),
+    ('hoc_tap',       'khoa_hoc',      'Khoá học',      'hoc_tap')
+) AS v(parent_code, code, name, icon_code)
+JOIN categories p ON p.code = v.parent_code
+JOIN icons      i ON i.code = v.icon_code;
 
--- Danh mục hệ thống cho điều chỉnh kiểm kê ví
-INSERT INTO categories (user_id, parent_category_id, category_group_id, name, type, icon_id, color, sort_order)
-SELECT NULL, NULL, g.id, v.name, v.type, i.id, v.color, v.sort_order
-FROM (VALUES
-    ('Cập nhật số dư', 'expense', 'Khác', 'vi_tien', '#6b6b6b', 11),
-    ('Cập nhật số dư', 'income',  'Khác', 'vi_tien', '#6b6b6b', 26)
-) AS v(name, type, group_name, icon_code, color, sort_order)
-JOIN category_groups g ON g.name = v.group_name
-JOIN icons           i ON i.code = v.icon_code
-ON CONFLICT DO NOTHING;
+-- Danh mục đã có con thì không còn là lá
+UPDATE categories SET is_leaf = FALSE
+WHERE id IN (SELECT parent_id FROM categories WHERE parent_id IS NOT NULL);
 
 -- =============================================================
 -- KHỐI VAI TRÒ & PHÂN QUYỀN (ROLES & PERMISSIONS)

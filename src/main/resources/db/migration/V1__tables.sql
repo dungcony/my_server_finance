@@ -173,60 +173,37 @@ CREATE TABLE icons (
 
 COMMENT ON COLUMN icons.path_data IS 'Đường vẽ SVG biểu tượng';
 
--- Bảng category_groups — Nhóm lớn danh mục
-CREATE TABLE category_groups (
-    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    name       VARCHAR(50) NOT NULL,
-    icon_id    UUID,
-    color      CHAR(7)     NOT NULL,
-    sort_order INTEGER     NOT NULL DEFAULT 0,
-
-    CONSTRAINT fk_cg_icon  FOREIGN KEY (icon_id) REFERENCES icons (id) ON DELETE SET NULL,
-    CONSTRAINT uq_cg_name  UNIQUE (name),
-    CONSTRAINT ck_cg_color CHECK (color ~ '^#[0-9A-Fa-f]{6}$')
-);
-
--- Bảng categories — Cây danh mục thu chi (tối đa 2 cấp)
+-- Bảng categories — Cây danh mục nhiều cấp, chỉ admin quản lý, dùng chung cho mọi người dùng
 CREATE TABLE categories (
-    id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id            UUID,
-    parent_category_id UUID,
-    category_group_id  UUID,
-    name               VARCHAR(50) NOT NULL,
-    type               VARCHAR(10) NOT NULL,
-    icon_id            UUID        NOT NULL,
-    color              CHAR(7)     NOT NULL,
-    sort_order         INTEGER     NOT NULL DEFAULT 0,
-    is_deleted         BOOLEAN     NOT NULL DEFAULT FALSE,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    code        VARCHAR(50)  NOT NULL,
+    name        VARCHAR(50)  NOT NULL,
+    description VARCHAR(255),
+    parent_id   UUID,
+    icon_id     UUID         NOT NULL,
+    color       CHAR(7)      NOT NULL,
+    level       INTEGER      NOT NULL DEFAULT 0,
+    is_leaf     BOOLEAN      NOT NULL DEFAULT TRUE,
+    path        VARCHAR(255) NOT NULL,
+    deleted     BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
-    CONSTRAINT fk_cat_user   FOREIGN KEY (user_id)            REFERENCES users           (id) ON DELETE CASCADE,
-    CONSTRAINT fk_cat_parent FOREIGN KEY (parent_category_id) REFERENCES categories      (id) ON DELETE CASCADE,
-    CONSTRAINT fk_cat_group  FOREIGN KEY (category_group_id)  REFERENCES category_groups (id) ON DELETE SET NULL,
-    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_id)            REFERENCES icons           (id) ON DELETE RESTRICT,
-    CONSTRAINT ck_cat_type   CHECK (type IN ('expense', 'income')),
+    CONSTRAINT uq_cat_code   UNIQUE (code),
+    CONSTRAINT fk_cat_parent FOREIGN KEY (parent_id) REFERENCES categories (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_id)   REFERENCES icons      (id) ON DELETE RESTRICT,
     CONSTRAINT ck_cat_color  CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
-    CONSTRAINT ck_cat_root_needs_group CHECK (
-        parent_category_id IS NOT NULL OR category_group_id IS NOT NULL
-    )
+    CONSTRAINT ck_cat_level  CHECK (level >= 0),
+    CONSTRAINT ck_cat_parent CHECK (parent_id IS DISTINCT FROM id),
+    CONSTRAINT ck_cat_root   CHECK ((parent_id IS NULL) = (level = 0))
 );
 
-COMMENT ON COLUMN categories.user_id            IS 'NULL = danh mục mặc định của hệ thống, dùng chung cho mọi người';
-COMMENT ON COLUMN categories.parent_category_id IS 'NULL = danh mục cấp cha. Có giá trị = danh mục con';
-
--- Bảng wallet_category_settings — Bật/tắt danh mục theo từng ví
-CREATE TABLE wallet_category_settings (
-    wallet_id   UUID    NOT NULL,
-    category_id UUID    NOT NULL,
-    is_enabled  BOOLEAN NOT NULL DEFAULT TRUE,
-
-    PRIMARY KEY (wallet_id, category_id),
-    CONSTRAINT fk_wcs_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id) ON DELETE CASCADE,
-    CONSTRAINT fk_wcs_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
-);
-
-COMMENT ON TABLE wallet_category_settings IS
-    'Danh mục bị TẮT ở một ví cụ thể. Vắng dòng = đang bật. Truy vấn đọc dùng LEFT JOIN + COALESCE(is_enabled, TRUE)';
+COMMENT ON TABLE categories IS 'Cây danh mục thu chi nhiều cấp, không phân biệt thu/chi: không có cha thì là gốc';
+COMMENT ON COLUMN categories.code      IS 'Mã duy nhất toàn hệ thống, kể cả danh mục đã xoá mềm (code xoá mềm vẫn giữ chỗ)';
+COMMENT ON COLUMN categories.parent_id IS 'NULL = danh mục gốc';
+COMMENT ON COLUMN categories.level     IS 'Độ sâu trong cây, gốc = 0';
+COMMENT ON COLUMN categories.is_leaf   IS 'Còn con hay không, do service duy trì. Giao dịch chỉ gắn vào danh mục lá';
+COMMENT ON COLUMN categories.path      IS 'Chuỗi code từ gốc tới danh mục, nối bằng dấu / (vd. an_uong/an_sang)';
+COMMENT ON COLUMN categories.deleted   IS 'Xoá mềm, giao dịch cũ vẫn trỏ vào danh mục';
 
 -- =============================================================
 -- KHỐI GIAO DỊCH, GIAO DỊCH ĐỊNH KỲ & NGÂN SÁCH
@@ -332,7 +309,7 @@ CREATE TABLE budgets (
     id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id      UUID        NOT NULL,
     category_id  UUID        NOT NULL,
-    wallet_id    UUID,
+    spent        BIGINT      NOT NULL DEFAULT 0,
     limit_amount BIGINT      NOT NULL,
     period_type  VARCHAR(10) NOT NULL,
     start_date   DATE        NOT NULL,
@@ -343,17 +320,19 @@ CREATE TABLE budgets (
 
     CONSTRAINT fk_bud_user     FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
     CONSTRAINT fk_bud_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_bud_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_bud_spent    CHECK (spent >= 0),
     CONSTRAINT ck_bud_amount   CHECK (limit_amount > 0),
-    CONSTRAINT ck_bud_period   CHECK (period_type IN ('week', 'month', 'quarter', 'year')),
+    CONSTRAINT ck_bud_period   CHECK (period_type IN ('WEEK', 'MONTH', 'QUARTER', 'YEAR')),
     CONSTRAINT ck_bud_dates    CHECK (end_date >= start_date),
     CONSTRAINT ex_bud_no_overlap EXCLUDE USING gist (
         user_id WITH =,
         category_id WITH =,
-        COALESCE(wallet_id, '00000000-0000-0000-0000-000000000000'::uuid) WITH =,
         daterange(start_date, end_date, '[]') WITH &&
     ) WHERE (is_active)
 );
+
+COMMENT ON COLUMN budgets.spent       IS 'Đã chi trong kỳ, BudgetSpendService cộng trừ nguyên tử khi giao dịch chi thay đổi';
+COMMENT ON COLUMN budgets.period_type IS 'Tên enum PeriodType (viết hoa), lưu theo @Enumerated(STRING)';
 
 -- =============================================================
 -- KHỐI CÔNG NỢ & MỤC TIÊU TIẾT KIỆM

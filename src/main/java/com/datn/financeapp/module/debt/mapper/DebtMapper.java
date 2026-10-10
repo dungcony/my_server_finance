@@ -6,7 +6,6 @@ import com.datn.financeapp.module.debt.dto.response.DebtDetailResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtListItemResponse;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.entity.DebtPayment;
-import com.datn.financeapp.module.transaction.dto.response.TransactionRefResponse;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
 

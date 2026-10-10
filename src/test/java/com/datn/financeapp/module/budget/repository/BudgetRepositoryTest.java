@@ -4,9 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.budget.entity.Budget;
-import com.datn.financeapp.module.budget.repository.BudgetRepository;
-import com.datn.financeapp.module.category.entity.Category;
-import com.datn.financeapp.module.category.repository.CategoryRepository;
+import com.datn.financeapp.module.budget.enums.PeriodType;
+import com.datn.financeapp.module.budget.helper.BudgetSpent;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
@@ -25,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -57,49 +57,46 @@ class BudgetRepositoryTest {
     private UserRepository userRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
+    private JdbcTemplate jdbcTemplate;
 
     private UUID userId;
     private UUID otherUserId;
-    private UUID expenseCategoryId;
+    private UUID categoryId;
+    private UUID otherCategoryId;
 
     @BeforeEach
     void setUp() {
-        User user = userRepository.saveAndFlush(User.builder()
-                .id(UUID.randomUUID())
-                .email("budget.user@example.com")
-                .password("hash")
-                .firstName("Budget")
-                .lastName("Owner")
-                .plan(UserPlan.FREE)
-                .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
-                .build());
-        userId = user.getId();
+        userId = saveUser("budget.user@example.com", "Budget", "Owner");
+        otherUserId = saveUser("other.budget@example.com", "Other", "User");
 
-        User otherUser = userRepository.saveAndFlush(User.builder()
-                .id(UUID.randomUUID())
-                .email("other.budget@example.com")
-                .password("hash")
-                .firstName("Other")
-                .lastName("User")
-                .plan(UserPlan.FREE)
-                .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
-                .build());
-        otherUserId = otherUser.getId();
-
-        Category cat = categoryRepository.findSystemCategoryByName("Cho vay", "expense").orElseThrow();
-        expenseCategoryId = cat.getId();
+        List<UUID> categoryIds = jdbcTemplate.queryForList(
+                "SELECT id FROM categories WHERE deleted = FALSE ORDER BY name LIMIT 2", UUID.class);
+        categoryId = categoryIds.get(0);
+        otherCategoryId = categoryIds.get(1);
     }
 
-    private Budget createBudget(UUID ownerId, long limit, String period, LocalDate start, LocalDate end, boolean autoRenew, boolean active) {
-        Budget b = Budget.builder()
+    private UUID saveUser(String email, String firstName, String lastName) {
+        return userRepository.saveAndFlush(User.builder()
+                        .id(UUID.randomUUID())
+                        .email(email)
+                        .password("hash")
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .plan(UserPlan.FREE)
+                        .status(UserStatus.ACTIVE)
+                        .isDeleted(false)
+                        .createdAt(Instant.now())
+                        .build())
+                .getId();
+    }
+
+    private Budget saveBudget(UUID ownerId, UUID category, long limit, PeriodType period,
+                              LocalDate start, LocalDate end, boolean autoRenew, boolean active) {
+        return budgetRepository.saveAndFlush(Budget.builder()
                 .id(UUID.randomUUID())
                 .userId(ownerId)
-                .categoryId(expenseCategoryId)
+                .categoryId(category)
+                .spent(0L)
                 .limitAmount(limit)
                 .periodType(period)
                 .startDate(start)
@@ -107,56 +104,105 @@ class BudgetRepositoryTest {
                 .autoRenew(autoRenew)
                 .isActive(active)
                 .createdAt(Instant.now())
-                .build();
-        return budgetRepository.saveAndFlush(b);
+                .build());
     }
 
     @Test
-    @DisplayName("findByIdForUser: Chỉ trả về ngân sách thuộc quyền sở hữu của user (D-27 -> 404)")
-    void findByIdForUser_EnforcesOwnership() {
-        Budget b = createBudget(userId, 5_000_000, "month", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
+    @DisplayName("findByIdAndUserId: chỉ trả ngân sách của chính chủ, người khác nhận rỗng (→ 404)")
+    void findByIdAndUserId_enforcesOwnership() {
+        Budget b = saveBudget(userId, categoryId, 5_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
 
-        Optional<Budget> found = budgetRepository.findByIdForUser(b.getId(), userId);
+        Optional<Budget> found = budgetRepository.findByIdAndUserId(b.getId(), userId);
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(b.getId());
 
-        assertThat(budgetRepository.findByIdForUser(b.getId(), otherUserId)).isEmpty();
+        assertThat(budgetRepository.findByIdAndUserId(b.getId(), otherUserId)).isEmpty();
     }
 
     @Test
-    @DisplayName("findAllForUser: Lọc theo isActive, periodType và sắp xếp theo start_date DESC")
-    void findAllForUser_FiltersAndSorts() {
-        Budget b1 = createBudget(userId, 5_000_000, "month", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28), false, true);
-        Budget b2 = createBudget(userId, 10_000_000, "month", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
-        createBudget(userId, 1_000_000, "week", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 7), false, false);
+    @DisplayName("search: lọc theo hiệu lực và loại kỳ, sắp theo ngày bắt đầu mới nhất trước")
+    void search_filtersAndSorts() {
+        Budget feb = saveBudget(userId, categoryId, 5_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28), false, true);
+        Budget jan = saveBudget(userId, categoryId, 10_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
+        saveBudget(userId, categoryId, 1_000_000, PeriodType.WEEK,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 7), false, false);
 
-        // Lọc active + month
-        List<Budget> list = budgetRepository.findAllForUser(userId, true, "month");
-        assertThat(list).extracting(Budget::getId).containsExactly(b1.getId(), b2.getId());
+        List<Budget> list = budgetRepository.search(userId, true, PeriodType.MONTH);
+
+        assertThat(list).extracting(Budget::getId).containsExactly(feb.getId(), jan.getId());
     }
 
     @Test
-    @DisplayName("findAutoRenewExpired: Tìm các ngân sách tự gia hạn đã hết hạn")
-    void findAutoRenewExpired_FindsExpiredBudgets() {
-        Budget expired = createBudget(userId, 3_000_000, "month", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), true, true);
-        createBudget(userId, 3_000_000, "month", LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28), false, true); // autoRenew=false
+    @DisplayName("search: không truyền bộ lọc thì lấy cả ngân sách đã tắt, và không lẫn của người khác")
+    void search_noFilters_returnsOnlyOwn() {
+        Budget mine = saveBudget(userId, categoryId, 1_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, false);
+        saveBudget(otherUserId, categoryId, 1_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
 
-        List<Budget> expiredList = budgetRepository.findAutoRenewExpired(LocalDate.of(2026, 2, 15));
-        assertThat(expiredList).extracting(Budget::getId).contains(expired.getId());
+        List<Budget> list = budgetRepository.search(userId, null, null);
+
+        assertThat(list).extracting(Budget::getId).containsExactly(mine.getId());
     }
 
     @Test
-    @DisplayName("existsOverlapping: Kiểm tra trùng lặp ngân sách cùng danh mục và khoảng thời gian")
-    void existsOverlapping_DetectsSameDates() {
+    @DisplayName("findExpiredAutoRenewIds: chỉ lấy ngân sách đang hiệu lực, tự gia hạn và đã hết kỳ")
+    void findExpiredAutoRenewIds_findsOnlyExpiredAutoRenew() {
+        Budget expired = saveBudget(userId, categoryId, 3_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), true, true);
+        saveBudget(userId, otherCategoryId, 3_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
+
+        List<UUID> ids = budgetRepository.findExpiredAutoRenewIds(LocalDate.of(2026, 2, 15));
+
+        assertThat(ids).containsExactly(expired.getId());
+    }
+
+    @Test
+    @DisplayName("existsOverlapping: phát hiện trùng danh mục trong kỳ chồng lấn, kỳ khác thì không")
+    void existsOverlapping_detectsSameDates() {
         LocalDate start = LocalDate.of(2026, 3, 1);
         LocalDate end = LocalDate.of(2026, 3, 31);
-        createBudget(userId, 2_000_000, "month", start, end, false, true);
+        Budget existing = saveBudget(userId, categoryId, 2_000_000, PeriodType.MONTH, start, end, false, true);
 
-        boolean exists = budgetRepository.existsOverlapping(userId, expenseCategoryId, null, start, end);
-        assertThat(exists).isTrue();
+        assertThat(budgetRepository.existsOverlapping(userId, categoryId, start, end)).isTrue();
+        assertThat(budgetRepository.existsOverlapping(
+                userId, categoryId, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30))).isFalse();
+        assertThat(budgetRepository.existsOverlapExceptId(
+                userId, categoryId, start, end, existing.getId())).isFalse();
+    }
 
-        boolean differentDates = budgetRepository.existsOverlapping(
-                userId, expenseCategoryId, null, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30));
-        assertThat(differentDates).isFalse();
+    @Test
+    @DisplayName("addSpent: cộng nguyên tử và không bao giờ xuống dưới 0")
+    void addSpent_addsAtomicallyAndFloorsAtZero() {
+        Budget b = saveBudget(userId, categoryId, 3_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
+
+        budgetRepository.addSpent(List.of(b.getId()), 400_000L);
+        assertThat(budgetRepository.findSpentByIds(List.of(b.getId())).get(0).spent()).isEqualTo(400_000L);
+
+        budgetRepository.addSpent(List.of(b.getId()), -1_000_000L);
+        assertThat(budgetRepository.findSpentByIds(List.of(b.getId())).get(0).spent()).isZero();
+    }
+
+    @Test
+    @DisplayName("findActiveByCategoryIds: chỉ ngân sách của chính user, đang hiệu lực, có ngày nằm trong kỳ")
+    void findActiveByCategoryIds_filtersByUserActiveAndDate() {
+        Budget covering = saveBudget(userId, categoryId, 3_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
+        saveBudget(otherUserId, categoryId, 3_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
+        saveBudget(userId, otherCategoryId, 3_000_000, PeriodType.MONTH,
+                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
+
+        List<BudgetSpent> views = budgetRepository.findActiveByCategoryIds(
+                userId, List.of(categoryId), LocalDate.of(2026, 3, 15));
+
+        assertThat(views).extracting(BudgetSpent::id).containsExactly(covering.getId());
+        assertThat(budgetRepository.findActiveByCategoryIds(userId, List.of(categoryId), LocalDate.of(2026, 4, 1)))
+                .isEmpty();
     }
 }

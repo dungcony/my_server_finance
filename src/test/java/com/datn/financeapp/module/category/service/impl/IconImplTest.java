@@ -1,0 +1,125 @@
+package com.datn.financeapp.module.category.service.impl;
+
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.module.category.dto.response.IconGroupListResponse;
+import com.datn.financeapp.module.category.dto.response.IconResponse;
+import com.datn.financeapp.module.category.entity.Icon;
+import com.datn.financeapp.module.category.mapper.IconMapper;
+import com.datn.financeapp.module.category.repository.IconRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class IconImplTest {
+
+    @Mock
+    private IconRepository iconRepository;
+
+    @Mock
+    private IconMapper iconMapper;
+
+    private IconImpl iconImpl;
+
+    @BeforeEach
+    void setUp() {
+        iconImpl = new IconImpl(iconRepository, iconMapper);
+        lenient().when(iconMapper.toIconResponse(any(Icon.class))).thenAnswer(invocation -> {
+            Icon icon = invocation.getArgument(0);
+            return new IconResponse(icon.getId(), icon.getCode(), icon.getDisplayName(), icon.getPathData());
+        });
+    }
+
+    @Test
+    @DisplayName("Gom biểu tượng theo nhóm, giữ thứ tự và đếm đúng tổng")
+    void listIcons_groupsByIconGroupInOrder() {
+        when(iconRepository.search(null, null))
+                .thenReturn(List.of(icon("an_uong", "an_uong"), icon("ca_phe", "an_uong"), icon("xe_may", "di_lai")));
+
+        IconGroupListResponse result = iconImpl.listIcons(null, null);
+
+        assertThat(result.total()).isEqualTo(3);
+        assertThat(result.group()).hasSize(2);
+        assertThat(result.group().get(0).groupCode()).isEqualTo("an_uong");
+        assertThat(result.group().get(0).groupName()).isEqualTo("Ăn uống");
+        assertThat(result.group().get(0).items()).extracting(IconResponse::code).containsExactly("an_uong", "ca_phe");
+        assertThat(result.group().get(1).groupCode()).isEqualTo("di_lai");
+        assertThat(result.group().get(1).groupName()).isEqualTo("Đi lại");
+        assertThat(result.group().get(1).items()).extracting(IconResponse::code).containsExactly("xe_may");
+    }
+
+    @Test
+    @DisplayName("Không có biểu tượng nào thì trả danh sách nhóm rỗng và tổng 0")
+    void listIcons_noIcons_returnsEmpty() {
+        when(iconRepository.search(null, null)).thenReturn(List.of());
+
+        IconGroupListResponse result = iconImpl.listIcons(null, null);
+
+        assertThat(result.group()).isEmpty();
+        assertThat(result.total()).isZero();
+    }
+
+    @Test
+    @DisplayName("Từ khóa trống thì truyền null để không lọc")
+    void listIcons_blankSearch_passesNull() {
+        when(iconRepository.search("an_uong", null)).thenReturn(List.of());
+
+        iconImpl.listIcons("an_uong", "   ");
+
+        verify(iconRepository).search("an_uong", null);
+    }
+
+    @Test
+    @DisplayName("Từ khóa được cắt khoảng trắng, viết thường và bọc dấu % để tìm LIKE")
+    void listIcons_search_buildsLowerCaseLikePattern() {
+        when(iconRepository.search(null, "%cà phê%")).thenReturn(List.of());
+
+        iconImpl.listIcons(null, "  Cà Phê ");
+
+        verify(iconRepository).search(null, "%cà phê%");
+    }
+
+    @Test
+    @DisplayName("getActive trả biểu tượng đang dùng theo code")
+    void getActive_returnsActiveIcon() {
+        Icon coffee = icon("ca_phe", "an_uong");
+        when(iconRepository.findByCodeAndIsActiveTrue("ca_phe")).thenReturn(Optional.of(coffee));
+
+        assertThat(iconImpl.getActive("ca_phe")).isSameAs(coffee);
+    }
+
+    @Test
+    @DisplayName("getActive báo ICON_NOT_FOUND khi biểu tượng không tồn tại hoặc đã ngừng dùng")
+    void getActive_missingIcon_throws() {
+        assertThatThrownBy(() -> iconImpl.getActive("khong_co"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.ICON_NOT_FOUND.getCode());
+    }
+
+    private static Icon icon(String code, String group) {
+        return Icon.builder()
+                .id(UUID.randomUUID())
+                .code(code)
+                .displayName(code)
+                .pathData("M0 0")
+                .isActive(true)
+                .iconGroup(group)
+                .sortOrder(1)
+                .build();
+    }
+}

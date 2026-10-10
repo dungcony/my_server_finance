@@ -1,5 +1,7 @@
 package com.datn.financeapp.module.category.service;
 
+import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
+import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 
 import java.util.Collection;
@@ -8,174 +10,98 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Service quản lý danh mục thu chi, cây danh mục hai cấp, cài đặt danh mục theo ví và quản lý biểu tượng.
+ * Service quản lý cây danh mục thu chi nhiều cấp do admin quản lý; người dùng thường chỉ đọc.
  * <p>
- * <b>Các hàm chính:</b>
+ * <b>Các hàm:</b>
  * <ul>
- *   <li>{@link #list(UUID, String, boolean, boolean)}: Truy vấn danh sách danh mục chi tiêu/thu nhập.</li>
- *   <li>{@link #listForWallet(UUID, UUID)}: Lấy danh sách danh mục áp dụng riêng cho một ví.</li>
- *   <li>{@link #setCategoryEnabledForWallet(UUID, UUID, UUID, boolean)}: Bật/tắt trạng thái sử dụng danh mục ở ví.</li>
- *   <li>{@link #detail(UUID, UUID)}: Lấy chi tiết danh mục theo ID.</li>
- *   <li>{@link #create(UUID, CreateCategoryRequest)}: Tạo mới danh mục tùy chỉnh.</li>
- *   <li>{@link #update(UUID, UUID, UpdateCategoryRequest)}: Cập nhật danh mục.</li>
- *   <li>{@link #delete(UUID, UUID, UUID)}: Xóa danh mục và di chuyển giao dịch sang danh mục thay thế.</li>
- *   <li>{@link #reorder(UUID, ReorderCategoriesRequest)}: Thay đổi thứ tự sắp xếp danh mục.</li>
- *   <li>{@link #listCategoryGroups()}: Lấy danh sách nhóm danh mục hệ thống.</li>
- *   <li>{@link #listIcons(String, String)}: Truy vấn danh sách biểu tượng.</li>
+ *   <li>{@link #create(CategoryCreateReq)}: tạo danh mục gốc hoặc danh mục con.</li>
+ *   <li>{@link #getMasters()}: lấy các danh mục gốc.</li>
+ *   <li>{@link #getOfParent(String)}: lấy các danh mục con trực tiếp của một danh mục.</li>
+ *   <li>{@link #update(String, CategoryUpdateReq)}: sửa thông tin hoặc đổi cha của danh mục.</li>
+ *   <li>{@link #delete(String, String)}: xóa mềm danh mục cùng cả cây con.</li>
+ *   <li>{@link #findActiveById(UUID)}: lấy một danh mục chưa xóa theo id.</li>
+ *   <li>{@link #findAllByIds(Collection)}: lấy nhiều danh mục theo id trong một lượt.</li>
+ *   <li>{@link #findSelfAndAncestorIds(UUID)}: id của danh mục và mọi tổ tiên.</li>
+ *   <li>{@link #findSelfAndDescendantIds(UUID)}: id của danh mục và mọi con cháu.</li>
  * </ul>
  * </p>
  */
 public interface CategoryService {
 
     /**
-     * Khối bọc danh sách nhóm biểu tượng kèm tổng số lượng.
+     * Tạo danh mục mới. Không có {@code parentCode} thì là danh mục gốc, có thì là con của danh mục đó.
      *
-     * @param group Danh sách các nhóm biểu tượng
-     * @param total Tổng số lượng biểu tượng tìm thấy
+     * @param category thông tin danh mục cần tạo
+     * @return danh mục vừa tạo
      */
-    record IconGroupResponseWrapper(List<IconGroupResponse> group, int total) {
-    }
+    CategoryResponse create(CategoryCreateReq category);
 
     /**
-     * Lấy danh sách danh mục thu chi của người dùng theo điều kiện lọc.
+     * Lấy các danh mục gốc (chưa xóa), sắp theo tên.
      *
-     * @param userId    ID của người dùng
-     * @param type      Loại danh mục ({@code expense} hoặc {@code income})
-     * @param asTree    {@code true} nếu muốn trả về dạng cấu trúc cây hai cấp
-     * @param rootsOnly {@code true} nếu chỉ muốn lấy danh mục cha
-     * @return Danh sách các danh mục thỏa mãn
+     * @return danh sách danh mục gốc
      */
-    List<CategoryResponse> list(UUID userId, String type, boolean asTree, boolean rootsOnly);
+    List<CategoryResponse> getMasters();
 
     /**
-     * Lấy danh sách danh mục kèm cờ trạng thái bật/tắt áp dụng riêng cho ví.
+     * Lấy các danh mục con trực tiếp (chưa xóa) của danh mục cha, sắp theo tên.
      *
-     * @param userId   ID của người dùng
-     * @param walletId ID của ví cần lấy cài đặt
-     * @return Cây danh mục kèm trạng thái kích hoạt trên ví
+     * @param parentCode mã của danh mục cha
+     * @return danh sách danh mục con
      */
-    List<CategoryResponse> listForWallet(UUID userId, UUID walletId);
+    List<CategoryResponse> getOfParent(String parentCode);
 
     /**
-     * Bật hoặc tắt trạng thái sử dụng của một danh mục tại ví chỉ định.
+     * Cập nhật danh mục. Trường {@code null} trong yêu cầu được giữ nguyên; đổi cha thì
+     * {@code level}/{@code path} của cả cây con được tính lại.
      *
-     * @param userId     ID của người dùng
-     * @param walletId   ID của ví áp dụng
-     * @param categoryId ID của danh mục cần thao tác
-     * @param enabled    {@code true} để bật, {@code false} để tắt
+     * @param cateCode mã danh mục cần cập nhật
+     * @param req      thông tin cập nhật
+     * @return danh mục sau khi cập nhật
      */
-    void setCategoryEnabledForWallet(UUID userId, UUID walletId, UUID categoryId, boolean enabled);
+    CategoryResponse update(String cateCode, CategoryUpdateReq req);
 
     /**
-     * Lấy chi tiết thông tin của một danh mục.
+     * Xóa mềm danh mục cùng toàn bộ danh mục con cháu; mã của các danh mục đã xóa vẫn được giữ chỗ.
+     * Danh mục thay thế (nếu có) phải là lá và nằm ngoài cây bị xóa. Chưa chuyển giao dịch
+     * sang danh mục thay thế.
      *
-     * @param userId     ID của người dùng
-     * @param categoryId ID danh mục
-     * @return Chi tiết danh mục
+     * @param cateCode mã danh mục cần xóa
      */
-    CategoryDetailResponse detail(UUID userId, UUID categoryId);
+    void delete(String cateCode);
 
     /**
-     * Tạo mới một danh mục thu/chi tùy chỉnh cho người dùng.
+     * Lấy một danh mục chưa xóa theo id. Dành cho module khác (vd. ngân sách) kiểm tra danh mục tồn tại.
      *
-     * @param userId ID của người dùng
-     * @param req    Thông tin yêu cầu tạo danh mục
-     * @return Danh mục vừa tạo thành công
+     * @param id ID danh mục
+     * @return danh mục tìm được
+     * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
      */
-    CategoryResponse create(UUID userId, CreateCategoryRequest req);
+    CategoryResponse findActiveById(UUID id);
 
     /**
-     * Cập nhật thông tin danh mục tùy chỉnh.
+     * Lấy nhiều danh mục theo id trong một lượt, kể cả đã xóa mềm (bản ghi cũ vẫn cần hiển thị tên).
+     * Id không tồn tại bị bỏ qua.
      *
-     * @param userId     ID của người dùng
-     * @param categoryId ID danh mục cần cập nhật
-     * @param req        Thông tin yêu cầu cập nhật
-     * @return Danh mục sau khi cập nhật
+     * @param ids các ID danh mục
+     * @return map id → danh mục
      */
-    CategoryResponse update(UUID userId, UUID categoryId, UpdateCategoryRequest req);
+    Map<UUID, CategoryResponse> findAllByIds(Collection<UUID> ids);
 
     /**
-     * Xóa danh mục tùy chỉnh và chuyển toàn bộ giao dịch sang danh mục thay thế.
+     * Id của danh mục này cùng mọi tổ tiên của nó (đi lên tới gốc). Dùng để tìm các ngân sách phải
+     * cộng gộp một giao dịch ghi ở danh mục con.
      *
-     * @param userId                ID của người dùng
-     * @param categoryId            ID danh mục cần xóa
-     * @param replacementCategoryId ID danh mục thay thế để nhận giao dịch chuyển giao
+     * @param id ID danh mục
+     * @return danh sách id, rỗng nếu không có danh mục này
      */
-    void delete(UUID userId, UUID categoryId, UUID replacementCategoryId);
+    List<UUID> findSelfAndAncestorIds(UUID id);
 
     /**
-     * Thay đổi vị trí/thứ tự sắp xếp của các danh mục.
+     * Id của danh mục này cùng mọi con cháu (mọi cấp). Dùng để cộng gộp chi tiêu của cả cây vào danh mục cha.
      *
-     * @param userId ID của người dùng
-     * @param req    Yêu cầu sắp xếp lại thứ tự danh mục
+     * @param id ID danh mục
+     * @return danh sách id, rỗng nếu không có danh mục này
      */
-    void reorder(UUID userId, ReorderCategoriesRequest req);
-
-    /**
-     * Lấy danh sách các nhóm danh mục hệ thống.
-     *
-     * @return Danh sách nhóm danh mục
-     */
-    List<CategoryGroupResponse> listCategoryGroups();
-
-    /**
-     * Lấy toàn bộ danh sách ID danh mục con thuộc cây của danh mục chỉ định (gồm chính nó và các con).
-     *
-     * @param categoryId ID danh mục gốc
-     * @return Danh sách ID danh mục thuộc cây
-     */
-    List<UUID> findCategoryTree(UUID categoryId);
-
-    /**
-     * Lấy bản đồ tham chiếu thông tin danh mục hiển thị cho người dùng.
-     *
-     * @param categoryIds Danh sách ID các danh mục cần tra cứu
-     * @param userId      ID của người dùng
-     * @return Bản đồ từ Category ID sang đối tượng tham chiếu danh mục
-     */
-    Map<UUID, CategoryRefResponse> findRefsVisibleToUser(Collection<UUID> categoryIds, UUID userId);
-
-    /**
-     * Tra cứu thông tin tham chiếu danh mục theo ID.
-     *
-     * @param categoryId ID danh mục
-     * @return Thông tin tham chiếu danh mục (hoặc null nếu không tìm thấy)
-     */
-    CategoryRefResponse findRefById(UUID categoryId);
-
-    /**
-     * Tra cứu thông tin tham chiếu danh mục nếu danh mục đó hiển thị với người dùng.
-     *
-     * @param categoryId ID danh mục
-     * @param userId     ID người dùng
-     * @return Thông tin tham chiếu danh mục
-     */
-    CategoryRefResponse findRefVisibleToUser(UUID categoryId, UUID userId);
-
-    /**
-     * Tìm ID danh mục hệ thống dựa theo tên và loại.
-     *
-     * @param name Tên danh mục hệ thống
-     * @param type Loại danh mục ({@code expense} hoặc {@code income})
-     * @return ID của danh mục hệ thống
-     */
-    UUID findSystemCategoryId(String name, String type);
-
-    /**
-     * Tra cứu thông tin tham chiếu biểu tượng theo ID.
-     *
-     * @param iconId ID biểu tượng
-     * @return Thông tin tham chiếu biểu tượng
-     */
-    IconRefResponse findIconRef(UUID iconId);
-
-    /**
-     * Truy vấn danh sách biểu tượng hệ thống có phân trang/tìm kiếm.
-     *
-     * @param iconGroup Nhóm biểu tượng cần lọc (tùy chọn)
-     * @param search    Từ khóa tìm kiếm (tùy chọn)
-     * @return Kết quả danh sách biểu tượng bọc trong wrapper
-     */
-    IconGroupResponseWrapper listIcons(String iconGroup, String search);
-
+    List<UUID> findSelfAndDescendantIds(UUID id);
 }

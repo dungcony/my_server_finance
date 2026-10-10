@@ -1,129 +1,84 @@
 package com.datn.financeapp.module.category.controller;
 
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
-import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
-import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
+import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
+import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.service.CategoryService;
 import jakarta.validation.Valid;
-
-import java.util.List;
-import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
- * Controller xử lý các yêu cầu HTTP liên quan đến danh mục thu chi, cài đặt ví và biểu tượng.
+ * Controller xử lý các yêu cầu HTTP liên quan đến cây danh mục thu chi. Đọc mở cho mọi người dùng
+ * đã đăng nhập; ghi (tạo, sửa, xóa) chỉ dành cho người có quyền {@code categories:manage}.
  * <p>
- * <b>Các endpoint chính:</b>
+ * <b>Các endpoint:</b>
  * <ul>
- *   <li>{@link #list(String, boolean, boolean)}: {@code GET /categories} - Danh sách danh mục</li>
- *   <li>{@link #detail(UUID)}: {@code GET /categories/{id}} - Chi tiết danh mục</li>
- *   <li>{@link #create(CreateCategoryRequest)}: {@code POST /categories} - Tạo mới danh mục</li>
- *   <li>{@link #update(UUID, UpdateCategoryRequest)}: {@code PATCH /categories/{id}} - Cập nhật danh mục</li>
- *   <li>{@link #delete(UUID, UUID)}: {@code DELETE /categories/{id}} - Xóa danh mục</li>
- *   <li>{@link #reorder(ReorderCategoriesRequest)}: {@code PATCH /categories/reorder} - Sắp xếp lại danh mục</li>
- *   <li>{@link #listForWallet(UUID)}: {@code GET /wallets/{walletId}/categories} - Danh mục theo ví</li>
- *   <li>{@link #setCategoryEnabledForWallet(UUID, UUID, ToggleWalletCategoryRequest)}: Bật/tắt danh mục theo ví</li>
- *   <li>{@link #categoryGroups()}: {@code GET /category-groups} - Nhóm danh mục hệ thống</li>
- *   <li>{@link #icons(String, String)}: {@code GET /icons} - Kho biểu tượng</li>
+ *   <li>{@link #getMasters()}: {@code GET /categories} - Danh mục gốc</li>
+ *   <li>{@link #getOfParent(String)}: {@code GET /categories/{code}/children} - Con trực tiếp của một danh mục</li>
+ *   <li>{@link #create(CategoryCreateReq)}: {@code POST /categories} - Tạo danh mục</li>
+ *   <li>{@link #update(String, CategoryUpdateReq)}: {@code PATCH /categories/{code}} - Sửa danh mục</li>
+ *   <li>{@link #delete(String, String)}: {@code DELETE /categories/{code}} - Xóa danh mục cùng cả cây con</li>
  * </ul>
  * </p>
  *
  * @see CategoryService
  */
 @RestController
+@RequestMapping("/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 
+    private static final String MANAGE =
+            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_MANAGE.getValue())";
+
     private final CategoryService categoryService;
 
-    @GetMapping("/categories")
-    public ApiResponse<List<CategoryResponse>> list(
-            @RequestParam(required = false) String type,
-            @RequestParam(name = "as_tree", required = false, defaultValue = "true") boolean asTree,
-            @RequestParam(name = "roots_only", required = false, defaultValue = "false") boolean rootsOnly) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(categoryService.list(userId, type, asTree, rootsOnly));
+    @GetMapping
+    public ApiResponse<List<CategoryResponse>> getMasters() {
+        return ApiResponse.of(categoryService.getMasters());
     }
 
-    @GetMapping("/categories/{id}")
-    public ApiResponse<CategoryDetailResponse> detail(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(categoryService.detail(userId, id));
+    @GetMapping("/{code}/children")
+    public ApiResponse<List<CategoryResponse>> getOfParent(@PathVariable String code) {
+        return ApiResponse.of(categoryService.getOfParent(code));
     }
 
-    @PostMapping("/categories")
+    @PostMapping
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CategoryResponse> create(@Valid @RequestBody CreateCategoryRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(categoryService.create(userId, req));
+    @PreAuthorize(MANAGE)
+    public ApiResponse<CategoryResponse> create(@Valid @RequestBody CategoryCreateReq req) {
+        return ApiResponse.of(categoryService.create(req));
     }
 
-    @PatchMapping("/categories/{id}")
-    public ApiResponse<CategoryResponse> update(@PathVariable UUID id, @Valid @RequestBody UpdateCategoryRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(categoryService.update(userId, id, req));
+    @PatchMapping("/{code}")
+    @PreAuthorize(MANAGE)
+    public ApiResponse<CategoryResponse> update(@PathVariable String code, @Valid @RequestBody CategoryUpdateReq req) {
+        return ApiResponse.of(categoryService.update(code, req));
     }
 
-    @DeleteMapping("/categories/{id}")
+    @DeleteMapping("/{code}")
+    @PreAuthorize(MANAGE)
     public ApiResponse<Void> delete(
-            @PathVariable UUID id,
-            @RequestParam(name = "replacement_category_id", required = false) UUID replacementCategoryId) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        categoryService.delete(userId, id, replacementCategoryId);
+            @PathVariable String code,
+            @RequestParam(name = "replacement_code", required = false) String replacementCode) {
+        categoryService.delete(code, replacementCode);
         return ApiResponse.of(null);
-    }
-
-    @PatchMapping("/categories/reorder")
-    public ApiResponse<Void> reorder(@Valid @RequestBody ReorderCategoriesRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        categoryService.reorder(userId, req);
-        return ApiResponse.of(null);
-    }
-
-    /**
-     * Cây danh mục kèm cờ bật/tắt của một ví (api/03 mục 9).
-     *
-     * <p>Nằm ở {@code CategoryController} chứ không phải {@code WalletController} vì nghiệp vụ là
-     * danh mục; ví chỉ là ngữ cảnh lọc.
-     */
-    @GetMapping("/wallets/{walletId}/categories")
-    public ApiResponse<List<CategoryResponse>> listForWallet(@PathVariable UUID walletId) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(categoryService.listForWallet(userId, walletId));
-    }
-
-    @PatchMapping("/wallets/{walletId}/categories/{categoryId}")
-    public ApiResponse<Void> setCategoryEnabledForWallet(
-            @PathVariable UUID walletId,
-            @PathVariable UUID categoryId,
-            @Valid @RequestBody ToggleWalletCategoryRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        categoryService.setCategoryEnabledForWallet(userId, walletId, categoryId, req.isEnabled());
-        return ApiResponse.of(null);
-    }
-
-    @GetMapping("/category-groups")
-    public ApiResponse<List<CategoryGroupResponse>> categoryGroups() {
-        return ApiResponse.of(categoryService.listCategoryGroups());
-    }
-
-    @GetMapping("/icons")
-    public ApiResponse<CategoryService.IconGroupResponseWrapper> icons(
-            @RequestParam(name = "icon_group", required = false) String iconGroup,
-            @RequestParam(required = false) String search) {
-        return ApiResponse.of(categoryService.listIcons(iconGroup, search));
     }
 }

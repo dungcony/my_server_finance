@@ -1,11 +1,12 @@
 package com.datn.financeapp.module.budget.controller;
 
-import com.datn.financeapp.module.budget.dto.response.BudgetAlertResponse;
-import com.datn.financeapp.module.budget.dto.response.BudgetListItemResponse;
-import com.datn.financeapp.module.budget.dto.response.BudgetSuggestionResponse;
-import com.datn.financeapp.module.budget.dto.response.BudgetSummaryResponse;
 import com.datn.financeapp.module.budget.dto.request.CreateBudgetRequest;
 import com.datn.financeapp.module.budget.dto.request.UpdateBudgetRequest;
+import com.datn.financeapp.module.budget.dto.response.BudgetAlertRes;
+import com.datn.financeapp.module.budget.dto.response.BudgetRes;
+import com.datn.financeapp.module.budget.dto.response.BudgetSummaryRes;
+import com.datn.financeapp.module.budget.enums.PeriodType;
+import com.datn.financeapp.module.budget.service.BudgetOverviewService;
 import com.datn.financeapp.module.budget.service.BudgetService;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
@@ -35,7 +36,6 @@ import org.springframework.web.bind.annotation.RestController;
  * <ul>
  *   <li>{@link #list(Boolean, String)}: {@code GET /budgets} - Truy vấn danh sách ngân sách</li>
  *   <li>{@link #summary()}: {@code GET /budgets/summary} - Báo cáo tổng quan ngân sách</li>
- *   <li>{@link #suggestion(UUID)}: {@code GET /budgets/suggestion} - Xin gợi ý hạn mức</li>
  *   <li>{@link #alerts()}: {@code GET /budgets/alerts} - Danh sách cảnh báo ngân sách</li>
  *   <li>{@link #detail(UUID)}: {@code GET /budgets/{id}} - Chi tiết ngân sách theo ID</li>
  *   <li>{@link #create(CreateBudgetRequest)}: {@code POST /budgets} - Tạo mới ngân sách</li>
@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * </p>
  *
  * @see BudgetService
+ * @see BudgetOverviewService
  */
 @RestController
 @RequestMapping("/budgets")
@@ -52,35 +53,31 @@ import org.springframework.web.bind.annotation.RestController;
 public class BudgetController {
 
     private final BudgetService budgetService;
+    private final BudgetOverviewService budgetOverviewService;
 
     @GetMapping
-    public ApiResponse<List<BudgetListItemResponse>> list(
+    public ApiResponse<List<BudgetRes>> list(
             @RequestParam(name = "is_active", required = false, defaultValue = "true") Boolean isActive,
             @RequestParam(name = "period", required = false) String period) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(budgetService.list(userId, isActive, period));
+        PeriodType periodType = period == null ? null : PeriodType.fromCode(period);
+        return ApiResponse.of(budgetService.list(userId, isActive, periodType));
     }
 
     @GetMapping("/summary")
-    public ApiResponse<BudgetSummaryResponse> summary() {
+    public ApiResponse<BudgetSummaryRes> summary() {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(budgetService.summary(userId));
-    }
-
-    @GetMapping("/suggestion")
-    public ApiResponse<BudgetSuggestionResponse> suggestion(@RequestParam(name = "category_id") UUID categoryId) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(budgetService.suggestion(userId, categoryId));
+        return ApiResponse.of(budgetOverviewService.summary(userId));
     }
 
     @GetMapping("/alerts")
-    public ApiResponse<List<BudgetAlertResponse>> alerts() {
+    public ApiResponse<List<BudgetAlertRes>> alerts() {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(budgetService.alerts(userId));
+        return ApiResponse.of(budgetOverviewService.alerts(userId));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<BudgetListItemResponse> detail(@PathVariable UUID id) {
+    public ApiResponse<BudgetRes> detail(@PathVariable UUID id) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(budgetService.detail(userId, id));
     }
@@ -88,13 +85,13 @@ public class BudgetController {
     @PostMapping
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<BudgetListItemResponse> create(@Valid @RequestBody CreateBudgetRequest req) {
+    public ApiResponse<BudgetRes> create(@Valid @RequestBody CreateBudgetRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(budgetService.create(userId, req));
     }
 
     @PatchMapping("/{id}")
-    public ApiResponse<BudgetListItemResponse> update(
+    public ApiResponse<BudgetRes> update(
             @PathVariable UUID id, @Valid @RequestBody UpdateBudgetRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(budgetService.update(userId, id, req));

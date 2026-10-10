@@ -1,15 +1,28 @@
 package com.datn.financeapp.module.transaction.dto.response;
 
-/**
- * Tổng thu/chi trên TOÀN BỘ kết quả lọc (không chỉ trang hiện tại) — api/04-GIAO-DICH.md mục 1.
- * LOẠI TRỪ {@code type = 'transfer'} (CLAUDE.md §2 bất biến): transfer không phải thu, không
- * phải chi.
- */
-public record TransactionSummaryResponse(Long totalIncome, Long totalExpense, Long difference) {
+import com.datn.financeapp.module.transaction.enums.TransactionType;
 
-    public static TransactionSummaryResponse of(Long totalIncome, Long totalExpense) {
-        long income = totalIncome == null ? 0L : totalIncome;
-        long expense = totalExpense == null ? 0L : totalExpense;
-        return new TransactionSummaryResponse(income, expense, income - expense);
-    }
+import java.time.LocalDate;
+import java.util.UUID;
+
+/**
+ * Thông tin tóm tắt của giao dịch, chỉ dùng khi cần lấy nhiều để giảm tải RAM.
+ * Muốn đủ chi tiết (ghi chú, hóa đơn, ví, danh mục) dùng {@link TransactionDetailResponse}.
+ *
+ * @param id         ID giao dịch
+ * @param type       loại giao dịch
+ * @param amount     số tiền (luôn dương, chiều tiền suy từ {@code type})
+ * @param date       ngày phát sinh
+ * @param name       tên hiển thị
+ * @param walletId   ID ví phát sinh
+ * @param categoryId ID danh mục
+ */
+public record TransactionSummaryResponse(
+        UUID id,
+        TransactionType type,
+        Long amount,
+        LocalDate date,
+        String name,
+        UUID walletId,
+        UUID categoryId) {
 }

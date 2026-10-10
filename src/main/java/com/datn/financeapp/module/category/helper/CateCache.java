@@ -1,6 +1,5 @@
 package com.datn.financeapp.module.category.helper;
 
-import com.datn.financeapp.module.category.repository.CategoryCodeView;
 import com.datn.financeapp.module.category.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *       đồng bộ khác.</li>
  * </ul>
  * </p>
+ * <p>
+ * <b>Các hàm:</b> {@link #loadAll} nạp lại toàn bộ từ DB; {@link #findCode} tra code theo id;
+ * {@link #findId} tra id theo code; {@link #existsCode} kiểm code đã có người giữ chưa;
+ * {@link #register} ghi code của danh mục mới; {@link #changeCode} đổi code danh mục đã có.
+ * Tham số {@code null} hoặc code rỗng cho kết quả "không có"/{@code false}, không ném lỗi.
+ * </p>
  */
 @Slf4j
 @Component
@@ -39,24 +44,27 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CateCache {
 
     private final CategoryRepository categoryRepository;
-    private final Map<UUID, String> idToCode = new ConcurrentHashMap<>();
-    private final Map<String, UUID> codeToId = new ConcurrentHashMap<>();
+    private volatile Map<UUID, String> idToCode = new ConcurrentHashMap<>();
+    private volatile Map<String, UUID> codeToId = new ConcurrentHashMap<>();
 
     /**
-     * Xóa cache và nạp lại toàn bộ cặp (id, code), kể cả danh mục đã xóa mềm.
+     * Nạp lại toàn bộ cặp (id, code), kể cả danh mục đã xóa mềm.
      * <p>
-     * Trong lúc nạp lại, truy vấn đọc có thể thấy cache rỗng hoặc thiếu; chỉ dùng lúc khởi động.
+     * Dựng cặp map mới rồi hoán đổi một lần, nên truy vấn đọc đang chạy không thấy cache rỗng
+     * hay thiếu giữa chừng. Hai map được hoán đổi lần lượt nên có thể lệch nhau trong chốc lát.
      * </p>
      */
     @EventListener(ApplicationReadyEvent.class)
     public synchronized void loadAll() {
         List<CategoryCodeView> rows = categoryRepository.findAllCodes();
-        idToCode.clear();
-        codeToId.clear();
+        Map<UUID, String> newIdToCode = new ConcurrentHashMap<>();
+        Map<String, UUID> newCodeToId = new ConcurrentHashMap<>();
         rows.forEach(row -> {
-            idToCode.put(row.getId(), row.getCode());
-            codeToId.put(row.getCode(), row.getId());
+            newIdToCode.put(row.id(), row.code());
+            newCodeToId.put(row.code(), row.id());
         });
+        idToCode = newIdToCode;
+        codeToId = newCodeToId;
         log.info("Đã nạp {} code danh mục vào cache", rows.size());
     }
 
@@ -67,7 +75,7 @@ public class CateCache {
      * @return code của danh mục, rỗng nếu id chưa có trong cache
      */
     public Optional<String> findCode(UUID id) {
-        return Optional.ofNullable(idToCode.get(id));
+        return id == null ? Optional.empty() : Optional.ofNullable(idToCode.get(id));
     }
 
     /**
@@ -77,7 +85,7 @@ public class CateCache {
      * @return id của danh mục, rỗng nếu code chưa tồn tại
      */
     public Optional<UUID> findId(String code) {
-        return Optional.ofNullable(codeToId.get(code));
+        return code == null ? Optional.empty() : Optional.ofNullable(codeToId.get(code));
     }
 
     /**
@@ -87,7 +95,7 @@ public class CateCache {
      * @return {@code true} nếu code đã tồn tại
      */
     public boolean existsCode(String code) {
-        return codeToId.containsKey(code);
+        return code != null && codeToId.containsKey(code);
     }
 
     /**
@@ -113,6 +121,9 @@ public class CateCache {
     }
 
     private boolean assign(UUID id, String code) {
+        if (id == null || code == null || code.isBlank()) {
+            return false;
+        }
         UUID owner = codeToId.get(code);
         if (owner != null) {
             return owner.equals(id);
