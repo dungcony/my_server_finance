@@ -180,7 +180,7 @@ public class GroupServiceImpl implements GroupService {
         Group group = groupRepository.findActivatedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        if (gTransactionService.countPendingForGroup(groupId) > 0)
+        if (gTransactionService.countUnresolvedForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
         group.setStatus(GroupStatus.ARCHIVED);
@@ -219,7 +219,7 @@ public class GroupServiceImpl implements GroupService {
         if (group.getFund().getCurrentBalance() != null && group.getFund().getCurrentBalance() != 0)
             throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
 
-        if (gTransactionService.countPendingForGroup(groupId) > 0)
+        if (gTransactionService.countUnresolvedForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
 

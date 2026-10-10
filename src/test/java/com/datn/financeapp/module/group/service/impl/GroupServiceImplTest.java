@@ -305,7 +305,7 @@ class GroupServiceImplTest {
             Group group = buildGroup(GroupStatus.ARCHIVED, true);
             group.setFund(Fund.builder().currentBalance(0L).build());
             when(groupRepository.findNotDeletedWithFundById(groupId)).thenReturn(Optional.of(group));
-            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(0L);
+            when(gTransactionService.countUnresolvedForGroup(groupId)).thenReturn(0L);
 
             groupService.delete(userId, groupId);
 
@@ -331,7 +331,7 @@ class GroupServiceImplTest {
         void archive_usesDefaultOwnerValidation() {
             Group group = buildGroup(GroupStatus.ACTIVE, true);
             when(groupRepository.findActivatedWithFundById(groupId)).thenReturn(Optional.of(group));
-            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(0L);
+            when(gTransactionService.countUnresolvedForGroup(groupId)).thenReturn(0L);
 
             groupService.archive(userId, groupId);
 

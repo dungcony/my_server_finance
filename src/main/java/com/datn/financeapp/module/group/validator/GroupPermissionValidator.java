@@ -289,8 +289,9 @@ public class GroupPermissionValidator {
      * Quy tắc:
      * <ul>
      * <li>Trưởng nhóm (OWNER): Xóa được mọi giao dịch.</li>
-     * <li>Thủ quỹ (TREASURER): Không có quyền xóa.</li>
+     * <li>Thủ quỹ (TREASURER): Không có quyền xóa, trừ giao dịch ghi hộ đang chờ người chi trả đồng ý do chính mình tạo.</li>
      * <li>Thành viên thường: Chỉ xóa giao dịch do chính mình tạo và đang PENDING.</li>
+     * <li>Mọi người tạo: huỷ được giao dịch AWAITING_TRANSACTOR do chính mình tạo.</li>
      * </ul>
      *
      * @param txn        Giao dịch cần xóa
@@ -300,6 +301,9 @@ public class GroupPermissionValidator {
     public void verifyTransactionDeletePermission(GTransaction txn, UUID operatorId, MemberAuthInfo authInfo) {
         // chủ nhóm xóa được mọi giao dịch
         if (authInfo.isOwner()) return;
+
+        // người tạo (kể cả thủ quỹ) được huỷ giao dịch ghi hộ đang chờ người chi trả đồng ý
+        if (txn.getStatus() == GTransactionStatus.AWAITING_TRANSACTOR && txn.getCreatedBy().equals(operatorId)) return;
 
         // thủ quỹ không có quyền xóa
         if (authInfo.isTreasurer())

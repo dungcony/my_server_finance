@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,21 +45,22 @@ class GroupTxCountHelperTest {
     @Test
     @DisplayName("getCount khi có trong cache (cache hit) thì không truy vấn CSDL")
     void getCount_cacheHit() {
-        String key = "group:tx_count:" + groupId + ":non_pending";
+        String key = "group:tx_count:" + groupId + ":non_waiting";
         when(valueOperations.get(key)).thenReturn("42");
 
         long count = helper.getCount(groupId, true);
 
         assertEquals(42L, count);
-        verify(transactionRepository, never()).countByGroupIdAndDeletedAtIsNullAndStatusNot(any(), any());
+        verify(transactionRepository, never()).countByGroupIdAndDeletedAtIsNullAndStatusNotIn(any(), any());
     }
 
     @Test
     @DisplayName("getCount khi không có trong cache (cache miss) thì đếm từ CSDL và lưu vào cache")
     void getCount_cacheMiss() {
-        String key = "group:tx_count:" + groupId + ":non_pending";
+        String key = "group:tx_count:" + groupId + ":non_waiting";
         when(valueOperations.get(key)).thenReturn(null);
-        when(transactionRepository.countByGroupIdAndDeletedAtIsNullAndStatusNot(groupId, GTransactionStatus.PENDING))
+        when(transactionRepository.countByGroupIdAndDeletedAtIsNullAndStatusNotIn(
+                groupId, List.of(GTransactionStatus.PENDING, GTransactionStatus.AWAITING_TRANSACTOR)))
                 .thenReturn(100L);
 
         long count = helper.getCount(groupId, true);
@@ -70,7 +72,7 @@ class GroupTxCountHelperTest {
     @Test
     @DisplayName("increment khi giao dịch không phải pending thì tăng cả 2 key")
     void increment_confirmed() {
-        String nonPendingKey = "group:tx_count:" + groupId + ":non_pending";
+        String nonPendingKey = "group:tx_count:" + groupId + ":non_waiting";
         String allKey = "group:tx_count:" + groupId + ":all";
 
         when(stringRedisTemplate.hasKey(nonPendingKey)).thenReturn(true);
@@ -85,7 +87,7 @@ class GroupTxCountHelperTest {
     @Test
     @DisplayName("increment khi giao dịch pending thì chỉ tăng key all")
     void increment_pending() {
-        String nonPendingKey = "group:tx_count:" + groupId + ":non_pending";
+        String nonPendingKey = "group:tx_count:" + groupId + ":non_waiting";
         String allKey = "group:tx_count:" + groupId + ":all";
 
         when(stringRedisTemplate.hasKey(allKey)).thenReturn(true);
@@ -99,7 +101,7 @@ class GroupTxCountHelperTest {
     @Test
     @DisplayName("decrement khi giao dịch không phải pending thì giảm cả 2 key")
     void decrement_confirmed() {
-        String nonPendingKey = "group:tx_count:" + groupId + ":non_pending";
+        String nonPendingKey = "group:tx_count:" + groupId + ":non_waiting";
         String allKey = "group:tx_count:" + groupId + ":all";
 
         when(stringRedisTemplate.hasKey(nonPendingKey)).thenReturn(true);
@@ -112,9 +114,9 @@ class GroupTxCountHelperTest {
     }
 
     @Test
-    @DisplayName("onTransactionReviewed tăng biến đếm của key non_pending")
+    @DisplayName("onTransactionReviewed tăng biến đếm của key non_waiting")
     void onTransactionReviewed_success() {
-        String nonPendingKey = "group:tx_count:" + groupId + ":non_pending";
+        String nonPendingKey = "group:tx_count:" + groupId + ":non_waiting";
         when(stringRedisTemplate.hasKey(nonPendingKey)).thenReturn(true);
 
         helper.onTransactionReviewed(groupId);
@@ -123,9 +125,9 @@ class GroupTxCountHelperTest {
     }
 
     @Test
-    @DisplayName("onTransactionsBulkReviewed tăng biến đếm số lượng lô cho key non_pending")
+    @DisplayName("onTransactionsBulkReviewed tăng biến đếm số lượng lô cho key non_waiting")
     void onTransactionsBulkReviewed_success() {
-        String nonPendingKey = "group:tx_count:" + groupId + ":non_pending";
+        String nonPendingKey = "group:tx_count:" + groupId + ":non_waiting";
         when(stringRedisTemplate.hasKey(nonPendingKey)).thenReturn(true);
 
         helper.onTransactionsBulkReviewed(groupId, 5);
@@ -136,7 +138,7 @@ class GroupTxCountHelperTest {
     @Test
     @DisplayName("evict xóa cả 2 key khỏi Redis")
     void evict_success() {
-        String nonPendingKey = "group:tx_count:" + groupId + ":non_pending";
+        String nonPendingKey = "group:tx_count:" + groupId + ":non_waiting";
         String allKey = "group:tx_count:" + groupId + ":all";
 
         helper.evict(groupId);

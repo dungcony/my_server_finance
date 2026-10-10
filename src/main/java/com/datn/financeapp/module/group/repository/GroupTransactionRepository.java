@@ -4,6 +4,7 @@ import com.datn.financeapp.module.group.entity.GTransaction;
 import com.datn.financeapp.module.group.enums.GTransactionStatus;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,7 +29,20 @@ public interface GroupTransactionRepository extends
 
     long countByGroupIdAndDeletedAtIsNull(UUID groupId);
 
-    long countByGroupIdAndDeletedAtIsNullAndStatusNot(UUID groupId, GTransactionStatus status);
+    long countByGroupIdAndDeletedAtIsNullAndStatusNotIn(UUID groupId, Collection<GTransactionStatus> statuses);
+
+    long countByGroupIdAndStatusInAndDeletedAtIsNull(UUID groupId, Collection<GTransactionStatus> statuses);
+
+    // giao dịch ở một trạng thái mà thành viên là người tạo hoặc người thực hiện (dùng khi thành viên rời nhóm)
+    @Query("""
+                SELECT gt
+                FROM GTransaction gt
+                WHERE gt.groupId = :groupId
+                  AND gt.status = :status
+                  AND gt.deletedAt IS NULL
+                  AND (gt.createdBy = :memberId OR gt.transactorId = :memberId)
+            """)
+    List<GTransaction> findByStatusOfMember(UUID groupId, GTransactionStatus status, UUID memberId);
 
     @Query("""
                 SELECT COALESCE(SUM(gt.amount), 0)

@@ -41,7 +41,7 @@ public class Notification {
     private UUID userId;
 
     /**
-     * Loại thông báo; app dựa vào đây để chọn icon và màn hình đích. Lưu tên hằng (VD {@code GROUP_PERSONAL_SYNC}).
+     * Loại thông báo; app dựa vào đây để chọn icon và màn hình đích. Lưu tên hằng (VD {@code GROUP_TXN_CONSENT_REQUEST}).
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 50)
@@ -55,14 +55,14 @@ public class Notification {
 
     /**
      * Id đối tượng chính mà thông báo nhắc tới, ý nghĩa tuỳ {@code type}: ngân sách (BUDGET_*),
-     * khoản nợ (DEBT_REMINDER), giao dịch nhóm (GROUP_PERSONAL_SYNC). Không có khoá ngoại vì trỏ nhiều bảng.
+     * khoản nợ (DEBT_REMINDER), giao dịch nhóm (GROUP_TXN_*). Không có khoá ngoại vì trỏ nhiều bảng.
      */
     @Column(name = "reference_id")
     private UUID referenceId;
 
     /**
      * Dữ liệu phụ để app điều hướng, là json phẳng, null nếu loại thông báo không cần. Không chứa trạng thái
-     * (thông báo là snapshot). GROUP_PERSONAL_SYNC: {@code action} = việc người nhận cần làm,
+     * (thông báo là snapshot). Thông báo giao dịch nhóm (GROUP_TXN_*): {@code action} = việc người nhận cần làm,
      * {@code group_id} = nhóm chứa giao dịch ({@code reference_id}) để app gọi GET chi tiết giao dịch.
      */
     @JdbcTypeCode(SqlTypes.JSON)

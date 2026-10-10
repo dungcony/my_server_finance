@@ -16,7 +16,8 @@ public interface GTransactionMapper {
     @Mapping(target = "moneySource", source = "txn.moneySource")
     @Mapping(target = "transactorId", source = "txn.transactorId")
     @Mapping(target = "createdBy", source = "txn.createdBy")
-    @Mapping(target = "categoryId", source = "txn.categoryId")
+    // categoryCode cần tra sang module danh mục nên TransactionHelper điền sau khi ánh xạ
+    @Mapping(target = "categoryCode", ignore = true)
     @Mapping(target = "type", source = "txn.type")
     @Mapping(target = "status", source = "txn.status")
     @Mapping(target = "reviewedBy", source = "txn.reviewedBy")
@@ -26,7 +27,6 @@ public interface GTransactionMapper {
     @Mapping(target = "note", source = "txn.note")
     @Mapping(target = "createdAt", source = "txn.createdAt")
     @Mapping(target = "updatedAt", source = "txn.updatedAt")
-    @Mapping(target = "personalSyncStatus", source = "txn.personalSyncStatus")
     GroupTransactionDetailRes toDetailResponse(GTransaction txn);
 
     @Mapping(target = "userId", source = "participant.userId")

@@ -109,8 +109,8 @@ public class FundServiceImpl implements FundService {
 
         Instant now = Instant.now();
 
-        // chặn kiểm kê khi còn giao dịch chờ duyệt
-        if (gTransactionService.countPendingForGroup(fund.getGroupId()) > 0)
+        // chặn kiểm kê khi còn giao dịch chờ duyệt hoặc chờ người chi trả đồng ý
+        if (gTransactionService.countUnresolvedForGroup(fund.getGroupId()) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
         // độ chênh lệch

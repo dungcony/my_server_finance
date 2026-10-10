@@ -169,11 +169,11 @@ class NotificationRepositoryTest {
         Notification withData = notificationRepository.saveAndFlush(Notification.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .type(NotiType.GROUP_PERSONAL_SYNC)
+                .type(NotiType.GROUP_TXN_CONSENT_REQUEST)
                 .title("Xác nhận ghi sổ cá nhân")
                 .content("Nhóm vừa ghi cho bạn một khoản")
                 .referenceId(UUID.randomUUID())
-                .data(Map.of("action", "PERSONAL_SYNC_CONFIRM", "group_id", groupId.toString()))
+                .data(Map.of("action", "CONFIRM_TRANSACTION", "group_id", groupId.toString()))
                 .isRead(false)
                 .createdAt(Instant.now())
                 .build());
@@ -182,9 +182,9 @@ class NotificationRepositoryTest {
         entityManager.clear();
 
         Notification reloaded = notificationRepository.findByIdForUser(withData.getId(), userId).orElseThrow();
-        assertThat(reloaded.getType()).isEqualTo(NotiType.GROUP_PERSONAL_SYNC);
+        assertThat(reloaded.getType()).isEqualTo(NotiType.GROUP_TXN_CONSENT_REQUEST);
         assertThat(reloaded.getData())
-                .containsEntry("action", "PERSONAL_SYNC_CONFIRM")
+                .containsEntry("action", "CONFIRM_TRANSACTION")
                 .containsEntry("group_id", groupId.toString());
         assertThat(notificationRepository.findByIdForUser(withoutData.getId(), userId).orElseThrow().getData())
                 .isNull();

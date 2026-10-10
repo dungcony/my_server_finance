@@ -48,7 +48,8 @@ import java.util.UUID;
  * <li>{@link #sumConfirmedAmount}: Cộng tổng tiền giao dịch đã xác nhận theo loại, toàn thời gian hoặc trong một kỳ.
  * Input: groupId, type, [from, to). Output: tổng tiền (long).</li>
  * <li>{@link #confirm}, {@link #reject}: Duyệt/Từ chối 1 giao dịch. Input: operatorId, groupId, transactionId. Output: GroupTransactionDetailRes.</li>
- * <li>{@link #resolvePersonalSync}: Người thực hiện xác nhận/từ chối ghi giao dịch vào sổ cá nhân. Input: operatorId, groupId, transactionId, accept. Output: GroupTransactionDetailRes.</li>
+ * <li>{@link #respond}: Người chi trả/nhận tiền đồng ý hoặc từ chối giao dịch do thủ quỹ/chủ nhóm ghi hộ. Input: operatorId, groupId, transactionId, accept. Output: GroupTransactionDetailRes.</li>
+ * <li>{@link #countUnresolvedForGroup}: Đếm giao dịch chờ duyệt hoặc chờ người chi trả đồng ý. Input: groupId. Output: số lượng (long).</li>
  * <li>{@link #bulkConfirm}, {@link #bulkReject}: Duyệt/Từ chối hàng loạt. Input: operatorId, groupId, req. Output: GroupTransactionBulkReviewRes.</li>
  * </ul>
  * </p>
@@ -161,6 +162,15 @@ public interface GTransactionService {
     long countPendingForGroup(UUID groupId);
 
     /**
+     * Đếm giao dịch chưa xử lý xong của nhóm: chờ thủ quỹ/chủ nhóm duyệt ({@code PENDING}) hoặc chờ người
+     * chi trả đồng ý ({@code AWAITING_TRANSACTOR}). Dùng để chặn lưu trữ, xoá nhóm và kiểm kê.
+     *
+     * @param groupId ID nhóm
+     * @return Số lượng giao dịch chưa xoá ở hai trạng thái trên
+     */
+    long countUnresolvedForGroup(UUID groupId);
+
+    /**
      * Tổng tiền các giao dịch đã xác nhận ({@code CONFIRMED}, chưa xóa) theo loại, trên toàn thời gian.
      * <p>Không kiểm tra quyền — nơi gọi phải xác thực thành viên trước.</p>
      *
@@ -201,20 +211,21 @@ public interface GTransactionService {
     GroupTransactionDetailRes confirm(UUID operatorId, UUID groupId, UUID transactionId);
 
     /**
-     * Người thực hiện ({@code transactor}) xác nhận hoặc từ chối yêu cầu ghi một giao dịch nhóm vào
-     * sổ cá nhân, áp dụng cho giao dịch do người khác ghi hộ và mọi khoản hoàn tiền.
+     * Người thực hiện ({@code transactor}) đồng ý hoặc từ chối giao dịch do thủ quỹ/chủ nhóm ghi hộ
+     * (trạng thái {@code AWAITING_TRANSACTOR}), áp dụng cho khoản nộp quỹ, chi tiêu bằng tiền túi và hoàn tiền.
      * <p>
-     * Xác nhận thì khoản được ghi vào ví mặc định, từ chối thì giữ nguyên sổ cá nhân. Chỉ chính
-     * người thực hiện được gọi, người khác nhận lỗi không tìm thấy giao dịch.
+     * Đồng ý thì giao dịch thành {@code CONFIRMED}: quỹ đổi và khoản được ghi vào ví mặc định. Từ chối thì
+     * thành {@code REJECTED}, quỹ và ví giữ nguyên. Chỉ chính người thực hiện được gọi, người khác nhận lỗi
+     * không tìm thấy giao dịch.
      * </p>
      *
      * @param operatorId    ID người gọi, phải là người thực hiện của giao dịch
      * @param groupId       ID nhóm tài chính
-     * @param transactionId ID giao dịch đang chờ xác nhận
-     * @param accept        {@code true} để xác nhận ghi, {@code false} để từ chối
-     * @return Chi tiết giao dịch với trạng thái ghi sổ cá nhân mới
+     * @param transactionId ID giao dịch đang chờ đồng ý
+     * @param accept        {@code true} để đồng ý, {@code false} để từ chối
+     * @return Chi tiết giao dịch với trạng thái mới
      */
-    GroupTransactionDetailRes resolvePersonalSync(UUID operatorId, UUID groupId, UUID transactionId, boolean accept);
+    GroupTransactionDetailRes respond(UUID operatorId, UUID groupId, UUID transactionId, boolean accept);
 
     /**
      * Từ chối một giao dịch đơn lẻ đang ở trạng thái {@code PENDING}.

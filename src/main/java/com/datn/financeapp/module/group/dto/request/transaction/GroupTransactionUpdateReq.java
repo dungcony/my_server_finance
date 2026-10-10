@@ -17,7 +17,7 @@ public record GroupTransactionUpdateReq(
         Instant occurredAt,
         LocalDate date,
         MoneySource moneySource,
-        UUID categoryId,
+        String categoryCode,
         UUID transactorId,
         @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự.") String note,
         @Valid List<GroupTransactionParticipantReq> participants) {

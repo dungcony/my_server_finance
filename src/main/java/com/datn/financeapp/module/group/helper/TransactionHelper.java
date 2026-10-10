@@ -1,6 +1,8 @@
 package com.datn.financeapp.module.group.helper;
 
 import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionParticipantReq;
 import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionParticipantRes;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -45,6 +48,7 @@ import java.util.function.Supplier;
 public class TransactionHelper {
 
     private final GTransactionMapper gTransactionMapper;
+    private final CategoryService categoryService;
 
     /**
      * Ánh xạ đối tượng giao dịch sang DTO chi tiết.
@@ -53,7 +57,36 @@ public class TransactionHelper {
      * @return DTO chi tiết giao dịch {@link GroupTransactionDetailRes}
      */
     public GroupTransactionDetailRes buildDetailRes(GTransaction txn) {
-        return gTransactionMapper.toDetailResponse(txn);
+        return buildDetailResList(List.of(txn)).get(0);
+    }
+
+    /**
+     * Ánh xạ danh sách giao dịch sang DTO chi tiết, tra mã danh mục một lần cho cả danh sách.
+     *
+     * @param txns Danh sách giao dịch nhóm cần ánh xạ
+     * @return Danh sách DTO chi tiết cùng thứ tự với đầu vào
+     */
+    public List<GroupTransactionDetailRes> buildDetailResList(List<GTransaction> txns) {
+        List<UUID> categoryIds = txns.stream()
+                .map(GTransaction::getCategoryId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, CategoryResponse> categories = categoryService.findAllByIds(categoryIds);
+        return txns.stream()
+                .map(txn -> withCategoryCode(gTransactionMapper.toDetailResponse(txn),
+                        categories.get(txn.getCategoryId())))
+                .toList();
+    }
+
+    private GroupTransactionDetailRes withCategoryCode(GroupTransactionDetailRes res, CategoryResponse category) {
+        if (category == null) {
+            return res;
+        }
+        return new GroupTransactionDetailRes(
+                res.id(), res.groupId(), res.transactorId(), res.createdBy(), category.code(),
+                res.moneySource(), res.type(), res.status(), res.reviewedBy(), res.reviewedAt(),
+                res.amount(), res.occurredAt(), res.note(), res.createdAt(), res.updatedAt());
     }
 
     /**
@@ -161,4 +194,4 @@ public class TransactionHelper {
         }
         return result;
     }
-}
+}

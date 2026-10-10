@@ -11,6 +11,7 @@ import com.datn.financeapp.module.group.entity.Member;
 import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.helper.GTransactionBuilder;
 import com.datn.financeapp.module.group.helper.GroupTxCountHelper;
+import com.datn.financeapp.module.group.helper.GroupTxNotifier;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.PersonalSyncHelper;
 import com.datn.financeapp.module.group.helper.TransactionHelper;
@@ -38,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -71,6 +73,9 @@ class TransactionServiceTest {
     private PersonalSyncHelper personalSyncHelper;
 
     @Mock
+    private GroupTxNotifier notifier;
+
+    @Mock
     private GTransactionBuilder expenseStrategy;
 
     @Mock
@@ -95,9 +100,6 @@ class TransactionServiceTest {
         GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository, null, null);
         GroupTransactionPaticipantValidator transactionValidator = new GroupTransactionPaticipantValidator(memberService);
         GTransactionMapper gTransactionMapper = Mappers.getMapper(GTransactionMapper.class);
-        // các test này chỉ kiểm luồng tạo, nên coi như không có khoản nào cần ghi sang sổ cá nhân
-        org.mockito.Mockito.lenient().when(personalSyncHelper.syncOnCreate(any(), any()))
-                .thenReturn(PersonalSyncStatus.NONE);
         TransactionHelper transactionHelper = new TransactionHelper(gTransactionMapper);
 
         transactionService = new GTransactionServiceImpl(
@@ -108,6 +110,7 @@ class TransactionServiceTest {
                 memberBalanceService,
                 groupTxCountHelper,
                 personalSyncHelper,
+                notifier,
                 permissionValidator,
                 transactionValidator,
                 List.of(expenseStrategy, refundStrategy),
@@ -152,8 +155,8 @@ class TransactionServiceTest {
     }
 
     @Test
-    @DisplayName("Tạo giao dịch lưu đúng trạng thái ghi sổ cá nhân mà PersonalSyncHelper quyết định")
-    void testCreate_StoresPersonalSyncStatusFromHelper() {
+    @DisplayName("Tạo giao dịch nhờ PersonalSyncHelper đối chiếu sổ cá nhân ngay sau khi lưu")
+    void testCreate_SyncsLedgerThroughHelper() {
         MemberAuthInfo authInfo = new MemberAuthInfo(
                 groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, ownerId
         );
@@ -165,7 +168,6 @@ class TransactionServiceTest {
 
         GTransaction mockTxn = GTransaction.builder().id(UUID.randomUUID()).amount(1000000L).type(GTransactionType.EXPENSE).moneySource(MoneySource.PERSONAL).status(GTransactionStatus.CONFIRMED).build();
         when(expenseStrategy.build(eq(ownerId), eq(groupId), any(), eq(GTransactionStatus.CONFIRMED), eq(true))).thenReturn(mockTxn);
-        when(personalSyncHelper.syncOnCreate(mockTxn, ownerId)).thenReturn(PersonalSyncStatus.SYNCED);
         when(transactionRepository.save(any(GTransaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
         GroupTransactionCreateReq req = new GroupTransactionCreateReq(
@@ -182,7 +184,8 @@ class TransactionServiceTest {
 
         GroupTransactionDetailRes res = transactionService.create(ownerId, groupId, req);
 
-        assertThat(res.personalSyncStatus()).isEqualTo(PersonalSyncStatus.SYNCED);
+        assertThat(res).isNotNull();
+        verify(personalSyncHelper).sync(null, mockTxn);
     }
 
     @Test

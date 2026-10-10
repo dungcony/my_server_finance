@@ -381,14 +381,15 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 - `id` (UUID, PK): Định danh thông báo.
 - `user_id` (UUID, FK $\rightarrow$ `users.id`, NOT NULL): Người nhận thông báo.
 - `type` (VARCHAR (50), NOT NULL): Loại thông báo, lưu tên hằng của enum `NotiType` (`BUDGET_ALERT`, `DEBT_REMINDER`,
-  `RECURRING_GENERATED`, `BUDGET_RENEWED`, `GOAL_COMPLETED`, `GROUP_PERSONAL_SYNC`). App dựa vào đây để chọn icon và
+  `RECURRING_GENERATED`, `BUDGET_RENEWED`, `GOAL_COMPLETED`, `GROUP_TXN_REVIEW_REQUEST`, `GROUP_TXN_CONSENT_REQUEST`,
+  `GROUP_TXN_RECORDED`). App dựa vào đây để chọn icon và
   màn hình đích.
 - `title` (VARCHAR (150), NOT NULL): Tiêu đề thông báo.
 - `content` (TEXT, NOT NULL): Nội dung thông báo.
 - `reference_id` (UUID, NULL): ID đối tượng chính thông báo nhắc tới (budget_id, debt_id, id giao dịch nhóm...), ý
   nghĩa tuỳ `type`; không có khoá ngoại.
 - `data` (JSONB, NULL): Dữ liệu phụ để app điều hướng, json phẳng, không chứa trạng thái (thông báo là snapshot). Ví dụ
-  `GROUP_PERSONAL_SYNC`: `{"action": "PERSONAL_SYNC_CONFIRM", "group_id": "..."}`.
+  thông báo giao dịch nhóm (`GROUP_TXN_*`): `{"action": "CONFIRM_TRANSACTION", "group_id": "..."}`.
 - `is_read` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đã đọc / chưa đọc.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT now ()): Thời điểm gửi.
 
@@ -453,11 +454,10 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
   `type = 'EXPENSE'`).
 - `type` (VARCHAR (20), NOT NULL): Loại giao dịch (`EXPENSE`, `CONTRIBUTION`, `REFUND`, `ADJUSTMENT_UP`,
   `ADJUSTMENT_DOWN`).
-- `status` (VARCHAR (20), NOT NULL, DEFAULT 'PENDING'): Trạng thái duyệt (`PENDING` - chờ duyệt, `CONFIRMED` - đã duyệt,
-  `REJECTED` - từ chối).
-- `personal_sync_status` (VARCHAR (20), NOT NULL, DEFAULT 'NONE'): Trạng thái ghi giao dịch sang sổ cá nhân của
-  `transactor_id` (`NONE`, `AWAITING_CONFIRM` - chờ người đó xác nhận qua thông báo, `SYNCED` - đã ghi và id giao dịch cá nhân
-  trùng id giao dịch nhóm, `DECLINED` - từ chối).
+- `status` (VARCHAR (20), NOT NULL, DEFAULT 'PENDING'): Trạng thái duyệt (`PENDING` - chờ thủ quỹ/chủ nhóm duyệt,
+  `AWAITING_TRANSACTOR` - chờ người chi trả/nhận tiền đồng ý khoản do thủ quỹ/chủ nhóm ghi hộ, `CONFIRMED` - đã xác nhận,
+  `REJECTED` - từ chối). Khoản `CONFIRMED` thuộc loại ghi sổ cá nhân (`CONTRIBUTION`, `EXPENSE` bằng `PERSONAL`, `REFUND`)
+  có một khoản trùng id ở sổ cá nhân của `transactor_id`; không có cột trạng thái ghi sổ riêng.
 - `reviewed_by` (UUID, FK $\rightarrow$ `users.id`, NULL): Người duyệt/từ chối giao dịch.
 - `reviewed_at` (TIMESTAMPTZ, NULL): Thời điểm duyệt.
 - `amount` (BIGINT, NOT NULL): Số tiền phát sinh ($1 \dots 999.999.999.999$).
@@ -632,7 +632,7 @@ erDiagram
         uuid created_by FK
         uuid category_id FK
         varchar type "EXPENSE | CONTRIBUTION | REFUND | ADJUSTMENT_*"
-        varchar status "PENDING | CONFIRMED | REJECTED"
+        varchar status "PENDING | AWAITING_TRANSACTOR | CONFIRMED | REJECTED"
         bigint amount
         timestamptz occurred_at
         bigint version "Optimistic Lock"

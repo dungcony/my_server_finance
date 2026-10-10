@@ -20,27 +20,29 @@ public record GroupTransactionFilterReq(
         LocalDate endDate,
         Integer page,
         Integer size,
-        GTransactionStatus excludeStatus,
-        UUID createdBy) {
+        boolean excludeWaiting,
+        UUID involvedUserId) {
 
     public GroupTransactionFilterReq(
             MoneySource moneySource, GTransactionType type, GTransactionStatus status,
             UUID transactorId, Instant fromOccurredAt, Instant toOccurredAt,
             LocalDate startDate, LocalDate endDate, Integer page, Integer size) {
         this(moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
-                startDate, endDate, page, size, null, null);
+                startDate, endDate, page, size, false, null);
     }
 
-    public GroupTransactionFilterReq withExcludeStatus(GTransactionStatus excludeStatus) {
+    // loại giao dịch đang chờ xử lý (PENDING, AWAITING_TRANSACTOR), dùng cho member thường khi xem danh sách chung
+    public GroupTransactionFilterReq withExcludeWaiting(boolean excludeWaiting) {
         return new GroupTransactionFilterReq(
                 moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
-                startDate, endDate, page, size, excludeStatus, createdBy);
+                startDate, endDate, page, size, excludeWaiting, involvedUserId);
     }
 
-    public GroupTransactionFilterReq withCreatedBy(UUID createdBy) {
+    // chỉ lấy giao dịch do người này tạo hoặc người này là người thực hiện
+    public GroupTransactionFilterReq withInvolvedUserId(UUID involvedUserId) {
         return new GroupTransactionFilterReq(
                 moneySource, type, status, transactorId, fromOccurredAt, toOccurredAt,
-                startDate, endDate, page, size, excludeStatus, createdBy);
+                startDate, endDate, page, size, excludeWaiting, involvedUserId);
     }
 
     public Instant resolveFrom() {

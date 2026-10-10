@@ -3,7 +3,6 @@ package com.datn.financeapp.module.group.dto.response.transaction;
 import com.datn.financeapp.module.group.enums.GTransactionStatus;
 import com.datn.financeapp.module.group.enums.GTransactionType;
 import com.datn.financeapp.module.group.enums.MoneySource;
-import com.datn.financeapp.module.group.enums.PersonalSyncStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -13,7 +12,7 @@ public record GroupTransactionDetailRes(
         UUID groupId,
         UUID transactorId,
         UUID createdBy,
-        UUID categoryId,
+        String categoryCode,
         MoneySource moneySource,
         GTransactionType type,
         GTransactionStatus status,
@@ -23,6 +22,5 @@ public record GroupTransactionDetailRes(
         Instant occurredAt,
         String note,
         Instant createdAt,
-        Instant updatedAt,
-        PersonalSyncStatus personalSyncStatus) {
+        Instant updatedAt) {
 }

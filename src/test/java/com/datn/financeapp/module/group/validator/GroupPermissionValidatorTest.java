@@ -274,4 +274,52 @@ class GroupPermissionValidatorTest {
     private MemberAuthInfo info(GroupStatus groupStatus, MemberRole role) {
         return new MemberAuthInfo(groupId, userId, groupStatus, true, MemberStatus.ACTIVE, role, null);
     }
+
+    private com.datn.financeapp.module.group.entity.GTransaction txnWithStatus(
+            com.datn.financeapp.module.group.enums.GTransactionStatus status, UUID createdBy) {
+        return com.datn.financeapp.module.group.entity.GTransaction.builder()
+                .id(UUID.randomUUID())
+                .groupId(groupId)
+                .status(status)
+                .createdBy(createdBy)
+                .build();
+    }
+
+    @Test
+    @DisplayName("verifyTransactionDeletePermission: thủ quỹ huỷ được giao dịch ghi hộ đang chờ đồng ý do chính mình tạo")
+    void verifyTransactionDeletePermission_TreasurerCreatorOfAwaiting_Allowed() {
+        MemberAuthInfo treasurer = new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true,
+                MemberStatus.ACTIVE, MemberRole.MEMBER, userId);
+        var awaiting = txnWithStatus(
+                com.datn.financeapp.module.group.enums.GTransactionStatus.AWAITING_TRANSACTOR, userId);
+
+        assertThatCode(() -> validator.verifyTransactionDeletePermission(awaiting, userId, treasurer))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("verifyTransactionDeletePermission: thủ quỹ không huỷ được giao dịch chờ đồng ý do người khác tạo")
+    void verifyTransactionDeletePermission_TreasurerNotCreatorOfAwaiting_Forbidden() {
+        MemberAuthInfo treasurer = new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true,
+                MemberStatus.ACTIVE, MemberRole.MEMBER, userId);
+        var awaiting = txnWithStatus(
+                com.datn.financeapp.module.group.enums.GTransactionStatus.AWAITING_TRANSACTOR, UUID.randomUUID());
+
+        assertThatThrownBy(() -> validator.verifyTransactionDeletePermission(awaiting, userId, treasurer))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
+    }
+
+    @Test
+    @DisplayName("verifyTransactionDeletePermission: thủ quỹ vẫn không xoá được giao dịch CONFIRMED do chính mình tạo")
+    void verifyTransactionDeletePermission_TreasurerCreatorOfConfirmed_Forbidden() {
+        MemberAuthInfo treasurer = new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true,
+                MemberStatus.ACTIVE, MemberRole.MEMBER, userId);
+        var confirmed = txnWithStatus(
+                com.datn.financeapp.module.group.enums.GTransactionStatus.CONFIRMED, userId);
+
+        assertThatThrownBy(() -> validator.verifyTransactionDeletePermission(confirmed, userId, treasurer))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
+    }
 }

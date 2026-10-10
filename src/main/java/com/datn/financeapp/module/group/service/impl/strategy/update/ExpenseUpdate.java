@@ -2,18 +2,17 @@ package com.datn.financeapp.module.group.service.impl.strategy.update;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.module.group.entity.GTransaction;
 import com.datn.financeapp.module.group.entity.TransactionParticipant;
 import com.datn.financeapp.module.group.enums.GTransactionType;
-import com.datn.financeapp.module.group.events.ValidCategorySystemEvent;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.TransactionHelper;
 import com.datn.financeapp.module.group.helper.GTransactionUpdate;
 import com.datn.financeapp.module.group.service.MemberService;
 import com.datn.financeapp.module.group.validator.GroupTransactionPaticipantValidator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -37,7 +36,7 @@ public class ExpenseUpdate implements GTransactionUpdate {
     private final GroupTransactionPaticipantValidator transactionValidator;
     private final TransactionHelper transactionHelper;
     private final MemberService memberService;
-    private final ApplicationEventPublisher eventPublisher;
+    private final CategoryService categoryService;
 
     @Override
     public boolean supports(GTransactionType type) {
@@ -58,12 +57,11 @@ public class ExpenseUpdate implements GTransactionUpdate {
         applyBaseUpdate(txn, operatorId, req, authInfo);
 
         // cập nhật danh mục nếu có truyền lên
-        UUID categoryId = req.categoryId() != null ? req.categoryId() : txn.getCategoryId();
+        UUID categoryId = req.categoryCode() != null
+                ? categoryService.findIdByCode(req.categoryCode())
+                : txn.getCategoryId();
         if (categoryId == null) {
             throw new BusinessException(ErrorCode.GROUP_TXN_CATEGORY_REQUIRED);
-        }
-        if (req.categoryId() != null) {
-            eventPublisher.publishEvent(new ValidCategorySystemEvent(categoryId));
         }
 
         // cập nhật người chi tiền nếu có truyền

@@ -27,7 +27,7 @@ import java.util.UUID;
  * @param amount       Số tiền giao dịch (bắt buộc, > 0, tối đa 999.999.999.999 VNĐ).
  * @param occurredAt   Thời điểm xảy ra giao dịch (UTC Instant / ISO-8601). Ưu tiên cao hơn {@code date}.
  * @param date         Ngày xảy ra giao dịch (YYYY-MM-DD), dùng khi client chỉ gửi ngày mà không có giờ.
- * @param categoryId   ID danh mục chi tiêu (bắt buộc đối với giao dịch EXPENSE, bỏ trống nếu CONTRIBUTION).
+ * @param categoryCode Mã (code) danh mục chi tiêu (bắt buộc đối với giao dịch EXPENSE, bỏ trống nếu CONTRIBUTION).
  * @param transactorId ID thành viên thực hiện / đối ứng giao dịch (người chi trả / người nộp quỹ).
  * @param note         Ghi chú hoặc mô tả nội dung giao dịch (tối đa 255 ký tự).
  * @param participants Danh sách phân bổ chi phí cho các thành viên (chỉ áp dụng cho EXPENSE).
@@ -39,7 +39,7 @@ public record GroupTransactionCreateReq(
         @NotNull(message = "Số tiền không được để trống.") @Positive(message = "Số tiền phải lớn hơn 0.") @Max(value = 999999999999L, message = "Số tiền vượt quá giới hạn cho phép.") Long amount,
         Instant occurredAt,
         LocalDate date,
-        UUID categoryId,
+        String categoryCode,
         @NotNull(message = "Người thực hiện không được để trống") UUID transactorId,
         @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự.") String note,
         @Valid List<GroupTransactionParticipantReq> participants) {

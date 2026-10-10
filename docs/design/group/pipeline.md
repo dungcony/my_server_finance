@@ -255,11 +255,15 @@ Lúc           [ Bây giờ ▾ ]         ← occurred_at, mặc định lúc m�
    | `REFUND`       | `money_source` phải là `FUND`, không danh mục, không người tham gia, `amount` không vượt phần hiện có của người nhận (mục 12)                          |
    | `ADJUSTMENT_*` | `money_source` phải là `FUND`, không danh mục, người tham gia theo mục 2                                                                               |
 
-5. Quyết định ghi sang sổ cá nhân (mục 15): người gọi chính là người thực hiện thì **bắn event** ghi sổ cá nhân; ghi hộ
-   hoặc `REFUND` thì gửi thông báo xin người thực hiện xác nhận. Kết quả lưu vào `personal_sync_status`.
-6. Ghi một dòng `group_transactions` (kèm `personal_sync_status`) và các dòng `group_transaction_participants` (luôn có
-   `share_amount` rõ ràng > 0); cập nhật bộ đếm khoản chờ duyệt.
-7. Cập nhật delta vào bảng tích luỹ `group_member_balances` (mục 4).
+5. **Khoản dùng tiền cá nhân của người khác** (`CONTRIBUTION`, `EXPENSE` bằng `PERSONAL`, `REFUND` mà `transactor_id` ≠
+   người gọi): thành viên thường bị chặn (`403 GROUP_TXN_PROXY_NOT_ALLOWED`); thủ quỹ / chủ nhóm ghi hộ thì trạng thái là
+   **`AWAITING_TRANSACTOR`** (chờ `transactor_id` đồng ý, xem mục 15), quỹ và sổ cá nhân chưa đổi.
+6. Ghi một dòng `group_transactions` và các dòng `group_transaction_participants` (luôn có `share_amount` rõ ràng > 0);
+   cập nhật bộ đếm khoản đang chờ (`PENDING`, `AWAITING_TRANSACTOR`).
+7. Khoản đã `CONFIRMED` thuộc loại ghi sổ cá nhân thì **bắn event** ghi sổ cá nhân (mục 15).
+8. Cập nhật delta vào bảng tích luỹ `group_member_balances` (mục 4).
+9. Gửi thông báo: khoản `PENDING` → báo chủ nhóm và thủ quỹ (`GROUP_TXN_REVIEW_REQUEST`); khoản `AWAITING_TRANSACTOR` →
+   báo `transactor_id` (`GROUP_TXN_CONSENT_REQUEST`).
 8. Chỉ khi `CONFIRMED` → **bắn event** đổi số dư quỹ với `delta` theo bảng mục 3.
 
 ### 7.2 Xác nhận hoặc từ chối
@@ -284,8 +288,12 @@ transaction CSDL:
 
 Thời điểm mới không ở tương lai; nhóm đang lưu trữ bị chặn. Trong một transaction CSDL:
 
-1. Chụp trạng thái cũ: ảnh hưởng lên bảng tích luỹ (`before`), trạng thái ghi sổ cá nhân, và nếu khoản đang `CONFIRMED`
-   thì tính delta **hoàn tác** lên quỹ (âm ảnh hưởng cũ).
+0. Khoản đang `AWAITING_TRANSACTOR` **không sửa được** (`409 GROUP_TXN_AWAITING_NOT_EDITABLE`), chỉ huỷ rồi tạo lại.
+   Khoản dùng tiền cá nhân của người khác **không đổi được người chi trả, số tiền, nguồn tiền** và không mở lại khi đã bị
+   từ chối (`409 GROUP_TXN_PERSONAL_MONEY_LOCKED`); thành viên thường sửa thành ghi hộ người khác bị
+   `403 GROUP_TXN_PROXY_NOT_ALLOWED`. Muốn đổi thì xoá rồi tạo lại để người đó đồng ý lại.
+1. Chụp trạng thái cũ: ảnh hưởng lên bảng tích luỹ (`before`), ảnh chụp để đối chiếu sổ cá nhân (trạng thái, loại, nguồn
+   tiền, người thực hiện), và nếu khoản đang `CONFIRMED` thì tính delta **hoàn tác** lên quỹ (âm ảnh hưởng cũ).
 2. Cập nhật các trường chung và trạng thái: người sửa là **người duyệt** → `CONFIRMED`, ghi `reviewed_by`,
    `reviewed_at`; người khác → `PENDING`, xoá `reviewed_by` / `reviewed_at`. Khoản `REJECTED` được sửa cũng về `PENDING`
    (thành viên thường) hoặc `CONFIRMED` (người duyệt). Chỉ trường nào client gửi lên mới đổi.
@@ -295,8 +303,8 @@ Thời điểm mới không ở tương lai; nhóm đang lưu trữ bị chặn.
       người trả và `money_source`.
     - `CONTRIBUTION`: ép `money_source = PERSONAL`, đổi được người góp, xoá danh sách người tham gia.
     - `REFUND`: xem mục 12.
-4. Đối chiếu trạng thái ghi sổ cá nhân trước và sau (mục 15): **bắn event** ghi đè hoặc xoá khoản đã ghi, hoặc ghi mới
-   nếu khoản vừa trở thành tiền túi.
+4. Đối chiếu sổ cá nhân trước và sau (mục 15): **bắn event** ghi đè hoặc xoá khoản đã ghi, hoặc ghi mới nếu khoản vừa
+   trở thành `CONFIRMED` và thuộc loại ghi sổ.
 5. Cộng chênh lệch giữa ảnh hưởng `before` và ảnh hưởng mới vào `group_member_balances`.
 6. Quỹ: delta = hoàn tác ảnh hưởng cũ (nếu trước đó `CONFIRMED`) + áp ảnh hưởng mới (nếu giờ `CONFIRMED`). Khác 0 thì
    **bắn event** đổi số dư quỹ.
@@ -306,12 +314,14 @@ Thời điểm mới không ở tương lai; nhóm đang lưu trữ bị chặn.
 **Ai được xoá:**
 
 - **Chủ nhóm:** xoá được mọi khoản.
-- **Thủ quỹ (không phải chủ nhóm):** không được xoá (`GROUP_TXN_DELETE_FORBIDDEN`).
+- **Thủ quỹ (không phải chủ nhóm):** không được xoá (`GROUP_TXN_DELETE_FORBIDDEN`), trừ khoản `AWAITING_TRANSACTOR` do
+  chính mình tạo.
 - **Thành viên thường:** chỉ xoá khoản **do chính mình tạo** và đang **`PENDING`**.
+- **Người tạo (mọi vai trò):** huỷ được khoản **`AWAITING_TRANSACTOR`** do chính mình tạo (xoá mềm).
 
 Trong một transaction CSDL: chụp ảnh hưởng cũ `before`; khoản đang `CONFIRMED` thì **bắn event** đổi số dư quỹ với delta
-hoàn tác; khoản đã ghi sang sổ cá nhân thì **bắn event** xoá (mục 15); đặt `deleted_at = now()`; cập nhật bộ đếm; hoàn
-tác ảnh hưởng trong `group_member_balances`.
+hoàn tác; đặt `deleted_at = now()`; khoản đã vào sổ cá nhân thì **bắn event** xoá (mục 15); cập nhật bộ đếm; hoàn tác
+ảnh hưởng trong `group_member_balances`.
 
 ---
 
@@ -321,14 +331,13 @@ B góp 1.000.000đ: ghi **một** dòng `CONTRIBUTION`, `money_source = PERSONAL
 viên `ACTIVE`.
 
 - B tự ghi → `PENDING`; người duyệt xác nhận khi đã **thật sự nhận tiền** → `CONFIRMED`, lúc đó quỹ mới `+ amount`.
-- Người duyệt ghi hộ B → `CONFIRMED` ngay, cộng quỹ ngay.
+- Người duyệt tự góp cho mình → `CONFIRMED` ngay, cộng quỹ ngay.
+- Người duyệt ghi hộ B → `AWAITING_TRANSACTOR`, quỹ chưa đổi; B đồng ý → `CONFIRMED` và cộng quỹ, B từ chối →
+  `REJECTED`. Thành viên thường không ghi hộ người khác được.
 
-Khoản góp còn được ghi sang sổ cá nhân của B (mục 15):
-
-- B tự ghi → **bắn event** ghi sổ cá nhân ngay, dù khoản nhóm còn `PENDING`. Nếu khoản bị từ chối hoặc bị xoá thì **bắn
-  event** xoá.
-- Người duyệt ghi hộ B → chưa bắn event; gửi thông báo xin B xác nhận, B xác nhận thì mới **bắn event** ghi.
-- Sửa khoản đã ghi sang sổ cá nhân → **bắn event** ghi đè.
+Khoản góp còn được ghi sang sổ cá nhân của B (mục 15): chỉ khi khoản `CONFIRMED`. B tự ghi thì sổ cá nhân chưa có gì
+lúc `PENDING`, người duyệt xác nhận thì **bắn event** ghi và B nhận thông báo "đã ghi vào ví"; khoản bị từ chối thì không
+có gì để gỡ. Khoản đã vào sổ cá nhân mà bị sửa → **bắn event** ghi đè, bị xoá → **bắn event** xoá.
 
 Người đã rời nhóm (`LEFT` / `REMOVED`) **không** thể là người góp, vì người thực hiện phải đang `ACTIVE` (mục 1).
 
@@ -352,7 +361,7 @@ Trong **một** transaction CSDL:
    Khoản xác nhận hoặc ghi phát sinh cùng lúc phải chờ kiểm kê xong.
 2. `actual_balance` bằng đúng số dư hiện tại → **báo lỗi** (`VALIDATION_ERROR`), không sinh gì.
 3. Người bấm phải là chủ nhóm hoặc thủ quỹ hiện tại (`GROUP_TREASURER_REQUIRED`).
-4. Nhóm **không được còn khoản `PENDING`** (`GROUP_PENDING_TXN_EXIST`), vì khoản chờ có thể đổi số dư ngay sau khi đếm.
+4. Nhóm **không được còn khoản `PENDING` hoặc `AWAITING_TRANSACTOR`** (`GROUP_PENDING_TXN_EXIST`), vì khoản chờ có thể đổi số dư ngay sau khi đếm.
 5. `difference = actual_balance − current_balance`, `amount = |difference|`:
 
    | Kết quả | Hệ thống sinh |
@@ -388,7 +397,8 @@ Nhờ bước 1, ngay sau khi kiểm kê (đã `CONFIRMED`) số dư bằng đú
 
 **Không có điều kiện tất toán.** Hệ thống **không** kiểm tra phần của người rời có bằng 0 hay không, cũng **không** từ
 chối giúp các khoản `PENDING` của họ: các khoản đã ghi giữ nguyên, khoản `PENDING` của người rời vẫn chờ người duyệt xác
-nhận hoặc từ chối như bình thường.
+nhận hoặc từ chối như bình thường. Riêng khoản **`AWAITING_TRANSACTOR`** mà người rời là người tạo hoặc là
+`transactor_id` thì hệ thống tự chuyển sang `REJECTED` (`reviewed_by` = chủ nhóm), vì không còn ai đồng ý hoặc huỷ.
 
 **Hệ quả với phần còn lại của người đã rời:**
 
@@ -454,8 +464,9 @@ giảm tương ứng.
 
 Tất toán một người có phần dương: ghi `REFUND` đúng bằng phần của người đó.
 
-**Sổ cá nhân của người nhận (mục 15):** `REFUND` do người duyệt ghi nên người nhận phải xác nhận qua thông báo thì mới
-**bắn event** ghi vào sổ cá nhân của họ. Người ghi chính là người nhận thì **bắn event** ngay.
+**Người nhận phải xác nhận đã nhận:** `REFUND` do người duyệt ghi cho người khác ở trạng thái `AWAITING_TRANSACTOR`
+(quỹ chưa trừ, `reviewed_by` để trống). Người nhận đồng ý → `CONFIRMED`, quỹ giảm và **bắn event** ghi vào sổ cá nhân
+(mục 15); từ chối → `REJECTED`. Người ghi chính là người nhận thì `CONFIRMED` ngay.
 
 **Ghi** — trong **một** transaction CSDL:
 
@@ -464,9 +475,11 @@ Tất toán một người có phần dương: ghi `REFUND` đúng bằng phần
 3. **Khoá dòng `group_member_balances` của người nhận**, rồi kiểm `amount` không vượt phần hiện có (`net_balance`) của
    người đó, dù bật hay tắt tính thừa thiếu (`GROUP_TXN_REFUND_EXCEEDS_BALANCE`).
 4. Ghi một dòng `REFUND`: `money_source = FUND` (nguồn khác bị từ chối), `transactor_id` = người nhận, `created_by` =
-   người ghi, **`status = CONFIRMED`**, không danh mục, không người tham gia.
-5. Quyết định ghi sổ cá nhân (mục 15), cộng delta vào `group_member_balances` (tăng `refund` của người nhận), **bắn
-   event** đổi số dư quỹ `− amount`.
+   người ghi, **`status = AWAITING_TRANSACTOR`** (hoặc `CONFIRMED` nếu người ghi chính là người nhận), không danh mục,
+   không người tham gia.
+5. Khoản `CONFIRMED`: ghi sổ cá nhân (mục 15), cộng delta vào `group_member_balances` (tăng `refund` của người nhận),
+   **bắn event** đổi số dư quỹ `− amount`. Khoản `AWAITING_TRANSACTOR`: chưa làm gì, khi người nhận đồng ý mới làm các
+   việc trên (kiểm lại `amount` không vượt phần hiện có của người nhận).
 
 **Sửa** — chỉ thủ quỹ hoặc chủ nhóm, không đổi loại, trong **một** transaction CSDL:
 
@@ -475,12 +488,12 @@ Tất toán một người có phần dương: ghi `REFUND` đúng bằng phần
    `group_member_balances` của cả người nhận cũ lẫn mới, rồi tính **không kể chính khoản đang sửa**:
     - Giữ người nhận → `amount mới ≤ số hiện tại + amount cũ`.
     - Đổi người nhận → `amount mới ≤ số hiện tại của người mới`.
-3. Ghi giá trị mới (người nhận, số tiền, thời điểm, ghi chú); `reviewed_by` = người sửa, `reviewed_at = now()`. Khoản
-   **vẫn `CONFIRMED`**.
+3. Ghi giá trị mới (thời điểm, ghi chú); `reviewed_by` = người sửa, `reviewed_at = now()`. Khoản **vẫn `CONFIRMED`**.
+   Khoản hoàn tiền cho người khác **không đổi được người nhận và số tiền** (xoá rồi tạo lại để người nhận xác nhận
+   lại).
 4. Quỹ: hoàn tác khoản cũ (`+ amount cũ`) rồi áp khoản mới (`− amount mới`), bắn event đổi số dư quỹ nếu tổng delta khác
     0.
-5. Sổ cá nhân (mục 15): khoản đã ghi sang sổ cá nhân của người nhận → **bắn event** ghi đè; đổi người nhận thì **bắn
-   event** xoá khoản của người cũ rồi xử lý như ghi mới cho người mới.
+5. Sổ cá nhân (mục 15): khoản đã ghi sang sổ cá nhân của người nhận → **bắn event** ghi đè.
 
 ---
 
@@ -488,13 +501,13 @@ Tất toán một người có phần dương: ghi `REFUND` đúng bằng phần
 
 **Lưu trữ** — chỉ chủ nhóm:
 
-1. Nhóm đang `ACTIVE`, **không còn khoản `PENDING`** (`GROUP_PENDING_TXN_EXIST`) → nếu còn thì chặn, yêu cầu xác nhận
+1. Nhóm đang `ACTIVE`, **không còn khoản `PENDING` hoặc `AWAITING_TRANSACTOR`** (`GROUP_PENDING_TXN_EXIST`) → nếu còn thì chặn, yêu cầu xác nhận
    hoặc từ chối hết trước.
 2. `groups.status = ARCHIVED`.
 
 **Khi đang lưu trữ:** thành viên chỉ được xem; mọi thao tác ghi bị chặn (`GROUP_ARCHIVED`). Các việc vẫn làm được: chủ
-nhóm **mở lại** hoặc **xoá nhóm**, và người thực hiện vẫn **xác nhận ghi sổ cá nhân** (mục 15) vì tiền đã rời túi họ từ
-trước.
+nhóm **mở lại** hoặc **xoá nhóm**. Người chi trả **không** đồng ý được giao dịch `AWAITING_TRANSACTOR` khi nhóm đang lưu
+trữ (đồng ý sẽ đổi quỹ); vì vậy nhóm chỉ lưu trữ được khi không còn khoản `PENDING` lẫn `AWAITING_TRANSACTOR`.
 
 **Mở lại** — chỉ chủ nhóm, nhóm phải đang `ARCHIVED` (`GROUP_NOT_ARCHIVED`): `groups.status = ACTIVE`.
 
@@ -505,7 +518,7 @@ trước.
 Chỉ chủ nhóm, nhóm đang `ACTIVE` hoặc `ARCHIVED`, trong **một** transaction CSDL:
 
 1. Số dư quỹ phải bằng 0 (`GROUP_DELETE_BALANCE_NOT_ZERO`).
-2. Không còn khoản `PENDING` (`GROUP_PENDING_TXN_EXIST`).
+2. Không còn khoản `PENDING` hoặc `AWAITING_TRANSACTOR` (`GROUP_PENDING_TXN_EXIST`).
 3. `groups.status = DELETED`.
 
 Hệ thống **không** kiểm tra phần trong quỹ của từng thành viên. Σ phần của mọi người luôn bằng số dư quỹ nên quỹ bằng 0
@@ -519,8 +532,10 @@ còn phần âm **góp thêm** (mục 8).
 
 ## 15. Ghi sang sổ cá nhân và các sự kiện module nhóm bắn ra <a id="15-so-ca-nhan"></a>
 
-Module nhóm chỉ lo **ai cần ghi, khi nào, trạng thái ra sao**. Việc ghi, sửa, xoá khoản ở sổ cá nhân do module khác làm
-khi nhận event; nhóm không biết chi tiết bên đó.
+Module nhóm chỉ lo **ai cần ghi, khi nào**. Việc ghi, sửa, xoá khoản ở sổ cá nhân do module khác làm khi nhận event;
+nhóm không biết chi tiết bên đó. Nhóm **không lưu cột trạng thái ghi sổ**: khoản có trong sổ cá nhân của `transactor_id`
+khi và chỉ khi giao dịch nhóm **`CONFIRMED`, chưa xoá, và thuộc loại ghi sổ** theo bảng dưới. Id giao dịch cá nhân bằng
+id giao dịch nhóm nên gửi lại event là ghi đè, gỡ khoản chưa tồn tại là bỏ qua.
 
 **Khoản nào ghi sang sổ cá nhân** — theo `type` và `money_source`:
 
@@ -532,53 +547,53 @@ khi nhận event; nhóm không biết chi tiết bên đó.
 | `EXPENSE`                           | `FUND`         | Không                                    |
 | `ADJUSTMENT_UP` / `ADJUSTMENT_DOWN` | `FUND`         | Không                                    |
 
-**Trạng thái `personal_sync_status` của giao dịch nhóm:**
+**Khoản dùng tiền cá nhân của người khác** là khoản thuộc bảng trên mà `transactor_id` ≠ người ghi. Khoản này phải được
+`transactor_id` **đồng ý** trước khi có hiệu lực:
 
-| Giá trị            | Ý nghĩa                                        |
-|:-------------------|:-----------------------------------------------|
-| `NONE`             | Không áp dụng, hoặc khoản đã bị xoá/từ chối    |
-| `AWAITING_CONFIRM` | Đã gửi thông báo, chờ `transactor_id` xác nhận |
-| `SYNCED`           | Đã bắn event ghi sang sổ cá nhân               |
-| `DECLINED`         | `transactor_id` từ chối ghi                    |
+| Người ghi                      | Kết quả                                                                                         |
+|:-------------------------------|:------------------------------------------------------------------------------------------------|
+| Thành viên thường, ghi hộ      | Bị chặn `403 GROUP_TXN_PROXY_NOT_ALLOWED`                                                       |
+| Thủ quỹ / chủ nhóm, ghi hộ     | `AWAITING_TRANSACTOR`, gửi `GROUP_TXN_CONSENT_REQUEST` cho `transactor_id`; quỹ và ví chưa đổi |
+| Người ghi chính là `transactor_id` | Theo quy tắc duyệt thông thường (`PENDING` cho thành viên thường, `CONFIRMED` cho người duyệt) |
 
-**Tạo:**
+**Đồng ý hoặc từ chối** — `POST .../transactions/{txnId}/respond` với `accept`:
 
-| Người gọi                                                        | Kết quả            | Nhóm làm gì                                                |
-|:-----------------------------------------------------------------|:-------------------|:-----------------------------------------------------------|
-| = `transactor_id`                                                | `SYNCED`           | **Bắn event** ghi sổ cá nhân                               |
-| ≠ `transactor_id` (ghi hộ, hoặc mọi `REFUND` do người duyệt ghi) | `AWAITING_CONFIRM` | Gửi thông báo xin `transactor_id` xác nhận, chưa bắn event |
-| Khoản không thuộc bảng trên                                      | `NONE`             | Không làm gì                                               |
+1. Chỉ chính `transactor_id` được gọi; người khác nhận `404 GROUP_TRANSACTION_NOT_FOUND`. Nhóm đang lưu trữ bị chặn
+   (`GROUP_ARCHIVED`).
+2. Khoản phải đang `AWAITING_TRANSACTOR`, nếu không → `409 GROUP_TXN_NOT_AWAITING_TRANSACTOR`.
+3. `accept = true` → `CONFIRMED` (`reviewed_by` = người tạo, đã duyệt từ lúc tạo): cộng/trừ quỹ, cộng delta
+   `group_member_balances`, **bắn event** ghi sổ cá nhân. `REFUND` kiểm lại hạn mức lúc này.
+4. `accept = false` → `REJECTED` (`reviewed_by` = `transactor_id`). Không lý do, người tạo không được báo, quỹ và ví giữ
+   nguyên.
 
-**Xác nhận** — `POST .../transactions/{txnId}/personal-sync` với `accept`:
+**Mỗi lần giao dịch đổi trạng thái hoặc nội dung**, nhóm đối chiếu trước và sau:
 
-1. Chỉ chính `transactor_id` được gọi; người khác nhận `404 GROUP_TRANSACTION_NOT_FOUND`. Nhóm đã lưu trữ vẫn xác nhận
-   được.
-2. Khoản phải đang `AWAITING_CONFIRM`, nếu không → `409 GROUP_TXN_PERSONAL_SYNC_NOT_AWAITING`.
-3. `accept = true` → **bắn event** ghi sổ cá nhân, `SYNCED`. `accept = false` → `DECLINED`, không bắn gì.
+| Trước đó có trong sổ cá nhân? | Sau đó có trong sổ cá nhân? | Nhóm làm gì                                                                 |
+|:------------------------------|:----------------------------|:----------------------------------------------------------------------------|
+| Không                         | Có (vừa `CONFIRMED`)        | **Bắn event** ghi sổ cá nhân; nếu người xác nhận khác `transactor_id` thì gửi `GROUP_TXN_RECORDED` |
+| Có                            | Có, cùng `transactor_id`    | **Bắn event** ghi đè (đổi ghi chú, ngày, danh mục...)                       |
+| Có                            | Không (xoá, quay về `PENDING`, hết là tiền túi) | **Bắn event** xoá khoản của `transactor_id` cũ        |
+| Có                            | Có, đổi `transactor_id`     | **Bắn event** xoá cho người cũ, ghi mới cho người mới                       |
+| Không                         | Không                       | Không làm gì (VD khoản `PENDING` bị từ chối chưa từng vào ví)               |
 
-**Sửa** — so trạng thái trước và sau:
+**Thông báo** (đều là lời nhắc, `reference_id` = id giao dịch nhóm, `data` = `{"action": ..., "group_id": ...}`; nút xác
+nhận nằm ở màn hình chi tiết giao dịch và hiện theo trạng thái thật):
 
-| Trước                           | Sau khi sửa                                     | Nhóm làm gì                                                         | Trạng thái mới |
-|:--------------------------------|:------------------------------------------------|:--------------------------------------------------------------------|:---------------|
-| `SYNCED`                        | Vẫn là tiền túi, cùng `transactor_id`           | **Bắn event** ghi đè                                                | `SYNCED`       |
-| `SYNCED`                        | Không còn là tiền túi (vd. `PERSONAL` → `FUND`) | **Bắn event** xoá                                                   | `NONE`         |
-| `SYNCED`                        | Đổi `transactor_id`                             | **Bắn event** xoá cho người cũ, rồi xử lý như tạo mới cho người mới | theo bảng Tạo  |
-| `NONE`                          | Trở thành tiền túi                              | Xử lý như tạo mới                                                   | theo bảng Tạo  |
-| `AWAITING_CONFIRM` / `DECLINED` | Cùng `transactor_id`                            | Không làm gì (thông báo cũ là lịch sử, không hỏi lại)               | giữ nguyên     |
-| `AWAITING_CONFIRM` / `DECLINED` | Đổi `transactor_id`                             | Xử lý như tạo mới (gửi thông báo cho người mới)                     | theo bảng Tạo  |
-| mọi trạng thái                  | Không còn là tiền túi                           | Không làm gì                                                        | `NONE`         |
-
-**Xoá hoặc từ chối:** khoản đang `SYNCED` thì **bắn event** xoá; mọi trường hợp đều về `NONE`.
+| Loại                         | Gửi khi                                             | Gửi cho                     | `data.action`         |
+|:-----------------------------|:----------------------------------------------------|:----------------------------|:----------------------|
+| `GROUP_TXN_REVIEW_REQUEST`   | Khoản mới ở `PENDING`                               | Chủ nhóm và thủ quỹ (trừ người tạo) | `REVIEW_TRANSACTION`  |
+| `GROUP_TXN_CONSENT_REQUEST`  | Khoản mới ở `AWAITING_TRANSACTOR`                   | `transactor_id`             | `CONFIRM_TRANSACTION` |
+| `GROUP_TXN_RECORDED`         | Khoản vừa vào sổ cá nhân do người khác xác nhận     | `transactor_id`             | `VIEW_TRANSACTION`    |
 
 **Các sự kiện module nhóm bắn ra:**
 
 | Event                  | Bắn khi                                           | Bên nhận làm                                                |
 |:-----------------------|:--------------------------------------------------|:------------------------------------------------------------|
-| Ghi sổ cá nhân         | Tự ghi, xác nhận, sửa khoản đã ghi                | Module giao dịch ghi hoặc ghi đè khoản ở sổ cá nhân         |
-| Xoá khoản ở sổ cá nhân | Xoá, từ chối, hoặc khoản không còn là tiền túi    | Module giao dịch xoá khoản đã ghi                           |
+| Ghi sổ cá nhân         | Khoản vừa `CONFIRMED`, hoặc sửa khoản đã ghi      | Module giao dịch ghi hoặc ghi đè khoản ở sổ cá nhân         |
+| Xoá khoản ở sổ cá nhân | Xoá, quay về chờ duyệt, hoặc không còn là tiền túi | Module giao dịch xoá khoản đã ghi                          |
 | Kiểm tra danh mục      | Ghi hoặc sửa khoản chi có danh mục                | Module danh mục báo lỗi nếu danh mục không hợp lệ           |
 | Đổi số dư quỹ          | Khoản `CONFIRMED` phát sinh, đổi hoặc bị hoàn tác | Nội bộ nhóm cộng dồn vào `group_funds`                      |
-| Thành viên rời nhóm    | Thành viên rời hoặc bị mời rời                    | Nội bộ nhóm bàn giao quỹ cho chủ nhóm nếu người đó đang giữ |
+| Thành viên rời nhóm    | Thành viên rời hoặc bị mời rời                    | Nội bộ nhóm bàn giao quỹ cho chủ nhóm nếu người đó đang giữ, và tự `REJECTED` khoản `AWAITING_TRANSACTOR` liên quan người đó |
 
 - Các event chạy **đồng bộ trong cùng transaction** với thao tác nhóm: bên nhận báo lỗi thì cả thao tác nhóm bị huỷ,
   không để hai sổ lệch nhau.

@@ -5,7 +5,7 @@ import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionBulkReviewReq;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.PersonalSyncReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionRespondReq;
 import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionDetailRes;
 import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionListRes;
 import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionParticipantRes;
@@ -137,13 +137,13 @@ public class GroupTransactionController {
         return ApiResponse.of(gTransactionService.confirm(userId, groupId, txnId));
     }
 
-    @PostMapping("/transactions/{txnId}/personal-sync")
-    public ApiResponse<GroupTransactionDetailRes> resolvePersonalSync(
+    @PostMapping("/transactions/{txnId}/respond")
+    public ApiResponse<GroupTransactionDetailRes> respond(
             @PathVariable UUID groupId,
             @PathVariable UUID txnId,
-            @Valid @RequestBody PersonalSyncReq req) {
+            @Valid @RequestBody GroupTransactionRespondReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(gTransactionService.resolvePersonalSync(userId, groupId, txnId, req.accept()));
+        return ApiResponse.of(gTransactionService.respond(userId, groupId, txnId, req.accept()));
     }
 
     @PostMapping("/transactions/{txnId}/reject")

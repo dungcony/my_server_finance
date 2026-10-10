@@ -2,6 +2,7 @@ package com.datn.financeapp.module.group.helper;
 
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionFilterReq;
 import com.datn.financeapp.module.group.entity.GTransaction;
+import com.datn.financeapp.module.group.enums.GTransactionStatus;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -39,18 +40,21 @@ public class GTransactionSpecification {
             if (filter.status() != null)
                 predicates.add(cb.equal(root.get("status"), filter.status()));
 
-            // loại trừ trạng thái (dùng cho member thường không thấy PENDING)
-            if (filter.excludeStatus() != null)
-                predicates.add(cb.notEqual(root.get("status"), filter.excludeStatus()));
+            // loại trừ giao dịch đang chờ xử lý (dùng cho member thường không thấy PENDING, AWAITING_TRANSACTOR)
+            if (filter.excludeWaiting())
+                predicates.add(cb.not(root.get("status").in(
+                        GTransactionStatus.PENDING, GTransactionStatus.AWAITING_TRANSACTOR)));
 
 
             // điều kiện lọc theo người chi
             if (filter.transactorId() != null)
                 predicates.add(cb.equal(root.get("transactorId"), filter.transactorId()));
 
-            // điều kiện lọc theo người tạo
-            if (filter.createdBy() != null)
-                predicates.add(cb.equal(root.get("createdBy"), filter.createdBy()));
+            // điều kiện lọc giao dịch liên quan tới một người: người tạo hoặc người thực hiện
+            if (filter.involvedUserId() != null)
+                predicates.add(cb.or(
+                        cb.equal(root.get("createdBy"), filter.involvedUserId()),
+                        cb.equal(root.get("transactorId"), filter.involvedUserId())));
 
 
             // điều kiện lọc theo khoảng thời gian

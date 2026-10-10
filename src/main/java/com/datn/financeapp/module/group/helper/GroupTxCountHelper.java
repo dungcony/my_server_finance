@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -19,11 +20,11 @@ import java.util.UUID;
  * <p>
  * Các hàm trong class:
  * <ul>
- *   <li>{@link #getCount}: Lấy tổng số giao dịch từ cache, nạp từ CSDL nếu chưa có. Input: groupId, excludePending. Output: số lượng (long).</li>
- *   <li>{@link #increment}: Tăng biến đếm nguyên tử khi tạo mới giao dịch. Input: groupId, isPending.</li>
- *   <li>{@link #decrement}: Giảm biến đếm nguyên tử khi xóa giao dịch. Input: groupId, wasPending.</li>
- *   <li>{@link #onTransactionReviewed}: Tăng biến đếm danh sách không pending khi duyệt giao dịch. Input: groupId.</li>
- *   <li>{@link #onTransactionsBulkReviewed}: Tăng biến đếm danh sách không pending khi duyệt hàng loạt. Input: groupId, count.</li>
+ *   <li>{@link #getCount}: Lấy tổng số giao dịch từ cache, nạp từ CSDL nếu chưa có. Input: groupId, excludeWaiting. Output: số lượng (long).</li>
+ *   <li>{@link #increment}: Tăng biến đếm nguyên tử khi tạo mới giao dịch. Input: groupId, isWaiting.</li>
+ *   <li>{@link #decrement}: Giảm biến đếm nguyên tử khi xóa giao dịch. Input: groupId, wasWaiting.</li>
+ *   <li>{@link #onTransactionReviewed}: Tăng biến đếm danh sách không chờ xử lý khi duyệt giao dịch. Input: groupId.</li>
+ *   <li>{@link #onTransactionsBulkReviewed}: Tăng biến đếm danh sách không chờ xử lý khi duyệt hàng loạt. Input: groupId, count.</li>
  *   <li>{@link #evict}: Xóa key cache khi cần đồng bộ lại dữ liệu. Input: groupId.</li>
  * </ul>
  * </p>
@@ -35,6 +36,8 @@ public class GroupTxCountHelper {
 
     private static final String KEY_PREFIX = "group:tx_count:";
     private static final Duration TTL = Duration.ofHours(1);
+    private static final List<GTransactionStatus> WAITING_STATUSES =
+            List.of(GTransactionStatus.PENDING, GTransactionStatus.AWAITING_TRANSACTOR);
 
     private final StringRedisTemplate stringRedisTemplate;
     private final GroupTransactionRepository transactionRepository;
@@ -43,11 +46,11 @@ public class GroupTxCountHelper {
      * Lấy tổng số lượng giao dịch của nhóm (có cache).
      *
      * @param groupId        ID nhóm
-     * @param excludePending cờ xác định có loại trừ trạng thái PENDING không
+     * @param excludeWaiting cờ xác định có loại trừ giao dịch đang chờ xử lý (PENDING, AWAITING_TRANSACTOR) không
      * @return số lượng giao dịch
      */
-    public long getCount(UUID groupId, boolean excludePending) {
-        String key = buildKey(groupId, excludePending);
+    public long getCount(UUID groupId, boolean excludeWaiting) {
+        String key = buildKey(groupId, excludeWaiting);
         try {
             String val = stringRedisTemplate.opsForValue().get(key);
             if (val != null) {
@@ -58,7 +61,7 @@ public class GroupTxCountHelper {
         }
 
         // cache miss: đếm từ CSDL và lưu lại vào Redis
-        long count = countFromDb(groupId, excludePending);
+        long count = countFromDb(groupId, excludeWaiting);
         setCache(key, count);
         return count;
     }
@@ -67,11 +70,11 @@ public class GroupTxCountHelper {
      * Tăng biến đếm khi tạo mới giao dịch.
      *
      * @param groupId   ID nhóm
-     * @param isPending giao dịch vừa tạo có ở trạng thái PENDING hay không
+     * @param isWaiting giao dịch vừa tạo có đang chờ xử lý (PENDING hoặc AWAITING_TRANSACTOR) hay không
      */
-    public void increment(UUID groupId, boolean isPending) {
-        // nếu không phải pending, tăng biến đếm của danh sách chính
-        if (!isPending) {
+    public void increment(UUID groupId, boolean isWaiting) {
+        // nếu không còn chờ xử lý, tăng biến đếm của danh sách chính
+        if (!isWaiting) {
             incrementKey(buildKey(groupId, true), 1);
         }
         // luôn tăng biến đếm của toàn bộ giao dịch nhóm
@@ -82,11 +85,11 @@ public class GroupTxCountHelper {
      * Giảm biến đếm khi xóa giao dịch.
      *
      * @param groupId    ID nhóm
-     * @param wasPending giao dịch bị xóa có ở trạng thái PENDING hay không
+     * @param wasWaiting giao dịch bị xóa có đang chờ xử lý (PENDING hoặc AWAITING_TRANSACTOR) hay không
      */
-    public void decrement(UUID groupId, boolean wasPending) {
-        // nếu giao dịch không phải pending, giảm biến đếm của danh sách chính
-        if (!wasPending) {
+    public void decrement(UUID groupId, boolean wasWaiting) {
+        // nếu giao dịch không chờ xử lý, giảm biến đếm của danh sách chính
+        if (!wasWaiting) {
             decrementKey(buildKey(groupId, true), 1);
         }
         // luôn giảm biến đếm của toàn bộ giao dịch nhóm
@@ -94,7 +97,7 @@ public class GroupTxCountHelper {
     }
 
     /**
-     * Cập nhật biến đếm khi một giao dịch PENDING được duyệt (CONFIRMED hoặc REJECTED).
+     * Cập nhật biến đếm khi một giao dịch đang chờ xử lý (PENDING hoặc AWAITING_TRANSACTOR) được xử lý xong (CONFIRMED hoặc REJECTED).
      *
      * @param groupId ID nhóm
      */
@@ -103,7 +106,7 @@ public class GroupTxCountHelper {
     }
 
     /**
-     * Cập nhật biến đếm khi duyệt hàng loạt giao dịch PENDING.
+     * Cập nhật biến đếm khi duyệt hàng loạt giao dịch đang chờ xử lý.
      *
      * @param groupId ID nhóm
      * @param count   số lượng giao dịch vừa duyệt
@@ -158,14 +161,14 @@ public class GroupTxCountHelper {
         }
     }
 
-    private long countFromDb(UUID groupId, boolean excludePending) {
-        if (excludePending) {
-            return transactionRepository.countByGroupIdAndDeletedAtIsNullAndStatusNot(groupId, GTransactionStatus.PENDING);
+    private long countFromDb(UUID groupId, boolean excludeWaiting) {
+        if (excludeWaiting) {
+            return transactionRepository.countByGroupIdAndDeletedAtIsNullAndStatusNotIn(groupId, WAITING_STATUSES);
         }
         return transactionRepository.countByGroupIdAndDeletedAtIsNull(groupId);
     }
 
-    private String buildKey(UUID groupId, boolean excludePending) {
-        return KEY_PREFIX + groupId + (excludePending ? ":non_pending" : ":all");
+    private String buildKey(UUID groupId, boolean excludeWaiting) {
+        return KEY_PREFIX + groupId + (excludeWaiting ? ":non_waiting" : ":all");
     }
 }

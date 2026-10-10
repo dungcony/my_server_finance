@@ -213,16 +213,16 @@ class NotificationIntegrationTest {
                         + "VALUES (?, ?, ?, ?, ?, ?, CAST(? AS jsonb))",
                 UUID.randomUUID(),
                 userId,
-                "GROUP_PERSONAL_SYNC",
+                "GROUP_TXN_CONSENT_REQUEST",
                 "Xác nhận ghi sổ cá nhân",
                 "Nội dung kiểm thử",
                 UUID.randomUUID(),
-                "{\"action\": \"PERSONAL_SYNC_CONFIRM\", \"group_id\": \"" + groupId + "\"}");
+                "{\"action\": \"CONFIRM_TRANSACTION\", \"group_id\": \"" + groupId + "\"}");
 
         mockMvc.perform(get("/notifications").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].type").value("GROUP_PERSONAL_SYNC"))
-                .andExpect(jsonPath("$.data[0].data.action").value("PERSONAL_SYNC_CONFIRM"))
+                .andExpect(jsonPath("$.data[0].type").value("GROUP_TXN_CONSENT_REQUEST"))
+                .andExpect(jsonPath("$.data[0].data.action").value("CONFIRM_TRANSACTION"))
                 .andExpect(jsonPath("$.data[0].data.group_id").value(groupId.toString()));
     }
 }

@@ -210,4 +210,72 @@ class GroupTransactionRepositoryTest {
         );
         assertThat(zeroSum).isEqualTo(0L);
     }
+
+    // giao dịch nộp quỹ do testUser ghi hộ, đang chờ người thực hiện đồng ý
+    private GTransaction saveAwaitingContribution(UUID transactorId) {
+        return groupTransactionRepository.save(GTransaction.builder()
+                .id(UUID.randomUUID())
+                .groupId(testGroup.getId())
+                .moneySource(MoneySource.PERSONAL)
+                .transactorId(transactorId)
+                .createdBy(testUser.getId())
+                .type(GTransactionType.CONTRIBUTION)
+                .status(GTransactionStatus.AWAITING_TRANSACTOR)
+                .amount(50_000L)
+                .occurredAt(Instant.now().minus(1, ChronoUnit.DAYS))
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+    }
+
+    private User saveUser(String label) {
+        return userRepository.save(User.builder()
+                .id(UUID.randomUUID())
+                .email("test.gtxn." + label + "." + UUID.randomUUID() + "@example.com")
+                .password("hashed_password")
+                .firstName("Thanh")
+                .lastName(label)
+                .status(UserStatus.ACTIVE)
+                .plan(UserPlan.FREE)
+                .createdAt(Instant.now())
+                .build());
+    }
+
+    @Test
+    @DisplayName("Đếm giao dịch chưa xử lý xong gồm PENDING và AWAITING_TRANSACTOR, bỏ qua CONFIRMED")
+    void countByGroupIdAndStatusInAndDeletedAtIsNull_countsWaitingStatuses() {
+        saveAwaitingContribution(saveUser("a").getId());
+
+        long waiting = groupTransactionRepository.countByGroupIdAndStatusInAndDeletedAtIsNull(
+                testGroup.getId(), List.of(GTransactionStatus.PENDING, GTransactionStatus.AWAITING_TRANSACTOR));
+
+        assertThat(waiting).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Đếm giao dịch không chờ xử lý chỉ tính các khoản đã CONFIRMED hoặc REJECTED")
+    void countByGroupIdAndDeletedAtIsNullAndStatusNotIn_excludesWaitingStatuses() {
+        saveAwaitingContribution(saveUser("a").getId());
+
+        long nonWaiting = groupTransactionRepository.countByGroupIdAndDeletedAtIsNullAndStatusNotIn(
+                testGroup.getId(), List.of(GTransactionStatus.PENDING, GTransactionStatus.AWAITING_TRANSACTOR));
+
+        assertThat(nonWaiting).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("Tìm giao dịch chờ đồng ý của một thành viên: người thực hiện hoặc người tạo, người khác thì không thấy")
+    void findByStatusOfMember_matchesCreatorOrTransactorOnly() {
+        User transactor = saveUser("transactor");
+        GTransaction awaiting = saveAwaitingContribution(transactor.getId());
+
+        assertThat(groupTransactionRepository.findByStatusOfMember(
+                testGroup.getId(), GTransactionStatus.AWAITING_TRANSACTOR, transactor.getId()))
+                .extracting(GTransaction::getId).containsExactly(awaiting.getId());
+        assertThat(groupTransactionRepository.findByStatusOfMember(
+                testGroup.getId(), GTransactionStatus.AWAITING_TRANSACTOR, testUser.getId()))
+                .extracting(GTransaction::getId).containsExactly(awaiting.getId());
+        assertThat(groupTransactionRepository.findByStatusOfMember(
+                testGroup.getId(), GTransactionStatus.AWAITING_TRANSACTOR, UUID.randomUUID())).isEmpty();
+    }
 }

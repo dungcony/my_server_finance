@@ -28,7 +28,7 @@
 | **1** | **Sổ nhóm độc lập.** Quỹ nhóm (`group_funds`) và giao dịch nhóm (`group_transactions`) là bảng riêng, **không dùng chung** với ví và giao dịch cá nhân                                 | Dữ liệu cá nhân và dữ liệu nhóm tách nhau **bằng chính cấu trúc**, không phụ thuộc việc nhớ thêm điều kiện lọc                                             |
 | **2** | **Vắng người tham gia = cả nhóm.** Khoản không gửi danh sách người tham gia nghĩa là chia cho **mọi thành viên có mặt tại thời điểm giao dịch**. Hệ thống tự động chia đều và lưu dòng cho tất cả | Phần lớn khoản chi là của chung. Dữ liệu được tính toán và lưu trực tiếp với `share_amount > 0`                                                             |
 | **3** | **Không lưu nợ cá nhân chéo giữa hai người.** Mọi biến động được cộng dồn delta nguyên tử vào bảng tích luỹ `group_member_balances` (Migration `V18`), số dư thực tế `net_balance = contribution + paid_out_of_pocket - refund - share` được truy vấn với hiệu năng $O(1)$ | Sửa hay xoá một khoản thì delta tự cập nhật chính xác mà không phải quét lại toàn bộ lịch sử                                                                 |
-| **4** | **Tiền túi trong nhóm được ghi sang sổ cá nhân của người thực hiện qua sự kiện.** Góp quỹ, chi bằng tiền túi và nhận hoàn tiền (`REFUND`) ghi vào **ví mặc định** của `transactor`. Id giao dịch cá nhân = id giao dịch nhóm nên không cần bảng liên kết. Người gọi chính là `transactor` thì ghi ngay (kể cả khi giao dịch nhóm còn `PENDING`); ghi hộ và mọi `REFUND` thì chỉ ghi sau khi `transactor` xác nhận qua thông báo | Tiền đã rời túi người dùng thì sổ cá nhân phải biết. Không tự trừ hay cộng ví người khác khi họ chưa đồng ý. Chi bằng tiền quỹ và `ADJUSTMENT_*` không phải tiền túi nên không ghi |
+| **4** | **Tiền túi trong nhóm được ghi sang sổ cá nhân của người thực hiện qua sự kiện.** Góp quỹ, chi bằng tiền túi và nhận hoàn tiền (`REFUND`) ghi vào **ví mặc định** của `transactor`. Id giao dịch cá nhân = id giao dịch nhóm nên không cần bảng liên kết. Khoản chỉ vào ví khi giao dịch nhóm `CONFIRMED` (không có cột trạng thái riêng). Khoản dùng tiền cá nhân của người khác (ghi hộ, mọi `REFUND`) phải được `transactor` đồng ý (`AWAITING_TRANSACTOR`) mới có hiệu lực; thành viên thường không ghi hộ được | Tiền đã rời túi người dùng thì sổ cá nhân phải biết. Không tự trừ hay cộng quỹ và ví người khác khi họ chưa đồng ý. Chi bằng tiền quỹ và `ADJUSTMENT_*` không phải tiền túi nên không ghi |
 | **5** | **Mỗi nhóm có đúng một quỹ.** Lập nhóm là lập luôn quỹ                                                                                                                                 | Mọi chênh lệch giữa các thành viên được giải quyết **qua quỹ**. Không có nợ trực tiếp giữa hai thành viên, không cần chuyển tiền giữa các quỹ              |
 | **6** | **Không phân loại nhóm.** Không có `type` (gia đình / bạn bè / ở ghép)                                                                                                                 | Mọi nhóm vận hành cùng một cơ chế. Khác biệt chỉ nằm ở cờ bật/tắt tính thừa thiếu                                                                          |
 | **7** | **Dựng mới, không kế thừa schema đang chạy**                                                                                                                                           | Schema cũ theo mô hình "ví chung nằm trong bảng ví cá nhân", mâu thuẫn với quyết định 1. Việc gỡ ghi ở [STATE.md](../STATE.md) mục "Thiết kế lại 16–17/09" |
@@ -105,7 +105,7 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 | :----------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | Rời rồi quay lại → **bản ghi mới**                                                                                                         | Giữ đúng lịch sử ai có mặt lúc nào (quy tắc 4)                                                                                                                             |
 | **Từ chối người `PENDING` = xoá hẳn bản ghi**                                                                                              | Người đó chưa từng ở trong nhóm; `ck_gm_dates` không cho bản ghi `REMOVED` thiếu `joined_at`                                                                               |
-| **Rời nhóm → hệ thống tự `REJECTED`** mọi khoản `PENDING` có `created_by` = người rời. Khoản `REJECTED` sẵn không cần xử lý thêm           | Người đã rời không còn truy cập nhóm để sửa lại; dọn khoản treo cho thủ quỹ                                                                                                |
+| **Rời nhóm → hệ thống tự `REJECTED`** mọi khoản `PENDING` có `created_by` = người rời, và mọi khoản `AWAITING_TRANSACTOR` mà người rời là người tạo hoặc `transactor`. Khoản `REJECTED` sẵn không cần xử lý thêm | Người đã rời không còn truy cập nhóm để sửa lại; dọn khoản treo cho thủ quỹ                                                                                                |
 | **Vai trò không gán tuỳ ý.** Chỉ đổi qua **chuyển quyền chủ nhóm**: chủ cũ thành `MEMBER`, người nhận thành `OWNER`, cùng một transaction  | Luôn giữ đúng một `OWNER` (quy tắc 9)                                                                                                                                      |
 | Chủ nhóm không tự rời, không tự mời mình rời                                                                                               | Như trên                                                                                                                                                                   |
 | **Bật tính thừa thiếu: tất toán rồi mới rời**, kể cả khi bị chủ nhóm mời rời (quy tắc 27). Người còn nợ mà không góp thì không mời ra được | Không để người ở lại gánh nợ                                                                                                                                               |
@@ -140,15 +140,18 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 | Trạng thái  | Nghĩa                                       | Tính vào tiền của nhóm |
 | :---------- | :------------------------------------------ | :--------------------: |
 | `PENDING`   | Đã ghi, chờ thủ quỹ / chủ nhóm xác nhận     |           ❌           |
-| `CONFIRMED` | Đã xác nhận, hoặc thủ quỹ / chủ nhóm tự ghi |           ✅           |
-| `REJECTED`  | Bị từ chối                                  |           ❌           |
+| `AWAITING_TRANSACTOR` | Thủ quỹ / chủ nhóm ghi hộ khoản dùng tiền cá nhân của người khác, chờ người đó đồng ý |           ❌           |
+| `CONFIRMED` | Đã xác nhận, hoặc thủ quỹ / chủ nhóm tự ghi, hoặc người thực hiện đã đồng ý |           ✅           |
+| `REJECTED`  | Bị từ chối (bởi người duyệt hoặc người thực hiện) |           ❌           |
 
 | Chuyển                               | Ai làm                                                  |
 | :----------------------------------- | :------------------------------------------------------ |
 | `PENDING` → `CONFIRMED` / `REJECTED` | Thủ quỹ hoặc chủ nhóm (quy tắc 18)                      |
+| `AWAITING_TRANSACTOR` → `CONFIRMED` / `REJECTED` | Chính `transactor` đồng ý / từ chối (không lý do, người tạo không được báo) |
+| `AWAITING_TRANSACTOR` → `REJECTED`   | Tự động khi người tạo hoặc `transactor` rời nhóm        |
 | `CONFIRMED` → `PENDING`              | Tự động khi thành viên thường sửa khoản đó (quy tắc 20) |
 | `REJECTED` → `PENDING`               | Tự động khi người ghi sửa lại khoản bị từ chối          |
-| Xoá                                  | Chỉ chủ nhóm (quy tắc 21)                               |
+| Xoá                                  | Chủ nhóm (quy tắc 21); người tạo huỷ được khoản `AWAITING_TRANSACTOR` của mình |
 
 - **Ai sửa được:**
   - `EXPENSE`, `CONTRIBUTION`: **người ghi** sửa khoản mình ghi; **chủ nhóm** sửa mọi khoản.
@@ -178,14 +181,16 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 
 - Khoản chi nhóm **chỉ dùng danh mục hệ thống** (`categories.user_id IS NULL`), và phải là danh mục **loại chi**.
 - Phân hệ nhóm **không** có khoá ngoại sang `wallets`, `transactions` của sổ cá nhân (quyết định 4): liên kết bằng id trùng nhau và bằng sự kiện (`PersonalTransactionEvent`, `PersonalTransactionRemovedEvent`), module nhóm không import entity hay repository của module khác.
-- Cột `group_transactions.personal_sync_status` lưu trạng thái ghi sang sổ cá nhân: `NONE`, `AWAITING_CONFIRM`, `SYNCED`, `DECLINED`.
+- Nhóm **không lưu cột trạng thái ghi sổ cá nhân**: khoản có trong sổ cá nhân ⇔ giao dịch `CONFIRMED`, chưa xoá, và thuộc loại ghi sổ (`CONTRIBUTION`, `EXPENSE` bằng `PERSONAL`, `REFUND`).
+- **Khoản dùng tiền cá nhân của người khác:** thành viên thường không ghi hộ được; thủ quỹ / chủ nhóm ghi hộ thì chờ `transactor` đồng ý. Đã `CONFIRMED` thì không đổi `transactor`, số tiền, nguồn tiền và không mở lại khi bị từ chối, muốn đổi thì xoá rồi tạo lại.
+- **Khoản `AWAITING_TRANSACTOR` không sửa được**, chỉ huỷ rồi tạo lại; không hết hạn.
 
 ## 3.7 Lưu trữ nhóm <a id="37-luu-tru-nhom"></a>
 
 |                       |                                                                                                                                        |
 | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------- |
 | **Ai làm**            | Chỉ chủ nhóm: lưu trữ và mở lại                                                                                                        |
-| **Điều kiện lưu trữ** | Không còn khoản `PENDING`                                                                                                              |
+| **Điều kiện lưu trữ** | Không còn khoản `PENDING` hoặc `AWAITING_TRANSACTOR`                                                                                   |
 | **Nhóm đang lưu trữ** | Chỉ xem: chi tiết nhóm, quỹ, thành viên, giao dịch, bảng tiền từng người                                                               |
 | **Bị chặn**           | Ghi / sửa / xác nhận / xoá giao dịch, kiểm kê, đổi thông tin nhóm và quỹ, lấy mã mời, vào nhóm, duyệt, mời rời, rời nhóm, chuyển quyền |
 | **Vẫn làm được**      | Mở lại nhóm; xoá nhóm (theo quy tắc 23)                                                                                                |
@@ -220,7 +225,7 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 - **Mã mời 8 ký tự**, chữ hoa và số dễ đọc; **không thời hạn hết hạn** (có mã là tham gia được).
 - **`Idempotency-Key` giữ mức khuyến nghị**, không bắt buộc: khoản thành viên ghi trùng vẫn phải qua bước xác nhận của thủ quỹ / chủ nhóm (17/09).
 - **Xử lý phần người đã rời bị lệch:** hiển thị trên bảng tiền khi $\ne 0$ (về 0 tự động ẩn); hỗ trợ cả 2 cách giải quyết: người đó góp bù (`CONTRIBUTION`) hoặc nhóm tự gánh (bỏ tích người đó khi sửa khoản cũ); xoá nhóm đòi hỏi phần của mọi người (kể cả người đã rời) đều bằng 0 (quy tắc 28, 17/09).
-- **Rời nhóm → tự `REJECTED` khoản `PENDING`** do người đó ghi (`created_by`). Khoản `REJECTED` sẵn không cần xử lý thêm (17/09).
+- **Rời nhóm → tự `REJECTED` khoản `PENDING`** do người đó ghi (`created_by`). Khoản `REJECTED` sẵn không cần xử lý thêm (17/09). Khoản `AWAITING_TRANSACTOR` mà người đó là người tạo hoặc `transactor` cũng tự `REJECTED`.
 - **Thủ quỹ phải bàn giao quỹ trước khi rời**, không tự chuyển ngầm về chủ nhóm. Chủ nhóm muốn mời thủ quỹ rời thì bàn giao quỹ trước (17/09).
 - **Xác nhận / từ chối hàng loạt** khoản `PENDING` trong một lần gọi API (`POST /transactions/bulk-confirm`, `POST /transactions/bulk-reject`), tương tự duyệt / từ chối thành viên hàng loạt (`POST /approves`, `POST /rejects`).
 - **Kỳ của `GET /summary`:** dùng tham số `month=YYYY-MM`, mặc định là tháng hiện tại theo giờ Việt Nam UTC+7.

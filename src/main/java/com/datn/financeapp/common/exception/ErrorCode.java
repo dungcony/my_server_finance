@@ -310,8 +310,17 @@ public enum ErrorCode {
 
     GROUP_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch nhóm."),
 
-    // Xác nhận ghi sổ cá nhân cho giao dịch không ở trạng thái chờ xác nhận.
-    GROUP_TXN_PERSONAL_SYNC_NOT_AWAITING(HttpStatus.CONFLICT, "Giao dịch này không có yêu cầu ghi sổ cá nhân đang chờ xác nhận."),
+    // Người chi trả/nhận tiền đồng ý hoặc từ chối giao dịch không ở trạng thái chờ họ.
+    GROUP_TXN_NOT_AWAITING_TRANSACTOR(HttpStatus.CONFLICT, "Giao dịch này không ở trạng thái chờ bạn đồng ý."),
+
+    // Thành viên thường ghi hộ khoản dùng tiền cá nhân của người khác.
+    GROUP_TXN_PROXY_NOT_ALLOWED(HttpStatus.FORBIDDEN, "Chỉ chủ nhóm và thủ quỹ mới được ghi hộ khoản dùng tiền cá nhân của người khác."),
+
+    // Sửa giao dịch đang chờ người chi trả/nhận tiền đồng ý.
+    GROUP_TXN_AWAITING_NOT_EDITABLE(HttpStatus.CONFLICT, "Giao dịch đang chờ người thực hiện đồng ý, không được sửa. Hãy huỷ rồi tạo lại."),
+
+    // Đổi người chi trả, số tiền, nguồn tiền (hoặc mở lại khoản bị từ chối) của khoản dùng tiền cá nhân của người khác.
+    GROUP_TXN_PERSONAL_MONEY_LOCKED(HttpStatus.CONFLICT, "Khoản này dùng tiền cá nhân của người khác nên không đổi được người chi trả, số tiền, nguồn tiền hoặc mở lại sau khi bị từ chối. Hãy xoá rồi tạo lại."),
 
     GROUP_TXN_ACCESS_DENIED(HttpStatus.BAD_REQUEST, "Chỉ chủ nhóm và thủ quỹ mới được xem giao dịch của người khác"),
 
@@ -347,7 +356,7 @@ public enum ErrorCode {
 
     GROUP_ARCHIVED(HttpStatus.BAD_REQUEST, "Nhóm đã lưu trữ, chỉ cho phép xem."),
 
-    GROUP_PENDING_TXN_EXIST(HttpStatus.BAD_REQUEST, "Nhóm vẫn còn giao dịch đang chờ duyệt."),
+    GROUP_PENDING_TXN_EXIST(HttpStatus.BAD_REQUEST, "Nhóm vẫn còn giao dịch đang chờ duyệt hoặc chờ xác nhận."),
 
     GROUP_SETTLEMENT_REQUIRED(HttpStatus.BAD_REQUEST,
             "Tất cả thành viên phải tất toán công nợ trước khi xóa hoặc rời nhóm."),

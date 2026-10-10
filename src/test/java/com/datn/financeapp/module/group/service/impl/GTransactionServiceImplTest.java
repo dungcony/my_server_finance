@@ -3,11 +3,16 @@ package com.datn.financeapp.module.group.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionBulkReviewReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionFilterReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionUpdateReq;
 import com.datn.financeapp.module.group.entity.GTransaction;
 import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.events.FundBalanceChangedEvent;
+import com.datn.financeapp.module.group.events.MemberLeaveEvent;
+import com.datn.financeapp.module.group.helper.GTransactionBuilder;
 import com.datn.financeapp.module.group.helper.GroupTxCountHelper;
+import com.datn.financeapp.module.group.helper.GroupTxNotifier;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.PersonalSyncHelper;
 import com.datn.financeapp.module.group.helper.TransactionHelper;
@@ -67,6 +72,8 @@ class GTransactionServiceImplTest {
     @Mock
     private PersonalSyncHelper personalSyncHelper;
     @Mock
+    private GroupTxNotifier notifier;
+    @Mock
     private GroupPermissionValidator permissionValidator;
     @Mock
     private GroupTransactionPaticipantValidator transactionValidator;
@@ -81,10 +88,18 @@ class GTransactionServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new GTransactionServiceImpl(transactionRepository, memberService, transactionHelper,
-                eventPublisher, memberBalanceService, groupTxCountHelper, personalSyncHelper, permissionValidator,
-                transactionValidator, List.of(), List.of());
-        // xoá hoặc từ chối giao dịch thì trạng thái ghi sổ cá nhân về NONE
-        lenient().when(personalSyncHelper.syncOnRemove(any())).thenReturn(PersonalSyncStatus.NONE);
+                eventPublisher, memberBalanceService, groupTxCountHelper, personalSyncHelper, notifier,
+                permissionValidator, transactionValidator, List.of(), List.of());
+        // khoản dùng tiền cá nhân (nộp quỹ, chi tiền túi, hoàn tiền) mà người gọi không phải người thực hiện thì cần đồng ý
+        lenient().when(personalSyncHelper.requiresConsent(any(), any(), any(), any())).thenAnswer(inv -> {
+            GTransactionType type = inv.getArgument(0);
+            MoneySource source = inv.getArgument(1);
+            UUID transactorId = inv.getArgument(2);
+            UUID operatorId = inv.getArgument(3);
+            boolean recordedToLedger = type == GTransactionType.CONTRIBUTION || type == GTransactionType.REFUND
+                    || (type == GTransactionType.EXPENSE && source == MoneySource.PERSONAL);
+            return recordedToLedger && !transactorId.equals(operatorId);
+        });
         groupId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
         memberId = UUID.randomUUID();
@@ -497,75 +512,405 @@ class GTransactionServiceImplTest {
         verify(permissionValidator, never()).getAuthInfo(groupId, ownerId, true);
     }
 
+    // ------------------------------- ghi sổ cá nhân và thông báo -------------------------------
+
     @Test
-    @DisplayName("Xoá giao dịch đã ghi sang sổ cá nhân thì nhờ helper xoá khoản đó và lưu trạng thái NONE")
-    void delete_SyncedTransaction_DelegatesRemovalToPersonalSyncHelper() {
-        GTransaction synced = txn(500_000L);
-        synced.setPersonalSyncStatus(PersonalSyncStatus.SYNCED);
-        stubFind(synced);
+    @DisplayName("Xoá giao dịch: chụp trạng thái trước, đặt xoá mềm rồi nhờ helper gỡ khoản ở sổ cá nhân")
+    void delete_SyncsLedgerAfterSoftDelete() {
+        GTransaction confirmed = txn(500_000L);
+        stubFind(confirmed);
+        PersonalSyncHelper.Snapshot snapshot = snapshotOf(confirmed);
+        when(personalSyncHelper.snapshotOf(confirmed)).thenReturn(snapshot);
 
-        service.delete(ownerId, groupId, synced.getId());
+        service.delete(ownerId, groupId, confirmed.getId());
 
-        verify(personalSyncHelper).syncOnRemove(synced);
-        assertThat(synced.getPersonalSyncStatus()).isEqualTo(PersonalSyncStatus.NONE);
+        verify(personalSyncHelper).sync(snapshot, confirmed);
+        assertThat(confirmed.getDeletedAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("Từ chối giao dịch chờ duyệt thì nhờ helper xoá khoản đã ghi ở sổ cá nhân")
-    void reject_DelegatesRemovalToPersonalSyncHelper() {
+    @DisplayName("Thủ quỹ huỷ giao dịch ghi hộ đang chờ người chi trả đồng ý do chính mình tạo thì xoá mềm được")
+    void delete_AwaitingByCreatorTreasurer_SoftDeletes() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        stubFind(awaiting);
+
+        service.delete(treasurerId, groupId, awaiting.getId());
+
+        assertThat(awaiting.getDeletedAt()).isNotNull();
+        verify(groupTxCountHelper).decrement(groupId, true);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("Thủ quỹ huỷ giao dịch ghi hộ chờ đồng ý do người khác tạo thì bị chặn")
+    void delete_AwaitingByOtherTreasurer_ThrowsForbidden() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        awaiting.setCreatedBy(ownerId);
+        stubFind(awaiting);
+
+        assertThatThrownBy(() -> service.delete(treasurerId, groupId, awaiting.getId()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
+
+        assertThat(awaiting.getDeletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("Duyệt giao dịch: nhờ helper ghi vào ví và báo người thực hiện khi người duyệt là người khác")
+    void confirm_RecordsToLedgerAndNotifiesTransactor() {
         GTransaction pending = pendingTxn(100_000L);
-        pending.setPersonalSyncStatus(PersonalSyncStatus.SYNCED);
+        stubFind(pending);
+        PersonalSyncHelper.Snapshot snapshot = snapshotOf(pending);
+        when(personalSyncHelper.snapshotOf(pending)).thenReturn(snapshot);
+        when(personalSyncHelper.sync(snapshot, pending)).thenReturn(true);
+
+        service.confirm(ownerId, groupId, pending.getId());
+
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
+        verify(notifier).notifyRecorded(pending);
+    }
+
+    @Test
+    @DisplayName("Duyệt giao dịch mà khoản không vào ví (VD chi tiền quỹ): không gửi thông báo đã ghi")
+    void confirm_NotRecorded_DoesNotNotify() {
+        GTransaction pending = pendingTxn(100_000L);
+        stubFind(pending);
+        when(personalSyncHelper.sync(any(), eq(pending))).thenReturn(false);
+
+        service.confirm(ownerId, groupId, pending.getId());
+
+        verify(notifier, never()).notifyRecorded(any());
+    }
+
+    @Test
+    @DisplayName("Từ chối giao dịch chờ duyệt: khoản chưa từng vào ví nên không đụng sổ cá nhân")
+    void reject_DoesNotTouchLedger() {
+        GTransaction pending = pendingTxn(100_000L);
         stubFind(pending);
 
         service.reject(ownerId, groupId, pending.getId());
 
-        verify(personalSyncHelper).syncOnRemove(pending);
-        assertThat(pending.getPersonalSyncStatus()).isEqualTo(PersonalSyncStatus.NONE);
+        assertThat(pending.getStatus()).isEqualTo(GTransactionStatus.REJECTED);
+        verify(personalSyncHelper, never()).sync(any(), any());
     }
 
     @Test
-    @DisplayName("Từ chối hàng loạt thì nhờ helper xoá khoản đã ghi của từng giao dịch")
-    void bulkReject_DelegatesRemovalForEachTransaction() {
+    @DisplayName("Duyệt hàng loạt: đối chiếu sổ cá nhân từng giao dịch")
+    void bulkConfirm_SyncsLedgerForEachTransaction() {
         GTransaction first = pendingTxn(100_000L);
         GTransaction second = pendingTxn(250_000L);
         stubFindPendingBatch(List.of(first.getId(), second.getId()), List.of(first, second));
 
-        service.bulkReject(ownerId, groupId,
+        service.bulkConfirm(ownerId, groupId,
                 new GroupTransactionBulkReviewReq(List.of(first.getId(), second.getId())));
 
-        verify(personalSyncHelper).syncOnRemove(first);
-        verify(personalSyncHelper).syncOnRemove(second);
+        verify(personalSyncHelper).sync(any(), eq(first));
+        verify(personalSyncHelper).sync(any(), eq(second));
+    }
+
+    // ------------------------------- tạo giao dịch ghi hộ -------------------------------
+
+    private GTransactionServiceImpl serviceWithStrategy(GTransactionBuilder strategy) {
+        return new GTransactionServiceImpl(transactionRepository, memberService, transactionHelper,
+                eventPublisher, memberBalanceService, groupTxCountHelper, personalSyncHelper, notifier,
+                permissionValidator, transactionValidator, List.of(strategy), List.of());
+    }
+
+    // strategy giả: trạng thái do test chỉ định, entity dựng từ request và trạng thái nhận được
+    private GTransactionBuilder strategyReturning(GTransactionStatus statusForReviewer, GTransactionStatus statusForMember) {
+        GTransactionBuilder strategy = mock(GTransactionBuilder.class);
+        when(strategy.supports(any())).thenReturn(true);
+        when(strategy.determineStatus(any())).thenAnswer(inv -> {
+            MemberAuthInfo info = inv.getArgument(0);
+            return info.isOwner() || info.isTreasurer() ? statusForReviewer : statusForMember;
+        });
+        lenient().when(strategy.build(any(), any(), any(), any(), anyBoolean())).thenAnswer(inv -> {
+            GroupTransactionCreateReq req = inv.getArgument(2);
+            GTransactionStatus status = inv.getArgument(3);
+            return GTransaction.builder()
+                    .id(UUID.randomUUID())
+                    .groupId(groupId)
+                    .type(req.type())
+                    .moneySource(req.resolveMoneySource())
+                    .transactorId(req.transactorId())
+                    .createdBy(inv.getArgument(0))
+                    .status(status)
+                    .amount(req.amount())
+                    .participants(new ArrayList<>())
+                    .occurredAt(Instant.now())
+                    .createdAt(Instant.now())
+                    .build();
+        });
+        return strategy;
+    }
+
+    private GroupTransactionCreateReq contributionReq(UUID transactorId) {
+        return new GroupTransactionCreateReq(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, 300_000L,
+                null, null, null, transactorId, null, List.of());
     }
 
     @Test
-    @DisplayName("Người thực hiện xác nhận ghi sổ cá nhân thì lưu trạng thái helper trả về")
-    void resolvePersonalSync_ByTransactor_StoresResolvedStatus() {
-        GTransaction awaiting = txn(500_000L);
-        awaiting.setPersonalSyncStatus(PersonalSyncStatus.AWAITING_CONFIRM);
-        stubFind(awaiting);
-        when(personalSyncHelper.resolveConfirmation(awaiting, true)).thenReturn(PersonalSyncStatus.SYNCED);
+    @DisplayName("Thủ quỹ ghi hộ nộp quỹ cho member: AWAITING_TRANSACTOR, quỹ chưa đổi, báo người đó, chưa vào ví")
+    void create_TreasurerOnBehalfOfMember_WaitsForTransactor() {
+        GTransactionServiceImpl svc = serviceWithStrategy(
+                strategyReturning(GTransactionStatus.CONFIRMED, GTransactionStatus.PENDING));
+        when(memberService.allMemberInGroup(groupId, List.of(memberId))).thenReturn(true);
 
-        service.resolvePersonalSync(memberId, groupId, awaiting.getId(), true);
+        svc.create(treasurerId, groupId, contributionReq(memberId));
 
-        verify(permissionValidator).verifyMember(groupId, memberId, true);
-        assertThat(awaiting.getPersonalSyncStatus()).isEqualTo(PersonalSyncStatus.SYNCED);
-        verify(transactionRepository).save(awaiting);
+        ArgumentCaptor<GTransaction> saved = ArgumentCaptor.forClass(GTransaction.class);
+        verify(transactionRepository).save(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(GTransactionStatus.AWAITING_TRANSACTOR);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+        verify(groupTxCountHelper).increment(groupId, true);
+        verify(notifier).notifyTransactor(saved.getValue());
+        verify(notifier, never()).notifyReviewers(any());
     }
 
     @Test
-    @DisplayName("Người không phải người thực hiện gọi xác nhận thì thấy như không tồn tại và helper không bị gọi")
-    void resolvePersonalSync_ByAnotherUser_ThrowsNotFound() {
-        GTransaction awaiting = txn(500_000L);
-        awaiting.setPersonalSyncStatus(PersonalSyncStatus.AWAITING_CONFIRM);
-        stubFind(awaiting);
+    @DisplayName("Thủ quỹ tự nộp quỹ cho mình: CONFIRMED ngay, quỹ đổi, không cần đồng ý")
+    void create_TreasurerForSelf_ConfirmedImmediately() {
+        GTransactionServiceImpl svc = serviceWithStrategy(
+                strategyReturning(GTransactionStatus.CONFIRMED, GTransactionStatus.PENDING));
+        when(memberService.allMemberInGroup(groupId, List.of(treasurerId))).thenReturn(true);
 
-        assertThatThrownBy(() -> service.resolvePersonalSync(ownerId, groupId, awaiting.getId(), true))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getCode())
-                .isEqualTo(ErrorCode.GROUP_TRANSACTION_NOT_FOUND.getCode());
+        svc.create(treasurerId, groupId, contributionReq(treasurerId));
 
-        verify(personalSyncHelper, never()).resolveConfirmation(any(), anyBoolean());
+        ArgumentCaptor<GTransaction> saved = ArgumentCaptor.forClass(GTransaction.class);
+        verify(transactionRepository).save(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
+        assertThat(capturePublishedEvents()).containsExactly(new FundBalanceChangedEvent(groupId, 300_000L));
+        verify(notifier, never()).notifyTransactor(any());
+        verify(notifier, never()).notifyReviewers(any());
+    }
+
+    @Test
+    @DisplayName("Member tự nộp quỹ: PENDING, báo chủ nhóm/thủ quỹ duyệt")
+    void create_MemberForSelf_PendingAndNotifiesReviewers() {
+        GTransactionServiceImpl svc = serviceWithStrategy(
+                strategyReturning(GTransactionStatus.CONFIRMED, GTransactionStatus.PENDING));
+        when(memberService.allMemberInGroup(groupId, List.of(memberId))).thenReturn(true);
+
+        svc.create(memberId, groupId, contributionReq(memberId));
+
+        ArgumentCaptor<GTransaction> saved = ArgumentCaptor.forClass(GTransaction.class);
+        verify(transactionRepository).save(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(GTransactionStatus.PENDING);
+        verify(groupTxCountHelper).increment(groupId, true);
+        verify(notifier).notifyReviewers(saved.getValue());
+    }
+
+    @Test
+    @DisplayName("Member ghi hộ nộp quỹ cho người khác: bị chặn GROUP_TXN_PROXY_NOT_ALLOWED, không lưu")
+    void create_MemberOnBehalfOfOther_ThrowsProxyNotAllowed() {
+        GTransactionServiceImpl svc = serviceWithStrategy(
+                strategyReturning(GTransactionStatus.CONFIRMED, GTransactionStatus.PENDING));
+        when(memberService.allMemberInGroup(groupId, List.of(treasurerId))).thenReturn(true);
+
+        assertThatThrownBy(() -> svc.create(memberId, groupId, contributionReq(treasurerId)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_PROXY_NOT_ALLOWED.getCode()));
+
         verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Thủ quỹ ghi chi tiêu bằng tiền quỹ cho member: không cần đồng ý, CONFIRMED ngay")
+    void create_FundExpenseForOther_NoConsentNeeded() {
+        GTransactionServiceImpl svc = serviceWithStrategy(
+                strategyReturning(GTransactionStatus.CONFIRMED, GTransactionStatus.PENDING));
+        when(memberService.allMemberInGroup(groupId, List.of(memberId))).thenReturn(true);
+        GroupTransactionCreateReq req = new GroupTransactionCreateReq(GTransactionType.EXPENSE, MoneySource.FUND,
+                200_000L, null, null, UUID.randomUUID(), memberId, null, List.of());
+
+        svc.create(treasurerId, groupId, req);
+
+        ArgumentCaptor<GTransaction> saved = ArgumentCaptor.forClass(GTransaction.class);
+        verify(transactionRepository).save(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
+    }
+
+    // ------------------------------- người chi trả đồng ý hoặc từ chối -------------------------------
+
+    @Test
+    @DisplayName("Người chi trả đồng ý: CONFIRMED, quỹ đổi, vào ví, người duyệt là người tạo")
+    void respond_Accept_ConfirmsAndAppliesFundAndLedger() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        stubFind(awaiting);
+        PersonalSyncHelper.Snapshot snapshot = snapshotOf(awaiting);
+        when(personalSyncHelper.snapshotOf(awaiting)).thenReturn(snapshot);
+
+        service.respond(memberId, groupId, awaiting.getId(), true);
+
+        verify(permissionValidator).verifyMember(groupId, memberId, false);
+        assertThat(awaiting.getStatus()).isEqualTo(GTransactionStatus.CONFIRMED);
+        assertThat(awaiting.getReviewedBy()).isEqualTo(treasurerId);
+        assertThat(awaiting.getReviewedAt()).isNotNull();
+        verify(personalSyncHelper).sync(snapshot, awaiting);
+        verify(groupTxCountHelper).onTransactionReviewed(groupId);
+        assertThat(capturePublishedEvents()).containsExactly(new FundBalanceChangedEvent(groupId, 300_000L));
+        verify(notifier, never()).notifyRecorded(any());
+    }
+
+    @Test
+    @DisplayName("Người chi trả từ chối: REJECTED, người duyệt là chính họ, quỹ và ví không đổi")
+    void respond_Decline_RejectsWithoutFundOrLedgerChange() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        stubFind(awaiting);
+
+        service.respond(memberId, groupId, awaiting.getId(), false);
+
+        assertThat(awaiting.getStatus()).isEqualTo(GTransactionStatus.REJECTED);
+        assertThat(awaiting.getReviewedBy()).isEqualTo(memberId);
+        verify(personalSyncHelper, never()).sync(any(), any());
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+        verify(groupTxCountHelper).onTransactionReviewed(groupId);
+    }
+
+    @Test
+    @DisplayName("Người không phải người chi trả trả lời thì thấy như không tồn tại, trạng thái không đổi")
+    void respond_ByAnotherUser_ThrowsNotFound() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        stubFind(awaiting);
+
+        assertThatThrownBy(() -> service.respond(ownerId, groupId, awaiting.getId(), true))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TRANSACTION_NOT_FOUND.getCode()));
+
+        assertThat(awaiting.getStatus()).isEqualTo(GTransactionStatus.AWAITING_TRANSACTOR);
+    }
+
+    @Test
+    @DisplayName("Trả lời giao dịch không ở trạng thái chờ người chi trả: GROUP_TXN_NOT_AWAITING_TRANSACTOR")
+    void respond_NotAwaiting_Throws() {
+        GTransaction confirmed = txn(300_000L);
+        stubFind(confirmed);
+
+        assertThatThrownBy(() -> service.respond(memberId, groupId, confirmed.getId(), true))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_NOT_AWAITING_TRANSACTOR.getCode()));
+
+        verify(personalSyncHelper, never()).sync(any(), any());
+    }
+
+    // ------------------------------- sửa giao dịch -------------------------------
+
+    private GroupTransactionUpdateReq updateReq(Long amount, UUID transactorId) {
+        return new GroupTransactionUpdateReq(amount, null, null, null, null, transactorId, null, null);
+    }
+
+    private void assertUpdateFails(UUID operatorId, GTransaction txn, GroupTransactionUpdateReq req, ErrorCode code) {
+        assertThatThrownBy(() -> service.update(operatorId, groupId, txn.getId(), req))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        e -> assertThat(e.getCode()).isEqualTo(code.getCode()));
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Sửa giao dịch đang chờ người chi trả đồng ý: GROUP_TXN_AWAITING_NOT_EDITABLE")
+    void update_Awaiting_ThrowsNotEditable() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        stubFind(awaiting);
+
+        assertUpdateFails(treasurerId, awaiting, updateReq(null, null), ErrorCode.GROUP_TXN_AWAITING_NOT_EDITABLE);
+    }
+
+    @Test
+    @DisplayName("Chủ nhóm đổi số tiền khoản nộp quỹ của member: GROUP_TXN_PERSONAL_MONEY_LOCKED")
+    void update_OwnerChangesAmountOfMembersContribution_ThrowsLocked() {
+        GTransaction confirmed = txn(300_000L);
+        stubFind(confirmed);
+
+        assertUpdateFails(ownerId, confirmed, updateReq(500_000L, null), ErrorCode.GROUP_TXN_PERSONAL_MONEY_LOCKED);
+    }
+
+    @Test
+    @DisplayName("Chủ nhóm đổi người nộp của khoản nộp quỹ sang người khác: GROUP_TXN_PERSONAL_MONEY_LOCKED")
+    void update_OwnerChangesTransactor_ThrowsLocked() {
+        GTransaction confirmed = txn(300_000L);
+        stubFind(confirmed);
+
+        assertUpdateFails(ownerId, confirmed, updateReq(null, treasurerId), ErrorCode.GROUP_TXN_PERSONAL_MONEY_LOCKED);
+    }
+
+    @Test
+    @DisplayName("Member sửa khoản của mình thành ghi hộ người khác: GROUP_TXN_PROXY_NOT_ALLOWED")
+    void update_MemberTurnsOwnContributionIntoProxy_ThrowsProxyNotAllowed() {
+        GTransaction pending = pendingTxn(300_000L);
+        stubFind(pending);
+
+        assertUpdateFails(memberId, pending, updateReq(null, treasurerId), ErrorCode.GROUP_TXN_PROXY_NOT_ALLOWED);
+    }
+
+    @Test
+    @DisplayName("Chủ nhóm mở lại khoản nộp quỹ của member đã bị từ chối: GROUP_TXN_PERSONAL_MONEY_LOCKED")
+    void update_OwnerReopensRejectedOthersContribution_ThrowsLocked() {
+        GTransaction rejected = txn(300_000L);
+        rejected.setStatus(GTransactionStatus.REJECTED);
+        stubFind(rejected);
+
+        assertUpdateFails(ownerId, rejected, updateReq(null, null), ErrorCode.GROUP_TXN_PERSONAL_MONEY_LOCKED);
+    }
+
+    // ------------------------------- rời nhóm, danh sách, đếm -------------------------------
+
+    @Test
+    @DisplayName("Thành viên rời nhóm: giao dịch chờ đồng ý liên quan tới họ tự REJECTED")
+    void onMemberLeave_RejectsAwaitingTransactionsOfMember() {
+        GTransaction awaiting = awaitingTxn(300_000L);
+        when(transactionRepository.findByStatusOfMember(groupId, GTransactionStatus.AWAITING_TRANSACTOR, memberId))
+                .thenReturn(List.of(awaiting));
+
+        service.onMemberLeave(new MemberLeaveEvent(groupId, memberId, ownerId));
+
+        assertThat(awaiting.getStatus()).isEqualTo(GTransactionStatus.REJECTED);
+        assertThat(awaiting.getReviewedBy()).isEqualTo(ownerId);
+        verify(transactionRepository).saveAll(List.of(awaiting));
+        verify(groupTxCountHelper).onTransactionsBulkReviewed(groupId, 1);
+    }
+
+    @Test
+    @DisplayName("Thành viên rời nhóm mà không có giao dịch chờ: không ghi gì")
+    void onMemberLeave_NothingAwaiting_DoesNothing() {
+        when(transactionRepository.findByStatusOfMember(groupId, GTransactionStatus.AWAITING_TRANSACTOR, memberId))
+                .thenReturn(List.of());
+
+        service.onMemberLeave(new MemberLeaveEvent(groupId, memberId, ownerId));
+
+        verify(transactionRepository, never()).saveAll(any());
+        verifyNoInteractions(groupTxCountHelper);
+    }
+
+    @Test
+    @DisplayName("Member thường xem danh sách chung không lọc trạng thái: loại các khoản đang chờ xử lý")
+    void list_MemberWithoutStatus_ExcludesWaiting() {
+        when(transactionRepository.findList(any(Specification.class), any(Pageable.class))).thenReturn(List.of());
+        when(groupTxCountHelper.getCount(groupId, true)).thenReturn(0L);
+
+        service.list(memberId, groupId, new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, 20));
+
+        verify(groupTxCountHelper).getCount(groupId, true);
+    }
+
+    @Test
+    @DisplayName("Thủ quỹ xem danh sách chung không lọc: thấy tất cả, dùng bộ đếm đầy đủ")
+    void list_TreasurerWithoutStatus_SeesAll() {
+        when(transactionRepository.findList(any(Specification.class), any(Pageable.class))).thenReturn(List.of());
+        when(groupTxCountHelper.getCount(groupId, false)).thenReturn(0L);
+
+        service.list(treasurerId, groupId, new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, 20));
+
+        verify(groupTxCountHelper).getCount(groupId, false);
+    }
+
+    @Test
+    @DisplayName("Đếm giao dịch chưa xử lý xong gồm cả PENDING và AWAITING_TRANSACTOR")
+    void countUnresolvedForGroup_CountsBothWaitingStatuses() {
+        when(transactionRepository.countByGroupIdAndStatusInAndDeletedAtIsNull(
+                groupId, List.of(GTransactionStatus.PENDING, GTransactionStatus.AWAITING_TRANSACTOR)))
+                .thenReturn(3L);
+
+        assertThat(service.countUnresolvedForGroup(groupId)).isEqualTo(3L);
     }
 
     private List<Object> capturePublishedEvents() {
@@ -577,6 +922,18 @@ class GTransactionServiceImplTest {
     private void stubFindPendingBatch(List<UUID> ids, List<GTransaction> found) {
         when(transactionRepository.findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(
                 ids, groupId, GTransactionStatus.PENDING)).thenReturn(found);
+    }
+
+    private PersonalSyncHelper.Snapshot snapshotOf(GTransaction t) {
+        return new PersonalSyncHelper.Snapshot(t.getStatus(), t.getType(), t.getMoneySource(), t.getTransactorId());
+    }
+
+    // giao dịch nộp quỹ do thủ quỹ ghi hộ cho member, đang chờ member đồng ý
+    private GTransaction awaitingTxn(long amount) {
+        GTransaction awaiting = txn(amount);
+        awaiting.setStatus(GTransactionStatus.AWAITING_TRANSACTOR);
+        awaiting.setCreatedBy(treasurerId);
+        return awaiting;
     }
 
     private GTransaction pendingTxn(long amount) {
