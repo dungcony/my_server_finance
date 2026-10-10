@@ -8,7 +8,7 @@ import java.util.UUID;
 public record UpdateUserRoleReq(
         @NotNull(message = "không được để trống người dùng")
         UUID userId,
-        @NotNull(message = "không được để trống người dùng")
+        @NotNull(message = "Vai trò không được để trống.")
         RoleName roleName) {
 
 }

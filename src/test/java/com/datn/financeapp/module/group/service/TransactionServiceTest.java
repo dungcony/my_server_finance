@@ -12,6 +12,7 @@ import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.helper.GTransactionBuilder;
 import com.datn.financeapp.module.group.helper.GroupTxCountHelper;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
+import com.datn.financeapp.module.group.helper.PersonalSyncHelper;
 import com.datn.financeapp.module.group.helper.TransactionHelper;
 import com.datn.financeapp.module.group.mapper.GTransactionMapper;
 import com.datn.financeapp.module.group.repository.GroupRepository;
@@ -67,6 +68,9 @@ class TransactionServiceTest {
     private GroupTxCountHelper groupTxCountHelper;
 
     @Mock
+    private PersonalSyncHelper personalSyncHelper;
+
+    @Mock
     private GTransactionBuilder expenseStrategy;
 
     @Mock
@@ -91,6 +95,9 @@ class TransactionServiceTest {
         GroupPermissionValidator permissionValidator = new GroupPermissionValidator(groupRepository, null, null);
         GroupTransactionPaticipantValidator transactionValidator = new GroupTransactionPaticipantValidator(memberService);
         GTransactionMapper gTransactionMapper = Mappers.getMapper(GTransactionMapper.class);
+        // các test này chỉ kiểm luồng tạo, nên coi như không có khoản nào cần ghi sang sổ cá nhân
+        org.mockito.Mockito.lenient().when(personalSyncHelper.syncOnCreate(any(), any()))
+                .thenReturn(PersonalSyncStatus.NONE);
         TransactionHelper transactionHelper = new TransactionHelper(gTransactionMapper);
 
         transactionService = new GTransactionServiceImpl(
@@ -100,6 +107,7 @@ class TransactionServiceTest {
                 eventPublisher,
                 memberBalanceService,
                 groupTxCountHelper,
+                personalSyncHelper,
                 permissionValidator,
                 transactionValidator,
                 List.of(expenseStrategy, refundStrategy),
@@ -110,7 +118,6 @@ class TransactionServiceTest {
     @Test
     @DisplayName("Chủ nhóm ghi khoản chi quỹ -> tự động CONFIRMED và trừ tiền quỹ")
     void testCreate_ExpenseByOwner_DirectConfirmed() {
-        CategoryRefResponse cat = new CategoryRefResponse(categoryId, "Ăn uống", "expense", "#FF0000", null, null);
         MemberAuthInfo authInfo = new MemberAuthInfo(
                 groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, ownerId
         );
@@ -145,9 +152,42 @@ class TransactionServiceTest {
     }
 
     @Test
+    @DisplayName("Tạo giao dịch lưu đúng trạng thái ghi sổ cá nhân mà PersonalSyncHelper quyết định")
+    void testCreate_StoresPersonalSyncStatusFromHelper() {
+        MemberAuthInfo authInfo = new MemberAuthInfo(
+                groupId, ownerId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.OWNER, ownerId
+        );
+
+        when(groupRepository.findAuthInfo(groupId, ownerId)).thenReturn(Optional.of(authInfo));
+        when(memberService.allMemberInGroup(eq(groupId), any())).thenReturn(true);
+        when(expenseStrategy.supports(GTransactionType.EXPENSE)).thenReturn(true);
+        when(expenseStrategy.determineStatus(any())).thenReturn(GTransactionStatus.CONFIRMED);
+
+        GTransaction mockTxn = GTransaction.builder().id(UUID.randomUUID()).amount(1000000L).type(GTransactionType.EXPENSE).moneySource(MoneySource.PERSONAL).status(GTransactionStatus.CONFIRMED).build();
+        when(expenseStrategy.build(eq(ownerId), eq(groupId), any(), eq(GTransactionStatus.CONFIRMED), eq(true))).thenReturn(mockTxn);
+        when(personalSyncHelper.syncOnCreate(mockTxn, ownerId)).thenReturn(PersonalSyncStatus.SYNCED);
+        when(transactionRepository.save(any(GTransaction.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        GroupTransactionCreateReq req = new GroupTransactionCreateReq(
+                GTransactionType.EXPENSE,
+                MoneySource.PERSONAL,
+                1000000L,
+                Instant.now(),
+                null,
+                categoryId,
+                ownerId,
+                "Ăn trưa",
+                List.of()
+        );
+
+        GroupTransactionDetailRes res = transactionService.create(ownerId, groupId, req);
+
+        assertThat(res.personalSyncStatus()).isEqualTo(PersonalSyncStatus.SYNCED);
+    }
+
+    @Test
     @DisplayName("Thành viên thường ghi khoản chi -> PENDING và quỹ không đổi")
     void testCreate_ExpenseByMember_Pending() {
-        CategoryRefResponse cat = new CategoryRefResponse(categoryId, "Ăn uống", "expense", "#FF0000", null, null);
         MemberAuthInfo authInfo = new MemberAuthInfo(
                 groupId, memberId, GroupStatus.ACTIVE, true, MemberStatus.ACTIVE, MemberRole.MEMBER, ownerId
         );

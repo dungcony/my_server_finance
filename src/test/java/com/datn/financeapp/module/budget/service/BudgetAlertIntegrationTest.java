@@ -177,7 +177,7 @@ class BudgetAlertIntegrationTest {
 
     private int countBudgetAlerts(String budgetId) {
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM notifications WHERE reference_id = ? AND type = 'budget_alert'",
+                "SELECT COUNT(*) FROM notifications WHERE reference_id = ? AND type = 'BUDGET_ALERT'",
                 Integer.class,
                 UUID.fromString(budgetId));
         return count == null ? 0 : count;
@@ -212,7 +212,7 @@ class BudgetAlertIntegrationTest {
                 1, countBudgetAlerts(budgetId), "Chi vượt hạn mức phải sinh đúng 1 cảnh báo ngân sách");
 
         String title = jdbcTemplate.queryForObject(
-                "SELECT title FROM notifications WHERE reference_id = ? AND type = 'budget_alert'",
+                "SELECT title FROM notifications WHERE reference_id = ? AND type = 'BUDGET_ALERT'",
                 String.class,
                 UUID.fromString(budgetId));
         Assertions.assertEquals("Đã vượt ngân sách", title);

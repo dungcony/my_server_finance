@@ -59,9 +59,9 @@ public class SecurityConfig {
                                 PathRequest.toStaticResources().atCommonLocations())
                         .permitAll()
                         .requestMatchers(
-                                "/", "/index.html", "/login-test.html", "/*.html",
+                                "/", "/index.html", "/*.html",
                                 "/favicon.ico", "swagger-ui/**", "/v3/api-docs/**",
-                                "/static/**", "/pages/**", "/css/**", "/js/**", "/sass/**",
+                                "/static/**", "/ui/**",
                                 "/auth/register", "/auth/login", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/reset-password",
                                 "/auth/verify-email", "/auth/resend-verification",

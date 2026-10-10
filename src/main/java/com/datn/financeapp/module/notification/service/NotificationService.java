@@ -2,7 +2,9 @@ package com.datn.financeapp.module.notification.service;
 
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
+import com.datn.financeapp.module.notification.enums.NotiType;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -14,7 +16,8 @@ import java.util.UUID;
  *   <li>{@link #markRead(UUID, UUID)}: Đánh dấu một thông báo là đã đọc (null = đánh dấu tất cả).</li>
  *   <li>{@link #createBudgetAlert(UUID, String, String, UUID)}: Tạo thông báo cảnh báo ngân sách.</li>
  *   <li>{@link #createDebtReminder(UUID, String, String, UUID)}: Tạo thông báo nhắc nợ đến hạn.</li>
- *   <li>{@link #createNotification(UUID, String, String, String, UUID)}: Tạo thông báo chung hệ thống.</li>
+ *   <li>{@link #createNotification(UUID, NotiType, String, String, UUID)}: Tạo thông báo chung hệ thống.</li>
+ *   <li>{@link #createNotification(UUID, NotiType, String, String, UUID, Map)}: Tạo thông báo chung kèm dữ liệu phụ để app điều hướng.</li>
  * </ul>
  * </p>
  */
@@ -62,10 +65,23 @@ public interface NotificationService {
      * Tạo một thông báo mới trong hệ thống.
      *
      * @param userId      ID người dùng nhận thông báo
-     * @param type        Loại thông báo (VD: {@code budget_alert}, {@code debt_reminder})
+     * @param type        Loại thông báo
      * @param title       Tiêu đề thông báo
      * @param content     Nội dung chi tiết thông báo
      * @param referenceId ID đối tượng tham chiếu (ngân sách, khoản nợ, giao dịch định kỳ...)
      */
-    void createNotification(UUID userId, String type, String title, String content, UUID referenceId);
+    void createNotification(UUID userId, NotiType type, String title, String content, UUID referenceId);
+
+    /**
+     * Tạo một thông báo mới kèm dữ liệu phụ để app điều hướng.
+     *
+     * @param userId      ID người dùng nhận thông báo
+     * @param type        Loại thông báo
+     * @param title       Tiêu đề thông báo
+     * @param content     Nội dung chi tiết thông báo
+     * @param referenceId ID đối tượng tham chiếu (ngân sách, khoản nợ, giao dịch nhóm...)
+     * @param data        Dữ liệu phụ dạng json phẳng, null nếu loại thông báo không cần; không chứa trạng thái
+     */
+    void createNotification(
+            UUID userId, NotiType type, String title, String content, UUID referenceId, Map<String, Object> data);
 }

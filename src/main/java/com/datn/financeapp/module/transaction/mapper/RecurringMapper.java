@@ -1,8 +1,10 @@
 package com.datn.financeapp.module.transaction.mapper;
 
+import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.transaction.dto.response.RecurringDetailResponse;
 import com.datn.financeapp.module.transaction.dto.response.RecurringListItemResponse;
 import com.datn.financeapp.module.transaction.dto.response.RunNowResponse;
+import com.datn.financeapp.module.transaction.dto.response.TransactionDetailResponse;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
@@ -14,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Mapper chuyển đổi giữa entity {@link RecurringTransaction} và các DTO response liên quan.
- * Cung cấp các phương thức ánh xạ chính như {@link #toListItemResponse(RecurringTransaction, WalletRefResponse, CategoryRefResponse, long)}
+ * Cung cấp các phương thức ánh xạ chính như {@link #toListItemResponse(RecurringTransaction, WalletRefResponse, CategoryResponse, long)}
  * và {@link #toDetailResponse(RecurringListItemResponse, List)}.
  */
 @Mapper(componentModel = "spring")
@@ -32,7 +34,7 @@ public interface RecurringMapper {
     default RecurringListItemResponse toListItemResponse(
             RecurringTransaction rec,
             WalletRefResponse wallet,
-            CategoryRefResponse category,
+            CategoryResponse category,
             long runCount) {
         if (rec == null) {
             return null;
@@ -40,8 +42,8 @@ public interface RecurringMapper {
 
         return new RecurringListItemResponse(
                 rec.getId(),
-                rec.getDisplayName(),
-                rec.getType(),
+                rec.getName(),
+                rec.getType().name().toLowerCase(),
                 rec.getAmount(),
                 wallet == null ? null : new RecurringListItemResponse.WalletRef(wallet.id(), wallet.name()),
                 category == null
@@ -54,13 +56,12 @@ public interface RecurringMapper {
                                 : new RecurringListItemResponse.IconRef(
                                 category.icon().code(), category.icon().pathData()),
                         category.color()),
-                rec.getFrequency(),
+                rec.getFrequency().name().toLowerCase(),
                 rec.getInterval(),
                 buildScheduleLabel(rec),
                 rec.getStartDate(),
                 rec.getEndDate(),
                 rec.getNextRunDate(),
-                rec.getLastRunDate(),
                 rec.getNextRunDate() == null ? null : ChronoUnit.DAYS.between(LocalDate.now(), rec.getNextRunDate()),
                 rec.getIsEnabled(),
                 runCount,
@@ -70,10 +71,10 @@ public interface RecurringMapper {
     /**
      * Chuyển đổi thông tin giao dịch phát sinh sang dạng tóm tắt trong lịch sử.
      *
-     * @param t DTO thông tin giao dịch phát sinh
+     * @param t chi tiết giao dịch đã được sinh ra từ khoản định kỳ
      * @return DTO {@link RecurringDetailResponse.GeneratedTransaction} tóm tắt
      */
-    default RecurringDetailResponse.GeneratedTransaction toGeneratedTransaction(GeneratedTransactionResponse t) {
+    default RecurringDetailResponse.GeneratedTransaction toGeneratedTransaction(TransactionDetailResponse t) {
         if (t == null) {
             return null;
         }
@@ -129,15 +130,15 @@ public interface RecurringMapper {
         }
         int interval = rec.getInterval() != null ? rec.getInterval() : 1;
         return switch (rec.getFrequency()) {
-            case "day" -> interval == 1 ? "Hằng ngày" : "Mỗi " + interval + " ngày";
-            case "week" -> interval == 1 ? "Hằng tuần" : "Mỗi " + interval + " tuần";
-            case "month" -> (interval == 1 ? "Hằng tháng" : "Mỗi " + interval + " tháng")
+            case WEEK -> interval == 1 ? "Hằng tuần" : "Mỗi " + interval + " tuần";
+            case MONTH -> (interval == 1 ? "Hằng tháng" : "Mỗi " + interval + " tháng")
                     + (rec.getStartDate() != null ? " vào ngày " + rec.getStartDate().getDayOfMonth() : "");
-            case "year" -> (interval == 1 ? "Hằng năm" : "Mỗi " + interval + " năm")
+            case QUARTER -> (interval == 1 ? "Hằng quý" : "Mỗi " + interval + " quý")
+                    + (rec.getStartDate() != null ? " vào ngày " + rec.getStartDate().getDayOfMonth() : "");
+            case YEAR -> (interval == 1 ? "Hằng năm" : "Mỗi " + interval + " năm")
                     + (rec.getStartDate() != null
                     ? " vào ngày " + rec.getStartDate().getDayOfMonth() + " tháng " + rec.getStartDate().getMonthValue()
                     : "");
-            default -> rec.getFrequency();
         };
     }
 }

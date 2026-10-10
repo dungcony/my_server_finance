@@ -6,6 +6,7 @@ import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.budget.service.BudgetRenewalService;
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.category.service.CategoryService;
+import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.service.NotificationService;
 
 import java.time.Instant;
@@ -30,7 +31,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class BudgetRenewalImpl implements BudgetRenewalService {
 
-    private static final String NOTIFICATION_TYPE = "budget_renewed";
     private static final String UNKNOWN_CATEGORY_NAME = "Danh mục đã xoá";
 
     private final BudgetRepository budgetRepository;
@@ -83,7 +83,7 @@ public class BudgetRenewalImpl implements BudgetRenewalService {
 
         notificationService.createNotification(
                 old.getUserId(),
-                NOTIFICATION_TYPE,
+                NotiType.BUDGET_RENEWED,
                 "Ngân sách đã bắt đầu kỳ mới",
                 "Ngân sách " + categoryNameOf(old.getCategoryId()) + " đã tự động chuyển sang kỳ mới từ "
                         + newStart + " đến " + newEnd + ".",

@@ -161,7 +161,7 @@ class GroupServicePerfIntegrationTest {
         for (int i = 0; i < USER_POOL_SIZE; i++)
             pool.add(createUser(userRole));
         categoryId = jdbcTemplate.queryForObject(
-                "SELECT id FROM categories WHERE user_id IS NULL AND type = 'expense' LIMIT 1", UUID.class);
+                "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
 
         // pool.get(0) là thành viên thường của nhóm chính, cũng là người tạo giao dịch chờ duyệt
         mainGroupId = newGroup(FEW_MEMBERS - 1);

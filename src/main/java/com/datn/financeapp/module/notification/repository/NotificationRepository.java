@@ -71,7 +71,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Query(
             value = """
                     INSERT INTO notifications (id, user_id, type, title, content, reference_id)
-                    VALUES (gen_random_uuid(), :userId, 'budget_alert', :title, :content, :budgetId)
+                    VALUES (gen_random_uuid(), :userId, 'BUDGET_ALERT', :title, :content, :budgetId)
                     ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING
                     """,
             nativeQuery = true)
@@ -84,8 +84,8 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     /**
      * JOB-04 — nhắc nợ, bỏ qua nếu trong CÙNG NGÀY đã có bản ghi trùng (user, khoản nợ, loại).
      *
-     * <p>Trước đây job này dùng {@link #insertGenericNotification} với lập luận "chỉ gọi đúng ba
-     * mốc ngày cố định nên không thể trùng". Lập luận đó sai: mốc ngày cố định chỉ đảm bảo job
+     * <p>Trước đây job này dùng cách chèn thông báo chung không có {@code ON CONFLICT} với lập luận "chỉ
+     * gọi đúng ba mốc ngày cố định nên không thể trùng". Lập luận đó sai: mốc ngày cố định chỉ đảm bảo job
      * gọi tới một lần MỖI LẦN CHẠY, không đảm bảo job chỉ chạy một lần mỗi ngày. Deploy lại,
      * retry sau lỗi, hay chạy hai instance đều khiến cùng một khoản nợ ở cùng một mốc sinh hai
      * thông báo y hệt nhau trong hộp thư người dùng.
@@ -98,7 +98,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Query(
             value = """
                     INSERT INTO notifications (id, user_id, type, title, content, reference_id)
-                    VALUES (gen_random_uuid(), :userId, 'debt_reminder', :title, :content, :debtId)
+                    VALUES (gen_random_uuid(), :userId, 'DEBT_REMINDER', :title, :content, :debtId)
                     ON CONFLICT (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type) DO NOTHING
                     """,
             nativeQuery = true)
@@ -107,24 +107,4 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
             @Param("title") String title,
             @Param("content") String content,
             @Param("debtId") UUID debtId);
-
-    /**
-     * Chèn thông báo dạng chung — còn dùng cho JOB-02 ({@code budget_renewed}) và
-     * {@code recurring_generated}/{@code goal_completed}. Khác hai method ở trên: không có
-     * {@code ON CONFLICT}, vì chống trùng của những loại này nằm ở tầng service (kiểm tra kỳ mới
-     * đã tồn tại hay chưa trước khi gọi tới) chứ không dựa vào {@code uq_notif_budget_alert}.
-     */
-    @Modifying
-    @Query(
-            value = """
-                    INSERT INTO notifications (id, user_id, type, title, content, reference_id)
-                    VALUES (gen_random_uuid(), :userId, :type, :title, :content, :referenceId)
-                    """,
-            nativeQuery = true)
-    void insertGenericNotification(
-            @Param("userId") UUID userId,
-            @Param("type") String type,
-            @Param("title") String title,
-            @Param("content") String content,
-            @Param("referenceId") UUID referenceId);
 }

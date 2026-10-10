@@ -6,5 +6,5 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record GroupTransferOwnershipReq(
-        @NotNull @JsonAlias({"new_owner_user_id", "newOwnerUserId"}) UUID newOwnerId) {
+        @NotNull(message = "Chủ nhóm mới không được để trống.") @JsonAlias({"new_owner_user_id", "newOwnerUserId"}) UUID newOwnerId) {
 }

@@ -2,7 +2,6 @@ package com.datn.financeapp.module.transaction.mapper;
 
 import com.datn.financeapp.module.transaction.dto.response.TransactionDetailResponse;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -11,5 +10,6 @@ import org.mapstruct.Mapping;
  */
 @Mapper(componentModel = "spring")
 public interface TransactionMapper {
+    @Mapping(target = "displayName", source = "name")
     TransactionDetailResponse toResponse(Transaction txn);
 }

@@ -4,6 +4,8 @@ import com.datn.financeapp.module.transaction.enums.TransactionSource;
 import com.datn.financeapp.module.transaction.enums.TransactionType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -41,6 +43,7 @@ public class Transaction {
     @Column(name = "category_id")
     private UUID categoryId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private TransactionType type;
 
@@ -57,6 +60,7 @@ public class Transaction {
     @Column(name = "name")
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false)
     private TransactionSource source;
 

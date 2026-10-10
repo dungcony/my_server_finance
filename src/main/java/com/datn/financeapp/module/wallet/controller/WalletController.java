@@ -3,13 +3,8 @@ package com.datn.financeapp.module.wallet.controller;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.module.wallet.dto.request.AdjustBalanceRequest;
-import com.datn.financeapp.module.wallet.dto.response.AdjustBalanceResponse;
 import com.datn.financeapp.module.wallet.dto.request.CreateWalletRequest;
 import com.datn.financeapp.module.wallet.dto.response.ReconcileResponse;
-import com.datn.financeapp.module.wallet.dto.request.ReorderWalletsRequest;
-import com.datn.financeapp.module.wallet.dto.request.TransferRequest;
-import com.datn.financeapp.module.wallet.dto.response.TransferResponse;
 import com.datn.financeapp.module.wallet.dto.request.UpdateWalletRequest;
 import com.datn.financeapp.module.wallet.dto.response.WalletDetailResponse;
 import com.datn.financeapp.module.wallet.dto.response.WalletResponse;
@@ -37,8 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * REST Controller quản lý các thao tác liên quan đến ví tài chính.
  * Cung cấp API quản lý danh sách ví {@link #list}, tổng quan ví {@link #summary}, chi tiết ví {@link #detail},
- * tạo mới ví {@link #create}, cập nhật ví {@link #update}, xóa ví {@link #delete}, sắp xếp ví {@link #reorder},
- * chuyển tiền giữa các ví {@link #transfer}, điều chỉnh số dư {@link #adjustBalance} và đối chiếu số dư {@link #reconcile}.
+ * tạo mới ví {@link #create}, cập nhật ví {@link #update}, xóa ví {@link #delete},
+ * và đối chiếu số dư {@link #reconcile}.
  */
 @RestController
 @RequestMapping("/wallets")
@@ -91,29 +86,6 @@ public class WalletController {
         UUID userId = SecurityContextUtil.currentUserId();
         walletService.delete(userId, id, deleteTransactions);
         return ApiResponse.of(null);
-    }
-
-    @PatchMapping("/reorder")
-    public ApiResponse<Void> reorder(@Valid @RequestBody ReorderWalletsRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        walletService.reorder(userId, req);
-        return ApiResponse.of(null);
-    }
-
-    @PostMapping("/transfer")
-    @Idempotent
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<TransferResponse> transfer(@Valid @RequestBody TransferRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(walletTransferService.transfer(userId, req));
-    }
-
-    @PostMapping("/{id}/adjust-balance")
-    @Idempotent
-    public ApiResponse<AdjustBalanceResponse> adjustBalance(
-            @PathVariable UUID id, @Valid @RequestBody AdjustBalanceRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(walletTransferService.adjustBalance(userId, id, req));
     }
 
     @PostMapping("/{id}/reconcile")

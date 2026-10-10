@@ -137,6 +137,15 @@ public enum ErrorCode {
     // Xoá ví cuối cùng — người dùng phải luôn còn ít nhất một ví.
     WALLET_LAST_NOT_DELETABLE(HttpStatus.CONFLICT, "Phải còn ít nhất một ví."),
 
+    // Xoá ví đang là ví mặc định — phải đặt ví khác làm mặc định trước.
+    WALLET_DEFAULT_NOT_DELETABLE(HttpStatus.CONFLICT, "Không xoá được ví mặc định, hãy chọn ví khác làm mặc định trước."),
+
+    // Bỏ cờ mặc định của ví mặc định — chỉ đổi được bằng cách đặt ví khác làm mặc định.
+    WALLET_DEFAULT_REQUIRED(HttpStatus.BAD_REQUEST, "Phải có một ví mặc định, hãy chọn ví khác làm mặc định."),
+
+    // Người dùng không có ví mặc định — không xảy ra nhờ trigger ở CSDL, nếu gặp là lỗi dữ liệu.
+    WALLET_DEFAULT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "Không tìm thấy ví mặc định."),
+
     // Xoá ví còn giao dịch mà chưa xác nhận xoá kèm.
     WALLET_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Ví còn giao dịch, cần xác nhận xoá kèm giao dịch."),
 
@@ -263,7 +272,7 @@ public enum ErrorCode {
     // ---------------------------------------------------------------------
 
     // Tần suất lặp không nằm trong tập cho phép.
-    RECURRING_FREQUENCY_INVALID(HttpStatus.BAD_REQUEST, "Tần suất phải là day, week, month hoặc year."),
+    RECURRING_FREQUENCY_INVALID(HttpStatus.BAD_REQUEST, "Tần suất phải là week, month, quarter hoặc year."),
 
     // Khoảng lặp phải từ 1 trở lên.
     RECURRING_INTERVAL_INVALID(HttpStatus.BAD_REQUEST, "Khoảng lặp phải lớn hơn hoặc bằng 1."),
@@ -300,6 +309,9 @@ public enum ErrorCode {
     GROUP_FUND_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy quỹ của nhóm."),
 
     GROUP_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch nhóm."),
+
+    // Xác nhận ghi sổ cá nhân cho giao dịch không ở trạng thái chờ xác nhận.
+    GROUP_TXN_PERSONAL_SYNC_NOT_AWAITING(HttpStatus.CONFLICT, "Giao dịch này không có yêu cầu ghi sổ cá nhân đang chờ xác nhận."),
 
     GROUP_TXN_ACCESS_DENIED(HttpStatus.BAD_REQUEST, "Chỉ chủ nhóm và thủ quỹ mới được xem giao dịch của người khác"),
 

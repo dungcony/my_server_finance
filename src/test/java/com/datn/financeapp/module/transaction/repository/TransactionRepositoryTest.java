@@ -106,7 +106,6 @@ class TransactionRepositoryTest {
                 .initialBalance(1_000_000L)
                 .currentBalance(1_000_000L)
                 .includeInTotal(true)
-                .sortOrder(0)
                 .isDeleted(false)
                 .createdAt(Instant.now())
                 .build());

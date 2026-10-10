@@ -9,15 +9,13 @@ import java.util.UUID;
  * @param fromDate         ngày bắt đầu
  * @param toDate           ngày kết thúc
  * @param period           khoảng thời gian (week/month/quarter/year)
- * @param type             loại giao dịch
+ * @param type             loại giao dịch (EXPENSE, INCOME, LOAN)
  * @param walletId         ID ví
  * @param categoryId       ID danh mục
- * @param source           nguồn giao dịch
- * @param countsInReport   có tính vào báo cáo hay không
+ * @param source           nguồn giao dịch (MANUAL, AI, RECURRING)
  * @param search           từ khóa tìm kiếm
  * @param minAmount        số tiền tối thiểu
  * @param maxAmount        số tiền tối đa
- * @param includeTransfers bao gồm giao dịch chuyển tiền hay không
  */
 public record TransactionFilterRequest(
         LocalDate fromDate,
@@ -27,13 +25,7 @@ public record TransactionFilterRequest(
         UUID walletId,
         UUID categoryId,
         String source,
-        Boolean countsInReport,
         String search,
         Long minAmount,
-        Long maxAmount,
-        Boolean includeTransfers) {
-
-    public boolean includeTransfersOrDefault() {
-        return includeTransfers == null || includeTransfers;
-    }
+        Long maxAmount) {
 }

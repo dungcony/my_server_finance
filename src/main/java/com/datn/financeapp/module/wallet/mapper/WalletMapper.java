@@ -16,11 +16,11 @@ public interface WalletMapper {
     @Mapping(target = "type", source = "wallet.type")
     @Mapping(target = "currentBalance", source = "currentBalanceAsOfToday")
     @Mapping(target = "includeInTotal", source = "wallet.includeInTotal")
+    @Mapping(target = "isDefault", source = "wallet.isDefault")
     @Mapping(target = "isShared", constant = "false")
     @Mapping(target = "groupId", expression = "java(null)")
     @Mapping(target = "icon", source = "wallet.icon")
     @Mapping(target = "color", source = "wallet.color")
-    @Mapping(target = "sortOrder", source = "wallet.sortOrder")
     @Mapping(target = "createdAt", source = "wallet.createdAt")
     @Mapping(target = "projectedBalance", source = "projectedBalance")
     WalletResponse toResponse(Wallet wallet, long currentBalanceAsOfToday, Long projectedBalance);

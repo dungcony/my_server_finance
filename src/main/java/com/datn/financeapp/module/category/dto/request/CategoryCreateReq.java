@@ -15,12 +15,12 @@ import jakarta.validation.constraints.Size;
  * @param parentCode  Mã danh mục cha ({@code null} tức là danh mục gốc)
  */
 public record CategoryCreateReq(
-        @NotBlank @Size(max = 50) String name,
-        @NotBlank @Size(max = 50) @Pattern(regexp = "^[a-z0-9_]+$", message = "Mã chỉ gồm chữ thường, số và dấu gạch dưới.") String code,
-        @NotBlank String description,
-        @NotBlank String iconCode,
-        @NotBlank @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.") String color,
-        @NotBlank String parentCode
+        @NotBlank(message = "Tên danh mục không được để trống.") @Size(max = 50, message = "Tên danh mục không được vượt quá 50 ký tự.") String name,
+        @NotBlank(message = "Mã danh mục không được để trống.") @Size(max = 50, message = "Mã danh mục không được vượt quá 50 ký tự.") @Pattern(regexp = "^[a-z0-9_]+$", message = "Mã chỉ gồm chữ thường, số và dấu gạch dưới.") String code,
+        @NotBlank(message = "Mô tả không được để trống.") String description,
+        @NotBlank(message = "Biểu tượng không được để trống.") String iconCode,
+        @NotBlank(message = "Màu sắc không được để trống.") @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.") String color,
+        @NotBlank(message = "Mã danh mục cha không được để trống.") String parentCode
 ) {
 
 }

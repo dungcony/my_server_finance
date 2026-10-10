@@ -26,6 +26,7 @@ public interface GTransactionMapper {
     @Mapping(target = "note", source = "txn.note")
     @Mapping(target = "createdAt", source = "txn.createdAt")
     @Mapping(target = "updatedAt", source = "txn.updatedAt")
+    @Mapping(target = "personalSyncStatus", source = "txn.personalSyncStatus")
     GroupTransactionDetailRes toDetailResponse(GTransaction txn);
 
     @Mapping(target = "userId", source = "participant.userId")

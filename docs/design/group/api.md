@@ -116,6 +116,7 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
 |                                                 |  `PUT`   | `/v1/groups/{id}/transactions/{tId}`             | Sửa giao dịch — *người ghi / Owner*. Áp dụng cập nhật số dư qua Strategy tương ứng                                                                                                            |
 |                                                 | `DELETE` | `/v1/groups/{id}/transactions/{tId}`             | Xóa mềm giao dịch — **chỉ Owner**                                                                                                                                                             |
 |                                                 |  `POST`  | `/v1/groups/{id}/transactions/{tId}/confirm`     | Xác nhận khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                  |
+|                                                 |  `POST`  | `/v1/groups/{id}/transactions/{tId}/personal-sync` | Xác nhận hoặc từ chối ghi khoản vào sổ cá nhân — *chính người thực hiện* |
 |                                                 |  `POST`  | `/v1/groups/{id}/transactions/{tId}/reject`      | Từ chối khoản `PENDING` — *Thủ quỹ / Owner*                                                                                                                                                   |
 |                                                 |  `POST`  | `/v1/groups/{id}/transactions/bulk-confirm`      | Xác nhận nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                   |
 |                                                 |  `POST`  | `/v1/groups/{id}/transactions/bulk-reject`       | Từ chối nhiều khoản `PENDING` cùng lúc — *Thủ quỹ / Owner*                                                                                                                                    |
@@ -586,8 +587,12 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
 2. `CONTRIBUTION` (Góp quỹ):
     - `money_source = PERSONAL` (tiền bản thân nộp vào quỹ; số dư quỹ tăng khi xác nhận).
     - `category_id = NULL`, không có người tham gia.
-    - Chỉ ghi ở sổ nhóm. Ví cá nhân của người góp **không bị đụng tới** và **không có trường liên kết sang giao dịch cá
-      nhân** ([rule.md](rule.md) quyết định 4). Ai muốn ví cá nhân khớp thì tự ghi một khoản bên sổ cá nhân.
+    - Ghi sang sổ cá nhân của người góp ([rule.md](rule.md) quyết định 4): khoản `EXPENSE` trong **ví mặc định**, danh mục hệ
+      thống "Góp quỹ nhóm" (`gop_quy_nhom`). Người gọi chính là người góp (`transactor_id`) thì ghi ngay, kể cả khi
+      khoản còn `PENDING`; thủ quỹ/chủ nhóm ghi hộ thì không ghi ngay mà gửi thông báo `GROUP_PERSONAL_SYNC` cho người góp
+      (`reference_id` là id giao dịch, `data` là `{"action": "PERSONAL_SYNC_CONFIRM", "group_id": "..."}` để app mở
+      đúng giao dịch), xác nhận bằng `POST /transactions/{tId}/personal-sync`. Sửa/xoá/từ chối khoản nhóm thì khoản cá nhân tự cập nhật.
+    - Id giao dịch cá nhân **trùng** id giao dịch nhóm, không có trường liên kết riêng.
 
 ---
 
@@ -846,6 +851,28 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
        hưởng theo [pipeline.md](pipeline.md) mục 3 (khoản `EXPENSE` bằng `PERSONAL` không đổi quỹ).
     3. `reject`: `status = REJECTED`, `reviewed_by`, `reviewed_at`. Không đụng tới quỹ.
 - **Response:** `HTTP 200 OK` — `GroupTransactionDetailRes` với `status` mới.
+
+---
+
+#### Xác nhận ghi sổ cá nhân (`personal-sync`) <a id="333d-personal-sync"></a>
+
+- **`POST /v1/groups/{id}/transactions/{tId}/personal-sync`** — body `{ "accept": true }` (xác nhận) hoặc `{ "accept": false }` (từ chối)
+- **Phân quyền:** chỉ chính `transactor_id` của khoản (chống IDOR). Người khác nhận `404 GROUP_TRANSACTION_NOT_FOUND`.
+  Nhóm đã lưu trữ vẫn xác nhận được vì tiền đã rời túi người đó.
+- **Áp dụng cho** khoản có `personal_sync_status = AWAITING_CONFIRM`: ghi hộ (người gọi lúc tạo ≠ `transactor_id`) và mọi `REFUND`.
+  Khoản ở trạng thái khác → `409 GROUP_TXN_PERSONAL_SYNC_NOT_AWAITING`.
+- **Nghiệp vụ** — trong một transaction CSDL:
+    1. `accept = true`: bắn `PersonalTransactionEvent`, module giao dịch ghi vào **ví mặc định** của người đó
+       (`CONTRIBUTION`, `EXPENSE` tiền túi → `EXPENSE`; `REFUND` → `INCOME`), `personal_sync_status = SYNCED`.
+    2. `accept = false`: `personal_sync_status = DECLINED`, sổ cá nhân và ví giữ nguyên.
+- **Response:** `HTTP 200 OK` — `GroupTransactionDetailRes` với `personal_sync_status` mới.
+
+| `personal_sync_status` | Ý nghĩa |
+| :--- | :--- |
+| `NONE` | Không áp dụng (`EXPENSE` bằng `FUND`, `ADJUSTMENT_*`), hoặc khoản đã bị xoá/từ chối |
+| `AWAITING_CONFIRM` | Đã gửi thông báo, chờ `transactor` xác nhận |
+| `SYNCED` | Đã ghi sang sổ cá nhân; sửa/xoá khoản nhóm sẽ cập nhật/xoá khoản cá nhân |
+| `DECLINED` | `transactor` từ chối; sửa khoản nhóm không hỏi lại với cùng người |
 
 ---
 

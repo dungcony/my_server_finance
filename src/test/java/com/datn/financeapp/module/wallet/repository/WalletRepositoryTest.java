@@ -1,6 +1,7 @@
 package com.datn.financeapp.module.wallet.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.user.entity.User;
@@ -91,7 +92,9 @@ class WalletRepositoryTest {
         otherUserId = otherUser.getId();
     }
 
-    private Wallet createWallet(UUID ownerId, String name, String type, long balance, int sortOrder, boolean inTotal, boolean deleted) {
+    private long createdOffsetMillis;
+
+    private Wallet createWallet(UUID ownerId, String name, String type, long balance, boolean inTotal, boolean deleted) {
         Wallet wallet = Wallet.builder()
                 .id(UUID.randomUUID())
                 .userId(ownerId)
@@ -101,9 +104,9 @@ class WalletRepositoryTest {
                 .currentBalance(balance)
                 .includeInTotal(inTotal)
                 .color("#112233")
-                .sortOrder(sortOrder)
                 .isDeleted(deleted)
-                .createdAt(Instant.now())
+                // lệch nhau 1ms để thứ tự tạo (ORDER BY created_at) ổn định trong test
+                .createdAt(Instant.now().plusMillis(createdOffsetMillis++))
                 .build();
         return walletRepository.saveAndFlush(wallet);
     }
@@ -111,32 +114,21 @@ class WalletRepositoryTest {
     @Test
     @DisplayName("countByUserIdAndIsDeletedFalse & existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse")
     void countAndExists_FilterActiveWallets() {
-        createWallet(userId, "Cash", "cash", 100_000, 0, true, false);
-        createWallet(userId, "Deleted Bank", "bank", 500_000, 1, true, true);
+        createWallet(userId, "Cash", "cash", 100_000, true, false);
+        createWallet(userId, "Deleted Bank", "bank", 500_000, true, true);
 
-        assertThat(walletRepository.countByUserIdAndIsDeletedFalse(userId)).isEqualTo(1);
+        // ví "Tiền mặt" mặc định do trigger tạo cùng người dùng, cộng thêm ví "Cash" vừa tạo
+        assertThat(walletRepository.countByUserIdAndIsDeletedFalse(userId)).isEqualTo(2);
         assertThat(walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, "cash")).isTrue();
         assertThat(walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, "CASH")).isTrue();
         assertThat(walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, "Deleted Bank")).isFalse();
     }
 
     @Test
-    @DisplayName("findMaxSortOrderByUserId: Trả về max sortOrder hoặc -1 nếu chưa có ví")
-    void findMaxSortOrderByUserId_ReturnsMaxOrNegativeOne() {
-        assertThat(walletRepository.findMaxSortOrderByUserId(userId)).isEqualTo(-1);
-
-        createWallet(userId, "Wallet 1", "cash", 100_000, 2, true, false);
-        createWallet(userId, "Wallet 2", "bank", 200_000, 5, true, false);
-        createWallet(userId, "Wallet Deleted", "bank", 300_000, 99, true, true);
-
-        assertThat(walletRepository.findMaxSortOrderByUserId(userId)).isEqualTo(5);
-    }
-
-    @Test
     @DisplayName("findByIdForUser: Chỉ trả về ví của chính user và chưa bị xóa mềm")
     void findByIdForUser_EnforcesIsolationAndSoftDelete() {
-        Wallet activeWallet = createWallet(userId, "My Wallet", "bank", 500_000, 0, true, false);
-        Wallet deletedWallet = createWallet(userId, "Old Wallet", "bank", 100_000, 1, true, true);
+        Wallet activeWallet = createWallet(userId, "My Wallet", "bank", 500_000, true, false);
+        Wallet deletedWallet = createWallet(userId, "Old Wallet", "bank", 100_000, true, true);
 
         // Chủ sở hữu tìm thấy ví đang hoạt động
         Optional<Wallet> found = walletRepository.findByIdForUser(activeWallet.getId(), userId);
@@ -153,7 +145,7 @@ class WalletRepositoryTest {
     @Test
     @DisplayName("findByIdForUserIncludingDeleted: Trả về cả ví đã xóa mềm của chính user (dùng cho idempotent delete)")
     void findByIdForUserIncludingDeleted_ReturnsDeletedWallet() {
-        Wallet deletedWallet = createWallet(userId, "Deleted Wallet", "cash", 0, 0, true, true);
+        Wallet deletedWallet = createWallet(userId, "Deleted Wallet", "cash", 0, true, true);
 
         Optional<Wallet> found = walletRepository.findByIdForUserIncludingDeleted(deletedWallet.getId(), userId);
         assertThat(found).isPresent();
@@ -162,16 +154,19 @@ class WalletRepositoryTest {
     }
 
     @Test
-    @DisplayName("findAllForUser: Lọc theo type, onlyInTotal và sắp xếp theo sortOrder")
+    @DisplayName("findAllForUser: Lọc theo type, onlyInTotal và sắp xếp theo thứ tự tạo")
     void findAllForUser_FiltersAndSortsCorrectly() {
-        Wallet w1 = createWallet(userId, "Bank 1", "bank", 1_000_000, 1, true, false);
-        Wallet w2 = createWallet(userId, "Cash 1", "cash", 200_000, 0, true, false);
-        Wallet w3 = createWallet(userId, "Bank Excluded", "bank", 500_000, 2, false, false);
-        createWallet(userId, "Deleted", "bank", 100_000, 3, true, true);
+        Wallet w1 = createWallet(userId, "Bank 1", "bank", 1_000_000, true, false);
+        Wallet w2 = createWallet(userId, "Cash 1", "cash", 200_000, true, false);
+        Wallet w3 = createWallet(userId, "Bank Excluded", "bank", 500_000, false, false);
+        createWallet(userId, "Deleted", "bank", 100_000, true, true);
 
-        // Lấy tất cả ví active của user
+        UUID defaultWalletId = walletRepository.findDefaultWalletId(userId).orElseThrow();
+
+        // Lấy tất cả ví active của user (bỏ ví mặc định do trigger tạo để so thứ tự các ví của test)
         List<Wallet> all = walletRepository.findAllForUser(userId, null, null, false);
-        assertThat(all).extracting(Wallet::getId).containsExactly(w2.getId(), w1.getId(), w3.getId());
+        assertThat(all).extracting(Wallet::getId).filteredOn(id -> !id.equals(defaultWalletId))
+                .containsExactly(w1.getId(), w2.getId(), w3.getId());
 
         // Lọc theo type = bank
         List<Wallet> banks = walletRepository.findAllForUser(userId, "bank", null, false);
@@ -179,26 +174,72 @@ class WalletRepositoryTest {
 
         // Lọc theo onlyInTotal = true
         List<Wallet> inTotal = walletRepository.findAllForUser(userId, null, true, false);
-        assertThat(inTotal).extracting(Wallet::getId).containsExactly(w2.getId(), w1.getId());
+        assertThat(inTotal).extracting(Wallet::getId).filteredOn(id -> !id.equals(defaultWalletId))
+                .containsExactly(w1.getId(), w2.getId());
     }
 
     @Test
-    @DisplayName("updateSortOrder: Cập nhật sortOrder của ví")
-    void updateSortOrder_UpdatesSuccessfully() {
-        Wallet wallet = createWallet(userId, "Order Test", "cash", 100_000, 0, true, false);
+    @DisplayName("findDefaultWalletId: Trigger tạo user sinh sẵn ví mặc định, mỗi user một ví riêng")
+    void findDefaultWalletId_ReturnsWalletCreatedByTrigger() {
+        UUID defaultId = walletRepository.findDefaultWalletId(userId).orElseThrow();
 
-        int updated = walletRepository.updateSortOrder(wallet.getId(), 10, userId);
-        assertThat(updated).isEqualTo(1);
+        Wallet defaultWallet = walletRepository.findById(defaultId).orElseThrow();
+        assertThat(defaultWallet.getName()).isEqualTo("Tiền mặt");
+        assertThat(defaultWallet.getType()).isEqualTo("cash");
+        assertThat(defaultWallet.getIsDefault()).isTrue();
+        assertThat(walletRepository.findDefaultWalletId(otherUserId)).isPresent().isNotEqualTo(Optional.of(defaultId));
+    }
 
+    @Test
+    @DisplayName("clearDefault rồi đặt ví khác làm mặc định: kiểm tra hoãn đến commit, còn đúng một ví mặc định")
+    void clearDefault_ThenSetAnother_KeepsExactlyOneDefault() {
+        Wallet other = createWallet(userId, "Bank", "bank", 0, true, false);
+
+        walletRepository.clearDefault(userId);
         entityManager.clear();
-        Wallet reloaded = walletRepository.findById(wallet.getId()).orElseThrow();
-        assertThat(reloaded.getSortOrder()).isEqualTo(10);
+        Wallet reloaded = walletRepository.findById(other.getId()).orElseThrow();
+        reloaded.setIsDefault(true);
+        walletRepository.saveAndFlush(reloaded);
+
+        // ép chạy kiểm tra đang hoãn, hợp lệ thì không ném lỗi
+        enforceOneDefaultRule();
+        assertThat(walletRepository.findDefaultWalletId(userId)).contains(other.getId());
+    }
+
+    @Test
+    @DisplayName("Xoá mềm ví mặc định: trigger chặn vì user còn 0 ví mặc định")
+    void softDeleteDefaultWallet_ViolatesOneDefaultRule() {
+        UUID defaultId = walletRepository.findDefaultWalletId(userId).orElseThrow();
+
+        entityManager.createNativeQuery("UPDATE wallets SET is_deleted = TRUE WHERE id = :id")
+                .setParameter("id", defaultId)
+                .executeUpdate();
+
+        assertThatThrownBy(this::enforceOneDefaultRule).hasStackTraceContaining("đúng một ví mặc định");
+    }
+
+    @Test
+    @DisplayName("Hai ví mặc định cùng lúc: trigger chặn vì user có 2 ví mặc định")
+    void twoDefaultWallets_ViolatesOneDefaultRule() {
+        Wallet other = createWallet(userId, "Bank", "bank", 0, true, false);
+
+        entityManager.createNativeQuery("UPDATE wallets SET is_default = TRUE WHERE id = :id")
+                .setParameter("id", other.getId())
+                .executeUpdate();
+
+        assertThatThrownBy(this::enforceOneDefaultRule).hasStackTraceContaining("đúng một ví mặc định");
+    }
+
+    // trigger kiểm tra khai báo DEFERRABLE INITIALLY DEFERRED nên test phải ép chạy sớm vì test không commit
+    private void enforceOneDefaultRule() {
+        entityManager.flush();
+        entityManager.createNativeQuery("SET CONSTRAINTS trg_wallets_one_default IMMEDIATE").executeUpdate();
     }
 
     @Test
     @DisplayName("findByIdForUpdate: Tìm kiếm với khoá bi quan PESSIMISTIC_WRITE")
     void findByIdForUpdate_FindsActiveWallet() {
-        Wallet wallet = createWallet(userId, "Lock Test", "bank", 2_000_000, 0, true, false);
+        Wallet wallet = createWallet(userId, "Lock Test", "bank", 2_000_000, true, false);
 
         Optional<Wallet> locked = walletRepository.findByIdForUpdate(wallet.getId());
         assertThat(locked).isPresent();
@@ -208,7 +249,7 @@ class WalletRepositoryTest {
     @Test
     @DisplayName("adjustBalance & findCurrentBalanceNative: Cập nhật atomic số dư và đọc native SQL")
     void adjustBalance_And_FindCurrentBalanceNative() {
-        Wallet wallet = createWallet(userId, "Balance Test", "bank", 1_000_000, 0, true, false);
+        Wallet wallet = createWallet(userId, "Balance Test", "bank", 1_000_000, true, false);
 
         // Cộng 250_000
         int updatedAdd = walletRepository.adjustBalance(wallet.getId(), 250_000);
@@ -224,8 +265,8 @@ class WalletRepositoryTest {
     @Test
     @DisplayName("findAllActiveWalletIds: Trả về danh sách ID ví active cho job đối chiếu")
     void findAllActiveWalletIds_ReturnsOnlyActive() {
-        Wallet active = createWallet(userId, "Active", "cash", 50_000, 0, true, false);
-        createWallet(userId, "Deleted", "cash", 50_000, 1, true, true);
+        Wallet active = createWallet(userId, "Active", "cash", 50_000, true, false);
+        createWallet(userId, "Deleted", "cash", 50_000, true, true);
 
         List<UUID> ids = walletRepository.findAllActiveWalletIds();
         assertThat(ids).contains(active.getId());

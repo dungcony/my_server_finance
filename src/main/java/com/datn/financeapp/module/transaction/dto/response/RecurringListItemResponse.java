@@ -18,7 +18,6 @@ import java.util.UUID;
  * @param startDate     ngày bắt đầu
  * @param endDate       ngày kết thúc
  * @param nextRunDate   ngày chạy tiếp theo
- * @param lastRunDate   ngày chạy gần nhất
  * @param daysUntilNext số ngày còn lại đến kỳ tiếp theo
  * @param isEnabled     trạng thái đang hoạt động hay tạm dừng
  * @param runCount      số lần đã phát sinh giao dịch
@@ -37,7 +36,6 @@ public record RecurringListItemResponse(
         LocalDate startDate,
         LocalDate endDate,
         LocalDate nextRunDate,
-        LocalDate lastRunDate,
         Long daysUntilNext,
         Boolean isEnabled,
         Long runCount,

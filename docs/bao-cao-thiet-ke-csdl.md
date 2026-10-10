@@ -213,6 +213,9 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 - `include_in_total` (BOOLEAN, NOT NULL, DEFAULT TRUE): Cờ cho phép tính vào tổng tài sản hiển thị.
 - `icon` (VARCHAR (50)), `color` (CHAR (7)): Mã icon và mã màu HEX giao diện.
 - `sort_order` (INTEGER, NOT NULL, DEFAULT 0): Thứ tự sắp xếp.
+- `is_default` (BOOLEAN, NOT NULL, DEFAULT FALSE): Ví mặc định nhận các khoản tự ghi từ giao dịch nhóm. Mỗi người dùng luôn có
+  đúng một ví mặc định chưa xóa: trigger `trg_users_default_wallet` tạo ví "Tiền mặt" mặc định khi tạo người dùng, constraint
+  trigger `trg_wallets_one_default` (hoãn đến lúc commit) chặn xóa mềm ví mặc định hoặc có hai ví mặc định.
 - `is_deleted` (BOOLEAN, NOT NULL, DEFAULT FALSE): Cờ xóa mềm ví.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT now ()): Thời điểm tạo.
 
@@ -377,11 +380,15 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 
 - `id` (UUID, PK): Định danh thông báo.
 - `user_id` (UUID, FK $\rightarrow$ `users.id`, NOT NULL): Người nhận thông báo.
-- `type` (VARCHAR (50), NOT NULL): Loại thông báo (`budget_alert`, `debt_reminder`, `recurring_generated`,
-  `budget_renewed`, `goal_completed`).
+- `type` (VARCHAR (50), NOT NULL): Loại thông báo, lưu tên hằng của enum `NotiType` (`BUDGET_ALERT`, `DEBT_REMINDER`,
+  `RECURRING_GENERATED`, `BUDGET_RENEWED`, `GOAL_COMPLETED`, `GROUP_PERSONAL_SYNC`). App dựa vào đây để chọn icon và
+  màn hình đích.
 - `title` (VARCHAR (150), NOT NULL): Tiêu đề thông báo.
 - `content` (TEXT, NOT NULL): Nội dung thông báo.
-- `reference_id` (UUID, NULL): ID của bản ghi liên quan (budget_id, debt_id...).
+- `reference_id` (UUID, NULL): ID đối tượng chính thông báo nhắc tới (budget_id, debt_id, id giao dịch nhóm...), ý
+  nghĩa tuỳ `type`; không có khoá ngoại.
+- `data` (JSONB, NULL): Dữ liệu phụ để app điều hướng, json phẳng, không chứa trạng thái (thông báo là snapshot). Ví dụ
+  `GROUP_PERSONAL_SYNC`: `{"action": "PERSONAL_SYNC_CONFIRM", "group_id": "..."}`.
 - `is_read` (BOOLEAN, NOT NULL, DEFAULT FALSE): Đã đọc / chưa đọc.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT now ()): Thời điểm gửi.
 
@@ -448,6 +455,9 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
   `ADJUSTMENT_DOWN`).
 - `status` (VARCHAR (20), NOT NULL, DEFAULT 'PENDING'): Trạng thái duyệt (`PENDING` - chờ duyệt, `CONFIRMED` - đã duyệt,
   `REJECTED` - từ chối).
+- `personal_sync_status` (VARCHAR (20), NOT NULL, DEFAULT 'NONE'): Trạng thái ghi giao dịch sang sổ cá nhân của
+  `transactor_id` (`NONE`, `AWAITING_CONFIRM` - chờ người đó xác nhận qua thông báo, `SYNCED` - đã ghi và id giao dịch cá nhân
+  trùng id giao dịch nhóm, `DECLINED` - từ chối).
 - `reviewed_by` (UUID, FK $\rightarrow$ `users.id`, NULL): Người duyệt/từ chối giao dịch.
 - `reviewed_at` (TIMESTAMPTZ, NULL): Thời điểm duyệt.
 - `amount` (BIGINT, NOT NULL): Số tiền phát sinh ($1 \dots 999.999.999.999$).
@@ -698,7 +708,7 @@ Dưới đây là tập hợp toàn bộ các lược đồ quan hệ trong hệ
 18. **SAVINGS_GOALS** (<u>id</u>, #user_id, #wallet_id, name, target_amount, saved_amount, target_date, #icon_id,
     status, created_at)
 19. **GOAL_CONTRIBUTIONS** (<u>id</u>, #goal_id, #transaction_id, amount, contributed_date, created_at)
-20. **NOTIFICATIONS** (<u>id</u>, #user_id, type, title, content, reference_id, is_read, created_at)
+20. **NOTIFICATIONS** (<u>id</u>, #user_id, type, title, content, reference_id, data, is_read, created_at)
 21. **EXPORT_JOBS** (<u>id</u>, #user_id, format, status, file_path, error_message, expires_at, created_at)
 
 ### 1.4 Khối Nhóm chung quỹ

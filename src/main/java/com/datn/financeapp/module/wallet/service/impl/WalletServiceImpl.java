@@ -5,7 +5,6 @@ import com.datn.financeapp.module.wallet.service.WalletService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.wallet.dto.request.CreateWalletRequest;
-import com.datn.financeapp.module.wallet.dto.request.ReorderWalletsRequest;
 import com.datn.financeapp.module.wallet.dto.request.UpdateWalletRequest;
 import com.datn.financeapp.module.wallet.dto.response.WalletDetailResponse;
 import com.datn.financeapp.module.wallet.dto.response.WalletRawBalanceResponse;
@@ -123,11 +122,11 @@ public class WalletServiceImpl implements WalletService {
                 wallet.getInitialBalance(),
                 currentBalanceAsOfToday,
                 wallet.getIncludeInTotal(),
+                Boolean.TRUE.equals(wallet.getIsDefault()),
                 false,
                 null,
                 wallet.getIcon(),
                 wallet.getColor(),
-                wallet.getSortOrder(),
                 stats,
                 wallet.getCreatedAt(),
                 projectedBalance);
@@ -150,7 +149,6 @@ public class WalletServiceImpl implements WalletService {
             throw new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED, "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
         }
 
-        Integer maxSortOrder = walletRepository.findMaxSortOrderByUserId(userId);
         Instant now = Instant.now();
 
         Wallet wallet = Wallet.builder()
@@ -163,7 +161,6 @@ public class WalletServiceImpl implements WalletService {
                 .includeInTotal(req.includeInTotal() == null ? true : req.includeInTotal())
                 .icon(req.icon())
                 .color(req.color())
-                .sortOrder((maxSortOrder == null ? -1 : maxSortOrder) + 1)
                 .isDeleted(false)
                 .createdAt(now)
                 .build();
@@ -186,11 +183,22 @@ public class WalletServiceImpl implements WalletService {
                 .initialBalance(0L)
                 .currentBalance(0L)
                 .includeInTotal(true)
-                .sortOrder(0)
+                .isDefault(true)
                 .isDeleted(false)
                 .createdAt(createdAt)
                 .build();
         walletRepository.save(cashWallet);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public UUID findDefaultWalletId(UUID userId) {
+        return walletRepository
+                .findDefaultWalletId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_FOUND));
     }
 
     /**
@@ -334,6 +342,9 @@ public class WalletServiceImpl implements WalletService {
         if (req.includeInTotal() != null) {
             wallet.setIncludeInTotal(req.includeInTotal());
         }
+        if (req.isDefault() != null) {
+            applyDefaultChange(userId, wallet, req.isDefault());
+        }
         if (req.icon() != null) {
             wallet.setIcon(req.icon());
         }
@@ -360,13 +371,18 @@ public class WalletServiceImpl implements WalletService {
             return;
         }
 
+        // trigger ở CSDL cũng chặn, nhưng chỉ báo lỗi lúc commit nên kiểm tra trước để trả lỗi nghiệp vụ
+        if (Boolean.TRUE.equals(wallet.getIsDefault())) {
+            throw new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_DELETABLE);
+        }
+
         if (walletRepository.countByUserIdAndIsDeletedFalse(userId) <= 1) {
             throw new BusinessException(ErrorCode.WALLET_LAST_NOT_DELETABLE);
         }
 
         Long transactionCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
-                Long.class, walletId, walletId);
+                "SELECT COUNT(*) FROM transactions WHERE wallet_id = ? AND NOT is_deleted",
+                Long.class, walletId);
         boolean hasTransactions = transactionCount != null && transactionCount > 0;
 
         if (hasTransactions && !deleteTransactions) {
@@ -375,42 +391,41 @@ public class WalletServiceImpl implements WalletService {
 
         if (hasTransactions) {
             jdbcTemplate.update(
-                    "UPDATE transactions SET is_deleted = TRUE WHERE wallet_id = ? OR destination_wallet_id = ?",
-                    walletId, walletId);
+                    "UPDATE transactions SET is_deleted = TRUE WHERE wallet_id = ?",
+                    walletId);
         }
 
         wallet.setIsDeleted(true);
         walletRepository.save(wallet);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Transactional
-    public void reorder(UUID userId, ReorderWalletsRequest req) {
-        List<UUID> ids = req.sortOrder();
-        for (int i = 0; i < ids.size(); i++) {
-            walletRepository.updateSortOrder(ids.get(i), i, userId);
+    // đặt ví này làm mặc định thì bỏ cờ của ví cũ trước; bỏ cờ mặc định trực tiếp không được phép
+    private void applyDefaultChange(UUID userId, Wallet wallet, boolean makeDefault) {
+        boolean alreadyDefault = Boolean.TRUE.equals(wallet.getIsDefault());
+        if (makeDefault && !alreadyDefault) {
+            walletRepository.clearDefault(userId);
+            wallet.setIsDefault(true);
+        } else if (!makeDefault && alreadyDefault) {
+            throw new BusinessException(ErrorCode.WALLET_DEFAULT_REQUIRED);
         }
     }
 
     private WalletStatsResponse loadStats(UUID walletId) {
         Long transactionCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
-                Long.class, walletId, walletId);
+                "SELECT COUNT(*) FROM transactions WHERE wallet_id = ? AND NOT is_deleted",
+                Long.class, walletId);
         Long incomeThisMonth = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE wallet_id = ? AND type = 'income' "
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE wallet_id = ? AND type = 'INCOME' "
                         + "AND NOT is_deleted AND date_trunc('month', date) = date_trunc('month', CURRENT_DATE)",
                 Long.class, walletId);
         Long expenseThisMonth = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE wallet_id = ? AND type = 'expense' "
+                "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE wallet_id = ? AND type IN ('EXPENSE', 'LOAN') "
                         + "AND NOT is_deleted AND date_trunc('month', date) = date_trunc('month', CURRENT_DATE)",
                 Long.class, walletId);
         LocalDate lastTransactionDate = jdbcTemplate.query(
-                "SELECT MAX(date) FROM transactions WHERE (wallet_id = ? OR destination_wallet_id = ?) AND NOT is_deleted",
+                "SELECT MAX(date) FROM transactions WHERE wallet_id = ? AND NOT is_deleted",
                 rs -> rs.next() ? rs.getObject(1, LocalDate.class) : null,
-                walletId, walletId);
+                walletId);
 
         return new WalletStatsResponse(
                 transactionCount == null ? 0 : transactionCount,

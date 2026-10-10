@@ -2,6 +2,7 @@ package com.datn.financeapp.module.group.entity;
 
 import com.datn.financeapp.module.group.enums.GTransactionStatus;
 import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.enums.PersonalSyncStatus;
 import com.datn.financeapp.module.group.enums.MoneySource;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -110,6 +111,15 @@ public class GTransaction {
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private GTransactionStatus status = GTransactionStatus.PENDING;
+
+    /**
+     * Trạng thái ghi giao dịch này sang sổ cá nhân của {@code transactorId}: không áp dụng, chờ người
+     * đó xác nhận, đã ghi (id giao dịch cá nhân trùng id giao dịch nhóm) hoặc bị từ chối.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "personal_sync_status", nullable = false, length = 20)
+    @Builder.Default
+    private PersonalSyncStatus personalSyncStatus = PersonalSyncStatus.NONE;
 
     /**
      * ID của Trưởng nhóm hoặc Thủ quỹ thực hiện duyệt giao dịch.

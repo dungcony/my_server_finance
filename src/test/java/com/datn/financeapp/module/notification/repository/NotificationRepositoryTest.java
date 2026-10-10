@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.notification.entity.Notification;
+import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.repository.NotificationRepository;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
@@ -12,6 +13,7 @@ import com.datn.financeapp.module.user.repository.UserRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -91,7 +93,7 @@ class NotificationRepositoryTest {
         otherUserId = otherUser.getId();
     }
 
-    private Notification createNotification(UUID ownerId, String type, String title, String content, boolean read) {
+    private Notification createNotification(UUID ownerId, NotiType type, String title, String content, boolean read) {
         Notification notif = Notification.builder()
                 .id(UUID.randomUUID())
                 .userId(ownerId)
@@ -107,7 +109,7 @@ class NotificationRepositoryTest {
     @Test
     @DisplayName("findByIdForUser: Chỉ trả về thông báo thuộc quyền sở hữu của user (D-27 isolation)")
     void findByIdForUser_EnforcesOwnership() {
-        Notification n = createNotification(userId, "budget_alert", "Welcome", "Welcome to the app", false);
+        Notification n = createNotification(userId, NotiType.BUDGET_ALERT, "Welcome", "Welcome to the app", false);
 
         Optional<Notification> found = notificationRepository.findByIdForUser(n.getId(), userId);
         assertThat(found).isPresent();
@@ -120,9 +122,9 @@ class NotificationRepositoryTest {
     @Test
     @DisplayName("findAllForUser & countForUser: Lọc theo isRead và phân trang")
     void findAllAndCountForUser_FiltersAndPaginates() {
-        createNotification(userId, "budget_alert", "Msg 1", "Unread 1", false);
-        createNotification(userId, "budget_alert", "Msg 2", "Unread 2", false);
-        createNotification(userId, "budget_alert", "Msg 3", "Read 1", true);
+        createNotification(userId, NotiType.BUDGET_ALERT, "Msg 1", "Unread 1", false);
+        createNotification(userId, NotiType.BUDGET_ALERT, "Msg 2", "Unread 2", false);
+        createNotification(userId, NotiType.BUDGET_ALERT, "Msg 3", "Read 1", true);
 
         long unreadCount = notificationRepository.countForUser(userId, false);
         assertThat(unreadCount).isEqualTo(2);
@@ -134,7 +136,7 @@ class NotificationRepositoryTest {
     @Test
     @DisplayName("markRead: Đánh dấu đã đọc cho thông báo")
     void markRead_UpdatesStatus() {
-        Notification n = createNotification(userId, "budget_alert", "Test", "Content", false);
+        Notification n = createNotification(userId, NotiType.BUDGET_ALERT, "Test", "Content", false);
 
         int updated = notificationRepository.markRead(n.getId(), userId);
         assertThat(updated).isEqualTo(1);
@@ -158,5 +160,33 @@ class NotificationRepositoryTest {
         notificationRepository.insertBudgetAlertIfNotExists(userId, "Cảnh báo 80%", "Bạn đã tiêu 80%", budgetId);
         long count2 = notificationRepository.countForUser(userId, null);
         assertThat(count2).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("data: lưu json phẳng vào cột jsonb và đọc lại đúng, thông báo không có data thì null")
+    void data_RoundTripsAsJson() {
+        UUID groupId = UUID.randomUUID();
+        Notification withData = notificationRepository.saveAndFlush(Notification.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .type(NotiType.GROUP_PERSONAL_SYNC)
+                .title("Xác nhận ghi sổ cá nhân")
+                .content("Nhóm vừa ghi cho bạn một khoản")
+                .referenceId(UUID.randomUUID())
+                .data(Map.of("action", "PERSONAL_SYNC_CONFIRM", "group_id", groupId.toString()))
+                .isRead(false)
+                .createdAt(Instant.now())
+                .build());
+        Notification withoutData = createNotification(userId, NotiType.BUDGET_ALERT, "Msg", "No data", false);
+
+        entityManager.clear();
+
+        Notification reloaded = notificationRepository.findByIdForUser(withData.getId(), userId).orElseThrow();
+        assertThat(reloaded.getType()).isEqualTo(NotiType.GROUP_PERSONAL_SYNC);
+        assertThat(reloaded.getData())
+                .containsEntry("action", "PERSONAL_SYNC_CONFIRM")
+                .containsEntry("group_id", groupId.toString());
+        assertThat(notificationRepository.findByIdForUser(withoutData.getId(), userId).orElseThrow().getData())
+                .isNull();
     }
 }

@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.transaction.dto.request;
 
+import com.datn.financeapp.module.transaction.enums.TransactionType;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -13,14 +13,12 @@ import java.util.UUID;
  * {@code walletId} bắt buộc giống {@link CreateTransactionRequest}.
  */
 public record UpdateTransactionRequest(
-        @NotNull @Pattern(regexp = "^(expense|income|transfer)$") String type,
+        @NotNull TransactionType type,
         @NotNull Long amount,
         @NotNull UUID walletId,
-        UUID destinationWalletId,
         UUID categoryId,
         LocalDate date,
         @Size(max = 150) String displayName,
         @Size(max = 500) String note,
-        Boolean countsInReport,
         String receiptUrl) {
 }

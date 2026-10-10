@@ -31,11 +31,6 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     boolean existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(UUID userId, String name);
 
     @Query(
-            value = "SELECT COALESCE(MAX(sort_order), -1) FROM wallets WHERE user_id = :userId AND NOT is_deleted",
-            nativeQuery = true)
-    Integer findMaxSortOrderByUserId(@Param("userId") UUID userId);
-
-    @Query(
             value = """
                     SELECT * FROM wallets w WHERE w.id = :id AND NOT w.is_deleted
                     AND w.user_id = :currentUser
@@ -62,7 +57,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
                     AND w.user_id = :currentUser
                     AND (CAST(:type AS text) IS NULL OR w.type = CAST(:type AS text))
                     AND (CAST(:onlyInTotal AS boolean) IS NULL OR w.include_in_total = CAST(:onlyInTotal AS boolean))
-                    ORDER BY w.sort_order
+                    ORDER BY w.created_at, w.id
                     """,
             nativeQuery = true)
     List<Wallet> findAllForUser(
@@ -71,9 +66,22 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
             @Param("onlyInTotal") Boolean onlyInTotal,
             @Param("includeShared") boolean includeShared);
 
-    @Modifying
-    @Query("UPDATE Wallet w SET w.sortOrder = :order WHERE w.id = :id AND w.userId = :currentUser")
-    int updateSortOrder(@Param("id") UUID id, @Param("order") int order, @Param("currentUser") UUID currentUser);
+    /**
+     * Id ví mặc định chưa xoá của người dùng. Trigger {@code trg_wallets_one_default} bảo đảm mỗi
+     * người dùng có đúng một ví như vậy.
+     */
+    @Query(
+            value = "SELECT id FROM wallets WHERE user_id = :userId AND is_default AND NOT is_deleted",
+            nativeQuery = true)
+    Optional<UUID> findDefaultWalletId(@Param("userId") UUID userId);
+
+    /**
+     * Bỏ cờ mặc định của mọi ví người dùng, gọi ngay trước khi đặt ví khác làm mặc định (bỏ cờ cũ
+     * trước, đặt cờ mới sau, cùng transaction).
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Wallet w SET w.isDefault = false WHERE w.userId = :userId AND w.isDefault = true")
+    int clearDefault(@Param("userId") UUID userId);
 
     /**
      * Khoá bi quan (SELECT ... FOR UPDATE) — dùng trước khi đọc/ghi {@code current_balance} để
@@ -123,11 +131,8 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
             value = """
                     SELECT w.current_balance
                     - COALESCE(SUM(CASE
-                    WHEN t.type = 'income' THEN t.amount
-                    WHEN t.type = 'expense' THEN -t.amount
-                    WHEN t.type = 'transfer' AND t.wallet_id = w.id THEN -t.amount END), 0)
-                    - COALESCE((SELECT SUM(amount) FROM transactions
-                    WHERE destination_wallet_id = w.id AND date > :asOf AND NOT is_deleted), 0) AS balance_as_of
+                    WHEN t.type = 'INCOME' THEN t.amount
+                    WHEN t.type IN ('EXPENSE', 'LOAN') THEN -t.amount END), 0) AS balance_as_of
                     FROM wallets w
                     LEFT JOIN transactions t ON t.wallet_id = w.id AND t.date > :asOf AND NOT t.is_deleted
                     WHERE w.id = :walletId

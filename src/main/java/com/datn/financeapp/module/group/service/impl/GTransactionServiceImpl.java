@@ -18,6 +18,7 @@ import com.datn.financeapp.module.group.helper.BalanceCalculator;
 import com.datn.financeapp.module.group.helper.GTransactionBuilder;
 import com.datn.financeapp.module.group.helper.GroupTxCountHelper;
 import com.datn.financeapp.module.group.helper.MemberBalances;
+import com.datn.financeapp.module.group.helper.PersonalSyncHelper;
 import com.datn.financeapp.module.group.helper.GTransactionUpdate;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.TransactionHelper;
@@ -71,6 +72,7 @@ public class GTransactionServiceImpl implements GTransactionService {
     private final ApplicationEventPublisher eventPublisher;
     private final MemberBalanceService memberBalanceService;
     private final GroupTxCountHelper groupTxCountHelper;
+    private final PersonalSyncHelper personalSyncHelper;
 
     // validator
     private final GroupPermissionValidator permissionValidator;
@@ -103,6 +105,9 @@ public class GTransactionServiceImpl implements GTransactionService {
 
         // điều phối tới đúng strategy phụ trách loại giao dịch để xây dựng entity
         GTransaction gTransaction = strategy.build(operatorId, groupId, req, status, authInfo.isSettlementEnabled());
+
+        // ghi sang sổ cá nhân của người thực hiện (tự ghi hoặc gửi thông báo chờ xác nhận)
+        gTransaction.setPersonalSyncStatus(personalSyncHelper.syncOnCreate(gTransaction, operatorId));
 
         transactionRepository.save(gTransaction);
         groupTxCountHelper.increment(groupId, status == GTransactionStatus.PENDING);
@@ -207,6 +212,7 @@ public class GTransactionServiceImpl implements GTransactionService {
 
         // chụp ảnh hưởng cũ bằng giá trị trước khi strategy sửa entity
         MemberBalances before = BalanceCalculator.effectOf(txn);
+        PersonalSyncHelper.Snapshot syncBefore = personalSyncHelper.snapshotOf(txn);
 
         // điều phối strategy tương ứng cập nhật giao dịch
         updateStrategies.stream()
@@ -214,6 +220,9 @@ public class GTransactionServiceImpl implements GTransactionService {
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TXN_TYPE_NOT_ALLOWED))
                 .update(txn, operatorId, groupId, req, authInfo);
+
+        // đối chiếu trước sau để ghi đè, xoá hoặc ghi mới khoản ở sổ cá nhân
+        txn.setPersonalSyncStatus(personalSyncHelper.syncOnUpdate(syncBefore, txn, operatorId));
 
         // cộng dồn delta mới nếu trạng thái mới là CONFIRMED
         if (txn.getStatus() == GTransactionStatus.CONFIRMED)
@@ -244,6 +253,9 @@ public class GTransactionServiceImpl implements GTransactionService {
             long delta = transactionHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), true);
             publishFundChangeEvent(groupId, delta);
         }
+
+        // xoá khoản đã ghi ở sổ cá nhân nếu có
+        txn.setPersonalSyncStatus(personalSyncHelper.syncOnRemove(txn));
 
         // đánh dấu xóa mềm
         Instant now = Instant.now();
@@ -292,6 +304,25 @@ public class GTransactionServiceImpl implements GTransactionService {
         GTransaction txn = findPendingTransaction(transactionId, groupId);
 
         updateReviewStatus(txn, GTransactionStatus.REJECTED, operatorId, Instant.now());
+        txn.setPersonalSyncStatus(personalSyncHelper.syncOnRemove(txn));
+
+        return transactionHelper.buildDetailRes(txn);
+    }
+
+    @Override
+    public GroupTransactionDetailRes resolvePersonalSync(UUID operatorId, UUID groupId, UUID transactionId,
+                                                         boolean accept) {
+        // thành viên của nhóm, nhóm đã lưu trữ vẫn xác nhận được vì tiền đã rời túi người đó
+        permissionValidator.verifyMember(groupId, operatorId, true);
+
+        GTransaction txn = findActiveTransaction(transactionId, groupId);
+
+        // chống IDOR: chỉ chính người thực hiện được xác nhận, người khác thấy như không tồn tại
+        if (!txn.getTransactorId().equals(operatorId))
+            throw new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND);
+
+        txn.setPersonalSyncStatus(personalSyncHelper.resolveConfirmation(txn, accept));
+        transactionRepository.save(txn);
 
         return transactionHelper.buildDetailRes(txn);
     }
@@ -326,7 +357,10 @@ public class GTransactionServiceImpl implements GTransactionService {
         List<GTransaction> txns = findPendingBatch(groupId, req);
 
         Instant now = Instant.now();
-        txns.forEach(t -> updateReviewStatus(t, GTransactionStatus.REJECTED, operatorId, now));
+        txns.forEach(t -> {
+            updateReviewStatus(t, GTransactionStatus.REJECTED, operatorId, now);
+            t.setPersonalSyncStatus(personalSyncHelper.syncOnRemove(t));
+        });
 
         return txns.size();
     }

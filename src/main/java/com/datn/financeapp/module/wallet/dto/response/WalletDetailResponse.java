@@ -20,11 +20,11 @@ public record WalletDetailResponse(
         Long initialBalance,
         Long currentBalance,
         Boolean includeInTotal,
+        boolean isDefault,
         boolean isShared,
         UUID groupId,
         String icon,
         String color,
-        Integer sortOrder,
         WalletStatsResponse stats,
         Instant createdAt,
         Long projectedBalance) {

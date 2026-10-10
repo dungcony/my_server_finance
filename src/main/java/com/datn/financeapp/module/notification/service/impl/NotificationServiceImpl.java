@@ -9,10 +9,13 @@ import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.module.notification.dto.response.NotificationListItemResponse;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.entity.Notification;
+import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.mapper.NotificationMapper;
 import com.datn.financeapp.module.notification.repository.NotificationRepository;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
@@ -95,7 +98,27 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void createNotification(
-            UUID userId, String type, String title, String content, UUID referenceId) {
-        notificationRepository.insertGenericNotification(userId, type, title, content, referenceId);
+            UUID userId, NotiType type, String title, String content, UUID referenceId) {
+        createNotification(userId, type, title, content, referenceId, null);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void createNotification(
+            UUID userId, NotiType type, String title, String content, UUID referenceId, Map<String, Object> data) {
+        notificationRepository.save(Notification.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .type(type)
+                .title(title)
+                .content(content)
+                .referenceId(referenceId)
+                .data(data)
+                .isRead(false)
+                .createdAt(Instant.now())
+                .build());
     }
 }

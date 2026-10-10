@@ -18,7 +18,7 @@ import java.util.UUID;
  *   <li>{@link #getMasters()}: lấy các danh mục gốc.</li>
  *   <li>{@link #getOfParent(String)}: lấy các danh mục con trực tiếp của một danh mục.</li>
  *   <li>{@link #update(String, CategoryUpdateReq)}: sửa thông tin hoặc đổi cha của danh mục.</li>
- *   <li>{@link #delete(String, String)}: xóa mềm danh mục cùng cả cây con.</li>
+ *   <li>{@link #delete(String)}: xóa mềm danh mục cùng cả cây con.</li>
  *   <li>{@link #findActiveById(UUID)}: lấy một danh mục chưa xóa theo id.</li>
  *   <li>{@link #findAllByIds(Collection)}: lấy nhiều danh mục theo id trong một lượt.</li>
  *   <li>{@link #findSelfAndAncestorIds(UUID)}: id của danh mục và mọi tổ tiên.</li>
@@ -78,6 +78,16 @@ public interface CategoryService {
      * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
      */
     CategoryResponse findActiveById(UUID id);
+
+    /**
+     * Lấy id danh mục chưa xóa theo code. Dành cho module khác cần gắn giao dịch vào một danh mục
+     * hệ thống biết trước code (vd. giao dịch sinh từ nhóm).
+     *
+     * @param code code danh mục
+     * @return ID danh mục
+     * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
+     */
+    UUID findIdByCode(String code);
 
     /**
      * Lấy nhiều danh mục theo id trong một lượt, kể cả đã xóa mềm (bản ghi cũ vẫn cần hiển thị tên).

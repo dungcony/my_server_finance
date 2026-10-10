@@ -212,7 +212,7 @@ class BudgetRenewalJobIntegrationTest {
                 .isEqualTo(2);
 
         Integer renewalNotifications = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM notifications WHERE type = 'budget_renewed'", Integer.class);
+                "SELECT COUNT(*) FROM notifications WHERE type = 'BUDGET_RENEWED'", Integer.class);
         assertThat(renewalNotifications).as("Chỉ 1 thông báo lặp kỳ, không nhân đôi khi job chạy lại").isEqualTo(1);
     }
 }

@@ -14,10 +14,10 @@ import jakarta.validation.constraints.Size;
  * @param parentCode  Mã danh mục cha mới; {@code null} là giữ nguyên cha (không hỗ trợ chuyển lên gốc)
  */
 public record CategoryUpdateReq(
-        @Size(max = 50) String name,
+        @Size(max = 50, message = "Tên danh mục không được vượt quá 50 ký tự.") String name,
         String description,
         String iconCode,
         @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.") String color,
-        @NotBlank String parentCode
+        @NotBlank(message = "Mã danh mục cha không được để trống.") String parentCode
 ) {
 }

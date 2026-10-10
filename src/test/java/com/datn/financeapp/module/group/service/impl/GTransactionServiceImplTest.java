@@ -9,6 +9,7 @@ import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.module.group.helper.GroupTxCountHelper;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
+import com.datn.financeapp.module.group.helper.PersonalSyncHelper;
 import com.datn.financeapp.module.group.helper.TransactionHelper;
 import com.datn.financeapp.module.group.repository.GroupTransactionRepository;
 import com.datn.financeapp.module.group.service.MemberBalanceService;
@@ -64,6 +65,8 @@ class GTransactionServiceImplTest {
     @Mock
     private GroupTxCountHelper groupTxCountHelper;
     @Mock
+    private PersonalSyncHelper personalSyncHelper;
+    @Mock
     private GroupPermissionValidator permissionValidator;
     @Mock
     private GroupTransactionPaticipantValidator transactionValidator;
@@ -78,7 +81,10 @@ class GTransactionServiceImplTest {
     @BeforeEach
     void setUp() {
         service = new GTransactionServiceImpl(transactionRepository, memberService, transactionHelper,
-                eventPublisher, memberBalanceService, groupTxCountHelper, permissionValidator, transactionValidator, List.of(), List.of());
+                eventPublisher, memberBalanceService, groupTxCountHelper, personalSyncHelper, permissionValidator,
+                transactionValidator, List.of(), List.of());
+        // xoá hoặc từ chối giao dịch thì trạng thái ghi sổ cá nhân về NONE
+        lenient().when(personalSyncHelper.syncOnRemove(any())).thenReturn(PersonalSyncStatus.NONE);
         groupId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
         memberId = UUID.randomUUID();
@@ -489,6 +495,77 @@ class GTransactionServiceImplTest {
 
         verify(permissionValidator).getAuthInfo(groupId, ownerId, false);
         verify(permissionValidator, never()).getAuthInfo(groupId, ownerId, true);
+    }
+
+    @Test
+    @DisplayName("Xoá giao dịch đã ghi sang sổ cá nhân thì nhờ helper xoá khoản đó và lưu trạng thái NONE")
+    void delete_SyncedTransaction_DelegatesRemovalToPersonalSyncHelper() {
+        GTransaction synced = txn(500_000L);
+        synced.setPersonalSyncStatus(PersonalSyncStatus.SYNCED);
+        stubFind(synced);
+
+        service.delete(ownerId, groupId, synced.getId());
+
+        verify(personalSyncHelper).syncOnRemove(synced);
+        assertThat(synced.getPersonalSyncStatus()).isEqualTo(PersonalSyncStatus.NONE);
+    }
+
+    @Test
+    @DisplayName("Từ chối giao dịch chờ duyệt thì nhờ helper xoá khoản đã ghi ở sổ cá nhân")
+    void reject_DelegatesRemovalToPersonalSyncHelper() {
+        GTransaction pending = pendingTxn(100_000L);
+        pending.setPersonalSyncStatus(PersonalSyncStatus.SYNCED);
+        stubFind(pending);
+
+        service.reject(ownerId, groupId, pending.getId());
+
+        verify(personalSyncHelper).syncOnRemove(pending);
+        assertThat(pending.getPersonalSyncStatus()).isEqualTo(PersonalSyncStatus.NONE);
+    }
+
+    @Test
+    @DisplayName("Từ chối hàng loạt thì nhờ helper xoá khoản đã ghi của từng giao dịch")
+    void bulkReject_DelegatesRemovalForEachTransaction() {
+        GTransaction first = pendingTxn(100_000L);
+        GTransaction second = pendingTxn(250_000L);
+        stubFindPendingBatch(List.of(first.getId(), second.getId()), List.of(first, second));
+
+        service.bulkReject(ownerId, groupId,
+                new GroupTransactionBulkReviewReq(List.of(first.getId(), second.getId())));
+
+        verify(personalSyncHelper).syncOnRemove(first);
+        verify(personalSyncHelper).syncOnRemove(second);
+    }
+
+    @Test
+    @DisplayName("Người thực hiện xác nhận ghi sổ cá nhân thì lưu trạng thái helper trả về")
+    void resolvePersonalSync_ByTransactor_StoresResolvedStatus() {
+        GTransaction awaiting = txn(500_000L);
+        awaiting.setPersonalSyncStatus(PersonalSyncStatus.AWAITING_CONFIRM);
+        stubFind(awaiting);
+        when(personalSyncHelper.resolveConfirmation(awaiting, true)).thenReturn(PersonalSyncStatus.SYNCED);
+
+        service.resolvePersonalSync(memberId, groupId, awaiting.getId(), true);
+
+        verify(permissionValidator).verifyMember(groupId, memberId, true);
+        assertThat(awaiting.getPersonalSyncStatus()).isEqualTo(PersonalSyncStatus.SYNCED);
+        verify(transactionRepository).save(awaiting);
+    }
+
+    @Test
+    @DisplayName("Người không phải người thực hiện gọi xác nhận thì thấy như không tồn tại và helper không bị gọi")
+    void resolvePersonalSync_ByAnotherUser_ThrowsNotFound() {
+        GTransaction awaiting = txn(500_000L);
+        awaiting.setPersonalSyncStatus(PersonalSyncStatus.AWAITING_CONFIRM);
+        stubFind(awaiting);
+
+        assertThatThrownBy(() -> service.resolvePersonalSync(ownerId, groupId, awaiting.getId(), true))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getCode())
+                .isEqualTo(ErrorCode.GROUP_TRANSACTION_NOT_FOUND.getCode());
+
+        verify(personalSyncHelper, never()).resolveConfirmation(any(), anyBoolean());
+        verify(transactionRepository, never()).save(any());
     }
 
     private List<Object> capturePublishedEvents() {

@@ -11,6 +11,8 @@ import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
+import com.datn.financeapp.module.transaction.enums.TransactionSource;
+import com.datn.financeapp.module.transaction.enums.TransactionType;
 import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
@@ -152,9 +154,10 @@ class WalletFutureBalanceIntegrationTest {
         return (String) data.get("id");
     }
 
-    private UUID systemCategoryId(String type) {
+    // danh mục không còn phân biệt thu/chi nên lấy một danh mục bất kỳ chưa xoá
+    private UUID anyCategoryId() {
         return jdbcTemplate.queryForObject(
-                "SELECT id FROM categories WHERE user_id IS NULL AND type = ? LIMIT 1", UUID.class, type);
+                "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
     }
 
     @Test
@@ -166,13 +169,13 @@ class WalletFutureBalanceIntegrationTest {
 
         // Giao dịch expense hôm nay 200000
         transactionWriter.write(new TransactionWriteCommand(
-                null, userId, walletUuid, null, systemCategoryId("expense"), "expense", 200_000,
-                LocalDate.now(), null, null, "manual", true, null, null, null));
+                null, userId, walletUuid, anyCategoryId(), TransactionType.EXPENSE, 200_000,
+                LocalDate.now(), null, null, TransactionSource.MANUAL, null, null));
 
         // Giao dịch income ngày mai 500000
         transactionWriter.write(new TransactionWriteCommand(
-                null, userId, walletUuid, null, systemCategoryId("income"), "income", 500_000,
-                LocalDate.now().plusDays(1), null, null, "manual", true, null, null, null));
+                null, userId, walletUuid, anyCategoryId(), TransactionType.INCOME, 500_000,
+                LocalDate.now().plusDays(1), null, null, TransactionSource.MANUAL, null, null));
 
         mockMvc.perform(get("/wallets/" + walletId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -189,8 +192,8 @@ class WalletFutureBalanceIntegrationTest {
 
         // Chỉ có giao dịch hôm nay, không có giao dịch tương lai.
         transactionWriter.write(new TransactionWriteCommand(
-                null, userId, walletUuid, null, systemCategoryId("expense"), "expense", 100_000,
-                LocalDate.now(), null, null, "manual", true, null, null, null));
+                null, userId, walletUuid, anyCategoryId(), TransactionType.EXPENSE, 100_000,
+                LocalDate.now(), null, null, TransactionSource.MANUAL, null, null));
 
         mockMvc.perform(get("/wallets/" + walletId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())

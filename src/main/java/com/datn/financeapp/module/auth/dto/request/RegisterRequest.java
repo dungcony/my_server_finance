@@ -12,8 +12,8 @@ import jakarta.validation.constraints.Size;
  * dùng chỉ thêm số 1 vào cuối, nhưng lại chặn những mật khẩu dài toàn chữ vốn khó đoán hơn.
  */
 public record RegisterRequest(
-        @NotBlank @Email String email,
-        @NotBlank @Size(min = 8, message = "Mật khẩu phải từ 8 ký tự.") String password) {
+        @NotBlank(message = "Email không được để trống.") @Email(message = "Email không đúng định dạng.") String email,
+        @NotBlank(message = "Mật khẩu không được để trống.") @Size(min = 8, message = "Mật khẩu phải từ 8 ký tự.") String password) {
 
     public RegisterRequest(String email, String password, String username) {
         this(email, password);

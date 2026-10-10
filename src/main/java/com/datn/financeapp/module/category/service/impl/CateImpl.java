@@ -156,6 +156,15 @@ public class CateImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    public UUID findIdByCode(String code) {
+        return categoryRepository
+                .findByCodeAndDeletedFalse(code)
+                .map(Category::getId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Map<UUID, CategoryResponse> findAllByIds(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
             return Map.of();

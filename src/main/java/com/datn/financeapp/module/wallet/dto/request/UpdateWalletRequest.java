@@ -15,10 +15,13 @@ import java.util.Map;
  */
 public class UpdateWalletRequest {
 
-    @Size(min = 1, max = 50)
+    @Size(min = 1, max = 50, message = "Tên ví phải từ 1 đến 50 ký tự.")
     private String name;
 
     private Boolean includeInTotal;
+
+    // true = đặt ví này làm ví mặc định; false không được dùng để bỏ mặc định
+    private Boolean isDefault;
 
     private String icon;
 
@@ -46,6 +49,14 @@ public class UpdateWalletRequest {
 
     public void setIncludeInTotal(Boolean includeInTotal) {
         this.includeInTotal = includeInTotal;
+    }
+
+    public Boolean isDefault() {
+        return isDefault;
+    }
+
+    public void setIsDefault(Boolean isDefault) {
+        this.isDefault = isDefault;
     }
 
     public String icon() {

@@ -2,8 +2,11 @@ package com.datn.financeapp.module.transaction.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.module.transaction.enums.FreequenType;
+import com.datn.financeapp.module.transaction.enums.TransactionType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -41,6 +44,11 @@ public class RecurringTransaction extends AssignedIdEntity {
     @Column(name = "category_id", nullable = false)
     private UUID categoryId;
 
+    // loại giao dịch sẽ được sinh ra mỗi kỳ (EXPENSE, INCOME, LOAN)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false)
+    private TransactionType type;
+
     // số tiền cần dùng
     @Column(name = "amount", nullable = false)
     private Long amount;
@@ -52,6 +60,7 @@ public class RecurringTransaction extends AssignedIdEntity {
     private String note;
 
     // khoảng thời gian
+    @Enumerated(EnumType.STRING)
     @Column(name = "frequency", nullable = false)
     private FreequenType frequency;
 

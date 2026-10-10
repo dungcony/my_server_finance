@@ -16,11 +16,8 @@ public record TransactionDetailResponse(
         String displayName,
         String note,
         String source,
-        // Xem {@link TransactionListItemResponse#countsInReport()}.
-        Boolean countsInReport,
         String receiptUrl,
         UUID recurringId,
-        UUID draftId,
         Instant createdAt,
         Instant updatedAt) {
 

@@ -1,7 +1,9 @@
 package com.datn.financeapp.module.transaction.service.impl;
 
+import com.datn.financeapp.module.transaction.helper.RecurringPeriodWriter;
 import com.datn.financeapp.module.transaction.service.RecurringService;
 
+import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
@@ -12,8 +14,11 @@ import com.datn.financeapp.module.transaction.dto.response.RecurringListItemResp
 import com.datn.financeapp.module.transaction.dto.response.RunNowResponse;
 import com.datn.financeapp.module.transaction.dto.request.UpdateRecurringRequest;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
+import com.datn.financeapp.module.transaction.enums.FreequenType;
+import com.datn.financeapp.module.transaction.enums.TransactionType;
 import com.datn.financeapp.module.transaction.mapper.RecurringMapper;
 import com.datn.financeapp.module.transaction.repository.RecurringTransactionRepository;
+import com.datn.financeapp.module.transaction.repository.TransactionRepository;
 import com.datn.financeapp.module.transaction.service.TransactionService;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
@@ -37,11 +42,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecurringServiceImpl implements RecurringService {
 
-    private static final Set<String> VALID_FREQUENCIES = Set.of("day", "week", "month", "year");
-    private static final Set<String> VALID_TYPES = Set.of("expense", "income");
+    // khoản định kỳ chỉ sinh được thu hoặc chi, không sinh cho vay
+    private static final Set<TransactionType> VALID_TYPES = Set.of(TransactionType.EXPENSE, TransactionType.INCOME);
 
     private final RecurringTransactionRepository recurringRepository;
     private final TransactionService transactionService;
+    private final TransactionRepository transactionRepository;
     private final WalletService walletService;
     private final CategoryService categoryService;
     private final RecurringPeriodWriter periodWriter;
@@ -57,7 +63,7 @@ public class RecurringServiceImpl implements RecurringService {
     @Override
     @Transactional(readOnly = true)
     public List<RecurringListItemResponse> list(UUID userId, Boolean isEnabled, String type) {
-        return recurringRepository.findAllForUser(userId, isEnabled, type).stream()
+        return recurringRepository.findAllForUser(userId, isEnabled, type == null ? null : type.toUpperCase()).stream()
                 .map(this::buildListItem)
                 .toList();
     }
@@ -71,7 +77,7 @@ public class RecurringServiceImpl implements RecurringService {
         RecurringTransaction rec = requireOwned(userId, id);
 
         List<RecurringDetailResponse.GeneratedTransaction> history =
-                transactionService.findGeneratedByRecurringId(id).stream()
+                transactionService.getByRecurring(userId, id).stream()
                         .map(recurringMapper::toGeneratedTransaction)
                         .toList();
 
@@ -88,8 +94,8 @@ public class RecurringServiceImpl implements RecurringService {
     @Override
     @Transactional
     public RecurringListItemResponse create(UUID userId, CreateRecurringRequest req) {
-        validateType(req.type());
-        validateFrequency(req.frequency());
+        TransactionType type = parseType(req.type());
+        FreequenType frequency = parseFrequency(req.frequency());
 
         int interval = req.interval() == null ? 1 : req.interval();
         if (interval < 1) {
@@ -100,23 +106,22 @@ public class RecurringServiceImpl implements RecurringService {
         }
 
         requireWalletAccess(req.walletId(), userId);
-        requireCategoryOfType(req.categoryId(), userId, req.type());
+        requireCategory(req.categoryId());
 
         RecurringTransaction rec = RecurringTransaction.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
                 .walletId(req.walletId())
                 .categoryId(req.categoryId())
-                .type(req.type())
+                .type(type)
                 .amount(req.amount())
-                .displayName(req.displayName())
+                .name(req.displayName())
                 .note(req.note())
-                .frequency(req.frequency())
+                .frequency(frequency)
                 .interval(interval)
                 .startDate(req.startDate())
                 .endDate(req.endDate())
                 .nextRunDate(req.startDate())
-                .lastRunDate(null)
                 .isEnabled(true)
                 .createdAt(Instant.now())
                 .build();
@@ -134,7 +139,7 @@ public class RecurringServiceImpl implements RecurringService {
         RecurringTransaction rec = requireOwned(userId, id);
 
         if (req.displayName() != null) {
-            rec.setDisplayName(req.displayName());
+            rec.setName(req.displayName());
         }
         if (req.amount() != null) {
             rec.setAmount(req.amount());
@@ -147,12 +152,11 @@ public class RecurringServiceImpl implements RecurringService {
             rec.setWalletId(req.walletId());
         }
         if (req.categoryId() != null) {
-            requireCategoryOfType(req.categoryId(), userId, rec.getType());
+            requireCategory(req.categoryId());
             rec.setCategoryId(req.categoryId());
         }
         if (req.frequency() != null) {
-            validateFrequency(req.frequency());
-            rec.setFrequency(req.frequency());
+            rec.setFrequency(parseFrequency(req.frequency()));
         }
         if (req.interval() != null) {
             rec.setInterval(req.interval());
@@ -202,7 +206,7 @@ public class RecurringServiceImpl implements RecurringService {
 
         Long balance = walletService.findRawBalance(rec.getWalletId());
         return recurringMapper.toRunNowResponse(
-                transactionId, rec.getType(), rec.getAmount(), LocalDate.now(), rec.getWalletId(), balance);
+                transactionId, rec.getType().name().toLowerCase(), rec.getAmount(), LocalDate.now(), rec.getWalletId(), balance);
     }
 
     // ---------------------------------------------------------------------
@@ -228,39 +232,39 @@ public class RecurringServiceImpl implements RecurringService {
     }
 
     /**
-     * Chặn danh mục lệch loại NGAY từ lúc đặt lịch. Nếu để lọt, trigger
-     * {@code trg_transactions_validate} sẽ chặn ở tầng CSDL nhưng phải đợi tới lúc tác vụ nền
-     * chạy — khi đó lỗi lặp lại mỗi ngày trong log mà người dùng không hề hay biết.
+     * Danh mục hiện không phân biệt thu/chi nên chỉ cần danh mục tồn tại và chưa bị xoá
+     * ({@link CategoryService#findActiveById} ném {@code CATEGORY_NOT_FOUND} nếu không có).
      */
-    private CategoryRefResponse requireCategoryOfType(UUID categoryId, UUID userId, String type) {
-        CategoryRefResponse category = categoryService.findRefVisibleToUser(categoryId, userId);
-        if (category == null) {
-            throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_ALLOWED);
-        }
-        if (!category.type().equals(type)) {
-            throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_TYPE_MISMATCH);
-        }
-        return category;
+    private CategoryResponse requireCategory(UUID categoryId) {
+        return categoryService.findActiveById(categoryId);
     }
 
-    private void validateType(String type) {
-        if (!VALID_TYPES.contains(type)) {
-            // ck_rec_type chỉ cho expense/income — khoản định kỳ không sinh chuyển tiền được.
-            throw new BusinessException(ErrorCode.RECURRING_TYPE_INVALID);
+    private TransactionType parseType(String type) {
+        // lỗi chung cho cả giá trị lạ lẫn LOAN: khoản định kỳ chỉ sinh được thu hoặc chi
+        try {
+            TransactionType parsed = TransactionType.valueOf(type.toUpperCase());
+            if (VALID_TYPES.contains(parsed)) {
+                return parsed;
+            }
+        } catch (IllegalArgumentException ignored) {
+            // rơi xuống ném lỗi nghiệp vụ bên dưới
         }
+        throw new BusinessException(ErrorCode.RECURRING_TYPE_INVALID);
     }
 
-    private void validateFrequency(String frequency) {
-        if (!VALID_FREQUENCIES.contains(frequency)) {
+    private FreequenType parseFrequency(String frequency) {
+        try {
+            return FreequenType.valueOf(frequency.toUpperCase());
+        } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.RECURRING_FREQUENCY_INVALID);
         }
     }
 
     private RecurringListItemResponse buildListItem(RecurringTransaction rec) {
         WalletRefResponse wallet = walletService.findRefById(rec.getWalletId());
-        CategoryRefResponse category = categoryService.findRefById(rec.getCategoryId());
+        CategoryResponse category = categoryService.findActiveById(rec.getCategoryId());
 
-        long runCount = transactionService.countByRecurringId(rec.getId());
+        long runCount = transactionRepository.countByRecurringIdAndIsDeletedFalse(rec.getId());
 
         return recurringMapper.toListItemResponse(rec, wallet, category, runCount);
     }

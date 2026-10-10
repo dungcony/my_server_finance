@@ -26,16 +26,13 @@ CREATE INDEX idx_icons_group ON icons (icon_group, sort_order) WHERE is_active;
 CREATE UNIQUE INDEX uq_cat_name ON categories (lower(name)) WHERE NOT deleted;
 CREATE INDEX idx_cat_parent ON categories (parent_id) WHERE NOT deleted;
 
--- Nhóm Giao dịch, Giao dịch định kỳ & Bản nháp
-CREATE INDEX idx_draft_user_status ON ai_drafts (user_id, status, created_at DESC);
-CREATE INDEX idx_draft_cleanup ON ai_drafts (created_at) WHERE status = 'discarded';
+-- Nhóm Giao dịch & Giao dịch định kỳ
 
 CREATE INDEX idx_rec_due ON recurring_transactions (next_run_date) WHERE is_enabled;
 
 CREATE INDEX idx_txn_user_date ON transactions (user_id, date DESC) WHERE NOT is_deleted;
 CREATE INDEX idx_txn_wallet_date ON transactions (wallet_id, date) WHERE NOT is_deleted;
 CREATE INDEX idx_txn_category_date ON transactions (category_id, date) WHERE NOT is_deleted AND category_id IS NOT NULL;
-CREATE INDEX idx_txn_dest_wallet ON transactions (destination_wallet_id) WHERE destination_wallet_id IS NOT NULL AND NOT is_deleted;
 CREATE UNIQUE INDEX uq_txn_recurring_date ON transactions (recurring_id, date) WHERE recurring_id IS NOT NULL AND NOT is_deleted;
 
 -- Nhóm Ngân sách

@@ -140,9 +140,9 @@ class NotificationIntegrationTest {
         UUID userIdA = userIdOf("nguoi.a.list@example.com");
         UUID userIdB = userIdOf("nguoi.b.list@example.com");
 
-        insertNotification(userIdA, "budget_alert", false);
-        insertNotification(userIdA, "debt_reminder", true);
-        insertNotification(userIdB, "budget_alert", false);
+        insertNotification(userIdA, "BUDGET_ALERT", false);
+        insertNotification(userIdA, "DEBT_REMINDER", true);
+        insertNotification(userIdB, "BUDGET_ALERT", false);
 
         mockMvc.perform(get("/notifications").header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
@@ -155,7 +155,7 @@ class NotificationIntegrationTest {
     void markRead_isIdempotent() throws Exception {
         String token = registerAndGetAccessToken("nguoi.markread@example.com");
         UUID userId = userIdOf("nguoi.markread@example.com");
-        UUID notificationId = insertNotification(userId, "budget_alert", false);
+        UUID notificationId = insertNotification(userId, "BUDGET_ALERT", false);
 
         mockMvc.perform(patch("/notifications/" + notificationId + "/read")
                         .header("Authorization", "Bearer " + token))
@@ -178,7 +178,7 @@ class NotificationIntegrationTest {
         String tokenA = registerAndGetAccessToken("nguoi.a.markread@example.com");
         String tokenB = registerAndGetAccessToken("nguoi.b.markread@example.com");
         UUID userIdB = userIdOf("nguoi.b.markread@example.com");
-        UUID notificationOfB = insertNotification(userIdB, "budget_alert", false);
+        UUID notificationOfB = insertNotification(userIdB, "BUDGET_ALERT", false);
 
         mockMvc.perform(patch("/notifications/" + notificationOfB + "/read")
                         .header("Authorization", "Bearer " + tokenA))
@@ -191,9 +191,9 @@ class NotificationIntegrationTest {
         String token = registerAndGetAccessToken("nguoi.filter@example.com");
         UUID userId = userIdOf("nguoi.filter@example.com");
 
-        insertNotification(userId, "budget_alert", false);
-        insertNotification(userId, "debt_reminder", true);
-        insertNotification(userId, "recurring_generated", false);
+        insertNotification(userId, "BUDGET_ALERT", false);
+        insertNotification(userId, "DEBT_REMINDER", true);
+        insertNotification(userId, "RECURRING_GENERATED", false);
 
         mockMvc.perform(get("/notifications")
                         .param("is_read", "false")
@@ -201,5 +201,28 @@ class NotificationIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.pagination.total_items").value(2));
+    }
+
+    @Test
+    void getNotifications_returnsUpperCaseTypeAndData() throws Exception {
+        String token = registerAndGetAccessToken("nguoi.data@example.com");
+        UUID userId = userIdOf("nguoi.data@example.com");
+        UUID groupId = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO notifications (id, user_id, type, title, content, reference_id, data) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, CAST(? AS jsonb))",
+                UUID.randomUUID(),
+                userId,
+                "GROUP_PERSONAL_SYNC",
+                "Xác nhận ghi sổ cá nhân",
+                "Nội dung kiểm thử",
+                UUID.randomUUID(),
+                "{\"action\": \"PERSONAL_SYNC_CONFIRM\", \"group_id\": \"" + groupId + "\"}");
+
+        mockMvc.perform(get("/notifications").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].type").value("GROUP_PERSONAL_SYNC"))
+                .andExpect(jsonPath("$.data[0].data.action").value("PERSONAL_SYNC_CONFIRM"))
+                .andExpect(jsonPath("$.data[0].data.group_id").value(groupId.toString()));
     }
 }

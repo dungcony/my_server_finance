@@ -105,8 +105,7 @@ class GroupTransactionRepositoryTest {
                 .updatedAt(Instant.now())
                 .build());
 
-        Category testCategory = categoryRepository.findSystemCategoryByName("Ăn uống", "expense")
-                .orElseGet(() -> categoryRepository.findAll().stream().findFirst().orElseThrow());
+        Category testCategory = categoryRepository.findAll().stream().findFirst().orElseThrow();
 
         testTxn = groupTransactionRepository.save(GTransaction.builder()
                 .id(UUID.randomUUID())

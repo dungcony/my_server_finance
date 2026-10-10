@@ -227,6 +227,25 @@
                             <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
+
+                    <!-- Chỉ build các module đang làm việc: loại trừ mã nguồn chính -->
+                    <excludes>
+                        <exclude>com/datn/financeapp/module/goal/**</exclude>
+                        <exclude>com/datn/financeapp/module/debt/**</exclude>
+                        <exclude>com/datn/financeapp/module/report/**</exclude>
+                        <exclude>com/datn/financeapp/module/scheduler/**</exclude>
+                    </excludes>
+
+                    <!-- Loại trừ mã nguồn test tương ứng -->
+                    <testExcludes>
+                        <testExclude>com/datn/financeapp/module/goal/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/debt/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/report/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/scheduler/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/recurring/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/category/**</testExclude>
+                        <testExclude>com/datn/financeapp/module/transaction/repository/TransactionRepositoryTest.java</testExclude>
+                    </testExcludes>
                 </configuration>
             </plugin>
             <plugin>
@@ -243,34 +262,6 @@
                     <!-- -Dfile.encoding=UTF-8: Windows JVM mặc định đọc/ghi Windows-1252,
                          làm hỏng chuỗi tiếng Việt trong message lỗi/test assertion. -->
                     <argLine>-Duser.timezone=UTC -Dfile.encoding=UTF-8</argLine>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <!-- Các cấu hình annotationProcessorPaths hiện tại giữ nguyên -->
-                    <annotationProcessorPaths>
-                        ...
-                    </annotationProcessorPaths>
-
-                    <!-- Loại trừ mã nguồn chính -->
-                    <excludes>
-                        <exclude>com/datn/financeapp/module/goal/**</exclude>
-                        <exclude>com/datn/financeapp/module/debt/**</exclude>
-                        <exclude>com/datn/financeapp/module/report/**</exclude>
-                        <exclude>com/datn/financeapp/module/scheduler/**</exclude>
-                        <exclude>com/datn/financeapp/module/budget/**</exclude>
-                    </excludes>
-
-                    <!-- Loại trừ mã nguồn test tương ứng -->
-                    <testExcludes>
-                        <testExclude>com/datn/financeapp/module/goal/**</testExclude>
-                        <testExclude>com/datn/financeapp/module/debt/**</testExclude>
-                        <testExclude>com/datn/financeapp/module/report/**</testExclude>
-                        <testExclude>com/datn/financeapp/module/scheduler/**</testExclude>
-                        <testExclude>com/datn/financeapp/module/budget/**</testExclude>
-                    </testExcludes>
                 </configuration>
             </plugin>
         </plugins>

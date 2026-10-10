@@ -179,7 +179,7 @@ class DebtReminderJobIntegrationTest {
 
     private int countReminders(String debtId) {
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM notifications WHERE reference_id = ? AND type = 'debt_reminder'",
+                "SELECT COUNT(*) FROM notifications WHERE reference_id = ? AND type = 'DEBT_REMINDER'",
                 Integer.class,
                 UUID.fromString(debtId));
         return count == null ? 0 : count;
@@ -191,7 +191,7 @@ class DebtReminderJobIntegrationTest {
     // Test
     // ---------------------------------------------------------------------
 
-    // due_date = hôm nay + 7 ngày -> đúng 1 bản ghi nhắc nợ type=debt_reminder.
+    // due_date = hôm nay + 7 ngày -> đúng 1 bản ghi nhắc nợ type=DEBT_REMINDER.
     @Test
     void sendDueReminders_sevenDaysBeforeDue_createsNotification() throws Exception {
         String token = registerAndGetAccessToken("nhac.no.bay.ngay@example.com");
@@ -202,7 +202,7 @@ class DebtReminderJobIntegrationTest {
         debtReminderJob.run();
 
         assertThat(countReminders(debtId))
-                .as("due_date còn đúng 7 ngày phải sinh 1 thông báo debt_reminder")
+                .as("due_date còn đúng 7 ngày phải sinh 1 thông báo DEBT_REMINDER")
                 .isEqualTo(1);
     }
 

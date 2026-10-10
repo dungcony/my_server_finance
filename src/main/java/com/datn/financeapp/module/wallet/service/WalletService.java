@@ -2,7 +2,6 @@ package com.datn.financeapp.module.wallet.service;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.module.wallet.dto.request.CreateWalletRequest;
-import com.datn.financeapp.module.wallet.dto.request.ReorderWalletsRequest;
 import com.datn.financeapp.module.wallet.dto.request.UpdateWalletRequest;
 import com.datn.financeapp.module.wallet.dto.response.WalletDetailResponse;
 import com.datn.financeapp.module.wallet.dto.response.WalletRawBalanceResponse;
@@ -20,7 +19,7 @@ import java.util.UUID;
 /**
  * Interface định nghĩa các dịch vụ nghiệp vụ liên quan đến quản lý ví tài chính.
  * Cung cấp các phương thức như {@link #list}, {@link #summary}, {@link #detail}, {@link #create},
- * {@link #update}, {@link #delete}, {@link #reorder}, {@link #adjustBalance} và {@link #lockWalletsInOrder}.
+ * {@link #update}, {@link #delete}, {@link #adjustBalance} và {@link #lockWalletsInOrder}.
  */
 public interface WalletService {
 
@@ -69,6 +68,14 @@ public interface WalletService {
      * @param createdAt thời điểm tạo
      */
     void createDefaultCashWallet(UUID userId, Instant createdAt);
+
+    /**
+     * Lấy id ví mặc định của người dùng, nơi nhận các khoản tự ghi từ giao dịch nhóm.
+     *
+     * @param userId ID người dùng
+     * @return ID ví mặc định
+     */
+    UUID findDefaultWalletId(UUID userId);
 
     /**
      * Tìm thông tin tham chiếu ví nếu người dùng có quyền truy cập.
@@ -164,12 +171,4 @@ public interface WalletService {
      * @param deleteTransactions có xóa các giao dịch thuộc ví hay không
      */
     void delete(UUID userId, UUID walletId, boolean deleteTransactions);
-
-    /**
-     * Thay đổi thứ tự sắp xếp các ví của người dùng.
-     *
-     * @param userId ID người dùng
-     * @param req    DTO chứa danh sách thứ tự ví mới
-     */
-    void reorder(UUID userId, ReorderWalletsRequest req);
 }

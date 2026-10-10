@@ -28,7 +28,7 @@
 | **1** | **Sổ nhóm độc lập.** Quỹ nhóm (`group_funds`) và giao dịch nhóm (`group_transactions`) là bảng riêng, **không dùng chung** với ví và giao dịch cá nhân                                 | Dữ liệu cá nhân và dữ liệu nhóm tách nhau **bằng chính cấu trúc**, không phụ thuộc việc nhớ thêm điều kiện lọc                                             |
 | **2** | **Vắng người tham gia = cả nhóm.** Khoản không gửi danh sách người tham gia nghĩa là chia cho **mọi thành viên có mặt tại thời điểm giao dịch**. Hệ thống tự động chia đều và lưu dòng cho tất cả | Phần lớn khoản chi là của chung. Dữ liệu được tính toán và lưu trực tiếp với `share_amount > 0`                                                             |
 | **3** | **Không lưu nợ cá nhân chéo giữa hai người.** Mọi biến động được cộng dồn delta nguyên tử vào bảng tích luỹ `group_member_balances` (Migration `V18`), số dư thực tế `net_balance = contribution + paid_out_of_pocket - refund - share` được truy vấn với hiệu năng $O(1)$ | Sửa hay xoá một khoản thì delta tự cập nhật chính xác mà không phải quét lại toàn bộ lịch sử                                                                 |
-| **4** | **Phân hệ nhóm không ghi sang sổ cá nhân.** Góp quỹ hay trả tiền túi chỉ ghi ở sổ nhóm                                                                                                 | Đồng bộ hai sổ kéo theo sửa bảng giao dịch cá nhân và bài toán báo cáo cá nhân bị đếm đôi. Để sau — mục 5                                                  |
+| **4** | **Tiền túi trong nhóm được ghi sang sổ cá nhân của người thực hiện qua sự kiện.** Góp quỹ, chi bằng tiền túi và nhận hoàn tiền (`REFUND`) ghi vào **ví mặc định** của `transactor`. Id giao dịch cá nhân = id giao dịch nhóm nên không cần bảng liên kết. Người gọi chính là `transactor` thì ghi ngay (kể cả khi giao dịch nhóm còn `PENDING`); ghi hộ và mọi `REFUND` thì chỉ ghi sau khi `transactor` xác nhận qua thông báo | Tiền đã rời túi người dùng thì sổ cá nhân phải biết. Không tự trừ hay cộng ví người khác khi họ chưa đồng ý. Chi bằng tiền quỹ và `ADJUSTMENT_*` không phải tiền túi nên không ghi |
 | **5** | **Mỗi nhóm có đúng một quỹ.** Lập nhóm là lập luôn quỹ                                                                                                                                 | Mọi chênh lệch giữa các thành viên được giải quyết **qua quỹ**. Không có nợ trực tiếp giữa hai thành viên, không cần chuyển tiền giữa các quỹ              |
 | **6** | **Không phân loại nhóm.** Không có `type` (gia đình / bạn bè / ở ghép)                                                                                                                 | Mọi nhóm vận hành cùng một cơ chế. Khác biệt chỉ nằm ở cờ bật/tắt tính thừa thiếu                                                                          |
 | **7** | **Dựng mới, không kế thừa schema đang chạy**                                                                                                                                           | Schema cũ theo mô hình "ví chung nằm trong bảng ví cá nhân", mâu thuẫn với quyết định 1. Việc gỡ ghi ở [STATE.md](../STATE.md) mục "Thiết kế lại 16–17/09" |
@@ -177,7 +177,8 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 ## 3.6 Tham chiếu sang module khác <a id="36-tham-chieu"></a>
 
 - Khoản chi nhóm **chỉ dùng danh mục hệ thống** (`categories.user_id IS NULL`), và phải là danh mục **loại chi**.
-- Phân hệ nhóm **không** có khoá ngoại sang `wallets`, `transactions` của sổ cá nhân (quyết định 4).
+- Phân hệ nhóm **không** có khoá ngoại sang `wallets`, `transactions` của sổ cá nhân (quyết định 4): liên kết bằng id trùng nhau và bằng sự kiện (`PersonalTransactionEvent`, `PersonalTransactionRemovedEvent`), module nhóm không import entity hay repository của module khác.
+- Cột `group_transactions.personal_sync_status` lưu trạng thái ghi sang sổ cá nhân: `NONE`, `AWAITING_CONFIRM`, `SYNCED`, `DECLINED`.
 
 ## 3.7 Lưu trữ nhóm <a id="37-luu-tru-nhom"></a>
 
@@ -233,7 +234,7 @@ Số thứ tự giữ cố định vì `api.md` dẫn chiếu theo số.
 
 | Hạng mục                            | Trạng thái | Ghi chú                                                                                                                |
 | :---------------------------------- | :--------- | :--------------------------------------------------------------------------------------------------------------------- |
-| **Đồng bộ sang ví cá nhân**         | Để sau     | Cần `counts_in_report` cho giao dịch cá nhân, bảng liên kết `group_personal_links`, và khoá sửa số tiền ở phía cá nhân |
+| **Khoá sửa số tiền ở phía cá nhân** | Để sau     | Đồng bộ nhóm → cá nhân đã làm (quyết định 4). Chưa chặn người dùng sửa/xoá khoản sinh từ nhóm ở sổ cá nhân nên hai sổ có thể lệch |
 | **Ngân sách nhóm, hoá đơn định kỳ** | Để sau     | Cần hai thực thể riêng                                                                                                 |
 | **Mời qua email**                   | Để sau     | Cần bảng `group_invitations`                                                                                           |
 | **Bình luận theo giao dịch**        | Để sau     | Bảng `group_transaction_comments`                                                                                      |

@@ -7,5 +7,5 @@ import java.util.List;
 import java.util.UUID;
 
 public record GroupTransactionBulkReviewReq(
-        @NotNull @NotEmpty List<UUID> transactionIds) {
+        @NotNull(message = "Danh sách giao dịch không được để trống.") @NotEmpty(message = "Danh sách giao dịch không được để trống.") List<UUID> transactionIds) {
 }

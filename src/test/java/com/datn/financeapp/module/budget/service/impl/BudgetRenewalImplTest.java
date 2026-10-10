@@ -17,6 +17,7 @@ import com.datn.financeapp.module.budget.helper.BudgetSpentCalculator;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.category.service.CategoryService;
+import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.service.NotificationService;
 
 import java.time.Instant;
@@ -86,7 +87,7 @@ class BudgetRenewalImplTest {
         assertThat(saved.getValue().getAutoRenew()).isTrue();
         assertThat(saved.getValue().getIsActive()).isTrue();
         verify(notificationService).createNotification(
-                eq(USER_ID), eq("budget_renewed"), anyString(), anyString(), eq(saved.getValue().getId()));
+                eq(USER_ID), eq(NotiType.BUDGET_RENEWED), anyString(), anyString(), eq(saved.getValue().getId()));
     }
 
     @Test

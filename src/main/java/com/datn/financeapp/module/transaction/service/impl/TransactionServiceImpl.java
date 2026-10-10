@@ -4,16 +4,15 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
+import com.datn.financeapp.module.transaction.dto.request.*;
+import com.datn.financeapp.module.transaction.dto.response.TransactionDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TransactionSummaryResponse;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.datn.financeapp.module.budget.service.BudgetSpendService;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.common.response.PageRequestParams;
-import com.datn.financeapp.module.transaction.dto.request.CreateTransactionRequest;
-import com.datn.financeapp.module.transaction.dto.request.DuplicateTransactionRequest;
-import com.datn.financeapp.module.transaction.dto.request.TransactionFilterRequest;
-import com.datn.financeapp.module.transaction.dto.request.UpdateTransactionRequest;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.mapper.TransactionMapper;
 import com.datn.financeapp.module.transaction.repository.TransactionRepository;
@@ -40,4 +39,43 @@ public class TransactionServiceImpl implements TransactionService {
 
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
+    @Override
+    public TransactionDetailResponse create(UUID userId, CreateTransactionRequest req) {
+        return null;
+    }
+
+    @Override
+    public List<TransactionDetailResponse> createBulk(UUID userId, BulkCreateTransactionRequest req) {
+        return List.of();
+    }
+
+    @Override
+    public TransactionDetailResponse update(UUID userId, UUID transactionId, UpdateTransactionRequest req) {
+        return null;
+    }
+
+    @Override
+    public TransactionDetailResponse delete(UUID userId, UUID transactionId) {
+        return null;
+    }
+
+    @Override
+    public long countByRecurring(UUID userId) {
+        return 0;
+    }
+
+    @Override
+    public List<TransactionDetailResponse> getByRecurring(UUID userId, UUID recurringId) {
+        return List.of();
+    }
+
+    @Override
+    public List<TransactionSummaryResponse> list(UUID userId, TransactionFilterRequest filters, PageRequestParams page) {
+        return List.of();
+    }
+
+    @Override
+    public List<TransactionSummaryResponse> listByDate(UUID userId, TransactionFilterRequest filters) {
+        return List.of();
+    }
 }

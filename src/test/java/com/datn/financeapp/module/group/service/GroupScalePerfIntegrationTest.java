@@ -159,7 +159,7 @@ class GroupScalePerfIntegrationTest {
         scalesSeen.clear();
         createUserPool();
         categoryId = jdbcTemplate.queryForObject(
-                "SELECT id FROM categories WHERE user_id IS NULL AND type = 'expense' LIMIT 1", UUID.class);
+                "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
     }
 
     @Test

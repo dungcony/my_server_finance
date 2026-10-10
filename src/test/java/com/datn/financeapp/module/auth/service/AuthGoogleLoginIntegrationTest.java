@@ -128,7 +128,7 @@ class AuthGoogleLoginIntegrationTest {
     // -----------------------------------------------------------------
 
     @Test
-    void loginWithGoogle_NewUser_CreatesConfirmedAccountWithoutWallet() {
+    void loginWithGoogle_NewUser_CreatesConfirmedAccountWithDefaultWallet() {
         stubGoogle("sub-moi-001", "nguoi.moi@example.com", "Người Mới");
 
         AuthRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
@@ -142,12 +142,13 @@ class AuthGoogleLoginIntegrationTest {
         assertThat(saved.getPassword()).isNull();
         assertThat(saved.isConfirm()).isTrue();
 
-        // Không tạo ví mặc định (api/01 mục 1, bỏ 13/09/2026) — kể cả đăng nhập Google. Ứng dụng
-        // bắt người dùng tự tạo ví đầu tiên ở màn chặn riêng.
+        // Trigger ở CSDL tạo đúng một ví "Tiền mặt" mặc định cho mọi tài khoản mới, kể cả đăng nhập Google
         List<Wallet> wallets = walletRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(saved.getId()))
                 .toList();
-        assertThat(wallets).isEmpty();
+        assertThat(wallets).hasSize(1);
+        assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
+        assertThat(wallets.get(0).getIsDefault()).isTrue();
     }
 
     @Test

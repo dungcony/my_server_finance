@@ -209,26 +209,6 @@ COMMENT ON COLUMN categories.deleted   IS 'Xoá mềm, giao dịch cũ vẫn tr�
 -- KHỐI GIAO DỊCH, GIAO DỊCH ĐỊNH KỲ & NGÂN SÁCH
 -- =============================================================
 
--- Bảng ai_drafts — Bản nháp giao dịch do AI phân tích
-CREATE TABLE ai_drafts (
-    id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id          UUID         NOT NULL,
-    method           VARCHAR(20)  NOT NULL,
-    raw_input        TEXT         NOT NULL,
-    ai_result        JSONB        NOT NULL,
-    confidence       NUMERIC(4,3) NOT NULL,
-    status           VARCHAR(20)  NOT NULL DEFAULT 'pending',
-    transaction_id   UUID,
-    user_corrections JSONB,
-    model_version    VARCHAR(50),
-    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_draft_user   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT ck_draft_method CHECK (method IN ('text', 'ocr')),
-    CONSTRAINT ck_draft_status CHECK (status IN ('pending', 'saved', 'discarded')),
-    CONSTRAINT ck_draft_conf   CHECK (confidence >= 0 AND confidence <= 1)
-);
-
 -- Bảng recurring_transactions — Khoản thu/chi lặp lại định kỳ
 CREATE TABLE recurring_transactions (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -237,72 +217,55 @@ CREATE TABLE recurring_transactions (
     category_id   UUID         NOT NULL,
     type          VARCHAR(10)  NOT NULL,
     amount        BIGINT       NOT NULL,
-    display_name  VARCHAR(100) NOT NULL,
+    name          VARCHAR(100) NOT NULL,
     note          TEXT,
     frequency     VARCHAR(10)  NOT NULL,
     "interval"    INTEGER      NOT NULL DEFAULT 1,
     start_date    DATE         NOT NULL,
     end_date      DATE,
     next_run_date DATE         NOT NULL,
-    last_run_date DATE,
     is_enabled    BOOLEAN      NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_rec_user     FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
     CONSTRAINT fk_rec_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id) ON DELETE RESTRICT,
     CONSTRAINT fk_rec_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
-    CONSTRAINT ck_rec_type      CHECK (type IN ('expense', 'income')),
+    CONSTRAINT ck_rec_type      CHECK (type IN ('EXPENSE', 'INCOME')),
     CONSTRAINT ck_rec_amount    CHECK (amount > 0),
-    CONSTRAINT ck_rec_frequency CHECK (frequency IN ('day', 'week', 'month', 'year')),
+    CONSTRAINT ck_rec_frequency CHECK (frequency IN ('WEEK', 'MONTH', 'QUARTER', 'YEAR')),
     CONSTRAINT ck_rec_interval  CHECK ("interval" >= 1),
     CONSTRAINT ck_rec_end_date  CHECK (end_date IS NULL OR end_date >= start_date)
 );
 
 -- Bảng transactions — Giao dịch tài chính cá nhân
 CREATE TABLE transactions (
-    id                    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id               UUID         NOT NULL,
-    wallet_id             UUID         NOT NULL,
-    destination_wallet_id UUID,
-    category_id           UUID,
-    type                  VARCHAR(10)  NOT NULL,
-    amount                BIGINT       NOT NULL,
-    date                  DATE         NOT NULL,
-    note                  TEXT,
-    display_name          VARCHAR(150),
-    source                VARCHAR(20)  NOT NULL DEFAULT 'manual',
-    recurring_id          UUID,
-    draft_id              UUID,
-    receipt_url           TEXT,
-    is_deleted            BOOLEAN      NOT NULL DEFAULT FALSE,
-    created_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    counts_in_report      BOOLEAN      NOT NULL DEFAULT TRUE,
+    id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id      UUID         NOT NULL,
+    wallet_id    UUID         NOT NULL,
+    category_id  UUID,
+    type         VARCHAR(10)  NOT NULL,
+    amount       BIGINT       NOT NULL,
+    date         DATE         NOT NULL,
+    note         TEXT,
+    name         VARCHAR(150),
+    source       VARCHAR(20)  NOT NULL DEFAULT 'MANUAL',
+    recurring_id UUID,
+    receipt_url  TEXT,
+    is_deleted   BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
-    CONSTRAINT fk_txn_user      FOREIGN KEY (user_id)               REFERENCES users                  (id) ON DELETE CASCADE,
-    CONSTRAINT fk_txn_wallet    FOREIGN KEY (wallet_id)             REFERENCES wallets                (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_txn_dest      FOREIGN KEY (destination_wallet_id) REFERENCES wallets                (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_txn_category  FOREIGN KEY (category_id)           REFERENCES categories             (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_txn_recurring FOREIGN KEY (recurring_id)          REFERENCES recurring_transactions (id) ON DELETE SET NULL,
-    CONSTRAINT fk_txn_draft     FOREIGN KEY (draft_id)              REFERENCES ai_drafts              (id) ON DELETE SET NULL,
+    CONSTRAINT fk_txn_user      FOREIGN KEY (user_id)      REFERENCES users                  (id) ON DELETE CASCADE,
+    CONSTRAINT fk_txn_wallet    FOREIGN KEY (wallet_id)    REFERENCES wallets                (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_txn_category  FOREIGN KEY (category_id)  REFERENCES categories             (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_txn_recurring FOREIGN KEY (recurring_id) REFERENCES recurring_transactions (id) ON DELETE SET NULL,
 
-    CONSTRAINT ck_txn_type   CHECK (type   IN ('expense', 'income', 'transfer')),
-    CONSTRAINT ck_txn_source CHECK (source IN ('manual', 'text', 'ocr', 'auto', 'adjustment')),
-    CONSTRAINT ck_txn_amount CHECK (amount > 0),
-    CONSTRAINT ck_txn_shape  CHECK (
-        (type = 'transfer'
-            AND destination_wallet_id IS NOT NULL
-            AND destination_wallet_id <> wallet_id
-            AND category_id IS NULL)
-        OR
-        (type IN ('expense', 'income')
-            AND destination_wallet_id IS NULL
-            AND category_id IS NOT NULL)
-    )
+    CONSTRAINT ck_txn_type   CHECK (type   IN ('EXPENSE', 'INCOME', 'LOAN')),
+    CONSTRAINT ck_txn_source CHECK (source IN ('MANUAL', 'AI', 'RECURRING')),
+    CONSTRAINT ck_txn_amount CHECK (amount > 0)
 );
 
-COMMENT ON TABLE transactions IS 'Giao dịch thu, chi, chuyển tiền';
-COMMENT ON COLUMN transactions.counts_in_report IS 'FALSE cho giao dịch điều chỉnh kiểm kê ví không tính vào báo cáo';
+COMMENT ON TABLE transactions IS 'Giao dịch thu, chi, cho vay';
 
 -- Bảng budgets — Hạn mức chi tiêu theo kỳ
 CREATE TABLE budgets (

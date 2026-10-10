@@ -14,7 +14,7 @@ import java.util.UUID;
  * @param excludedUserIds những người không tham gia
  */
 public record FundReconcileReq(
-        @NotNull Long actualBalance,
-        @Size(max = 255) String reason,
+        @NotNull(message = "Số dư thực tế không được để trống.") Long actualBalance,
+        @Size(max = 255, message = "Lý do không được vượt quá 255 ký tự.") String reason,
         List<UUID> excludedUserIds) {
 }

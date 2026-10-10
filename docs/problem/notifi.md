@@ -1,0 +1,2 @@
+- thông báo đang chưa biết lm sao để k hiện nút xác nhận giao dịch và không
+- 

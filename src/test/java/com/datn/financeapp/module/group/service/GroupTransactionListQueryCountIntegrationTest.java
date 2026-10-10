@@ -104,7 +104,7 @@ class GroupTransactionListQueryCountIntegrationTest {
         ownerId = createUser(userRole);
         memberId = createUser(userRole);
         categoryId = jdbcTemplate.queryForObject(
-                "SELECT id FROM categories WHERE user_id IS NULL AND type = 'expense' LIMIT 1", UUID.class);
+                "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
         groupId = groupService.create(ownerId, new GroupCreateReq(
                 "Nhóm đếm SQL", "Chặn N+1 danh sách giao dịch", 10_000_000L, true, true, List.of(memberId))).id();
     }

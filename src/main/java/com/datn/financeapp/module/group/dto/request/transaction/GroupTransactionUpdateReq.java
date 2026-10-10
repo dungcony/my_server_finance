@@ -13,13 +13,13 @@ import java.util.List;
 import java.util.UUID;
 
 public record GroupTransactionUpdateReq(
-        @Positive @Max(999999999999L) Long amount,
+        @Positive(message = "Số tiền phải lớn hơn 0.") @Max(value = 999999999999L, message = "Số tiền vượt quá giới hạn cho phép.") Long amount,
         Instant occurredAt,
         LocalDate date,
         MoneySource moneySource,
         UUID categoryId,
         UUID transactorId,
-        @Size(max = 255) String note,
+        @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự.") String note,
         @Valid List<GroupTransactionParticipantReq> participants) {
 
     public Instant resolveOccurredAt() {

@@ -1,11 +1,10 @@
-package com.datn.financeapp.module.transaction.service.impl;
+package com.datn.financeapp.module.transaction.helper;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
+import com.datn.financeapp.module.transaction.enums.TransactionSource;
 import com.datn.financeapp.module.transaction.repository.RecurringTransactionRepository;
-import com.datn.financeapp.module.transaction.helper.RecurringDateCalculator;
-import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -44,7 +43,6 @@ public class RecurringPeriodWriter {
 
         LocalDate today = LocalDate.now();
         LocalDate cursor = rec.getNextRunDate();
-        LocalDate lastGenerated = null;
         int guard = 0;
 
         while (!cursor.isAfter(today)
@@ -52,17 +50,11 @@ public class RecurringPeriodWriter {
                 && guard++ < MAX_PERIODS_PER_RUN) {
             // Lời gọi cross-bean: mở transaction con REQUIRES_NEW cho riêng kỳ này (D-51).
             singlePeriodWriter.writeOnePeriod(rec, cursor);
-            lastGenerated = cursor;
             cursor = RecurringDateCalculator.nextRunDate(
                     rec.getStartDate(), cursor, rec.getFrequency(), rec.getInterval());
         }
 
         rec.setNextRunDate(cursor);
-        if (lastGenerated != null) {
-            // Ghi kỳ CUỐI CÙNG thực sự xử lý, không phải "hôm nay": đây là mốc để đối chiếu khi có
-            // nghi vấn tác vụ chạy sót.
-            rec.setLastRunDate(lastGenerated);
-        }
         recurringRepository.save(rec);
     }
 
@@ -100,17 +92,14 @@ public class RecurringPeriodWriter {
                 UUID.randomUUID(),
                 rec.getUserId(),
                 rec.getWalletId(),
-                null,
                 rec.getCategoryId(),
                 rec.getType(),
                 rec.getAmount(),
                 date,
                 rec.getNote(),
-                rec.getDisplayName(),
-                "auto",
-                true,
+                rec.getName(),
+                TransactionSource.RECURRING,
                 rec.getId(),
-                null,
                 null);
     }
 }

@@ -36,12 +36,12 @@ import java.util.UUID;
 public record GroupTransactionCreateReq(
         @NotNull(message = "chưa có loại giao dịch") GTransactionType type,
         @NotNull(message = "phải chỉ định nguồn tiền") MoneySource moneySource,
-        @NotNull @Positive @Max(999999999999L) Long amount,
+        @NotNull(message = "Số tiền không được để trống.") @Positive(message = "Số tiền phải lớn hơn 0.") @Max(value = 999999999999L, message = "Số tiền vượt quá giới hạn cho phép.") Long amount,
         Instant occurredAt,
         LocalDate date,
         UUID categoryId,
         @NotNull(message = "Người thực hiện không được để trống") UUID transactorId,
-        @Size(max = 255) String note,
+        @Size(max = 255, message = "Ghi chú không được vượt quá 255 ký tự.") String note,
         @Valid List<GroupTransactionParticipantReq> participants) {
 
     public GroupTransactionCreateReq {

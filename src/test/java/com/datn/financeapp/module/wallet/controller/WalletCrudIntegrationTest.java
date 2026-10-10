@@ -22,6 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -121,6 +122,22 @@ class WalletCrudIntegrationTest {
         return authSupport.registerAndGetAccessToken(email);
     }
 
+    // đọc danh sách ví qua HTTP rồi lấy id của ví đang có is_default = true
+    private String findDefaultWalletId(String token) throws Exception {
+        String response = mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        List<?> wallets = (List<?>) objectMapper.readValue(response, Map.class).get("data");
+        return wallets.stream()
+                .map(w -> (Map<?, ?>) w)
+                .filter(w -> Boolean.TRUE.equals(w.get("is_default")))
+                .map(w -> (String) w.get("id"))
+                .findFirst()
+                .orElseThrow();
+    }
+
     private String createWallet(String token, String name, String type, long initialBalance) throws Exception {
         Map<String, Object> body = Map.of(
                 "name", name,
@@ -156,11 +173,11 @@ class WalletCrudIntegrationTest {
                 .andExpect(jsonPath("$.data.current_balance").value(5_000_000))
                 .andExpect(jsonPath("$.data.name").value("Vietcombank"));
 
-        // Máy chủ KHÔNG tạo ví mặc định khi đăng ký (api/01 mục 1, đổi 13/09/2026) — ví vừa tạo
-        // là ví duy nhất. Đọc lại qua GET /wallets để giữ test ở tầng HTTP, không query thẳng bảng.
+        // Trigger ở CSDL tạo sẵn ví "Tiền mặt" mặc định khi đăng ký, nên danh sách gồm ví đó và ví vừa tạo.
+        // Đọc lại qua GET /wallets để giữ test ở tầng HTTP, không query thẳng bảng.
         mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1));
+                .andExpect(jsonPath("$.data.length()").value(2));
     }
 
     @Test
@@ -235,37 +252,82 @@ class WalletCrudIntegrationTest {
     }
 
     @Test
-    void deleteWallet_lastWallet_returns409CannotDeleteLastWallet() throws Exception {
-        String token = registerAndGetAccessToken("vi.cuoi.cung@example.com");
+    void register_newUser_hasExactlyOneDefaultCashWallet() throws Exception {
+        String token = registerAndGetAccessToken("vi.mac.dinh@example.com");
 
-        // Máy chủ không tạo ví mặc định nữa (api/01 mục 1, đổi 13/09/2026), nên phải tự tạo đúng
-        // một ví — đó chính là ví cuối cùng, xoá phải bị chặn.
-        String walletId = createWallet(token, "Ví Duy Nhất", "cash", 0);
-
-        mockMvc.perform(delete("/wallets/" + walletId).header("Authorization", "Bearer " + token))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("WALLET_LAST_NOT_DELETABLE"));
+        mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("Tiền mặt"))
+                .andExpect(jsonPath("$.data[0].type").value("cash"))
+                .andExpect(jsonPath("$.data[0].is_default").value(true));
     }
 
     @Test
-    void reorderWallets_returnsSortOrderMatchingArrayPosition() throws Exception {
-        String token = registerAndGetAccessToken("sap.xep@example.com");
-        String walletA = createWallet(token, "Ví A", "bank", 0);
-        String walletB = createWallet(token, "Ví B", "bank", 0);
+    void createWallet_additionalWallet_isNotDefault() throws Exception {
+        String token = registerAndGetAccessToken("vi.them@example.com");
+        String walletId = createWallet(token, "Ví Thêm", "bank", 0);
 
-        Map<String, Object> body = Map.of("sort_order", java.util.List.of(walletB, walletA));
+        mockMvc.perform(get("/wallets/" + walletId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.is_default").value(false));
+    }
 
-        mockMvc.perform(patch("/wallets/reorder")
+    @Test
+    void patchWallet_setDefaultTrue_movesDefaultFlagToThatWallet() throws Exception {
+        String token = registerAndGetAccessToken("doi.mac.dinh@example.com");
+        String oldDefaultId = findDefaultWalletId(token);
+        String walletId = createWallet(token, "Ví Mới Mặc Định", "bank", 0);
+
+        mockMvc.perform(patch("/wallets/" + walletId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
+                        .content(objectMapper.writeValueAsString(Map.of("is_default", true))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.is_default").value(true));
+
+        assertThat(findDefaultWalletId(token)).isEqualTo(walletId).isNotEqualTo(oldDefaultId);
+    }
+
+    @Test
+    void patchWallet_unsetDefaultDirectly_returns400DefaultRequired() throws Exception {
+        String token = registerAndGetAccessToken("bo.mac.dinh@example.com");
+        String defaultId = findDefaultWalletId(token);
+
+        mockMvc.perform(patch("/wallets/" + defaultId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("is_default", false))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("WALLET_DEFAULT_REQUIRED"));
+    }
+
+    @Test
+    void deleteWallet_defaultWallet_returns409DefaultNotDeletable() throws Exception {
+        String token = registerAndGetAccessToken("xoa.mac.dinh@example.com");
+        // có ví thứ hai để chắc chắn lỗi đến từ luật ví mặc định chứ không phải "ví cuối cùng"
+        createWallet(token, "Ví Phụ", "bank", 0);
+        String defaultId = findDefaultWalletId(token);
+
+        mockMvc.perform(delete("/wallets/" + defaultId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("WALLET_DEFAULT_NOT_DELETABLE"));
+    }
+
+    @Test
+    void deleteWallet_afterMovingDefault_oldDefaultWalletCanBeDeleted() throws Exception {
+        String token = registerAndGetAccessToken("xoa.sau.doi@example.com");
+        String oldDefaultId = findDefaultWalletId(token);
+        String newDefaultId = createWallet(token, "Ví Mặc Định Mới", "bank", 0);
+
+        mockMvc.perform(patch("/wallets/" + newDefaultId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("is_default", true))))
                 .andExpect(status().isOk());
 
-        var reloadedA = walletRepository.findById(java.util.UUID.fromString(walletA)).orElseThrow();
-        var reloadedB = walletRepository.findById(java.util.UUID.fromString(walletB)).orElseThrow();
-
-        assertThat(reloadedB.getSortOrder()).isEqualTo(0);
-        assertThat(reloadedA.getSortOrder()).isEqualTo(1);
+        mockMvc.perform(delete("/wallets/" + oldDefaultId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -287,10 +349,10 @@ class WalletCrudIntegrationTest {
      */
     private void insertFakeTransaction(String userId, String walletId) {
         String catId = jdbcTemplate.queryForObject(
-                "SELECT id::text FROM categories WHERE user_id IS NULL AND type = 'expense' LIMIT 1", String.class);
+                "SELECT id::text FROM categories WHERE NOT deleted LIMIT 1", String.class);
         jdbcTemplate.update(
                 "INSERT INTO transactions (id, user_id, wallet_id, category_id, type, amount, date, source) "
-                        + "VALUES (gen_random_uuid(), ?::uuid, ?::uuid, ?::uuid, 'expense', 10000, CURRENT_DATE, 'manual')",
+                        + "VALUES (gen_random_uuid(), ?::uuid, ?::uuid, ?::uuid, 'EXPENSE', 10000, CURRENT_DATE, 'MANUAL')",
                 userId, walletId, catId);
     }
 }

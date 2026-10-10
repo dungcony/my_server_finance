@@ -112,19 +112,19 @@ class AuthRegisterLoginIntegrationTest {
     }
 
     /**
-     * Đăng ký tạo tài khoản chờ xác thực và KHÔNG tạo ví nào.
+     * Đăng ký tạo tài khoản chờ xác thực và trigger CSDL tạo đúng một ví "Tiền mặt" mặc định.
      *
      * <p>Hai thay đổi so với bản trước:
      *
      * <ul>
      *   <li>Response không còn {@code access_token}/{@code refresh_token} — tài khoản ở trạng thái
      *       {@code PENDING_VERIFY}, thẻ chỉ được cấp sau {@code POST /auth/verify-email}.
-     *   <li>Không còn ví "Tiền mặt" mặc định (api/01 mục 1, bỏ 13/09/2026) — ứng dụng bắt người
-     *       dùng tự tạo ví đầu tiên ở màn chặn riêng, để họ đặt tên và số dư theo ý mình.
+     *   <li>Mọi tài khoản luôn có đúng một ví mặc định (trigger {@code trg_users_default_wallet}),
+     *       là nơi nhận các khoản tự ghi từ giao dịch nhóm; đảo lại quyết định bỏ ví mặc định ngày 13/09/2026.
      * </ul>
      */
     @Test
-    void register_createsPendingAccountWithoutTokensAndWithoutDefaultWallet() throws Exception {
+    void register_createsPendingAccountWithoutTokensAndWithDefaultWallet() throws Exception {
         Map<String, Object> body = Map.of(
                 "email", "minh.nguyen@example.com",
                 "password", "matkhau123",
@@ -151,7 +151,9 @@ class AuthRegisterLoginIntegrationTest {
                 .filter(w -> w.getUserId() != null && w.getUserId().toString().equals(userId))
                 .toList();
 
-        assertThat(wallets).isEmpty();
+        assertThat(wallets).hasSize(1);
+        assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
+        assertThat(wallets.get(0).getIsDefault()).isTrue();
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.datn.financeapp.module.group.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -24,6 +26,7 @@ import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactio
 import com.datn.financeapp.module.group.enums.GTransactionStatus;
 import com.datn.financeapp.module.group.enums.GTransactionType;
 import com.datn.financeapp.module.group.enums.MoneySource;
+import com.datn.financeapp.module.group.enums.PersonalSyncStatus;
 import com.datn.financeapp.module.group.service.GTransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -101,7 +104,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, req.categoryId(),
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.PENDING,
                 null, null, 150_000L, Instant.now(), "Ăn trưa nhóm",
-                Instant.now(), Instant.now()
+                Instant.now(), Instant.now(), PersonalSyncStatus.NONE
         );
 
         when(gTransactionService.create(eq(userId), eq(groupId), any(GroupTransactionCreateReq.class))).thenReturn(res);
@@ -124,7 +127,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Ăn trưa",
-                Instant.now(), Instant.now()
+                Instant.now(), Instant.now(), PersonalSyncStatus.NONE
         );
         GroupTransactionListRes listRes = GroupTransactionListRes.of(List.of(res), new PageMeta(1, 20, 1L, 1));
 
@@ -147,7 +150,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 null, null, 150_000L, Instant.now(), "Chi tiết",
-                Instant.now(), Instant.now()
+                Instant.now(), Instant.now(), PersonalSyncStatus.NONE
         );
         when(gTransactionService.detail(userId, groupId, txnId)).thenReturn(res);
 
@@ -184,7 +187,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.PENDING,
                 null, null, 200_000L, Instant.now(), "Ghi chú mới",
-                Instant.now(), Instant.now()
+                Instant.now(), Instant.now(), PersonalSyncStatus.NONE
         );
 
         when(gTransactionService.update(eq(userId), eq(groupId), eq(txnId), any(GroupTransactionUpdateReq.class))).thenReturn(res);
@@ -216,7 +219,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.CONFIRMED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Duyệt",
-                Instant.now(), Instant.now()
+                Instant.now(), Instant.now(), PersonalSyncStatus.NONE
         );
         when(gTransactionService.confirm(userId, groupId, txnId)).thenReturn(res);
 
@@ -235,7 +238,7 @@ class GroupTransactionControllerTest {
                 txnId, groupId, userId, userId, null,
                 MoneySource.FUND, GTransactionType.EXPENSE, GTransactionStatus.REJECTED,
                 userId, Instant.now(), 150_000L, Instant.now(), "Từ chối",
-                Instant.now(), Instant.now()
+                Instant.now(), Instant.now(), PersonalSyncStatus.NONE
         );
         when(gTransactionService.reject(userId, groupId, txnId)).thenReturn(res);
 
@@ -245,6 +248,38 @@ class GroupTransactionControllerTest {
                 .andExpect(jsonPath("$.data.status").value("REJECTED"));
 
         verify(gTransactionService).reject(userId, groupId, txnId);
+    }
+
+    @Test
+    @DisplayName("POST /groups/{groupId}/transactions/{txnId}/personal-sync - Xác nhận ghi sổ cá nhân")
+    void resolvePersonalSync_accept_success() throws Exception {
+        GroupTransactionDetailRes res = new GroupTransactionDetailRes(
+                txnId, groupId, userId, userId, null,
+                MoneySource.PERSONAL, GTransactionType.CONTRIBUTION, GTransactionStatus.CONFIRMED,
+                userId, Instant.now(), 500_000L, Instant.now(), "Góp quỹ",
+                Instant.now(), Instant.now(), PersonalSyncStatus.SYNCED
+        );
+        when(gTransactionService.resolvePersonalSync(userId, groupId, txnId, true)).thenReturn(res);
+
+        mockMvc.perform(post("/groups/{groupId}/transactions/{txnId}/personal-sync", groupId, txnId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accept\": true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.personal_sync_status").value("SYNCED"));
+
+        verify(gTransactionService).resolvePersonalSync(userId, groupId, txnId, true);
+    }
+
+    @Test
+    @DisplayName("POST /groups/{groupId}/transactions/{txnId}/personal-sync - Thiếu accept trả 400 và không gọi service")
+    void resolvePersonalSync_missingAccept_returns400() throws Exception {
+        mockMvc.perform(post("/groups/{groupId}/transactions/{txnId}/personal-sync", groupId, txnId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(gTransactionService, never()).resolvePersonalSync(any(), any(), any(), anyBoolean());
     }
 
     @Test
