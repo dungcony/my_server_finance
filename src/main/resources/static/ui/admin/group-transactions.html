@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giao dịch nhóm - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="group-transactions" data-title="Giao dịch nhóm">
+<main id="page">
+    <div class="notice warning">
+        <b>Backend chưa có API.</b> Các endpoint giao dịch nhóm hiện chỉ dành cho thành viên nhóm
+        (<code>/groups/{groupId}/transactions</code>), chưa có endpoint admin xem giao dịch toàn hệ thống.
+        Trang này giữ chỗ để bổ sung khi backend sẵn sàng.
+    </div>
+    <div class="card">
+        <div class="card-title">
+            <span>Giao dịch nhóm toàn hệ thống</span>
+            <div class="btn-row">
+                <select style="width:auto" disabled><option>Mọi loại</option></select>
+                <select style="width:auto" disabled><option>Mọi trạng thái</option></select>
+                <button class="btn" disabled>Lọc</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Nhóm</th><th>Loại</th><th>Nguồn</th><th class="right">Số tiền</th><th>Trạng thái</th><th>Người thực hiện</th><th>Ngày</th></tr></thead>
+                <tbody><tr><td class="empty" colspan="7">Chưa có API — không có dữ liệu để hiển thị</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+</body>
+</html>

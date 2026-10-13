@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Finance AI</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="./assets/css/base.css">
+</head>
+<body>
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Finance AI</h1>
+        <div class="sub">Đăng nhập để tiếp tục</div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label for="password">Mật khẩu</label>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn" id="btnLogin">Đăng nhập</button>
+
+        <div class="divider">— hoặc —</div>
+        <div id="g_id_onload"
+             data-client_id="230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com"
+             data-callback="handleGoogleResponse"
+             data-auto_prompt="false"></div>
+        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-width="364"></div>
+
+        <div class="auth-links">
+            <a href="./register.html">Tạo tài khoản</a>
+            <a href="./forgot-password.html">Quên mật khẩu?</a>
+        </div>
+
+        <details class="mt">
+            <summary class="muted">Dành cho dev: dán Access Token</summary>
+            <div class="form-group mt">
+                <textarea id="rawToken" rows="3" placeholder="eyJhbGciOi..."></textarea>
+            </div>
+            <button class="btn btn-secondary" id="btnRaw">Dùng token này</button>
+        </details>
+    </div>
+</div>
+
+<script src="./assets/js/api.js"></script>
+<script src="./assets/js/ui.js"></script>
+<script src="./assets/js/login.js"></script>
+</body>
+</html>

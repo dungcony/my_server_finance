@@ -19,7 +19,7 @@ import com.datn.financeapp.module.transaction.enums.TransactionType;
 import com.datn.financeapp.module.transaction.mapper.RecurringMapper;
 import com.datn.financeapp.module.transaction.repository.RecurringTransactionRepository;
 import com.datn.financeapp.module.transaction.repository.TransactionRepository;
-import com.datn.financeapp.module.transaction.service.TransactionService;
+import com.datn.financeapp.module.transaction.service.TxnService;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
@@ -36,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service xử lý các yêu cầu nghiệp vụ liên quan đến giao dịch định kỳ.
  * Triển khai giao diện {@link RecurringService}, tương tác với {@link RecurringTransactionRepository},
- * {@link TransactionService} và {@link RecurringPeriodWriter}.
+ * {@link TxnService} và {@link RecurringPeriodWriter}.
  */
 @Service
 @RequiredArgsConstructor
@@ -46,7 +46,7 @@ public class RecurringServiceImpl implements RecurringService {
     private static final Set<TransactionType> VALID_TYPES = Set.of(TransactionType.EXPENSE, TransactionType.INCOME);
 
     private final RecurringTransactionRepository recurringRepository;
-    private final TransactionService transactionService;
+    private final TxnService txnService;
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
     private final CategoryService categoryService;
@@ -77,7 +77,7 @@ public class RecurringServiceImpl implements RecurringService {
         RecurringTransaction rec = requireOwned(userId, id);
 
         List<RecurringDetailResponse.GeneratedTransaction> history =
-                transactionService.getByRecurring(userId, id).stream()
+                txnService.getByRecurring(userId, id).stream()
                         .map(recurringMapper::toGeneratedTransaction)
                         .toList();
 

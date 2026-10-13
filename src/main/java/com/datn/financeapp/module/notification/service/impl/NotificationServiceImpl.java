@@ -6,7 +6,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.response.PageRequestParams;
-import com.datn.financeapp.module.notification.dto.response.NotificationListItemResponse;
+import com.datn.financeapp.module.notification.dto.response.NotificationRes;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.entity.Notification;
 import com.datn.financeapp.module.notification.enums.NotiType;
@@ -48,8 +48,8 @@ public class NotificationServiceImpl implements NotificationService {
         long totalItems = notificationRepository.countForUser(userId, isRead);
         int totalPages = (int) Math.ceil((double) totalItems / pageParams.pageSize());
 
-        List<NotificationListItemResponse> data =
-                notifications.stream().map(notificationMapper::toListItemResponse).toList();
+        List<NotificationRes> data =
+                notifications.stream().map(notificationMapper::toRes).toList();
         PageMeta pagination = new PageMeta(pageParams.page(), pageParams.pageSize(), totalItems, totalPages);
 
         return NotificationListResponse.of(data, pagination);

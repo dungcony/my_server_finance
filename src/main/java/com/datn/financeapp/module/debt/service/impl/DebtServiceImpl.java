@@ -19,7 +19,7 @@ import com.datn.financeapp.module.debt.entity.DebtPayment;
 import com.datn.financeapp.module.debt.mapper.DebtMapper;
 import com.datn.financeapp.module.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.module.debt.repository.DebtRepository;
-import com.datn.financeapp.module.transaction.service.TransactionService;
+import com.datn.financeapp.module.transaction.service.TxnService;
 import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
@@ -72,7 +72,7 @@ public class DebtServiceImpl implements DebtService {
     private final CategoryService categoryService;
     private final WalletService walletService;
     private final TransactionWriter transactionWriter;
-    private final TransactionService transactionService;
+    private final TxnService txnService;
     private final DebtReminderWorker debtReminderWorker;
     private final DebtMapper debtMapper;
 
@@ -247,7 +247,7 @@ public class DebtServiceImpl implements DebtService {
      *
      * <ol>
      *   <li>Xoá bản ghi trả nợ, trigger tự trừ lại paid_amount và tự MỞ LẠI settled -&gt; outstanding
-     *   <li>Xoá mềm giao dịch qua {@link TransactionService#delete} để hoàn tác số dư ví đúng luồng
+     *   <li>Xoá mềm giao dịch qua {@link TxnService#delete} để hoàn tác số dư ví đúng luồng
      *       3 bước
      * </ol>
      *
@@ -270,7 +270,7 @@ public class DebtServiceImpl implements DebtService {
         debtPaymentRepository.flush();
 
         // Bước 2 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
-        transactionService.delete(userId, transactionId);
+        txnService.delete(userId, transactionId);
     }
 
     /**
@@ -345,9 +345,9 @@ public class DebtServiceImpl implements DebtService {
         debtRepository.flush();
 
         for (UUID transactionId : paymentTransactionIds) {
-            transactionService.delete(userId, transactionId);
+            txnService.delete(userId, transactionId);
         }
-        transactionService.delete(userId, originTransactionId);
+        txnService.delete(userId, originTransactionId);
     }
 
     // ---------------------------------------------------------------------
@@ -381,7 +381,7 @@ public class DebtServiceImpl implements DebtService {
                 .map(debtMapper::toHistoryItem)
                 .toList();
 
-        TransactionRefResponse originRef = transactionService.findRefById(debt.getOriginTransactionId());
+        TransactionRefResponse originRef = txnService.findRefById(debt.getOriginTransactionId());
 
         return debtMapper.toDetailResponse(
                 debtMapper.toListItem(debt, loadWalletOrNull(userId, debt.getWalletId()), payments.size()),

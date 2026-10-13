@@ -12,21 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quản lý thông tin vòng đời của nhóm chung quỹ (Group), cấu hình nhóm,
- * phân quyền thành viên và mã mời tham gia.
- * <p>
- * Các hàm trong interface:
- * <ul>
- *   <li>{@link #findNotDeletedById}: Tra cứu nhóm nội bộ. Input: groupId. Output: GroupDetailRes.</li>
- *   <li>{@link #create}: Tạo nhóm. Input: operatorId, req. Output: GroupDetailRes.</li>
- *   <li>{@link #list}: Xem ds nhóm của user. Input: operatorId. Output: ds GroupSummaryRes.</li>
- *   <li>{@link #detail(UUID, UUID)}: Xem chi tiết nhóm. Input: operatorId, groupId. Output: GroupDetailRes.</li>
- *   <li>{@link #joinByCode(UUID, GroupJoinReq)}: xin vào nhóm.</li>
- *   <li>{@link #update}: Cập nhật cấu hình. Input: operatorId, groupId, req. Output: GroupDetailRes.</li>
- *   <li>{@link #archive}, {@link #unarchive}: Lưu trữ/Mở lại nhóm. Input: operatorId, groupId. Output: void.</li>
- *   <li>{@link #delete}: Xóa nhóm. Input: operatorId, groupId. Output: void.</li>
- * </ul>
- * </p>
+ * Service quản lý thông tin vòng đời của nhóm chung quỹ (Group), cấu hình nhóm,phân quyền thành viên và mã mời tham gia.
  */
 public interface GroupService {
 
@@ -46,45 +32,41 @@ public interface GroupService {
      * Nếu có danh sách thành viên mời ban đầu, hệ thống sẽ tự động thêm vào nhóm.
      * </p>
      *
-     * @param operatorId ID người dùng tạo nhóm (sẽ là OWNER)
-     * @param req        Dữ liệu tạo nhóm (tên, mô tả, mục tiêu, cài đặt duyệt, danh sách thành viên ban đầu...)
+     * @param req Dữ liệu tạo nhóm (tên, mô tả, mục tiêu, cài đặt duyệt, danh sách thành viên ban đầu...)
      * @return Chi tiết nhóm sau khi tạo thành công
      */
-    GroupDetailRes create(UUID operatorId, GroupCreateReq req);
+    GroupDetailRes create(GroupCreateReq req);
 
     /**
      * lấy toàn bộ group member đang ở
      * <p>Yêu cầu: Người gọi phải là thành viên đang hoạt động ({@code ACTIVE}) của nhóm.</p>
      *
-     * @param operatorId ID người dùng yêu cầu
      * @return Danh sách nhóm (thông tin nhóm, vai trò {@code myRole}, quỹ nhóm, danh sách thành viên)
      */
-    List<GroupSummaryRes> list(UUID operatorId);
+    List<GroupSummaryRes> list();
 
     /**
      * Xem thông tin chi tiết của một nhóm cụ thể.
      * <p>Yêu cầu: Người gọi phải là thành viên đang hoạt động ({@code ACTIVE}) của nhóm.</p>
      *
-     * @param operatorId ID người dùng yêu cầu
-     * @param groupId    ID nhóm cần xem
+     * @param groupId ID nhóm cần xem
      * @return Chi tiết nhóm (thông tin nhóm, vai trò {@code myRole}, quỹ nhóm, danh sách thành viên)
      * @throws BusinessException nếu nhóm không tồn tại ({@code GROUP_NOT_FOUND})
      *                           hoặc người dùng không thuộc nhóm ({@code GROUP_MEMBER_REQUIRED})
      */
-    GroupDetailRes detail(UUID operatorId, UUID groupId);
+    GroupDetailRes detail(UUID groupId);
 
     /**
      * Cập nhật thông tin cấu hình nhóm (tên, mô tả, mục tiêu chi tiêu, cơ chế duyệt, quyết toán).
      * <p>Yêu cầu quyền: Trưởng nhóm ({@code OWNER}).</p>
      *
-     * @param operatorId ID người thực hiện (phải là Owner)
-     * @param groupId    ID nhóm cần cập nhật
-     * @param req        Dữ liệu cập nhật
+     * @param groupId ID nhóm cần cập nhật
+     * @param req     Dữ liệu cập nhật
      * @return Chi tiết nhóm sau khi cập nhật
      * @throws BusinessException nếu không phải Owner ({@code GROUP_OWNER_REQUIRED})
      *                           hoặc không tìm thấy nhóm ({@code GROUP_NOT_FOUND})
      */
-    GroupDetailRes update(UUID operatorId, UUID groupId, GroupUpdateReq req);
+    GroupDetailRes update(UUID groupId, GroupUpdateReq req);
 
     /**
      * Lưu trữ nhóm (chuyển trạng thái sang {@code ARCHIVED}).
@@ -93,22 +75,20 @@ public interface GroupService {
      * Yêu cầu quyền: Trưởng nhóm ({@code OWNER}) và không còn giao dịch chờ duyệt.
      * </p>
      *
-     * @param operatorId ID người thực hiện (phải là Owner)
-     * @param groupId    ID nhóm cần lưu trữ
+     * @param groupId ID nhóm cần lưu trữ
      * @throws BusinessException nếu không phải Owner ({@code GROUP_OWNER_REQUIRED})
      *                           hoặc còn giao dịch chờ duyệt ({@code GROUP_PENDING_TXN_EXIST})
      */
-    void archive(UUID operatorId, UUID groupId);
+    void archive(UUID groupId);
 
     /**
      * Mở lại nhóm đã lưu trữ (chuyển trạng thái về {@code ACTIVE}).
      * <p>Yêu cầu quyền: Trưởng nhóm ({@code OWNER}).</p>
      *
-     * @param operatorId ID người thực hiện (phải là Owner)
-     * @param groupId    ID nhóm cần mở lại
+     * @param groupId ID nhóm cần mở lại
      * @throws BusinessException nếu không phải Owner ({@code GROUP_OWNER_REQUIRED})
      */
-    void unarchive(UUID operatorId, UUID groupId);
+    void unarchive(UUID groupId);
 
     /**
      * Xóa nhóm (chuyển trạng thái sang {@code DELETED}) và đóng quỹ nhóm ({@code CLOSED}).
@@ -117,12 +97,11 @@ public interface GroupService {
      * Điều kiện: Số dư quỹ phải bằng 0 và không còn giao dịch đang chờ duyệt.
      * </p>
      *
-     * @param operatorId ID người thực hiện (phải là Owner)
-     * @param groupId    ID nhóm cần xóa
+     * @param groupId ID nhóm cần xóa
      * @throws BusinessException nếu không phải Owner, quỹ còn số dư ({@code GROUP_DELETE_BALANCE_NOT_ZERO}),
      *                           hoặc còn giao dịch chờ duyệt ({@code GROUP_PENDING_TXN_EXIST})
      */
-    void delete(UUID operatorId, UUID groupId);
+    void delete(UUID groupId);
 
     /**
      * Tham gia vào nhóm bằng mã mời.
@@ -131,24 +110,10 @@ public interface GroupService {
      * Ngược lại, thành viên vào trạng thái chờ duyệt {@code PENDING}.
      * </p>
      *
-     * @param operatorId ID người dùng muốn tham gia
-     * @param req        DTO chứa mã mời
      * @throws BusinessException nếu mã mời không hợp lệ ({@code INVITE_CODE_INVALID}),
      *                           nhóm đã lưu trữ ({@code GROUP_ARCHIVED}),
      *                           hoặc đã là thành viên trong nhóm ({@code GROUP_MEMBER_ALREADY_EXISTS})
      */
-    void joinByCode(UUID operatorId, GroupJoinReq req);
+    void joinByCode(String code);
 
-    /**
-     * Đếm số việc đang chờ duyệt để hiện badge.
-     * <p>
-     * Giao dịch {@code PENDING} chỉ trả cho Trưởng nhóm / Thủ quỹ, thành viên {@code PENDING} chỉ trả cho
-     * Trưởng nhóm; người không có quyền duyệt nhận 0 ở mục tương ứng.
-     * </p>
-     *
-     * @param operatorId ID người dùng yêu cầu (phải là thành viên {@code ACTIVE})
-     * @param groupId    ID nhóm
-     * @return số giao dịch chờ duyệt và số thành viên chờ duyệt
-     */
-    GroupPendingCountRes pendingCount(UUID operatorId, UUID groupId);
 }

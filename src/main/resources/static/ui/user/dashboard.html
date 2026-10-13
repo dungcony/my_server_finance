@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng quan - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="user" data-active="dashboard" data-title="Tổng quan">
+<main id="page">
+    <div class="grid grid-4">
+        <div class="stat"><div class="label">Tổng tiền ví cá nhân</div><div class="value" id="sPersonal">-</div><div class="sub" id="sPersonalSub"></div></div>
+        <div class="stat"><div class="label">Tổng tiền ví chung</div><div class="value" id="sShared">-</div><div class="sub" id="sSharedSub"></div></div>
+        <div class="stat"><div class="label">Nhóm đang tham gia</div><div class="value" id="sGroups">-</div><div class="sub" id="sGroupsSub"></div></div>
+        <div class="stat"><div class="label">Thông báo chưa đọc</div><div class="value" id="sUnread">-</div><div class="sub"><a href="./notifications.html">Xem thông báo</a></div></div>
+    </div>
+
+    <div class="grid grid-2 mt">
+        <div class="card">
+            <div class="card-title"><span>Nhóm của tôi</span><a href="./groups.html">Tất cả →</a></div>
+            <div class="table-wrap"><table class="table"><thead><tr><th>Tên</th><th>Vai trò</th><th>Số dư quỹ</th></tr></thead><tbody id="groupBody"></tbody></table></div>
+        </div>
+        <div class="card">
+            <div class="card-title"><span>Ví theo loại</span><a href="./wallets.html">Quản lý ví →</a></div>
+            <div class="table-wrap"><table class="table"><thead><tr><th>Loại</th><th>Số ví</th><th class="right">Tổng</th></tr></thead><tbody id="typeBody"></tbody></table></div>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/dashboard.js"></script>
+</body>
+</html>

@@ -5,13 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.module.group.dto.request.group.GroupCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionFilterReq;
-import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionListRes;
-import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnFilterReq;
+import com.datn.financeapp.module.group.dto.response.transaction.GroupTxnListRes;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
-import com.datn.financeapp.module.group.service.GTransactionService;
-import com.datn.financeapp.module.group.service.GroupService;
 import com.datn.financeapp.performance.SqlCountingConfig;
 import com.datn.financeapp.module.user.entity.Role;
 import com.datn.financeapp.module.user.entity.User;
@@ -23,8 +22,6 @@ import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.module.user.repository.UserRoleRepository;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -57,7 +54,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class GroupTransactionListQueryCountIntegrationTest {
 
-    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final int FEW = 10;
     private static final int MANY = 100;
     // chênh lệch cho phép khi tăng số giao dịch: tối đa hai câu nạp người chia tiền thêm (do default_batch_fetch_size = 50)
@@ -79,7 +75,10 @@ class GroupTransactionListQueryCountIntegrationTest {
     private GroupService groupService;
 
     @Autowired
-    private GTransactionService gTransactionService;
+    private GroupTxnGetService groupTxnGetService;
+
+    @Autowired
+    private GroupTxnCreateService groupTxnCreateService;
 
     @Autowired
     private UserRepository userRepository;
@@ -97,6 +96,7 @@ class GroupTransactionListQueryCountIntegrationTest {
     private UUID memberId;
     private UUID groupId;
     private UUID categoryId;
+    private String categoryCode;
 
     @BeforeEach
     void createGroup() {
@@ -105,6 +105,7 @@ class GroupTransactionListQueryCountIntegrationTest {
         memberId = createUser(userRole);
         categoryId = jdbcTemplate.queryForObject(
                 "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
+        categoryCode = jdbcTemplate.queryForObject("SELECT code FROM categories WHERE id = ?", String.class, categoryId);
         groupId = groupService.create(ownerId, new GroupCreateReq(
                 "Nhóm đếm SQL", "Chặn N+1 danh sách giao dịch", 10_000_000L, true, true, List.of(memberId))).id();
     }
@@ -113,11 +114,11 @@ class GroupTransactionListQueryCountIntegrationTest {
     @DisplayName("list: số câu SQL không tăng theo số giao dịch")
     void list_SqlCountDoesNotGrowWithTransactionCount() {
         createExpenses(ownerId, FEW);
-        long few = sqlOf(() -> gTransactionService.list(ownerId, groupId, firstPage(100)));
+        long few = sqlOf(() -> groupTxnGetService.list(ownerId, groupId, firstPage(100)));
 
         createExpenses(ownerId, MANY - FEW);
-        GroupTransactionListRes[] lastResult = new GroupTransactionListRes[1];
-        long many = sqlOf(() -> lastResult[0] = gTransactionService.list(ownerId, groupId, firstPage(100)));
+        GroupTxnListRes[] lastResult = new GroupTxnListRes[1];
+        long many = sqlOf(() -> lastResult[0] = groupTxnGetService.list(ownerId, groupId, firstPage(100)));
 
         assertThat(many).isLessThanOrEqualTo(few + ALLOWED_GROWTH);
         assertThat(lastResult[0].items()).hasSize(MANY);
@@ -127,10 +128,10 @@ class GroupTransactionListQueryCountIntegrationTest {
     @DisplayName("myList: số câu SQL không tăng theo số giao dịch của chính mình")
     void myList_SqlCountDoesNotGrowWithTransactionCount() {
         createExpenses(ownerId, FEW);
-        long few = sqlOf(() -> gTransactionService.myList(ownerId, groupId, firstPage(100)));
+        long few = sqlOf(() -> groupTxnGetService.myList(ownerId, groupId, firstPage(100)));
 
         createExpenses(ownerId, MANY - FEW);
-        long many = sqlOf(() -> gTransactionService.myList(ownerId, groupId, firstPage(100)));
+        long many = sqlOf(() -> groupTxnGetService.myList(ownerId, groupId, firstPage(100)));
 
         assertThat(many).isLessThanOrEqualTo(few + ALLOWED_GROWTH);
     }
@@ -139,10 +140,10 @@ class GroupTransactionListQueryCountIntegrationTest {
     @DisplayName("listPending: số câu SQL không tăng theo số giao dịch chờ duyệt (thành viên thường tạo)")
     void listPending_SqlCountDoesNotGrowWithTransactionCount() {
         createExpenses(memberId, FEW);
-        long few = sqlOf(() -> gTransactionService.listPending(ownerId, groupId, 1, 100));
+        long few = sqlOf(() -> groupTxnGetService.listPending(ownerId, groupId, 1, 100));
 
         createExpenses(memberId, MANY - FEW);
-        long many = sqlOf(() -> gTransactionService.listPending(ownerId, groupId, 1, 100));
+        long many = sqlOf(() -> groupTxnGetService.listPending(ownerId, groupId, 1, 100));
 
         assertThat(many).isLessThanOrEqualTo(few + ALLOWED_GROWTH);
     }
@@ -162,16 +163,19 @@ class GroupTransactionListQueryCountIntegrationTest {
         });
     }
 
-    private GroupTransactionFilterReq firstPage(int size) {
-        return new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, size);
+    private GroupTxnFilterReq firstPage(int size) {
+        return new GroupTxnFilterReq(null, null, null, null, null, null, null, null, 1, size);
     }
 
     // chủ nhóm tạo thì giao dịch được duyệt ngay, thành viên thường tạo thì chờ duyệt
     private void createExpenses(UUID operator, int count) {
-        for (int i = 0; i < count; i++)
-            gTransactionService.create(operator, groupId, new GroupTransactionCreateReq(
-                    GTransactionType.EXPENSE, MoneySource.PERSONAL, 10_000L + i, null,
-                    LocalDate.now(VIETNAM_ZONE), categoryId, operator, "Chi đếm SQL", null));
+        for (int i = 0; i < count; i++) {
+            long amount = 10_000L + i;
+            groupTxnCreateService.create(operator, groupId, new GroupTxnCreateReq(
+                    GroupTxnType.EXPENSE, MoneySource.PERSONAL, amount, Instant.now().minusSeconds(60),
+                    categoryCode, operator, "Chi đếm SQL",
+                    List.of(new GroupTxnParticipantReq(operator, amount))));
+        }
     }
 
     private UUID createUser(Role userRole) {

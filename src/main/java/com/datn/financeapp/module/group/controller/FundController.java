@@ -26,7 +26,7 @@ public class FundController {
             @PathVariable UUID groupId,
             @Valid @RequestBody FundKepperUpdateReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(fundService.updateFundKeepper(userId, groupId, req));
+        return ApiResponse.of(fundService.updateFundKeepper(groupId, req));
     }
 
     @PostMapping("/fund/reconcile")
@@ -34,6 +34,6 @@ public class FundController {
             @PathVariable UUID groupId,
             @Valid @RequestBody FundReconcileReq req) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(fundService.reconcileFund(userId, groupId, req));
+        return ApiResponse.of(fundService.reconcileFund(groupId, req));
     }
 }

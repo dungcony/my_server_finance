@@ -1,5 +1,6 @@
 package com.datn.financeapp.module.transaction.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.module.transaction.enums.TransactionSource;
 import com.datn.financeapp.module.transaction.enums.TransactionType;
 import jakarta.persistence.Column;
@@ -29,7 +30,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Transaction {
+public class Transaction extends AssignedIdEntity {
 
     @Id
     private UUID id;
@@ -52,7 +53,7 @@ public class Transaction {
 
     // ngày phát sinh giao dịch, KHÔNG có múi giờ, không convert.
     @Column(name = "date", nullable = false)
-    private LocalDate date;
+    private Instant occurredAt;
 
     @Column(name = "note")
     private String note;
@@ -67,16 +68,6 @@ public class Transaction {
     @Column(name = "recurring_id")
     private UUID recurringId;
 
-    // link biên lai
-    @Column(name = "receipt_url")
-    private String receiptUrl;
-
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
 }

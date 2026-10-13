@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài khoản - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="user" data-active="profile" data-title="Tài khoản">
+<main id="page">
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-title"><span>Thông tin cá nhân</span><span id="pBadges"></span></div>
+            <div class="form-group"><label>Email</label><input type="text" id="pEmail" disabled></div>
+            <div class="form-row">
+                <div class="form-group"><label for="pFirst">Họ</label><input type="text" id="pFirst"></div>
+                <div class="form-group"><label for="pLast">Tên</label><input type="text" id="pLast"></div>
+            </div>
+            <div class="form-group"><label for="pAvatar">Avatar URL</label><input type="text" id="pAvatar"></div>
+            <div class="form-group"><label>User ID</label><div><code id="pId"></code></div></div>
+            <button class="btn" id="btnSave">Lưu thay đổi</button>
+        </div>
+
+        <div>
+            <div class="card">
+                <div class="card-title"><span>Đổi mật khẩu</span></div>
+                <div class="form-group"><label for="oldPw">Mật khẩu hiện tại</label><input type="password" id="oldPw" autocomplete="current-password"></div>
+                <div class="form-group"><label for="newPw">Mật khẩu mới (≥ 8 ký tự)</label><input type="password" id="newPw" autocomplete="new-password"></div>
+                <div class="btn-row">
+                    <button class="btn" id="btnChangePw">Đổi mật khẩu</button>
+                    <button class="btn btn-secondary" id="btnGenPw" title="Dành cho tài khoản Google chưa có mật khẩu">Tạo mật khẩu gửi qua email</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>Vai trò & quyền (từ token)</span></div>
+                <div id="pRoles" class="muted"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>Xoá tài khoản</span></div>
+                <div class="notice danger">Hành động này không thể hoàn tác.</div>
+                <div class="form-group"><label for="delPw">Mật khẩu xác nhận (nếu tài khoản có mật khẩu)</label><input type="password" id="delPw"></div>
+                <button class="btn btn-danger" id="btnDelete">Xoá tài khoản</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/profile.js"></script>
+</body>
+</html>

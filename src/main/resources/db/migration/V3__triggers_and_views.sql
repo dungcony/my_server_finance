@@ -125,11 +125,12 @@ BEGIN
 
         UNION ALL
 
-        SELECT group_id, transactor_id, 0, 0, amount, 0
-        FROM group_transactions
-        WHERE status = 'CONFIRMED'
-          AND deleted_at IS NULL
-          AND type = 'REFUND'
+        SELECT gt.group_id, p.user_id, 0, 0, p.share_amount, 0
+        FROM group_transaction_participants p
+        JOIN group_transactions gt ON gt.id = p.group_transaction_id
+        WHERE gt.status = 'CONFIRMED'
+          AND gt.deleted_at IS NULL
+          AND gt.type = 'REFUND'
 
         UNION ALL
 
@@ -143,6 +144,7 @@ BEGIN
         JOIN group_transactions gt ON gt.id = p.group_transaction_id
         WHERE gt.status = 'CONFIRMED'
           AND gt.deleted_at IS NULL
+          AND gt.type IN ('EXPENSE', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')
     ) combined
     GROUP BY group_id, user_id;
 END;

@@ -2,12 +2,9 @@ package com.datn.financeapp.module.group.controller;
 
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
-import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.group.dto.request.group.GroupCreateReq;
-import com.datn.financeapp.module.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.module.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.module.group.dto.response.group.GroupDetailRes;
-import com.datn.financeapp.module.group.dto.response.group.GroupPendingCountRes;
 import com.datn.financeapp.module.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.module.group.service.GroupService;
 import jakarta.validation.Valid;
@@ -29,63 +26,49 @@ public class GroupController {
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<GroupDetailRes> create(@Valid @RequestBody GroupCreateReq req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(groupService.create(userId, req));
+        return ApiResponse.of(groupService.create(req));
     }
 
     @GetMapping
     public ApiResponse<List<GroupSummaryRes>> list() {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(groupService.list(userId));
+        return ApiResponse.of(groupService.list());
     }
 
 
     @GetMapping("/{id}")
     public ApiResponse<GroupDetailRes> detail(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(groupService.detail(userId, id));
+        return ApiResponse.of(groupService.detail(id));
     }
 
     @PatchMapping("/{id}")
     public ApiResponse<GroupDetailRes> update(
             @PathVariable UUID id,
             @Valid @RequestBody GroupUpdateReq req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(groupService.update(userId, id, req));
+        return ApiResponse.of(groupService.update(id, req));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        groupService.delete(userId, id);
+        groupService.delete(id);
         return ApiResponse.of(null);
     }
 
     @Idempotent
     @PostMapping("/join")
-    public ApiResponse<Void> join(@Valid @RequestBody GroupJoinReq req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        groupService.joinByCode(userId, req);
+    public ApiResponse<Void> join(@RequestParam("code") String code) {
+        groupService.joinByCode(code);
         return ApiResponse.of(null);
-    }
-
-    @GetMapping("/{id}/pending-count")
-    public ApiResponse<GroupPendingCountRes> pendingCount(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(groupService.pendingCount(userId, id));
     }
 
     @PostMapping("/{id}/archive")
     public ApiResponse<Void> archive(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        groupService.archive(userId, id);
+        groupService.archive(id);
         return ApiResponse.of(null);
     }
 
     @PostMapping("/{id}/unarchive")
     public ApiResponse<Void> unarchive(@PathVariable UUID id) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        groupService.unarchive(userId, id);
+        groupService.unarchive(id);
         return ApiResponse.of(null);
     }
 

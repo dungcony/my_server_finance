@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng quan quản trị - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="dashboard" data-title="Tổng quan quản trị">
+<main id="page">
+    <div class="grid grid-4">
+        <div class="stat"><div class="label">Tổng người dùng</div><div class="value" id="sUsers">-</div></div>
+        <div class="stat"><div class="label">Đang hoạt động</div><div class="value pos" id="sActive">-</div></div>
+        <div class="stat"><div class="label">Bị khoá</div><div class="value neg" id="sBlocked">-</div></div>
+        <div class="stat"><div class="label">Quản trị viên</div><div class="value" id="sAdmins">-</div></div>
+    </div>
+
+    <div class="grid grid-2 mt">
+        <div class="card">
+            <div class="card-title"><span>Người dùng mới nhất</span><a href="./users.html">Quản lý →</a></div>
+            <div class="table-wrap"><table class="table"><thead><tr><th>Email</th><th>Trạng thái</th><th>Vai trò</th></tr></thead><tbody id="userBody"></tbody></table></div>
+        </div>
+        <div class="card">
+            <div class="card-title"><span>Vai trò hệ thống</span><a href="./roles.html">Chi tiết →</a></div>
+            <div class="table-wrap"><table class="table"><thead><tr><th>Vai trò</th><th>Cấp</th><th>Số quyền</th></tr></thead><tbody id="roleBody"></tbody></table></div>
+        </div>
+    </div>
+
+    <div class="notice warning mt">
+        Backend chưa có API thống kê nhóm / giao dịch nhóm cho admin (quyền <code>group:read</code> đã khai báo nhưng chưa có endpoint) —
+        xem <a href="./groups.html">Nhóm</a> và <a href="./group-transactions.html">Giao dịch nhóm</a>.
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/dashboard.js"></script>
+</body>
+</html>

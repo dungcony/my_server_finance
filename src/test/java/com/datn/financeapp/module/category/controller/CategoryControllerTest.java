@@ -38,11 +38,10 @@ class CategoryControllerTest {
     private CategoryService categoryService;
 
     private MockMvc mockMvc;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper()
+        ObjectMapper objectMapper = new ObjectMapper()
                 .findAndRegisterModules()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
         mockMvc = MockMvcBuilders.standaloneSetup(new CategoryController(categoryService))
@@ -129,14 +128,14 @@ class CategoryControllerTest {
         mockMvc.perform(delete("/categories/ca_phe").param("replacement_code", "an_uong"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
-        verify(categoryService).delete("ca_phe", "an_uong");
+        verify(categoryService).delete("ca_phe");
     }
 
     @Test
     @DisplayName("DELETE /categories/{code} không có replacement_code thì truyền null")
     void delete_withoutReplacement_passesNull() throws Exception {
         mockMvc.perform(delete("/categories/ca_phe")).andExpect(status().isOk());
-        verify(categoryService).delete("ca_phe", null);
+        verify(categoryService).delete("ca_phe");
     }
 
     private static CategoryResponse response(String code, String parentCode) {

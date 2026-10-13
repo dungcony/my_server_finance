@@ -29,11 +29,13 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -113,6 +115,45 @@ class CateImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_CODE_EXISTS.getCode());
         verify(categoryRepository, never()).save(any(Category.class));
+    }
+
+    @Test
+    @DisplayName("Tra id theo code lấy từ cache, không query DB")
+    void findIdByCode_inCache_returnsId() {
+        UUID id = UUID.randomUUID();
+        when(cateCache.findActiveId("an_uong")).thenReturn(Optional.of(id));
+
+        assertThat(cateImpl.findIdByCode("an_uong")).isEqualTo(id);
+        verifyNoInteractions(categoryRepository);
+    }
+
+    @Test
+    @DisplayName("Tra id theo code không có trong cache hoặc đã xóa mềm thì báo CATEGORY_NOT_FOUND")
+    void findIdByCode_missing_throws() {
+        when(cateCache.findActiveId("khong_co")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cateImpl.findIdByCode("khong_co"))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_NOT_FOUND.getCode());
+    }
+
+    @Test
+    @DisplayName("Tra nhiều code theo id từ cache, bỏ id không có")
+    void findCodesByIds_skipsUnknownIds() {
+        UUID known = UUID.randomUUID();
+        UUID unknown = UUID.randomUUID();
+        when(cateCache.findCode(known)).thenReturn(Optional.of("an_uong"));
+        when(cateCache.findCode(unknown)).thenReturn(Optional.empty());
+
+        assertThat(cateImpl.findCodesByIds(List.of(known, unknown))).containsOnly(entry(known, "an_uong"));
+        verifyNoInteractions(categoryRepository);
+    }
+
+    @Test
+    @DisplayName("Tra nhiều code với danh sách null hoặc rỗng trả map rỗng")
+    void findCodesByIds_emptyInput_returnsEmpty() {
+        assertThat(cateImpl.findCodesByIds(null)).isEmpty();
+        assertThat(cateImpl.findCodesByIds(List.of())).isEmpty();
     }
 
     @Test
@@ -295,7 +336,7 @@ class CateImplTest {
     @Test
     @DisplayName("Xóa danh mục không tồn tại thì báo CATEGORY_NOT_FOUND")
     void delete_unknownCategory_throws() {
-        assertThatThrownBy(() -> cateImpl.delete("khong_co", null))
+        assertThatThrownBy(() -> cateImpl.delete("khong_co"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_NOT_FOUND.getCode());
     }
@@ -309,7 +350,7 @@ class CateImplTest {
         when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(food));
         when(categoryRepository.findDescendants("an_uong")).thenReturn(List.of(coffee, latte));
 
-        cateImpl.delete("an_uong", null);
+        cateImpl.delete("an_uong");
 
         assertThat(food.getDeleted()).isTrue();
         assertThat(coffee.getDeleted()).isTrue();
@@ -325,7 +366,7 @@ class CateImplTest {
         when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(food));
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
-        assertThatThrownBy(() -> cateImpl.delete("an_uong", "ca_phe"))
+        assertThatThrownBy(() -> cateImpl.delete("an_uong"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VALIDATION_ERROR.getCode());
         assertThat(food.getDeleted()).isFalse();
@@ -340,7 +381,7 @@ class CateImplTest {
         Category coffee = category("ca_phe", parent);
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
-        cateImpl.delete("ca_phe", null);
+        cateImpl.delete("ca_phe");
 
         assertThat(coffee.getDeleted()).isTrue();
         assertThat(parent.getIsLeaf()).isTrue();
@@ -355,7 +396,7 @@ class CateImplTest {
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
         when(categoryRepository.existsByParent_IdAndDeletedFalse(parent.getId())).thenReturn(true);
 
-        cateImpl.delete("ca_phe", null);
+        cateImpl.delete("ca_phe");
 
         assertThat(coffee.getDeleted()).isTrue();
         assertThat(parent.getIsLeaf()).isFalse();
@@ -367,7 +408,7 @@ class CateImplTest {
         Category coffee = category("ca_phe", null);
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
-        assertThatThrownBy(() -> cateImpl.delete("ca_phe", "khong_co"))
+        assertThatThrownBy(() -> cateImpl.delete("ca_phe"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.CATEGORY_NOT_FOUND.getCode());
         assertThat(coffee.getDeleted()).isFalse();
@@ -382,7 +423,7 @@ class CateImplTest {
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
         when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(food));
 
-        assertThatThrownBy(() -> cateImpl.delete("ca_phe", "an_uong"))
+        assertThatThrownBy(() -> cateImpl.delete("ca_phe"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VALIDATION_ERROR.getCode());
         assertThat(coffee.getDeleted()).isFalse();
@@ -394,7 +435,7 @@ class CateImplTest {
         Category coffee = category("ca_phe", null);
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
-        assertThatThrownBy(() -> cateImpl.delete("ca_phe", "ca_phe"))
+        assertThatThrownBy(() -> cateImpl.delete("ca_phe"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.VALIDATION_ERROR.getCode());
         assertThat(coffee.getDeleted()).isFalse();

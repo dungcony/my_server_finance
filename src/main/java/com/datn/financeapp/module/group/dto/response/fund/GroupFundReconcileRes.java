@@ -1,6 +1,6 @@
 package com.datn.financeapp.module.group.dto.response.fund;
 
-import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 
 import java.util.UUID;
 
@@ -8,6 +8,6 @@ public record GroupFundReconcileRes(
         Long previousBalance,
         Long actualBalance,
         Long difference,
-        GTransactionType adjustmentType,
+        GroupTxnType adjustmentType,
         UUID transactionId) {
 }

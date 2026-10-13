@@ -17,8 +17,9 @@
         - [1. Thực thể `Group` (Bảng `groups`)](#221-group-entity)
         - [2. Thực thể `Member` (Bảng `group_members`)](#222-group-member-entity)
         - [3. Thực thể `Fund` (Bảng `group_funds`)](#223-group-fund-entity)
-        - [4. Thực thể `GTransaction` (Bảng `group_transactions`)](#224-group-transaction-entity)
-        - [5. Thực thể `TransactionParticipant` (Bảng `group_transaction_participants`)](#225-group-transaction-participant-entity)
+        - [4. Thực thể `GroupTxn` (Bảng `group_transactions`)](#224-group-transaction-entity)
+        - [5. Thực thể `GroupTxnParticipant` (Bảng
+          `group_transaction_participants`)](#225-group-transaction-participant-entity)
         - [6. Thực thể `MemberBalance` (Bảng `group_member_balances`)](#226-member-balance-entity)
     - [2.3 Bảng Tham chiếu từ Module khác](#23-tham-chieu)
     - [2.4 Bảng Tổng hợp Khóa Ngoại](#24-tong-hop-khoa-ngoai)
@@ -118,14 +119,14 @@ classDiagram
 
 ### 1.2 Danh mục 6 Thực thể & Thuộc tính Nghiệp vụ <a id="12-danh-muc-thuc-the"></a>
 
-|  STT  | Thực thể                                         | Thuộc tính bản chất                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Ý nghĩa nghiệp vụ                                                                                                                                       |
-|:-----:|:-------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **1** | **`Group`** (Nhóm chung)                         | - `name`: Tên nhóm<br>- `description`: Mô tả<br>- `status`: `ACTIVE`, `ARCHIVED` (lưu trữ, chỉ xem), `DELETED`<br>- `inviteCode`: Mã mời vào nhóm (duy nhất, không giới hạn thời gian)<br>- `target`: Số tiền quỹ mục tiêu cần gom<br>- `isSettlementEnabled`: **Bật tính thừa thiếu** — bật thì hệ thống tính phần của từng người; tắt thì không ai cần trả ai<br>- `isJoinWithoutConfirm`: Bật thì nhập mã là vào thẳng; tắt thì chờ chủ nhóm duyệt<br>- `createdAt`, `updatedAt`                                                                                                                                                                                                                                                | Gốc điều phối thành viên, quỹ và giao dịch chung. Mọi nhóm vận hành cùng một cơ chế, không phân loại.                                                   |
-| **2** | **`Member`** (Người trong nhóm)                  | - `role`: `OWNER`, `MEMBER`<br>- `status`: `PENDING`, `ACTIVE`, `LEFT`, `REMOVED`<br>- `joinedAt`: Lúc được duyệt vào<br>- `leftAt`: Lúc rời hoặc bị đuổi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ---------------------------------- | Tư cách của một người trong **một khoảng thời gian** ở một nhóm. Rời rồi quay lại là bản ghi mới, nhờ vậy biết được tại mỗi thời điểm nhóm có những ai. |
-| **3** | **`Fund`** (Quỹ nhóm)                            | - `currentBalance`: Tiền quỹ còn lại, **được phép âm**<br>- `createdAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Nơi giữ tiền chung. **Mỗi nhóm đúng một quỹ**, giao cho **một người giữ** (`keepper_id` - thủ quỹ). Quỹ đi theo vòng đời nhóm, không có trạng thái riêng. |
-| **4** | **`GTransaction`** (Giao dịch nhóm)              | - `type`:<br>&nbsp;&nbsp;· `EXPENSE` — chi tiêu<br>&nbsp;&nbsp;· `CONTRIBUTION` — góp quỹ<br>&nbsp;&nbsp;· `REFUND` — quỹ trả tiền cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)<br>&nbsp;&nbsp;· `ADJUSTMENT_UP` — kiểm kê, tiền thật **nhiều hơn** sổ<br>&nbsp;&nbsp;· `ADJUSTMENT_DOWN` — kiểm kê, tiền thật **ít hơn** sổ<br>- `moneySource`: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền bản thân)<br>- `status`: `PENDING` (chờ xác nhận), `CONFIRMED` (đã xác nhận), `REJECTED` (bị từ chối)<br>- `amount`: Luôn dương<br>- `occurredAt`: Thời điểm phát sinh (tới giây)<br>- `note`: Nội dung<br>- `reviewedAt`: Lúc được xác nhận hoặc từ chối<br>- `createdAt`, `updatedAt`, `deletedAt`<br>- `version`: Khóa lạc quan chống Lost Update   | Một lần tiền vào, ra, hoặc được điều chỉnh trong phạm vi nhóm.                                                                                          |
-| **5** | **`TransactionParticipant`** (Người cùng chịu)   | - `shareAmount`: Số tiền người này chịu (hoặc hưởng, với `ADJUSTMENT_UP`), luôn `> 0` và bắt buộc có giá trị khi lưu. Tổng các `shareAmount` bằng đúng `amount` của giao dịch.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Value Object đại diện cho người cùng chịu phân bổ chi phí của giao dịch.                                                                                |
-| **6** | **`MemberBalance`** (Số dư tích luỹ thành viên)  | - `paidOutOfPocket`: Tổng tiền chi hộ nhóm (`EXPENSE` nguồn `PERSONAL`)<br>- `contribution`: Tổng tiền nộp quỹ (`CONTRIBUTION`)<br>- `refund`: Tổng tiền quỹ hoàn trả (`REFUND`)<br>- `share`: Tổng phần phải chịu trong các khoản chi chung                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Bảng tổng hợp số dư tích luỹ từng thành viên, chỉ tính giao dịch `CONFIRMED` chưa xoá. Cập nhật cộng dồn delta tự động nhằm tối ưu hiệu năng đọc báo cáo. |
+|  STT  | Thực thể                                        | Thuộc tính bản chất                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Ý nghĩa nghiệp vụ                                                                                                                                         |
+|:-----:|:------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **1** | **`Group`** (Nhóm chung)                        | - `name`: Tên nhóm<br>- `description`: Mô tả<br>- `status`: `ACTIVE`, `ARCHIVED` (lưu trữ, chỉ xem), `DELETED`<br>- `inviteCode`: Mã mời vào nhóm (duy nhất, không giới hạn thời gian)<br>- `target`: Số tiền quỹ mục tiêu cần gom<br>- `isSettlementEnabled`: **Bật tính thừa thiếu** — bật thì hệ thống tính phần của từng người; tắt thì không ai cần trả ai<br>- `isJoinWithoutConfirm`: Bật thì nhập mã là vào thẳng; tắt thì chờ chủ nhóm duyệt<br>- `createdAt`, `updatedAt`                                                                                                                                                                                                                                                                      | Gốc điều phối thành viên, quỹ và giao dịch chung. Mọi nhóm vận hành cùng một cơ chế, không phân loại.                                                     |
+| **2** | **`Member`** (Người trong nhóm)                 | - `role`: `OWNER`, `MEMBER`<br>- `status`: `PENDING`, `ACTIVE`, `LEFT`, `REMOVED`<br>- `joinedAt`: Lúc được duyệt vào<br>- `leftAt`: Lúc rời hoặc bị đuổi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               ----------------------------------               | Tư cách của một người trong **một khoảng thời gian** ở một nhóm. Rời rồi quay lại là bản ghi mới, nhờ vậy biết được tại mỗi thời điểm nhóm có những ai.   |
+| **3** | **`Fund`** (Quỹ nhóm)                           | - `currentBalance`: Tiền quỹ còn lại, **được phép âm**<br>- `createdAt`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Nơi giữ tiền chung. **Mỗi nhóm đúng một quỹ**, giao cho **một người giữ** (`keepper_id` - thủ quỹ). Quỹ đi theo vòng đời nhóm, không có trạng thái riêng. |
+| **4** | **`GroupTxn`** (Giao dịch nhóm)                 | - `type`:<br>&nbsp;&nbsp;· `EXPENSE` — chi tiêu<br>&nbsp;&nbsp;· `CONTRIBUTION` — góp quỹ<br>&nbsp;&nbsp;· `REFUND` — quỹ trả tiền cho thành viên (hoàn tiền túi hoặc trả lại tiền đã góp)<br>&nbsp;&nbsp;· `ADJUSTMENT_UP` — kiểm kê, tiền thật **nhiều hơn** sổ<br>&nbsp;&nbsp;· `ADJUSTMENT_DOWN` — kiểm kê, tiền thật **ít hơn** sổ<br>- `moneySource`: `FUND` (tiền quỹ) hoặc `PERSONAL` (tiền bản thân)<br>- `status`: `PENDING` (chờ xác nhận), `CONFIRMED` (đã xác nhận), `REJECTED` (bị từ chối)<br>- `amount`: Luôn dương<br>- `occurredAt`: Thời điểm phát sinh (tới giây)<br>- `note`: Nội dung<br>- `reviewedAt`: Lúc được xác nhận hoặc từ chối<br>- `createdAt`, `updatedAt`, `deletedAt`<br>- `version`: Khóa lạc quan chống Lost Update | Một lần tiền vào, ra, hoặc được điều chỉnh trong phạm vi nhóm.                                                                                            |
+| **5** | **`GroupTxnParticipant`** (Người cùng chịu)     | - `shareAmount`: Số tiền người này chịu (hoặc hưởng, với `ADJUSTMENT_UP`), luôn `> 0` và bắt buộc có giá trị khi lưu. Tổng các `shareAmount` bằng đúng `amount` của giao dịch.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Value Object đại diện cho người cùng chịu phân bổ chi phí của giao dịch.                                                                                  |
+| **6** | **`MemberBalance`** (Số dư tích luỹ thành viên) | - `paidOutOfPocket`: Tổng tiền chi hộ nhóm (`EXPENSE` nguồn `PERSONAL`)<br>- `contribution`: Tổng tiền nộp quỹ (`CONTRIBUTION`)<br>- `refund`: Tổng tiền quỹ hoàn trả (`REFUND`)<br>- `share`: Tổng phần phải chịu trong các khoản chi chung                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Bảng tổng hợp số dư tích luỹ từng thành viên, chỉ tính giao dịch `CONFIRMED` chưa xoá. Cập nhật cộng dồn delta tự động nhằm tối ưu hiệu năng đọc báo cáo. |
 
 **Thực thể tham chiếu** — thuộc module khác, phân hệ nhóm không định nghĩa lại:
 
@@ -145,22 +146,25 @@ classDiagram
 3. **`Group` (1) — sở hữu — (1) `Fund`:**
    Mỗi nhóm có đúng một quỹ, lập cùng lúc với nhóm. Quỹ không tồn tại ngoài nhóm.
 4. **`User` (1) — giữ — (0..*) `Fund`:**
-   Mỗi quỹ luôn có đúng một thủ quỹ là thành viên đang ở nhóm (`keepper_id`). Một người có thể giữ quỹ của nhiều nhóm khác nhau.
-5. **`Group` (1) — ghi nhận — (0..*) `GTransaction`:**
+   Mỗi quỹ luôn có đúng một thủ quỹ là thành viên đang ở nhóm (`keepper_id`). Một người có thể giữ quỹ của nhiều nhóm
+   khác nhau.
+5. **`Group` (1) — ghi nhận — (0..*) `GroupTxn`:**
    Toàn bộ lịch sử góp, chi, kiểm kê của nhóm.
-6. *(Không có quan hệ trực tiếp `Fund` — `GTransaction`.)*
-   Giao dịch gắn với nhóm; mỗi nhóm có một quỹ nên quỹ suy ra từ nhóm. Khoản đó có đi qua quỹ hay không nằm ở thuộc tính `moneySource`.
-7. **`User` (1) — trả / góp / nhận / giữ quỹ — (0..\*) `GTransaction`:**
-   Người bỏ tiền ra (`EXPENSE`), người góp (`CONTRIBUTION`), người nhận tiền (`REFUND`), hoặc thủ quỹ lúc kiểm kê (`ADJUSTMENT_*`).
-8. **`User` (1) — ghi chép — (0..\*) `GTransaction`:**
+6. *(Không có quan hệ trực tiếp `Fund` — `GroupTxn`.)*
+   Giao dịch gắn với nhóm; mỗi nhóm có một quỹ nên quỹ suy ra từ nhóm. Khoản đó có đi qua quỹ hay không nằm ở thuộc tính
+   `moneySource`.
+7. **`User` (1) — trả / góp / nhận / giữ quỹ — (0..\*) `GroupTxn`:**
+   Người bỏ tiền ra (`EXPENSE`), người góp (`CONTRIBUTION`), người nhận tiền (`REFUND`), hoặc thủ quỹ lúc kiểm kê
+   (`ADJUSTMENT_*`).
+8. **`User` (1) — ghi chép — (0..\*) `GroupTxn`:**
    Người bấm lưu có thể khác người trả, ví dụ thủ quỹ ghi hộ.
-9. **`User` (0..1) — xác nhận / từ chối — (0..\*) `GTransaction`:**
+9. **`User` (0..1) — xác nhận / từ chối — (0..\*) `GroupTxn`:**
    Khoản đang chờ chưa có người xác nhận; khoản đã xác nhận hoặc bị từ chối ghi lại ai làm việc đó.
-10. **`Category` (0..1) — phân loại — (0..\*) `GTransaction`:**
+10. **`Category` (0..1) — phân loại — (0..\*) `GroupTxn`:**
     Chỉ khoản chi (`EXPENSE`) mới có danh mục.
-11. **`GTransaction` (1) — chia cho — (0..\*) `TransactionParticipant`:**
+11. **`GroupTxn` (1) — chia cho — (0..\*) `GroupTxnParticipant`:**
     Chứa danh sách người tham gia cùng chịu chi phí kèm `shareAmount` cụ thể của từng người.
-12. **`User` (1) — cùng chịu — (0..\*) `TransactionParticipant`:**
+12. **`User` (1) — cùng chịu — (0..\*) `GroupTxnParticipant`:**
     Một người có mặt trong nhiều khoản khác nhau.
 13. **`Group` (1) — theo dõi tích luỹ — (0..*) `MemberBalance`:**
     Mỗi thành viên trong nhóm có đúng một bản ghi tổng hợp số dư tích luỹ.
@@ -442,9 +446,12 @@ thành viên. Truy vấn "những ai có mặt tại một thời điểm" ở [
   `users.id` (bắt buộc).
 - **Không có cột `type`:** quỹ duy nhất gắn trực tiếp với nhóm và người giữ tiền (`keepper_id`).
 - **`current_balance` được phép âm:** nhóm chi vượt quỹ là trường hợp hợp lệ.
-- **Không có cột `initial_balance`:** quỹ luôn bắt đầu từ 0. Tiền có sẵn lúc lập nhóm được ghi thành khoản `CONTRIBUTION` của đúng người đã đưa, nên `current_balance` luôn bằng tổng ảnh hưởng của các khoản đã xác nhận.
-- **Không có cột `status`:** Quỹ gắn liền với vòng đời của nhóm (đã loại bỏ theo migration `V12__remove_group_fund_status.sql`).
-- Ràng buộc "người giữ quỹ phải là thành viên `ACTIVE`" do tầng Service chịu trách nhiệm xác thực, xem [rule.md](rule.md) mục 3.3.
+- **Không có cột `initial_balance`:** quỹ luôn bắt đầu từ 0. Tiền có sẵn lúc lập nhóm được ghi thành khoản
+  `CONTRIBUTION` của đúng người đã đưa, nên `current_balance` luôn bằng tổng ảnh hưởng của các khoản đã xác nhận.
+- **Không có cột `status`:** Quỹ gắn liền với vòng đời của nhóm (đã loại bỏ theo migration
+  `V12__remove_group_fund_status.sql`).
+- Ràng buộc "người giữ quỹ phải là thành viên `ACTIVE`" do tầng Service chịu trách nhiệm xác thực,
+  xem [rule.md](rule.md) mục 3.3.
 
 ```java
 @Entity
@@ -491,7 +498,7 @@ ALTER TABLE group_funds
 
 ---
 
-#### 4. Thực thể `GTransaction` (Bảng `group_transactions`) <a id="224-group-transaction-entity"></a>
+#### 4. Thực thể `GroupTxn` (Bảng `group_transactions`) <a id="224-group-transaction-entity"></a>
 
 - **Khóa chính (PK):** `id` (UUID).
 - **Khóa ngoại (FK):** `group_id`, `transactor_id`, `created_by`, `reviewed_by`, `category_id`.
@@ -677,12 +684,16 @@ CREATE INDEX idx_gt_transactor
 
 ---
 
-#### 5. Value Object `TransactionParticipant` (Bảng `group_transaction_participants`) <a id="225-group-transaction-participant-entity"></a>
+#### 5. Value Object `GroupTxnParticipant` (Bảng
+`group_transaction_participants`) <a id="225-group-transaction-participant-entity"></a>
 
 - **Khóa chính (PK):** tổ hợp `(group_transaction_id, user_id)`.
-- **Thiết kế kiến trúc DDD:** Được đánh dấu là `@Embeddable` và thuộc quyền quản lý của Aggregate Root `GTransaction` qua `@ElementCollection`. Không có ID độc lập và không chứa quan hệ ngược về cha (unidirectional).
+- **Thiết kế kiến trúc DDD:** Được đánh dấu là `@Embeddable` và thuộc quyền quản lý của Aggregate Root `GroupTxn` qua
+  `@ElementCollection`. Không có ID độc lập và không chứa quan hệ ngược về cha (unidirectional).
 - **Vắng bản ghi = cả nhóm cùng chịu.** Bảng chỉ có dòng khi khoản đó không chia cho tất cả.
-- **`share_amount` luôn bắt buộc (NOT NULL > 0):** Khi tạo/sửa giao dịch, hệ thống tính toán và gán giá trị cụ thể cho từng người (chia đều hoặc tùy chỉnh), bảo đảm tổng `share_amount` bằng đúng `amount` của giao dịch (theo Migration `V16`).
+- **`share_amount` luôn bắt buộc (NOT NULL > 0):** Khi tạo/sửa giao dịch, hệ thống tính toán và gán giá trị cụ thể cho
+  từng người (chia đều hoặc tùy chỉnh), bảo đảm tổng `share_amount` bằng đúng `amount` của giao dịch (theo Migration
+  `V16`).
 - Các trường hợp cụ thể → [rule.md](rule.md) mục 3.5.
 
 ```java
@@ -724,8 +735,12 @@ ALTER TABLE group_transaction_participants
 
 - **Khóa chính (PK):** tổ hợp `(group_id, user_id)` qua `@IdClass(MemberBalance.MemberBalanceId.class)`.
 - **Khóa ngoại (FK):** `group_id` → `groups.id` (CASCADE); `user_id` → `users.id` (CASCADE).
-- **Mục đích thiết kế (Migration `V18`):** Bảng tổng hợp số dư tích luỹ của từng thành viên trong nhóm, chỉ tính các giao dịch `CONFIRMED` chưa xoá. Số liệu chỉ được cộng dồn delta qua query nguyên tử `MemberBalanceRepository.addDelta(...)` trong database, không gán field rồi flush Hibernate để tránh Race Condition / Lost Update.
-- Báo cáo số dư (`/balances`) và kiểm tra hạn mức hoàn tiền đọc thẳng bảng này với độ phức tạp $O(N)$ số thành viên thay vì phải quét toàn bộ bảng giao dịch.
+- **Mục đích thiết kế (Migration `V18`):** Bảng tổng hợp số dư tích luỹ của từng thành viên trong nhóm, chỉ tính các
+  giao dịch `CONFIRMED` chưa xoá. Số liệu chỉ được cộng dồn delta qua query nguyên tử
+  `MemberBalanceRepository.addDelta(...)` trong database, không gán field rồi flush Hibernate để tránh Race Condition /
+  Lost Update.
+- Báo cáo số dư (`/balances`) và kiểm tra hạn mức hoàn tiền đọc thẳng bảng này với độ phức tạp $O (N)$ số thành viên
+  thay vì phải quét toàn bộ bảng giao dịch.
 
 ```java
 @Entity
@@ -793,14 +808,16 @@ CREATE TABLE group_member_balances (
 
 ### 2.3 Bảng Tham chiếu từ Module khác <a id="23-tham-chieu"></a>
 
-Phân hệ nhóm **không định nghĩa, không sửa** các bảng dưới đây. Chỉ trỏ khoá ngoại tới. Luật dùng hai bảng này nằm ở [rule.md](rule.md) mục 3.6.
+Phân hệ nhóm **không định nghĩa, không sửa** các bảng dưới đây. Chỉ trỏ khoá ngoại tới. Luật dùng hai bảng này nằm
+ở [rule.md](rule.md) mục 3.6.
 
 | Bảng         | Module         | Nhóm dùng cột nào | Ghi chú                                                                                                                           |
 |:-------------|:---------------|:------------------|:----------------------------------------------------------------------------------------------------------------------------------|
 | `users`      | user (cố định) | `id`              | Khoá ngoại của thành viên, thủ quỹ, người trả, người ghi, người xác nhận, người tham gia                                          |
 | `categories` | category       | `id`, `user_id`   | `user_id` dùng để biết danh mục có phải của hệ thống không. Cấu trúc cây danh mục thuộc module danh mục, không thuộc tài liệu này |
 
-**Không tham chiếu:** `wallets`, `transactions` (sổ cá nhân). Phân hệ nhóm không có khoá ngoại nào sang hai bảng này — xem [rule.md](rule.md) quyết định 4.
+**Không tham chiếu:** `wallets`, `transactions` (sổ cá nhân). Phân hệ nhóm không có khoá ngoại nào sang hai bảng này —
+xem [rule.md](rule.md) quyết định 4.
 
 ---
 
@@ -822,7 +839,9 @@ Phân hệ nhóm **không định nghĩa, không sửa** các bảng dưới đ�
 | `group_member_balances`          | `group_id`             | `groups`             | **CASCADE** | Số dư tích luỹ của nhóm          |
 | `group_member_balances`          | `user_id`              | `users`              | **CASCADE** | Số dư tích luỹ của thành viên    |
 
-Mọi khoá ngoại sang `users` trong các bảng nghiệp vụ chính là **RESTRICT**: tài khoản trong hệ thống này chỉ xoá mềm, nên lịch sử "ai đã trả, ai đã góp" không bao giờ mất. Riêng bảng `group_member_balances` sử dụng **CASCADE** để dọn dẹp số liệu tổng hợp khi cần thiết.ác bảng dưới đây. Chỉ trỏ khoá ngoại tới. Luật dùng hai bảng này nằm
+Mọi khoá ngoại sang `users` trong các bảng nghiệp vụ chính là **RESTRICT**: tài khoản trong hệ thống này chỉ xoá mềm,
+nên lịch sử "ai đã trả, ai đã góp" không bao giờ mất. Riêng bảng `group_member_balances` sử dụng **CASCADE** để dọn dẹp
+số liệu tổng hợp khi cần thiết.ác bảng dưới đây. Chỉ trỏ khoá ngoại tới. Luật dùng hai bảng này nằm
 ở [rule.md](rule.md) mục 3.6.
 
 | Bảng         | Module         | Nhóm dùng cột nào | Ghi chú                                                                                                                           |

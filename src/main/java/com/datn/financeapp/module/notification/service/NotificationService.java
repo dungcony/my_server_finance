@@ -9,17 +9,6 @@ import java.util.UUID;
 
 /**
  * Service quản lý thông báo, đánh dấu đã đọc và ghi nhận thông báo mới cho người dùng.
- * <p>
- * <b>Các hàm chính:</b>
- * <ul>
- *   <li>{@link #list(UUID, Boolean, PageRequestParams)}: Lấy danh sách thông báo phân trang.</li>
- *   <li>{@link #markRead(UUID, UUID)}: Đánh dấu một thông báo là đã đọc (null = đánh dấu tất cả).</li>
- *   <li>{@link #createBudgetAlert(UUID, String, String, UUID)}: Tạo thông báo cảnh báo ngân sách.</li>
- *   <li>{@link #createDebtReminder(UUID, String, String, UUID)}: Tạo thông báo nhắc nợ đến hạn.</li>
- *   <li>{@link #createNotification(UUID, NotiType, String, String, UUID)}: Tạo thông báo chung hệ thống.</li>
- *   <li>{@link #createNotification(UUID, NotiType, String, String, UUID, Map)}: Tạo thông báo chung kèm dữ liệu phụ để app điều hướng.</li>
- * </ul>
- * </p>
  */
 public interface NotificationService {
 
@@ -82,6 +71,5 @@ public interface NotificationService {
      * @param referenceId ID đối tượng tham chiếu (ngân sách, khoản nợ, giao dịch nhóm...)
      * @param data        Dữ liệu phụ dạng json phẳng, null nếu loại thông báo không cần; không chứa trạng thái
      */
-    void createNotification(
-            UUID userId, NotiType type, String title, String content, UUID referenceId, Map<String, Object> data);
+    void createNotification(UUID userId, NotiType type, String title, String content, UUID referenceId, Map<String, Object> data);
 }

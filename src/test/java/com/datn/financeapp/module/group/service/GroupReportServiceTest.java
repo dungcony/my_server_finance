@@ -8,19 +8,13 @@ import com.datn.financeapp.module.group.dto.response.member.MemberRes;
 import com.datn.financeapp.module.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.module.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.module.group.dto.response.report.GroupSummaryReportRes;
-import com.datn.financeapp.module.group.entity.GTransaction;
-import com.datn.financeapp.module.group.entity.TransactionParticipant;
+import com.datn.financeapp.module.group.entity.GroupTxn;
+import com.datn.financeapp.module.group.entity.GroupTxnParticipant;
 import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.helper.BalanceCalculator;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
-import com.datn.financeapp.module.group.helper.MemberBalances;
 import com.datn.financeapp.module.group.repository.GroupRepository;
-import com.datn.financeapp.module.group.service.GTransactionService;
-import com.datn.financeapp.module.group.service.GroupService;
-import com.datn.financeapp.module.group.service.MemberBalanceService;
-import com.datn.financeapp.module.group.service.MemberService;
 import com.datn.financeapp.module.group.service.impl.GReportServiceImpl;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.service.UserService;
@@ -59,7 +53,7 @@ class GroupReportServiceTest {
     private GroupService groupService;
 
     @Mock
-    private GTransactionService gTransactionService;
+    private GroupTxnGetService groupTxnGetService;
 
     @Mock
     private MemberBalanceService memberBalanceService;
@@ -91,7 +85,7 @@ class GroupReportServiceTest {
 
         reportService = new GReportServiceImpl(
                 groupService,
-                gTransactionService,
+                groupTxnGetService,
                 memberBalanceService,
                 memberService,
                 userService,
@@ -143,42 +137,42 @@ class GroupReportServiceTest {
         Instant now = Instant.now();
 
         // giao dịch đóng góp của thành viên A
-        GTransaction tx1 = GTransaction.builder()
+        GroupTxn tx1 = GroupTxn.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
                 .moneySource(MoneySource.PERSONAL)
                 .transactorId(userA)
                 .createdBy(userA)
-                .type(GTransactionType.CONTRIBUTION)
-                .status(GTransactionStatus.CONFIRMED)
+                .type(GroupTxnType.CONTRIBUTION)
+                .status(GroupTxnStatus.CONFIRMED)
                 .amount(1000000L)
                 .occurredAt(now)
                 .createdAt(now)
                 .build();
 
         // giao dịch đóng góp của thành viên B
-        GTransaction tx2 = GTransaction.builder()
+        GroupTxn tx2 = GroupTxn.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
                 .moneySource(MoneySource.PERSONAL)
                 .transactorId(userB)
                 .createdBy(userB)
-                .type(GTransactionType.CONTRIBUTION)
-                .status(GTransactionStatus.CONFIRMED)
+                .type(GroupTxnType.CONTRIBUTION)
+                .status(GroupTxnStatus.CONFIRMED)
                 .amount(1000000L)
                 .occurredAt(now)
                 .createdAt(now)
                 .build();
 
         // giao dịch đóng góp của thành viên C
-        GTransaction tx3 = GTransaction.builder()
+        GroupTxn tx3 = GroupTxn.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
                 .moneySource(MoneySource.PERSONAL)
                 .transactorId(userC)
                 .createdBy(userC)
-                .type(GTransactionType.CONTRIBUTION)
-                .status(GTransactionStatus.CONFIRMED)
+                .type(GroupTxnType.CONTRIBUTION)
+                .status(GroupTxnStatus.CONFIRMED)
                 .amount(1000000L)
                 .occurredAt(now)
                 .createdAt(now)
@@ -186,17 +180,17 @@ class GroupReportServiceTest {
 
         // giao dịch B chi tiền túi 600k xem phim cho B và C mỗi người 300k
         UUID tx4Id = UUID.randomUUID();
-        TransactionParticipant pB = TransactionParticipant.builder().userId(userB).shareAmount(300000L).build();
-        TransactionParticipant pC = TransactionParticipant.builder().userId(userC).shareAmount(300000L).build();
+        GroupTxnParticipant pB = GroupTxnParticipant.builder().userId(userB).shareAmount(300000L).build();
+        GroupTxnParticipant pC = GroupTxnParticipant.builder().userId(userC).shareAmount(300000L).build();
 
-        GTransaction tx4 = GTransaction.builder()
+        GroupTxn tx4 = GroupTxn.builder()
                 .id(tx4Id)
                 .groupId(groupId)
                 .moneySource(MoneySource.PERSONAL)
                 .transactorId(userB)
                 .createdBy(userB)
-                .type(GTransactionType.EXPENSE)
-                .status(GTransactionStatus.CONFIRMED)
+                .type(GroupTxnType.EXPENSE)
+                .status(GroupTxnStatus.CONFIRMED)
                 .amount(600000L)
                 .participants(List.of(pB, pC))
                 .occurredAt(now)
@@ -243,9 +237,9 @@ class GroupReportServiceTest {
         stubThreeMembersWithNames();
 
         // A góp 1tr rồi một mình chịu khoản chi 1.2tr từ quỹ
-        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1000000L, List.of());
-        GTransaction expense = txn(GTransactionType.EXPENSE, MoneySource.FUND, userA, 1200000L,
-                List.of(TransactionParticipant.builder().userId(userA).build()));
+        GroupTxn contribution = txn(GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1000000L, List.of());
+        GroupTxn expense = txn(GroupTxnType.EXPENSE, MoneySource.FUND, userA, 1200000L,
+                List.of(GroupTxnParticipant.builder().userId(userA).build()));
         stubTransactions(contribution, expense);
 
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
@@ -262,7 +256,7 @@ class GroupReportServiceTest {
         stubThreeMembersWithNames();
 
         // B trả hộ 300k chia đều cho cả nhóm, mỗi người chịu 100k
-        GTransaction expense = txn(GTransactionType.EXPENSE, MoneySource.PERSONAL, userB, 300000L, List.of());
+        GroupTxn expense = txn(GroupTxnType.EXPENSE, MoneySource.PERSONAL, userB, 300000L, List.of());
         stubTransactions(expense);
 
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
@@ -280,8 +274,8 @@ class GroupReportServiceTest {
         stubGroupWithThreeMembers(null, 600000L);
         stubThreeMembersWithNames();
 
-        GTransaction contribution = txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1000000L, List.of());
-        GTransaction refund = txn(GTransactionType.REFUND, MoneySource.FUND, userA, 400000L, List.of());
+        GroupTxn contribution = txn(GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, userA, 1000000L, List.of());
+        GroupTxn refund = txn(GroupTxnType.REFUND, MoneySource.FUND, userA, 400000L, List.of());
         stubTransactions(contribution, refund);
 
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
@@ -296,9 +290,9 @@ class GroupReportServiceTest {
     void testGetSummary_AllTime_WhenMonthIsNull() {
         stubGroupWithThreeMembers(5000000L, 1000000L);
 
-        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.EXPENSE))
+        when(groupTxnGetService.sumConfirmedAmount(groupId, GroupTxnType.EXPENSE))
                 .thenReturn(2000000L);
-        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION))
+        when(groupTxnGetService.sumConfirmedAmount(groupId, GroupTxnType.CONTRIBUTION))
                 .thenReturn(3000000L);
 
         // gọi với month là null
@@ -319,11 +313,11 @@ class GroupReportServiceTest {
     void testGetSummary_ByMonth() {
         stubGroupWithThreeMembers(5000000L, 1000000L);
 
-        when(gTransactionService.sumConfirmedAmount(
-                eq(groupId), eq(GTransactionType.EXPENSE), any(Instant.class), any(Instant.class)))
+        when(groupTxnGetService.sumConfirmedAmount(
+                eq(groupId), eq(GroupTxnType.EXPENSE), any(Instant.class), any(Instant.class)))
                 .thenReturn(800000L);
-        when(gTransactionService.sumConfirmedAmount(
-                eq(groupId), eq(GTransactionType.CONTRIBUTION), any(Instant.class), any(Instant.class)))
+        when(groupTxnGetService.sumConfirmedAmount(
+                eq(groupId), eq(GroupTxnType.CONTRIBUTION), any(Instant.class), any(Instant.class)))
                 .thenReturn(1500000L);
 
         GroupSummaryReportRes report = reportService.getSummary(userA, groupId, "2026-09");
@@ -369,9 +363,9 @@ class GroupReportServiceTest {
         stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userD, "Nguoi Roi Nhom", "D"));
 
         // D chi tiền túi 500k cho riêng D chịu 200k, A chịu 300k => D còn net 300k > 0
-        TransactionParticipant pA = TransactionParticipant.builder().userId(userA).shareAmount(300000L).build();
-        TransactionParticipant pD = TransactionParticipant.builder().userId(userD).shareAmount(200000L).build();
-        GTransaction expense = txn(GTransactionType.EXPENSE, MoneySource.PERSONAL, userD, 500000L, List.of(pA, pD));
+        GroupTxnParticipant pA = GroupTxnParticipant.builder().userId(userA).shareAmount(300000L).build();
+        GroupTxnParticipant pD = GroupTxnParticipant.builder().userId(userD).shareAmount(200000L).build();
+        GroupTxn expense = txn(GroupTxnType.EXPENSE, MoneySource.PERSONAL, userD, 500000L, List.of(pA, pD));
         stubTransactions(expense);
 
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
@@ -437,10 +431,10 @@ class GroupReportServiceTest {
         stubNames(userNamed(userA, "Nguyen", "A"), userNamed(userD, "Nguoi Roi Nhom", "D"));
 
         // giao dịch diễn ra lúc t1 trước khi D rời nhóm, A chi tiền túi 400k không participant chia đều cho A và D mỗi người 200k
-        GTransaction txn1 = txn(GTransactionType.EXPENSE, MoneySource.PERSONAL, userA, 400000L, List.of(), t1TxnBeforeLeave);
+        GroupTxn txn1 = txn(GroupTxnType.EXPENSE, MoneySource.PERSONAL, userA, 400000L, List.of(), t1TxnBeforeLeave);
 
         // giao dịch diễn ra lúc t3 sau khi D đã rời nhóm, A chi tiền túi 300k không participant chỉ một mình A gánh 300k
-        GTransaction txn2 = txn(GTransactionType.EXPENSE, MoneySource.PERSONAL, userA, 300000L, List.of(), t3TxnAfterLeave);
+        GroupTxn txn2 = txn(GroupTxnType.EXPENSE, MoneySource.PERSONAL, userA, 300000L, List.of(), t3TxnAfterLeave);
 
         stubTransactions(txn1, txn2);
 
@@ -477,8 +471,8 @@ class GroupReportServiceTest {
 
         // D và E đều đã góp tiền nên còn số dư khác 0 và phải hiện trong báo cáo
         stubTransactions(
-                txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userD, 100000L, List.of(), now.minusSeconds(3500)),
-                txn(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, userE, 200000L, List.of(), now.minusSeconds(1500)));
+                txn(GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, userD, 100000L, List.of(), now.minusSeconds(3500)),
+                txn(GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, userE, 200000L, List.of(), now.minusSeconds(1500)));
 
         GroupBalanceReportRes report = reportService.getBalances(userA, groupId);
 
@@ -513,8 +507,8 @@ class GroupReportServiceTest {
     void testGetSummary_ArchivedGroup_StillReadable() {
         stubArchivedGroup(5000000L, 1000000L);
 
-        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.EXPENSE)).thenReturn(2000000L);
-        when(gTransactionService.sumConfirmedAmount(groupId, GTransactionType.CONTRIBUTION)).thenReturn(3000000L);
+        when(groupTxnGetService.sumConfirmedAmount(groupId, GroupTxnType.EXPENSE)).thenReturn(2000000L);
+        when(groupTxnGetService.sumConfirmedAmount(groupId, GroupTxnType.CONTRIBUTION)).thenReturn(3000000L);
 
         GroupSummaryReportRes report = reportService.getSummary(userA, groupId, null);
 
@@ -587,7 +581,7 @@ class GroupReportServiceTest {
         when(userService.getNames(any())).thenReturn(byId);
     }
 
-    private void stubTransactions(GTransaction... txns) {
+    private void stubTransactions(GroupTxn... txns) {
         List<MemberRes> members;
         try {
             members = memberService.getMembersWithStatusIn(groupId, NON_PENDING_STATUSES);
@@ -606,21 +600,21 @@ class GroupReportServiceTest {
         when(memberBalanceService.getBalances(groupId)).thenReturn(mb);
     }
 
-    private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,
-                             List<TransactionParticipant> participants) {
+    private GroupTxn txn(GroupTxnType type, MoneySource source, UUID transactorId, long amount,
+                         List<GroupTxnParticipant> participants) {
         return txn(type, source, transactorId, amount, participants, Instant.now());
     }
 
-    private GTransaction txn(GTransactionType type, MoneySource source, UUID transactorId, long amount,
-                             List<TransactionParticipant> participants, Instant occurredAt) {
-        return GTransaction.builder()
+    private GroupTxn txn(GroupTxnType type, MoneySource source, UUID transactorId, long amount,
+                         List<GroupTxnParticipant> participants, Instant occurredAt) {
+        return GroupTxn.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
                 .moneySource(source)
                 .transactorId(transactorId)
                 .createdBy(transactorId)
                 .type(type)
-                .status(GTransactionStatus.CONFIRMED)
+                .status(GroupTxnStatus.CONFIRMED)
                 .amount(amount)
                 .participants(participants)
                 .occurredAt(occurredAt)

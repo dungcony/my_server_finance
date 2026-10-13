@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhóm - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="groups" data-title="Quản lý nhóm">
+<main id="page">
+    <div class="notice warning">
+        <b>Backend chưa có API.</b> Hiện chưa có endpoint cho admin xem toàn bộ nhóm (<code>GET /admin/groups</code> dự kiến);
+        quyền <code>group:read</code> ("xem toàn bộ group") đã được khai báo nhưng chưa gắn controller nào.
+        Trang này giữ chỗ để bổ sung khi backend sẵn sàng.
+    </div>
+    <div class="card">
+        <div class="card-title">
+            <span>Danh sách nhóm</span>
+            <div class="btn-row">
+                <input type="text" placeholder="Tìm theo tên / mã mời..." style="width:220px" disabled>
+                <select style="width:auto" disabled><option>Mọi trạng thái</option></select>
+                <button class="btn" disabled>Tìm</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Tên nhóm</th><th>Chủ nhóm</th><th>Trạng thái</th><th>Thành viên</th><th class="right">Số dư quỹ</th><th>Tạo lúc</th><th></th></tr></thead>
+                <tbody><tr><td class="empty" colspan="7">Chưa có API — không có dữ liệu để hiển thị</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+</body>
+</html>

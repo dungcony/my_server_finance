@@ -2,22 +2,23 @@ package com.datn.financeapp.module.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.group.dto.response.fund.FundRes;
 import com.datn.financeapp.module.group.dto.response.group.GroupDetailRes;
 import com.datn.financeapp.module.group.dto.response.member.MemberRes;
 import com.datn.financeapp.module.group.dto.response.report.GroupBalanceItemRes;
 import com.datn.financeapp.module.group.dto.response.report.GroupBalanceReportRes;
 import com.datn.financeapp.module.group.dto.response.report.GroupSummaryReportRes;
-import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MemberStatus;
-import com.datn.financeapp.module.group.helper.MemberBalanceAccumulator;
+import com.datn.financeapp.module.group.helper.MemberAuthCache;
+import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.MemberBalances;
-import com.datn.financeapp.module.group.service.GTransactionService;
+import com.datn.financeapp.module.group.service.GroupTxnGetService;
 import com.datn.financeapp.module.group.service.GroupService;
 import com.datn.financeapp.module.group.service.MemberBalanceService;
 import com.datn.financeapp.module.group.service.MemberService;
 import com.datn.financeapp.module.group.service.ReportService;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.module.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -44,24 +45,18 @@ import java.util.*;
 public class GReportServiceImpl implements ReportService {
 
     private final GroupService groupService;
-    private final GTransactionService gTransactionService;
+    private final GroupTxnGetService groupTxnGetService;
     private final MemberBalanceService memberBalanceService;
     private final MemberService memberService;
     private final UserService userService;
-    private final GroupPermissionValidator permissionValidator;
+    private final MemberAuthCache memberAuthCache;
 
     private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
 
     @Override
-    public GroupSummaryReportRes getSummary(UUID operatorId, UUID groupId, String month) {
-        // xác thực thành viên đang hoạt động trong nhóm
-        permissionValidator.verifyMember(groupId, operatorId, true);
-        GroupDetailRes group = groupService.findNotDeletedById(groupId);
-        FundRes fundRes = group.fund();
-        if (fundRes == null) {
-            throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
-        }
+    public GroupSummaryReportRes getSummary(UUID groupId, String month) {
+        GroupDetailRes group = getGroup(groupId);
 
         String period = null;
         long totalExpense;
@@ -75,15 +70,15 @@ public class GReportServiceImpl implements ReportService {
             Instant fromTime = ym.atDay(1).atStartOfDay(VN_ZONE).toInstant();
             Instant toTime = ym.plusMonths(1).atDay(1).atStartOfDay(VN_ZONE).toInstant();
 
-            totalExpense = gTransactionService.sumConfirmedAmount(
-                    groupId, GTransactionType.EXPENSE, fromTime, toTime);
-            totalContribution = gTransactionService.sumConfirmedAmount(
-                    groupId, GTransactionType.CONTRIBUTION, fromTime, toTime);
+            totalExpense = groupTxnGetService.sumConfirmedAmount(
+                    groupId, GroupTxnType.EXPENSE, fromTime, toTime);
+            totalContribution = groupTxnGetService.sumConfirmedAmount(
+                    groupId, GroupTxnType.CONTRIBUTION, fromTime, toTime);
         } else {
-            totalExpense = gTransactionService.sumConfirmedAmount(
-                    groupId, GTransactionType.EXPENSE);
-            totalContribution = gTransactionService.sumConfirmedAmount(
-                    groupId, GTransactionType.CONTRIBUTION);
+            totalExpense = groupTxnGetService.sumConfirmedAmount(
+                    groupId, GroupTxnType.EXPENSE);
+            totalContribution = groupTxnGetService.sumConfirmedAmount(
+                    groupId, GroupTxnType.CONTRIBUTION);
         }
 
         return new GroupSummaryReportRes(
@@ -91,20 +86,15 @@ public class GReportServiceImpl implements ReportService {
                 group.name(),
                 group.target(),
                 period,
-                fundRes,
+                group.fund(),
                 totalExpense,
                 totalContribution);
     }
 
     @Override
-    public GroupBalanceReportRes getBalances(UUID operatorId, UUID groupId) {
-        // xác thực thành viên đang hoạt động trong nhóm
-        permissionValidator.verifyMember(groupId, operatorId, true);
-        GroupDetailRes group = groupService.findNotDeletedById(groupId);
-        FundRes fund = group.fund();
-        if (fund == null) {
-            throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
-        }
+    public GroupBalanceReportRes getBalances(UUID groupId) {
+
+        GroupDetailRes group = getGroup(groupId);
 
         // lấy tất cả thành viên ngoại trừ trạng thái chờ duyệt
         List<MemberRes> allMembers = memberService.getMembersWithStatusIn(
@@ -140,7 +130,7 @@ public class GReportServiceImpl implements ReportService {
         return new GroupBalanceReportRes(
                 group.id(),
                 target,
-                fund.currentBalance(),
+                group.fund().currentBalance(),
                 totalNeededRes,
                 isSettlement,
                 balances);
@@ -165,7 +155,7 @@ public class GReportServiceImpl implements ReportService {
         // người đã rời/bị xoá chỉ hiện khi còn số dư, xếp người vào nhóm gần nhất lên trước
         allMembers.stream()
                 .filter(m -> m.status() == MemberStatus.LEFT || m.status() == MemberStatus.REMOVED)
-                .filter(m -> mb.getNetBalance(m.userId()) != 0L)
+                .filter(m -> mb.get(m.userId()).net() != 0L)
                 .sorted(Comparator.comparing(MemberRes::joinedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .forEach(display::add);
 
@@ -181,11 +171,10 @@ public class GReportServiceImpl implements ReportService {
         UserNameDisplayRes user = userNames.get(uid);
         String name = user != null ? user.fullName() : "Thành viên " + uid.toString().substring(0, 8);
 
-        MemberBalanceAccumulator b = mb.get(uid);
-        long outOfPocket = b.getPaidOutOfPocket();
-        long refunded = b.getRefunded();
-        long share = b.getShare();
-        long net = b.getNetBalance();
+        MemberBalances.Balance b = mb.get(uid);
+        long refunded = b.refund();
+        long share = b.share();
+        long net = b.net();
 
         long needed = net < 0 ? Math.abs(net) : 0L;
 
@@ -193,10 +182,26 @@ public class GReportServiceImpl implements ReportService {
                 uid,
                 name,
                 m.status().name(),
-                outOfPocket,
                 refunded,
                 share,
                 net,
                 needed);
+    }
+
+    private GroupDetailRes getGroup(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        memberAuthCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive) //phải ở trong group đang active
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
+        GroupDetailRes group = groupService.findNotDeletedById(groupId);
+        FundRes fundRes = group.fund();
+
+        if (fundRes == null) {
+            throw new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND);
+        }
+
+        return group;
     }
 }

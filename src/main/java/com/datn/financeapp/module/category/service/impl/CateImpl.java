@@ -20,7 +20,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -137,8 +139,13 @@ public class CateImpl implements CategoryService {
     public void delete(String cateCode) {
         Category category = findByCode(cateCode);
         category.setDeleted(true);
+        List<UUID> deletedIds = new ArrayList<>(List.of(category.getId()));
         // xóa các cate con
-        categoryRepository.findDescendants(category.getPath()).forEach(descendant -> descendant.setDeleted(true));
+        categoryRepository.findDescendants(category.getPath()).forEach(descendant -> {
+            descendant.setDeleted(true);
+            deletedIds.add(descendant.getId());
+        });
+        markDeletedAfterCommit(deletedIds);
         Category parent = category.getParent();
         
         if (parent != null)
@@ -155,12 +162,19 @@ public class CateImpl implements CategoryService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public UUID findIdByCode(String code) {
-        return categoryRepository
-                .findByCodeAndDeletedFalse(code)
-                .map(Category::getId)
+        return cateCache.findActiveId(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    @Override
+    public Map<UUID, String> findCodesByIds(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, String> codes = new HashMap<>();
+        ids.forEach(id -> cateCache.findCode(id).ifPresent(code -> codes.put(id, code)));
+        return codes;
     }
 
     @Override
@@ -243,10 +257,21 @@ public class CateImpl implements CategoryService {
      * Ghi code vào cache sau khi transaction commit, để rollback không để lại code ma trong cache.
      */
     private void registerCodeAfterCommit(UUID id, String code) {
+        runAfterCommit(() -> cateCache.register(id, code));
+    }
+
+    /**
+     * Đánh dấu xóa mềm trong cache sau khi transaction commit, để rollback không làm cache lệch.
+     */
+    private void markDeletedAfterCommit(List<UUID> ids) {
+        runAfterCommit(() -> cateCache.markDeleted(ids));
+    }
+
+    private void runAfterCommit(Runnable action) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                cateCache.register(id, code);
+                action.run();
             }
         });
     }

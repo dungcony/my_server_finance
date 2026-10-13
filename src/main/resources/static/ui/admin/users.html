@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Người dùng - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="users" data-title="Quản lý người dùng">
+<main id="page">
+    <div class="card">
+        <div class="card-title">
+            <span>Danh sách người dùng <span class="muted" id="count"></span></span>
+            <div class="btn-row">
+                <input type="text" id="search" placeholder="Tìm email / tên..." style="width:220px">
+                <select id="fStatus" style="width:auto"><option value="">Mọi trạng thái</option><option>ACTIVE</option><option>BLOCKED</option><option>PENDING</option></select>
+                <button class="btn btn-secondary" id="btnReload">↻</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Email</th><th>Họ tên</th><th>Gói</th><th>Trạng thái</th><th>Vai trò</th><th></th></tr></thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+        <div class="muted mt">Chỉ hiển thị người dùng có cấp vai trò thấp hơn hoặc bằng bạn. API chỉ có thao tác <b>khoá</b> (chưa có mở khoá).</div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/users.js"></script>
+</body>
+</html>

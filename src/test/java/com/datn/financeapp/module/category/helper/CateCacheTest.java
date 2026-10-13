@@ -120,7 +120,39 @@ class CateCacheTest {
         assertThat(cateCache.findId("SALARY")).contains(SALARY_ID);
     }
 
+    @Test
+    void loadAll_marksDeletedRows() {
+        UUID removedId = UUID.randomUUID();
+        when(categoryRepository.findAllCodes())
+                .thenReturn(List.of(view(FOOD_ID, "FOOD"), new CategoryCodeView(removedId, "OLD", true)));
+
+        cateCache.loadAll();
+
+        assertThat(cateCache.isDeleted(removedId)).isTrue();
+        assertThat(cateCache.findId("OLD")).contains(removedId);
+        assertThat(cateCache.findActiveId("OLD")).isEmpty();
+        assertThat(cateCache.findActiveId("FOOD")).contains(FOOD_ID);
+    }
+
+    @Test
+    void markDeleted_hidesFromFindActiveId_butKeepsCodeReserved() {
+        cateCache.markDeleted(List.of(FOOD_ID));
+
+        assertThat(cateCache.isDeleted(FOOD_ID)).isTrue();
+        assertThat(cateCache.findActiveId("FOOD")).isEmpty();
+        assertThat(cateCache.existsCode("FOOD")).isTrue();
+        assertThat(cateCache.findCode(FOOD_ID)).contains("FOOD");
+    }
+
+    @Test
+    void markDeleted_ignoresNullInput() {
+        cateCache.markDeleted(null);
+
+        assertThat(cateCache.isDeleted(FOOD_ID)).isFalse();
+        assertThat(cateCache.isDeleted(null)).isFalse();
+    }
+
     private static CategoryCodeView view(UUID id, String code) {
-        return new CategoryCodeView(id, code);
+        return new CategoryCodeView(id, code, false);
     }
 }

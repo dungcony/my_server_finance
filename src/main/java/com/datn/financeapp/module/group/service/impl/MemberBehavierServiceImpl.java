@@ -2,18 +2,19 @@ package com.datn.financeapp.module.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.module.group.dto.response.member.MemberRes;
 import com.datn.financeapp.module.group.entity.Member;
 import com.datn.financeapp.module.group.enums.MemberRole;
 import com.datn.financeapp.module.group.enums.MemberStatus;
 import com.datn.financeapp.module.group.events.MemberLeaveEvent;
+import com.datn.financeapp.module.group.helper.MemberAuthCache;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.MemberViewEnricher;
 import com.datn.financeapp.module.group.mapper.MemberMapper;
 import com.datn.financeapp.module.group.repository.MemberRepository;
 import com.datn.financeapp.module.group.service.MemberBehavierService;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,15 +38,18 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
-    private final GroupPermissionValidator permissionValidator;
+    private final MemberAuthCache authCache;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final MemberViewEnricher memberViewEnricher;
 
     @Override
     @Transactional(readOnly = true)
-    public List<MemberRes> listMembers(UUID operatorId, UUID groupId, MemberStatus status) {
-        // xem danh sách là thao tác đọc nên nhóm đã lưu trữ vẫn xem được
-        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, true);
+    public List<MemberRes> listMembers(UUID groupId, MemberStatus status) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        MemberAuthInfo info = authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupNotDeleted) //phải ở trong group đang active
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         // người chờ duyệt chỉ chủ nhóm được xem
         if (status == MemberStatus.PENDING && !info.isOwner())
@@ -54,24 +58,24 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         List<MemberStatus> statuses = resolveStatuses(status, info.isOwner());
         List<MemberRes> members = toResponses(memberRepository.findAllByGroupIdAndStatusIn(groupId, statuses));
 
-        return memberViewEnricher.enrich(members, info.keepperId());
+        return memberViewEnricher.enrich(members, info.fundkeeperId());
     }
 
     @Override
     @Transactional
-    public List<MemberRes> ownerAddMembers(UUID operatorId, UUID groupId, MemberAddReq req) {
-
+    public List<MemberRes> ownerAddMembers(UUID groupId, MemberAddReq req) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
         List<UUID> memberIds = req.memberIds().stream()
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
-        if (memberIds.isEmpty())
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        if (memberIds.size() != req.memberIds().size())
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không được thêm 1 người 2 lần");
 
-        // operatorId null là tự vào nhóm, còn lại phải là chủ nhóm
-        if (operatorId != null)
-            permissionValidator.verifyOwner(groupId, operatorId);
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupNotDeleted) //phải ở trong group đang active
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         //không cho thêm đã active hoặc pending
         assertNoneInGroup(groupId, memberIds);
@@ -89,12 +93,14 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
     @Override
     @Transactional
-    public MemberRes ownerAddMember(UUID memberId, UUID groupId) {
-        return ownerAddMembers(null, groupId, new MemberAddReq(List.of(memberId))).get(0);
+    public void ownerAddMember(UUID memberId, UUID groupId) {
+        ownerAddMembers(groupId, new MemberAddReq(List.of(memberId)));
     }
 
     @Override
-    public void leave(UUID operatorId, UUID groupId) {
+    public void leave(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
         Member member = memberRepository.findByGroupIdAndUserIdAndStatus(groupId, operatorId, MemberStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED));
 
@@ -110,14 +116,18 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         member.setStatus(MemberStatus.LEFT);
         member.setLeftAt(Instant.now());
         memberRepository.save(member);
-        permissionValidator.evictMember(groupId, operatorId);
+        authCache.evictMember(groupId, operatorId);
     }
 
     @Override
-    public void approve(UUID operatorId, UUID groupId, UUID memberId) {
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public void approve(UUID groupId, UUID memberId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
 
-        // Chạy thẳng 1 câu UPDATE, không cần SELECT trước
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
         int rowsUpdated = memberRepository.updateStatusAndJoinedAt(
                 groupId,
                 memberId,
@@ -125,25 +135,28 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
                 MemberStatus.ACTIVE,
                 Instant.now());
 
-        // Nếu rowsUpdated == 0 tức là không có thành viên nào thỏa mãn (không tồn tại
-        // hoặc không ở PENDING)
-        if (rowsUpdated == 0) {
+        // Nếu rowsUpdated == 0 tức là không có thành viên nào thỏa mãn (không tồn tạihoặc không ở PENDING)
+        if (rowsUpdated == 0)
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND);
-        }
-        permissionValidator.evictMember(groupId, memberId);
+
+        authCache.evictMember(groupId, memberId);
     }
 
     @Override
-    public int approveAll(UUID operatorId, UUID groupId) {
-        // Kiểm tra quyền Owner và nhóm phải đang ACTIVE
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public int approveAll(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         // Cập nhật toàn bộ người PENDING -> ACTIVE
         int approvedCount = memberRepository.approvePending(
                 groupId,
                 Instant.now());
 
-        permissionValidator.evictGroup(groupId);
+        authCache.evictGroup(groupId);
 
         log.info("Chủ nhóm {} đã duyệt toàn bộ {} thành viên chờ vào nhóm {}",
                 operatorId, approvedCount, groupId);
@@ -153,23 +166,34 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
 
     // MemberBehavierServiceImpl
     @Override
-    public void reject(UUID operatorId, UUID groupId, UUID memberId) {
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public void reject(UUID groupId, UUID memberId) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         // không có dòng PENDING nào khớp thì báo không tìm thấy
         if (memberRepository.deletePending(groupId, memberId) == 0)
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND);
-        permissionValidator.evictMember(groupId, memberId);
+
+        authCache.evictMember(groupId, memberId);
     }
 
     @Override
-    public int rejectAll(UUID operatorId, UUID groupId) {
-        // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public int rejectAll(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         // một câu DELETE xóa toàn bộ người đang PENDING
         int rejectedCount = memberRepository.deleteAllPending(groupId);
-        permissionValidator.evictGroup(groupId);
+        authCache.evictGroup(groupId);
 
         log.info("Chủ nhóm {} đã từ chối toàn bộ {} thành viên chờ vào nhóm {}",
                 operatorId, rejectedCount, groupId);
@@ -178,14 +202,19 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
     }
 
     @Override
-    public void removeMember(UUID operatorId, UUID groupId, UUID memberId) {
+    public void removeMember(UUID groupId, UUID memberId) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
 
         if (Objects.equals(operatorId, memberId)) {
             log.info("không thể tự xóa chính mình");
             throw new BusinessException(ErrorCode.VALIDATION_ERROR);
         }
 
-        permissionValidator.verifyOwner(groupId, operatorId);
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Member member = memberRepository.findByGroupIdAndUserIdAndStatus(
                         groupId,
@@ -199,21 +228,29 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
         member.setStatus(MemberStatus.REMOVED);
         member.setLeftAt(Instant.now());
         memberRepository.save(member);
-        permissionValidator.evictMember(groupId, memberId);
+        authCache.evictMember(groupId, memberId);
     }
 
     @Override
-    public void transferOwnership(UUID operatorId, UUID groupId, UUID memberId) {
+    public void transferOwnership(UUID groupId, UUID memberId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
         // không thể chuyển quyền cho chính mình
         if (Objects.equals(operatorId, memberId))
             throw new BusinessException(ErrorCode.GROUP_TRANSFER_TO_SELF);
 
-        // người gọi phải là chủ nhóm, nhóm phải đang ACTIVE
-        permissionValidator.verifyOwner(groupId, operatorId);
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
 
         if (memberRepository.swapOwner(groupId, operatorId, memberId) == 2) {
-            permissionValidator.evictMember(groupId, operatorId);
-            permissionValidator.evictMember(groupId, memberId);
+            authCache.evictMember(groupId, operatorId);
+            authCache.evictMember(groupId, memberId);
             return;
         }
 

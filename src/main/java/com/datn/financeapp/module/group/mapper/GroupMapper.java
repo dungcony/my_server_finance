@@ -59,13 +59,10 @@ public interface GroupMapper {
     @Mapping(target = "isJoinWithoutConfirm", source = "req.isJoinWithoutConfirm")
     @Mapping(target = "inviteCode", source = "inviteCode")
     @Mapping(target = "status", constant = "ACTIVE")
-    @Mapping(target = "createdAt", source = "now")
-    @Mapping(target = "updatedAt", source = "now")
     @Mapping(target = "fund", ignore = true)
     Group toEntity(
             GroupCreateReq req,
             UUID groupId,
-            String inviteCode,
-            Instant now
+            String inviteCode
     );
 }

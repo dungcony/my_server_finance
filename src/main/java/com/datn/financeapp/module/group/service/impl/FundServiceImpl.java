@@ -2,25 +2,28 @@ package com.datn.financeapp.module.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.group.dto.request.fund.FundReconcileReq;
 import com.datn.financeapp.module.group.dto.request.fund.FundKepperUpdateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionParticipantReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
 import com.datn.financeapp.module.group.dto.response.fund.GroupFundReconcileRes;
 import com.datn.financeapp.module.group.dto.response.fund.FundRes;
-import com.datn.financeapp.module.group.dto.response.transaction.GroupTransactionDetailRes;
+import com.datn.financeapp.module.group.dto.response.transaction.GroupTxnDetailRes;
 import com.datn.financeapp.module.group.entity.Fund;
-import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
 import com.datn.financeapp.module.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.module.group.events.MemberLeaveEvent;
-import com.datn.financeapp.module.group.helper.TransactionHelper;
+import com.datn.financeapp.module.group.helper.GroupTxnHelper;
+import com.datn.financeapp.module.group.helper.MemberAuthCache;
+import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.mapper.FundMapper;
 import com.datn.financeapp.module.group.repository.FundRepository;
 import com.datn.financeapp.module.group.service.FundService;
-import com.datn.financeapp.module.group.service.GTransactionService;
+import com.datn.financeapp.module.group.service.GroupTxnCreateService;
+import com.datn.financeapp.module.group.service.GroupTxnGetService;
 import com.datn.financeapp.module.group.service.MemberService;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -37,21 +40,20 @@ import java.util.UUID;
 public class FundServiceImpl implements FundService {
 
     private final FundRepository fundRepository;
-    private final GTransactionService gTransactionService;
-    private final GroupPermissionValidator permissionValidator;
+    private final GroupTxnGetService groupTxnGetService;
+    private final GroupTxnCreateService groupTxnCreateService;
+    private final MemberAuthCache authCache;
     private final FundMapper fundMapper;
     private final MemberService memberService;
-    private final TransactionHelper transactionHelper;
 
     @Transactional
     @Override
-    public FundRes create(UUID groupId, UUID operatorId, Instant now) {
+    public FundRes create(UUID operatorId, UUID groupId) {
         Fund fund = Fund.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
                 .keepperId(operatorId)
                 .currentBalance(0L)
-                .createdAt(now)
                 .build();
 
         fund = fundRepository.save(fund);
@@ -61,8 +63,12 @@ public class FundServiceImpl implements FundService {
 
     @Override
     @Transactional
-    public FundRes updateFundKeepper(UUID operatorId, UUID groupId, FundKepperUpdateReq req) {
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public FundRes updateFundKeepper(UUID groupId, FundKepperUpdateReq req) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Fund fund = fundRepository.findByGroupIdForUpdate(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
@@ -72,7 +78,7 @@ public class FundServiceImpl implements FundService {
             if (!memberService.allMemberInGroup(groupId, List.of(req.keepperId())))
                 throw new BusinessException(ErrorCode.GROUP_FUND_HOLDER_NOT_MEMBER);
             fund.setKeepperId(req.keepperId());
-            permissionValidator.evictGroup(groupId);
+            authCache.evictGroup(groupId);
         }
 
         fund = fundRepository.save(fund);
@@ -82,71 +88,68 @@ public class FundServiceImpl implements FundService {
     //đối chiếu quỹ
     @Override
     @Transactional
-    public GroupFundReconcileRes reconcileFund(UUID operatorId, UUID groupId, FundReconcileReq req) {
+    public GroupFundReconcileRes reconcileFund(UUID groupId, FundReconcileReq req) {
+
+        Instant now = Instant.now();
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isTreasurer)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
         // khoá dòng quỹ để hai lần kiểm kê cùng lúc không cùng tính chênh lệch trên một số dư cũ
         Fund fund = fundRepository.findByGroupIdForUpdate(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_FUND_NOT_FOUND));
 
-        return executeReconcile(operatorId, fund, req);
+        if (Objects.equals(req.actualBalance(), fund.getCurrentBalance()))
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "không thể kiểm kê nếu tiền đang là chính xác");
+
+        return executeReconcile(fund, req, now);
     }
 
     @Override
     @Transactional
     public void adjustBalance(UUID fundId, Long delta) {
-
         fundRepository.adjustBalance(fundId, delta);
-
     }
 
-    private GroupFundReconcileRes executeReconcile(UUID operatorId, Fund fund,
-                                                   FundReconcileReq req) {
-
-        if (Objects.equals(req.actualBalance(), fund.getCurrentBalance()))
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "không thể kiểm kê nếu tiền đang là chính xác");
-
-        // xác định chủ nhóm hoc thử qũy
-        permissionValidator.verifyReconciPermission(fund.getGroupId(), operatorId, fund.getKeepperId());
-
-        Instant now = Instant.now();
+    private GroupFundReconcileRes executeReconcile(Fund fund, FundReconcileReq req, Instant now) {
 
         // chặn kiểm kê khi còn giao dịch chờ duyệt hoặc chờ người chi trả đồng ý
-        if (gTransactionService.countUnresolvedForGroup(fund.getGroupId()) > 0)
+        if (groupTxnGetService.countUnresolvedForGroup(fund.getGroupId()) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
         // độ chênh lệch
         long difference = req.actualBalance() - fund.getCurrentBalance();
         long amount = Math.abs(difference);
 
-        GTransactionType adjustmentType = difference > 0
-                ? GTransactionType.ADJUSTMENT_UP
-                : GTransactionType.ADJUSTMENT_DOWN;
+        GroupTxnType adjustmentType = difference > 0
+                ? GroupTxnType.ADJUSTMENT_UP
+                : GroupTxnType.ADJUSTMENT_DOWN;
 
-        List<GroupTransactionParticipantReq> participantReqs = null;
+        // chia đều chênh lệch cho thành viên nhóm, trừ những người bị loại
+        List<UUID> excludedIds = req.excludedUserIds() != null ? req.excludedUserIds() : List.of();
+        List<UUID> includedIds = memberService.findIdAllMember(fund.getGroupId()).stream()
+                .filter(id -> !excludedIds.contains(id))
+                .toList();
 
-        if (req.excludedUserIds() != null && !req.excludedUserIds().isEmpty()) {
-            List<UUID> allMemberIds = memberService.findIdAllMember(fund.getGroupId());
-            List<UUID> includedIds = allMemberIds.stream()
-                    .filter(id -> !req.excludedUserIds().contains(id))
-                    .toList();
+        List<GroupTxnParticipantReq> participantReqs = GroupTxnHelper.splitEvenly(amount, includedIds).stream()
+                .map(p -> new GroupTxnParticipantReq(p.userId(), p.shareAmount()))
+                .toList();
 
-            participantReqs = transactionHelper.splitEvenly(amount, includedIds).stream()
-                    .map(p -> new GroupTransactionParticipantReq(p.userId(), p.shareAmount()))
-                    .toList();
-        }
-
-        GroupTransactionCreateReq createReq = new GroupTransactionCreateReq(
+        // kiểm kê dùng tiền quỹ nên không có người chi (transactorId = null)
+        GroupTxnCreateReq createReq = new GroupTxnCreateReq(
                 adjustmentType,
                 MoneySource.FUND,
                 amount,
                 now,
                 null,
                 null,
-                fund.getKeepperId(),
                 req.reason(),
                 participantReqs
         );
 
-        GroupTransactionDetailRes transactionDetail = gTransactionService.create(operatorId, fund.getGroupId(), createReq);
+        GroupTxnDetailRes transactionDetail = groupTxnCreateService.create(fund.getGroupId(), createReq);
 
         return new GroupFundReconcileRes(
                 fund.getCurrentBalance(),

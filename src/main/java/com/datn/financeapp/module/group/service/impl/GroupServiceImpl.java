@@ -2,29 +2,28 @@ package com.datn.financeapp.module.group.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.group.dto.request.group.GroupCreateReq;
-import com.datn.financeapp.module.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.module.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.module.group.dto.request.member.MemberCreateReq;
 import com.datn.financeapp.module.group.dto.response.fund.FundRes;
 import com.datn.financeapp.module.group.dto.response.group.GroupDetailRes;
-import com.datn.financeapp.module.group.dto.response.group.GroupPendingCountRes;
 import com.datn.financeapp.module.group.dto.response.group.GroupSummaryRes;
 import com.datn.financeapp.module.group.dto.response.member.MemberRes;
 import com.datn.financeapp.module.group.entity.Group;
 import com.datn.financeapp.module.group.enums.GroupStatus;
 import com.datn.financeapp.module.group.enums.MemberRole;
 import com.datn.financeapp.module.group.enums.MemberStatus;
+import com.datn.financeapp.module.group.helper.MemberAuthCache;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.MemberViewEnricher;
 import com.datn.financeapp.module.group.mapper.FundMapper;
 import com.datn.financeapp.module.group.mapper.GroupMapper;
 import com.datn.financeapp.module.group.repository.GroupRepository;
 import com.datn.financeapp.module.group.service.FundService;
-import com.datn.financeapp.module.group.service.GTransactionService;
 import com.datn.financeapp.module.group.service.GroupService;
+import com.datn.financeapp.module.group.service.GroupTxnGetService;
 import com.datn.financeapp.module.group.service.MemberService;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -44,10 +43,10 @@ import java.util.UUID;
 public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
-    private final GTransactionService gTransactionService;
+    private final GroupTxnGetService groupTxnGetService;
     private final MemberService memberService;
     private final FundService fundService;
-    private final GroupPermissionValidator permissionValidator;
+    private final MemberAuthCache authCache;
     private final GroupMapper groupMapper;
     private final FundMapper fundMapper;
     private final MemberViewEnricher memberViewEnricher;
@@ -69,7 +68,9 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public GroupDetailRes create(UUID operatorId, GroupCreateReq req) {
+    public GroupDetailRes create(GroupCreateReq req) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
 
         if (req.members().contains(operatorId))
             throw new BusinessException(ErrorCode.GROUP_OWNER_IN_MEMBER_LIST);
@@ -77,14 +78,13 @@ public class GroupServiceImpl implements GroupService {
         if (req.members().isEmpty())
             throw new BusinessException(ErrorCode.GROUP_MINIMUM_MEMBERS_REQUIRED);
 
-        Instant now = Instant.now();
         UUID groupId = UUID.randomUUID();
 
-        Group group = groupMapper.toEntity(req, groupId, generateUniqueInviteCode(inviteCodeLength), now);
+        Group group = groupMapper.toEntity(req, groupId, generateUniqueInviteCode(inviteCodeLength));
 
         group = groupRepository.save(group);
 
-        var fund = fundService.create(groupId, operatorId, now);
+        var fund = fundService.create(groupId, operatorId);
 
         var own = memberService.create(
                 new MemberCreateReq(
@@ -127,12 +127,17 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public List<GroupSummaryRes> list(UUID operatorId) {
+    public List<GroupSummaryRes> list() {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
         return groupRepository.findSummariesByUserId(operatorId);
     }
 
     @Override
-    public GroupDetailRes detail(UUID operatorId, UUID groupId) {
+    public GroupDetailRes detail(UUID groupId) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
 
         // chỉ loại nhóm đã xoá nên nhóm đã lưu trữ vẫn xem được
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
@@ -144,8 +149,13 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public GroupDetailRes update(UUID operatorId, UUID groupId, GroupUpdateReq req) {
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public GroupDetailRes update(UUID groupId, GroupUpdateReq req) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
@@ -161,13 +171,12 @@ public class GroupServiceImpl implements GroupService {
 
         if (req.isSettlementEnabled() != null) {
             group.setIsSettlementEnabled(req.isSettlementEnabled());
-            permissionValidator.evictGroup(groupId);
+            authCache.evictGroup(groupId);
         }
 
         if (req.isJoinWithoutConfirm() != null)
             group.setIsJoinWithoutConfirm(req.isJoinWithoutConfirm());
 
-        group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
 
         return buildGroupDetailRes(group, operatorId);
@@ -175,43 +184,51 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional
-    public void archive(UUID operatorId, UUID groupId) {
-        permissionValidator.verifyOwner(groupId, operatorId);
+    public void archive(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isTreasurer)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
         Group group = groupRepository.findActivatedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
-        if (gTransactionService.countUnresolvedForGroup(groupId) > 0)
+        if (groupTxnGetService.countUnresolvedForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
         group.setStatus(GroupStatus.ARCHIVED);
-        group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
-        permissionValidator.evictGroup(groupId);
+        authCache.evictGroup(groupId);
+
         log.info("nhóm đã được lưu trữ");
     }
 
     @Override
     @Transactional
-    public void unarchive(UUID operatorId, UUID groupId) {
-
-        permissionValidator.verifyOwner(groupId, operatorId, true);
+    public void unarchive(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isTreasurer)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Group group = groupRepository.findArchivedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_ARCHIVED));
 
         group.setStatus(GroupStatus.ACTIVE);
-        group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
-        permissionValidator.evictGroup(groupId);
+        authCache.evictGroup(groupId);
 
         log.info("nhóm đã được hoạt động trở lại");
     }
 
     @Override
     @Transactional
-    public void delete(UUID operatorId, UUID groupId) {
-        // xoá nhóm vẫn làm được khi nhóm đã lưu trữ
-        permissionValidator.verifyOwner(groupId, operatorId, true);
+    public void delete(UUID groupId) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isTreasurer)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
@@ -219,22 +236,22 @@ public class GroupServiceImpl implements GroupService {
         if (group.getFund().getCurrentBalance() != null && group.getFund().getCurrentBalance() != 0)
             throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
 
-        if (gTransactionService.countUnresolvedForGroup(groupId) > 0)
+        if (groupTxnGetService.countUnresolvedForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
 
 
         group.setStatus(GroupStatus.DELETED);
-        group.setUpdatedAt(Instant.now());
         groupRepository.save(group);
-        permissionValidator.evictGroup(groupId);
+        authCache.evictGroup(groupId);
 
         log.info("deleted {} is completed", group.getId());
     }
 
     @Override
     @Transactional
-    public void joinByCode(UUID operatorId, GroupJoinReq req) {
-        Group group = groupRepository.findByInviteCodeAndStatusNot(req.inviteCode(), GroupStatus.DELETED)
+    public void joinByCode(String code) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        Group group = groupRepository.findByInviteCodeAndStatusNot(code, GroupStatus.DELETED)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
 
         if (group.getStatus().equals(GroupStatus.ARCHIVED))
@@ -246,7 +263,6 @@ public class GroupServiceImpl implements GroupService {
 
         if (Boolean.TRUE.equals(group.getIsJoinWithoutConfirm()))
             status = MemberStatus.ACTIVE;
-
 
         try {
             memberService.create(
@@ -262,21 +278,6 @@ public class GroupServiceImpl implements GroupService {
             throw new BusinessException(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS);
         }
 
-    }
-
-    @Override
-    public GroupPendingCountRes pendingCount(UUID operatorId, UUID groupId) {
-        MemberAuthInfo info = permissionValidator.getAuthInfo(groupId, operatorId, true);
-
-        // chỉ người có quyền duyệt mới thấy số việc đang chờ
-        long pendingTransactions = (info.isOwner() || info.isTreasurer())
-                ? gTransactionService.countPendingForGroup(groupId)
-                : 0L;
-        long pendingMembers = info.isOwner()
-                ? memberService.countPendingMembers(groupId)
-                : 0L;
-
-        return new GroupPendingCountRes(pendingTransactions, pendingMembers);
     }
 
     //----------------------------------------PRIVATE------------------------------------------//

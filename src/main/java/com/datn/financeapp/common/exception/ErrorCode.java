@@ -60,7 +60,7 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức không được hỗ trợ."),
 
     // Lỗi ngoài dự kiến. Không bao giờ đưa message gốc ra response (T-02-02).
-    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Đã có lỗi xảy ra, vui lòng thử lại."),
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi không xác định."),
 
     /**
      * Yêu cầu trước đó với cùng {@code Idempotency-Key} đang được xử lý. Xem {@code api/00-QUY-UOC-CHUNG.md} mục idempotency.
@@ -310,18 +310,6 @@ public enum ErrorCode {
 
     GROUP_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giao dịch nhóm."),
 
-    // Người chi trả/nhận tiền đồng ý hoặc từ chối giao dịch không ở trạng thái chờ họ.
-    GROUP_TXN_NOT_AWAITING_TRANSACTOR(HttpStatus.CONFLICT, "Giao dịch này không ở trạng thái chờ bạn đồng ý."),
-
-    // Thành viên thường ghi hộ khoản dùng tiền cá nhân của người khác.
-    GROUP_TXN_PROXY_NOT_ALLOWED(HttpStatus.FORBIDDEN, "Chỉ chủ nhóm và thủ quỹ mới được ghi hộ khoản dùng tiền cá nhân của người khác."),
-
-    // Sửa giao dịch đang chờ người chi trả/nhận tiền đồng ý.
-    GROUP_TXN_AWAITING_NOT_EDITABLE(HttpStatus.CONFLICT, "Giao dịch đang chờ người thực hiện đồng ý, không được sửa. Hãy huỷ rồi tạo lại."),
-
-    // Đổi người chi trả, số tiền, nguồn tiền (hoặc mở lại khoản bị từ chối) của khoản dùng tiền cá nhân của người khác.
-    GROUP_TXN_PERSONAL_MONEY_LOCKED(HttpStatus.CONFLICT, "Khoản này dùng tiền cá nhân của người khác nên không đổi được người chi trả, số tiền, nguồn tiền hoặc mở lại sau khi bị từ chối. Hãy xoá rồi tạo lại."),
-
     GROUP_TXN_ACCESS_DENIED(HttpStatus.BAD_REQUEST, "Chỉ chủ nhóm và thủ quỹ mới được xem giao dịch của người khác"),
 
     GROUP_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thành viên trong nhóm."),
@@ -339,8 +327,12 @@ public enum ErrorCode {
     GROUP_TREASURER_REQUIRED(HttpStatus.FORBIDDEN, "Thao tác này chỉ dành cho người giữ quỹ hoặc chủ nhóm."),
 
     GROUP_TXN_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Khoản chi tiêu bắt buộc phải có danh mục."),
-
-    GROUP_TXN_SYSTEM_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch nhóm chỉ được chọn danh mục hệ thống."),
+    GROUP_TXN_PARTICIPANT_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch yêu cầu người tham gia"),
+    GROUP_TXN_TRANSACTOR_REQUIRED(HttpStatus.BAD_REQUEST, "Giao dịch này yêu cầu phải có người chi tiền"),
+    GROUP_TXN_TRANSACTOR_REQUIRED_NULL(HttpStatus.BAD_REQUEST, "Người chi tiền là không cần cho giao dịch sử dụng quỹ"),
+    GROUP_TXN_NOT_FOUD(HttpStatus.NOT_FOUND, "không tìm thấy giao dịch"),
+    GROUP_TXN_IS_REJECT(HttpStatus.FORBIDDEN, "Không thể cập nhật giao dịch đã bị từ chối"),
+    GROUP_TXN_IS_CONFIRM(HttpStatus.FORBIDDEN, "Không thể từ chối giao dịch đã được confirm."),
 
     GROUP_TXN_PARTICIPANTS_SUM_MISMATCH(HttpStatus.BAD_REQUEST,
             "Tổng số tiền các thành viên chịu không khớp với số tiền giao dịch."),
@@ -379,19 +371,19 @@ public enum ErrorCode {
 
     GROUP_TXN_MONEY_SOURCE_INVALID(HttpStatus.BAD_REQUEST, "Nguồn tiền không hợp lệ cho loại giao dịch này."),
 
-    GROUP_TXN_PAYER_NOT_MEMBER(HttpStatus.BAD_REQUEST,
-            "Người trả hoặc người góp không phải là thành viên có mặt tại thời điểm này."),
+    GROUP_TXN_PAYER_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người trả hoặc người góp không phải là thành viên có mặt tại thời điểm này."),
 
     GROUP_TXN_PARTICIPANT_NOT_MEMBER(HttpStatus.BAD_REQUEST, "Người tham gia không phải là thành viên có mặt tại thời điểm này."),
 
     GROUP_TXN_PARTICIPANT_DUPLICATED(HttpStatus.CONFLICT, "Chỉ được thêm mỗi người 1 lần."),
 
-    GROUP_TXN_PARTICIPANTS_SHARE_MIXED(HttpStatus.BAD_REQUEST,
-            "Số tiền chia của các thành viên phải đồng nhất (cùng có hoặc cùng trống)."),
+    GROUP_TXN_PARTICIPANTS_SHARE_MIXED(HttpStatus.BAD_REQUEST, "Số tiền chia của các thành viên phải đồng nhất (cùng có hoặc cùng trống)."),
 
-    GROUP_TXN_PARTICIPANTS_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch này không được chỉ định người tham gia."),
+    GROUP_TXN_PARTICIPANTS_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Loại giao dịch này không được chỉ định người tham gia khác ngoài bạn."),
 
     GROUP_TXN_PARTICIPANTS_REQUIRED(HttpStatus.BAD_REQUEST, "Vui lòng cung cấp danh sách người chia tiền khi thay đổi tổng số tiền."),
+
+    GROUP_TXN_CREATE_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền tạo giao dịch cho người khác."),
 
     GROUP_TXN_EDIT_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền chỉnh sửa giao dịch này."),
 
@@ -399,7 +391,7 @@ public enum ErrorCode {
 
     GROUP_TXN_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền xóa giao dịch này."),
 
-    GROUP_TXN_NOT_PENDING(HttpStatus.CONFLICT, "Giao dịch không ở trạng thái chờ duyệt."),
+    GROUP_TXN_NOT_PENDING(HttpStatus.CONFLICT, "Không thể confirm giao dịch đang trong trạng thái chờ duyệt."),
 
     GROUP_TXN_AMOUNT_EXCEEDS_SHARE(HttpStatus.CONFLICT, "Số tiền vượt quá phần trong quỹ hiện có của thành viên."),
 

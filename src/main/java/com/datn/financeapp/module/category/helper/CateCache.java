@@ -7,9 +7,12 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,13 +30,15 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Nạp toàn bộ một lần khi ứng dụng sẵn sàng ({@link ApplicationReadyEvent}).</li>
  *   <li>Cache KHÔNG tự cập nhật theo DB: bên gọi phải gọi {@link #register} / {@link #changeCode}
  *       sau khi transaction commit, nếu gọi trước mà transaction rollback thì cache bị lệch.</li>
- *   <li>Xóa mềm không cần gọi gì. Chỉ đúng khi chạy một instance; nhiều instance cần cơ chế
- *       đồng bộ khác.</li>
+ *   <li>Xóa mềm: bên gọi phải gọi {@link #markDeleted} sau khi commit. Danh mục xóa mềm vẫn còn trong
+ *       cache (giữ chỗ code, tra ngược id cũ) nhưng bị đánh dấu để {@link #findActiveId} loại ra.</li>
+ *   <li>Chỉ đúng khi chạy một instance; nhiều instance cần cơ chế đồng bộ khác.</li>
  * </ul>
  * </p>
  * <p>
  * <b>Các hàm:</b> {@link #loadAll} nạp lại toàn bộ từ DB; {@link #findCode} tra code theo id;
- * {@link #findId} tra id theo code; {@link #existsCode} kiểm code đã có người giữ chưa;
+ * {@link #findId} tra id theo code (kể cả đã xóa); {@link #findActiveId} tra id theo code, bỏ danh mục đã xóa;
+ * {@link #isDeleted} / {@link #markDeleted} đọc và đánh dấu trạng thái xóa mềm; {@link #existsCode} kiểm code đã có người giữ chưa;
  * {@link #register} ghi code của danh mục mới; {@link #changeCode} đổi code danh mục đã có.
  * Tham số {@code null} hoặc code rỗng cho kết quả "không có"/{@code false}, không ném lỗi.
  * </p>
@@ -46,6 +51,7 @@ public class CateCache {
     private final CategoryRepository categoryRepository;
     private volatile Map<UUID, String> idToCode = new ConcurrentHashMap<>();
     private volatile Map<String, UUID> codeToId = new ConcurrentHashMap<>();
+    private volatile Set<UUID> deletedIds = ConcurrentHashMap.newKeySet();
 
     /**
      * Nạp lại toàn bộ cặp (id, code), kể cả danh mục đã xóa mềm.
@@ -59,12 +65,17 @@ public class CateCache {
         List<CategoryCodeView> rows = categoryRepository.findAllCodes();
         Map<UUID, String> newIdToCode = new ConcurrentHashMap<>();
         Map<String, UUID> newCodeToId = new ConcurrentHashMap<>();
+        Set<UUID> newDeletedIds = ConcurrentHashMap.newKeySet();
         rows.forEach(row -> {
             newIdToCode.put(row.id(), row.code());
             newCodeToId.put(row.code(), row.id());
+            if (Boolean.TRUE.equals(row.deleted())) {
+                newDeletedIds.add(row.id());
+            }
         });
         idToCode = newIdToCode;
         codeToId = newCodeToId;
+        deletedIds = newDeletedIds;
         log.info("Đã nạp {} code danh mục vào cache", rows.size());
     }
 
@@ -86,6 +97,37 @@ public class CateCache {
      */
     public Optional<UUID> findId(String code) {
         return code == null ? Optional.empty() : Optional.ofNullable(codeToId.get(code));
+    }
+
+    /**
+     * Tra id theo code, bỏ qua danh mục đã xóa mềm.
+     *
+     * @param code code danh mục
+     * @return id của danh mục chưa xóa, rỗng nếu code chưa tồn tại hoặc danh mục đã xóa
+     */
+    public Optional<UUID> findActiveId(String code) {
+        return findId(code).filter(id -> !deletedIds.contains(id));
+    }
+
+    /**
+     * Kiểm tra danh mục đã bị xóa mềm chưa.
+     *
+     * @param id ID danh mục
+     * @return {@code true} nếu danh mục đã đánh dấu xóa
+     */
+    public boolean isDeleted(UUID id) {
+        return id != null && deletedIds.contains(id);
+    }
+
+    /**
+     * Đánh dấu các danh mục đã xóa mềm. Code vẫn được giữ chỗ trong cache.
+     *
+     * @param ids ID các danh mục vừa xóa mềm (gồm cả cây con)
+     */
+    public void markDeleted(Collection<UUID> ids) {
+        if (ids != null) {
+            ids.stream().filter(Objects::nonNull).forEach(deletedIds::add);
+        }
     }
 
     /**

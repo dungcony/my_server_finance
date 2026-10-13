@@ -40,25 +40,6 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
             UUID userId);
 
     @Query("""
-                SELECT new com.datn.financeapp.module.group.helper.MemberAuthInfo(
-                    g.id,
-                    gm.userId,
-                    g.status,
-                    g.isSettlementEnabled,
-                    gm.status,
-                    gm.role,
-                    f.keepperId
-                )
-                FROM Group g
-                LEFT JOIN Member gm ON gm.groupId = g.id AND gm.userId = :userId
-                LEFT JOIN Fund f ON f.groupId = g.id
-                WHERE g.inviteCode = :inviteCode and gm.status = MemberStatus.ACTIVE
-            """)
-    Optional<MemberAuthInfo> findAuthInfo(
-            String inviteCode,
-            UUID userId);
-
-    @Query("""
             SELECT new com.datn.financeapp.module.group.dto.response.group.GroupSummaryRes(
                 g.id,
                 g.name,

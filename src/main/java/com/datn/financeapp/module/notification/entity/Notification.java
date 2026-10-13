@@ -41,7 +41,7 @@ public class Notification {
     private UUID userId;
 
     /**
-     * Loại thông báo; app dựa vào đây để chọn icon và màn hình đích. Lưu tên hằng (VD {@code GROUP_TXN_CONSENT_REQUEST}).
+     * Loại thông báo; app dựa vào đây để chọn icon và màn hình đích. Lưu tên hằng (VD {@code GROUP_TXN_RECORD_REQUEST}).
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 50)

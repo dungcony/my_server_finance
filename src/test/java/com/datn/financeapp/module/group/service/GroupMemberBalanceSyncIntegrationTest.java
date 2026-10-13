@@ -3,22 +3,16 @@ package com.datn.financeapp.module.group.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionBulkReviewReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionParticipantReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionUpdateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnUpdateReq;
 import com.datn.financeapp.module.group.entity.Group;
 import com.datn.financeapp.module.group.entity.Member;
 import com.datn.financeapp.module.group.entity.MemberBalance;
-import com.datn.financeapp.module.group.enums.GTransactionType;
-import com.datn.financeapp.module.group.enums.GroupStatus;
-import com.datn.financeapp.module.group.enums.MemberRole;
-import com.datn.financeapp.module.group.enums.MemberStatus;
-import com.datn.financeapp.module.group.enums.MoneySource;
+import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.repository.GroupRepository;
 import com.datn.financeapp.module.group.repository.MemberBalanceRepository;
 import com.datn.financeapp.module.group.repository.MemberRepository;
-import com.datn.financeapp.module.group.service.GTransactionService;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
@@ -67,7 +61,10 @@ class GroupMemberBalanceSyncIntegrationTest {
     }
 
     @Autowired
-    private GTransactionService transactionService;
+    private GroupTxnGetService transactionService;
+
+    @Autowired
+    private GroupTxnCreateService createService;
 
     @Autowired
     private GroupRepository groupRepository;
@@ -89,6 +86,7 @@ class GroupMemberBalanceSyncIntegrationTest {
     private UUID memberA;
     private UUID memberB;
     private UUID categoryId;
+    private String categoryCode;
 
     @BeforeEach
     void setUp() {
@@ -101,42 +99,40 @@ class GroupMemberBalanceSyncIntegrationTest {
         groupId = createGroupWithFund(ownerId, memberA, memberB);
         categoryId = jdbcTemplate.queryForObject(
                 "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
+        categoryCode = jdbcTemplate.queryForObject("SELECT code FROM categories WHERE id = ?", String.class, categoryId);
     }
 
     @Test
     @DisplayName("Sau mỗi thao tác tạo, duyệt, duyệt hàng loạt, sửa, hoàn tiền, xoá: bảng tổng hợp khớp với lịch sử giao dịch")
     void memberBalances_matchAggregateAfterEveryWrite() {
         // chủ nhóm ghi A nộp quỹ, được duyệt ngay
-        transactionService.create(ownerId, groupId, contribution(memberA, 300_000L));
+        createService.create(ownerId, groupId, contribution(memberA, 300_000L));
         assertSummaryMatchesHistory("chủ nhóm ghi A nộp 300k");
 
         // A tự chi tiền túi chia cho A, B nên chờ duyệt, chủ nhóm duyệt
-        UUID expenseId = transactionService.create(memberA, groupId, new GroupTransactionCreateReq(
-                GTransactionType.EXPENSE, MoneySource.PERSONAL, 90_000L, null, null, categoryId, memberA,
-                "Ăn tối", List.of(part(memberA, 45_000L), part(memberB, 45_000L)))).id();
+        UUID expenseId = createService.create(memberA, groupId, new GroupTxnCreateReq(
+                GroupTxnType.EXPENSE, MoneySource.PERSONAL, 90_000L, Instant.now().minusSeconds(60),
+                categoryCode, memberA, "Ăn tối", List.of(part(memberA, 45_000L), part(memberB, 45_000L)))).id();
         assertSummaryMatchesHistory("A chi tiền túi 90k (chờ duyệt)");
         transactionService.confirm(ownerId, groupId, expenseId);
         assertSummaryMatchesHistory("chủ nhóm duyệt khoản chi của A");
 
         // B tự nộp quỹ nên chờ duyệt, chủ nhóm duyệt hàng loạt
-        UUID contributionB = transactionService.create(memberB, groupId, contribution(memberB, 100_000L)).id();
+        UUID contributionB = createService.create(memberB, groupId, contribution(memberB, 100_000L)).id();
         transactionService.bulkConfirm(ownerId, groupId, new GroupTransactionBulkReviewReq(List.of(contributionB)));
         assertSummaryMatchesHistory("chủ nhóm duyệt hàng loạt khoản nộp của B");
 
         // chủ nhóm sửa khoản chi: đổi số tiền, người tham gia và nguồn tiền
-        transactionService.update(ownerId, groupId, expenseId, new GroupTransactionUpdateReq(
+        transactionService.update(ownerId, groupId, expenseId, new GroupTxnUpdateReq(
                 120_000L, null, null, MoneySource.FUND, null, null, null,
                 List.of(part(memberA, 40_000L), part(memberB, 40_000L), part(ownerId, 40_000L))));
         assertSummaryMatchesHistory("chủ nhóm sửa khoản chi thành 120k chia 3 người, nguồn quỹ");
 
-        // chủ nhóm hoàn tiền cho A rồi sửa sang người nhận khác
-        UUID refundId = transactionService.create(ownerId, groupId, new GroupTransactionCreateReq(
-                GTransactionType.REFUND, MoneySource.FUND, 50_000L, null, null, null, memberA,
-                "Trả lại tiền", List.of())).id();
-        assertSummaryMatchesHistory("chủ nhóm hoàn A 50k");
-        transactionService.update(ownerId, groupId, refundId, new GroupTransactionUpdateReq(
-                30_000L, null, null, null, null, memberB, null, null));
-        assertSummaryMatchesHistory("chủ nhóm sửa khoản hoàn sang B 30k");
+        // chủ nhóm (cũng là thủ quỹ) hoàn tiền cho A 50k và B 30k trong cùng một giao dịch
+        createService.create(ownerId, groupId, new GroupTxnCreateReq(
+                GroupTxnType.REFUND, MoneySource.FUND, 80_000L, Instant.now().minusSeconds(60), null, null,
+                "Trả lại tiền", List.of(part(memberA, 50_000L), part(memberB, 30_000L))));
+        assertSummaryMatchesHistory("chủ nhóm hoàn A 50k và B 30k");
 
         // chủ nhóm xoá khoản nộp của B
         transactionService.delete(ownerId, groupId, contributionB);
@@ -223,13 +219,14 @@ class GroupMemberBalanceSyncIntegrationTest {
             target.put(userId, values);
     }
 
-    private GroupTransactionCreateReq contribution(UUID transactorId, long amount) {
-        return new GroupTransactionCreateReq(GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, amount, null,
-                null, null, transactorId, "Nộp quỹ", List.of());
+    private GroupTxnCreateReq contribution(UUID transactorId, long amount) {
+        return new GroupTxnCreateReq(GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, amount,
+                Instant.now().minusSeconds(60), null, transactorId, "Nộp quỹ",
+                List.of(part(transactorId, amount)));
     }
 
-    private GroupTransactionParticipantReq part(UUID userId, long amount) {
-        return new GroupTransactionParticipantReq(userId, amount);
+    private GroupTxnParticipantReq part(UUID userId, long amount) {
+        return new GroupTxnParticipantReq(userId, amount);
     }
 
     private UUID createGroupWithFund(UUID owner, UUID... members) {

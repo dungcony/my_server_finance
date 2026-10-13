@@ -340,7 +340,8 @@ flowchart LR
 - **Mô tả:** Chủ nhóm mời một thành viên `ACTIVE` ra khỏi nhóm.
 - **Tiền điều kiện:**
     - Không thể tự mời chính mình rời (`409 GROUP_OWNER_NOT_REMOVABLE`).
-    - Người bị mời rời **không được đang giữ quỹ** (`409 GROUP_TREASURER_TRANSFER_REQUIRED` — chủ nhóm phải dùng UC06 chuyển
+    - Người bị mời rời **không được đang giữ quỹ** (`409 GROUP_TREASURER_TRANSFER_REQUIRED` — chủ nhóm phải dùng UC06
+      chuyển
       quỹ trước).
     - Nếu nhóm **bật tính thừa thiếu**: Nhóm không còn giao dịch `PENDING` và phần của người đó (`net_balance`) phải
       bằng 0 ([rule.md](rule.md) quy tắc 27).
@@ -433,19 +434,23 @@ flowchart LR
        `transactor_id`, `occurred_at`, `participants` (nếu có).
     2. Hệ thống kiểm tra toàn vẹn nghiệp vụ:
         - Kiểm tra người trả và người tham gia hợp lệ tại `occurred_at` ([pipeline.md](pipeline.md) mục 1).
-        - Nếu không gửi danh sách người tham gia (hoặc gửi rỗng): hệ thống tự động chia đều cho toàn bộ thành viên nhóm có mặt tại thời điểm `occurred_at` và tính `share_amount` cho từng người (`splitEvenly`, Migration `V16`).
-        - Nếu có gửi danh sách người tham gia cụ thể: kiểm tra tổng `share_amount` phải bằng đúng `amount` của giao dịch (`GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`).
+        - Nếu không gửi danh sách người tham gia (hoặc gửi rỗng): hệ thống tự động chia đều cho toàn bộ thành viên nhóm
+          có mặt tại thời điểm `occurred_at` và tính `share_amount` cho từng người (`splitEvenly`, Migration `V16`).
+        - Nếu có gửi danh sách người tham gia cụ thể: kiểm tra tổng `share_amount` phải bằng đúng `amount` của giao dịch
+          (`GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`).
     3. Xác định trạng thái duyệt:
         - Nếu người ghi là `Treasurer` hoặc `Owner` → Gán `status = 'CONFIRMED'`, `reviewed_by = userId`,
           `reviewed_at = now()`. Nếu `money_source == 'FUND'`, khoá quỹ và trừ số dư
           `current_balance = current_balance - amount`.
         - Nếu người ghi là thành viên thường → Gán `status = 'PENDING'`, chưa tác động đến quỹ.
     4. Lưu bản ghi `group_transactions` và các dòng `group_transaction_participants` (luôn có `share_amount > 0`).
-    5. Cập nhật delta biến động tài chính của các thành viên vào bảng tích luỹ `group_member_balances` qua `memberBalanceService.applyDelta` (Migration `V18`).
-    6. Trả về `201 Created` kèm `GroupTransactionDetailRes`.
+    5. Cập nhật delta biến động tài chính của các thành viên vào bảng tích luỹ `group_member_balances` qua
+       `memberBalanceService.applyDelta` (Migration `V18`).
+    6. Trả về `201 Created` kèm `GroupTxnDetailRes`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `400 GROUP_TXN_DATE_IN_FUTURE`: Thời điểm phát sinh ở tương lai.
-    - `400 GROUP_TXN_PAYER_NOT_MEMBER` / `GROUP_TXN_PARTICIPANT_NOT_MEMBER`: Người trả hoặc người chia tiền không có mặt tại thời điểm giao
+    - `400 GROUP_TXN_PAYER_NOT_MEMBER` / `GROUP_TXN_PARTICIPANT_NOT_MEMBER`: Người trả hoặc người chia tiền không có mặt
+      tại thời điểm giao
       dịch.
     - `400 GROUP_TXN_SYSTEM_CATEGORY_REQUIRED`: Danh mục không phải danh mục hệ thống loại chi.
     - `400 GROUP_TXN_PARTICIPANTS_SUM_MISMATCH`: Tổng tiền tự nhập không khớp với số tiền chi.
@@ -485,11 +490,13 @@ flowchart LR
     2. Trong 1 transaction CSDL:
         - Kiểm tra các giao dịch đang `PENDING`.
         - Chuyển `status = 'CONFIRMED'`, gán `reviewed_by = userId`, `reviewed_at = now()`.
-        - Cập nhật delta biến động tài chính của các thành viên vào bảng `group_member_balances` qua `memberBalanceService.applyDelta` (Migration `V18`).
+        - Cập nhật delta biến động tài chính của các thành viên vào bảng `group_member_balances` qua
+          `memberBalanceService.applyDelta` (Migration `V18`).
         - **Khoá dòng quỹ (`FOR UPDATE`)** và áp delta chênh lệch lên quỹ:
             - `EXPENSE (FUND)`: Giảm quỹ.
             - `CONTRIBUTION`: Tăng quỹ.
-            - Với duyệt hàng loạt: Gộp delta số dư quỹ và gộp biến động các thành viên rồi cập nhật 1 lần duy nhất cho toàn bộ lô.
+            - Với duyệt hàng loạt: Gộp delta số dư quỹ và gộp biến động các thành viên rồi cập nhật 1 lần duy nhất cho
+              toàn bộ lô.
     3. Phản hồi `200 OK`.
 - **Luồng chính - Từ chối đơn lẻ / Hàng loạt:**
     1. Tác nhân gọi `POST .../{tId}/reject` hoặc `POST .../transactions/bulk-reject`.
@@ -511,7 +518,8 @@ flowchart LR
     2. Trong 1 transaction CSDL:
         - Chụp ảnh hưởng cũ của giao dịch: `before = BalanceCalculator.effectOf(txn)`.
         - Nếu khoản đang `CONFIRMED`: Hoàn tác ảnh hưởng số tiền cũ lên quỹ.
-        - Điều phối tới `GTransactionUpdate` phụ trách loại giao dịch đó để cập nhật thông tin và phân bổ lại danh sách người tham gia (kèm `share_amount > 0`).
+        - Điều phối tới `GTransactionUpdate` phụ trách loại giao dịch đó để cập nhật thông tin và phân bổ lại danh sách
+          người tham gia (kèm `share_amount > 0`).
         - Kiểm tra người sửa:
             - Nếu là `Treasurer` hoặc `Owner` → Khoản giữ nguyên `CONFIRMED`, tính ảnh hưởng mới lên quỹ.
             - Nếu là `Member` thường → Khoản chuyển về `PENDING`, chờ duyệt lại.
@@ -536,7 +544,8 @@ flowchart LR
         - Gán `deleted_at = now()` (xoá mềm).
         - Nếu khoản đang `CONFIRMED`: Khoá quỹ và hoàn tác toàn bộ ảnh hưởng tài chính của khoản đó lên
           `group_funds.current_balance`.
-        - Hoàn tác ảnh hưởng tài chính trong `group_member_balances` qua `memberBalanceService.applyDelta(groupId, before, NO_EFFECT)` (Migration `V18`).
+        - Hoàn tác ảnh hưởng tài chính trong `group_member_balances` qua
+          `memberBalanceService.applyDelta(groupId, before, NO_EFFECT)` (Migration `V18`).
     3. Trả về `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `403 GROUP_OWNER_REQUIRED`: Thành viên thường hoặc thủ quỹ cố thực hiện xoá giao dịch.
@@ -582,7 +591,9 @@ flowchart LR
         - Nếu `difference > 0`: Tạo giao dịch `ADJUSTMENT_UP` với `amount = difference`.
         - Nếu `difference < 0`: Tạo giao dịch `ADJUSTMENT_DOWN` với `amount = abs(difference)`.
         - Giao dịch có `money_source = 'FUND'`, `status = 'CONFIRMED'` ngay, không gắn danh mục.
-        - Người chịu độ lệch: Hệ thống tự động chia đều cho toàn bộ thành viên nhóm có mặt (hoặc thành viên không bị loại trừ) và tạo các bản ghi `group_transaction_participants` với `share_amount` tương ứng (`splitEvenly`, Migration `V16`).
+        - Người chịu độ lệch: Hệ thống tự động chia đều cho toàn bộ thành viên nhóm có mặt (hoặc thành viên không bị
+          loại trừ) và tạo các bản ghi `group_transaction_participants` với `share_amount` tương ứng (`splitEvenly`,
+          Migration `V16`).
         - Cập nhật delta vào bảng tích luỹ `group_member_balances` (Migration `V18`).
         - Cập nhật số dư quỹ bằng câu lệnh cộng dồn nguyên tử: `SET current_balance = current_balance + :difference`
           (không ghi đè).
@@ -620,7 +631,8 @@ flowchart LR
     2. Hoặc gọi `GET /v1/groups/{id}/transactions/mine` để xem toàn bộ giao dịch do mình tạo (kể cả khoản `PENDING`).
     3. Thủ quỹ / Chủ nhóm gọi `GET /v1/groups/{id}/transactions/pending` để xem danh sách các khoản cần duyệt.
     4. Gọi `GET .../transactions/{tId}` để xem chi tiết giao dịch.
-    5. Gọi `GET .../transactions/{tId}/participants` để lấy chi tiết danh sách người cùng chịu khoản chi và số tiền mỗi người chịu (`share_amount`).
+    5. Gọi `GET .../transactions/{tId}/participants` để lấy chi tiết danh sách người cùng chịu khoản chi và số tiền mỗi
+       người chịu (`share_amount`).
 
 ---
 

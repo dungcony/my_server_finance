@@ -1,356 +1,86 @@
 package com.datn.financeapp.module.group.helper;
 
-import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.group.dto.response.member.MemberRes;
-import com.datn.financeapp.module.group.entity.GTransaction;
-import com.datn.financeapp.module.group.entity.TransactionParticipant;
-import com.datn.financeapp.module.group.enums.GTransactionStatus;
-import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.entity.GroupTxn;
+import com.datn.financeapp.module.group.entity.GroupTxnParticipant;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
+import org.springframework.lang.NonNull;
 
-import java.time.Instant;
-import java.util.*;
-import java.util.stream.Stream;
+import java.util.List;
+import java.util.UUID;
 
 
 /**
- * Class chuyên dùng để tính toán thu chi và chia tiền cho các thành viên trong
- * nhóm.
- * Giúp trả lời các câu hỏi: Ai đã nộp bao nhiêu? Ai đã tiêu bao nhiêu? Nhóm còn
- * nợ ai và ai đang nợ nhóm?
- * <p>
- * Các hàm trong class:
- * <ul>
- * <li>{@link #calculateBalances}: Hàm chính để chốt sổ, tính ra kết quả thu chi
- * của từng người.</li>
- * <li>{@link #effectOf}: Tính ảnh hưởng của một giao dịch lên số dư từng thành viên, dùng để ghi chênh lệch
- * vào bảng tổng hợp.</li>
- * <li>{@link #allocateShareAmongParticipants}: Hàm chia tiền (chia đều hoặc
- * chia theo con số cụ thể) cho những người tham gia giao dịch.</li>
- * <li>{@link #getActiveMemberIdsAt}: Lấy danh sách những người đang có mặt
- * trong nhóm tại thời điểm xảy ra giao dịch.</li>
- * <li>{@link #allocateEvenly}: Hàm chia đều một số tiền cho nhiều người (có xử
- * lý chia phần dư công bằng).</li>
- * </ul>
- * </p>
+ * Class chuyên dùng để tính ảnh hưởng của giao dịch nhóm lên số dư từng thành viên.
+ * Giúp trả lời các câu hỏi: Ai đã góp/ứng bao nhiêu? Ai được trả lại bao nhiêu? Ai phải gánh bao nhiêu?
  */
 public final class BalanceCalculator {
 
     /**
-     * Hàm chính để chốt sổ, tính toán lại toàn bộ tiền bạc của các thành viên.
-     * Dựa vào lịch sử giao dịch (nộp, rút, chi tiêu...), hàm sẽ tính ra số dư cuối
-     * cùng của từng người.
+     * Tính ảnh hưởng của một giao dịch nhóm đã lưu lên số dư từng thành viên
      *
-     * @param txnStream    Toàn bộ danh sách giao dịch lấy từ database theo kiểu stream
-     * @param allMembers   Toàn bộ lịch sử thành viên lấy từ database
-     * @param excludeTxnId ID của giao dịch muốn bỏ qua không tính (dùng khi đang
-     *                     cập nhật hoặc xóa giao dịch)
-     * @return Đối tượng chứa kết quả thống kê tiền bạc của từng người
-     * (MemberBalances)
+     * @param txn giao dịch nhóm
+     * @return Ảnh hưởng theo từng thành viên, đối tượng mới mỗi lần gọi
      */
-    public static MemberBalances calculateBalances(
-            Stream<GTransaction> txnStream,
-            List<MemberRes> allMembers,
-            UUID excludeTxnId) {
-        Map<UUID, MemberBalanceAccumulator> memberMap = new HashMap<>();
-
-        if (txnStream == null) {
-            return new MemberBalances(memberMap);
-        }
-
-        List<GroupMemberPeriod> memberPeriods = (allMembers == null)
-                ? List.of()
-                : allMembers.stream()
-                .map(m -> new GroupMemberPeriod(m.userId(), m.joinedAt(), m.leftAt()))
-                .toList();
-
-        txnStream.forEach(txn -> {
-            if (excludeTxnId != null && excludeTxnId.equals(txn.getId())) {
-                return;
-            }
-            if (txn.getDeletedAt() != null) {
-                return;
-            }
-            if (txn.getStatus() != null && txn.getStatus() != GTransactionStatus.CONFIRMED) {
-                return;
-            }
-
-            GTransactionType type = txn.getType();
-            if (type == null) {
-                throw new IllegalStateException(
-                        "Loại giao dịch không được để trống (null). Transaction ID: " + txn.getId());
-            }
-
-            long amount = txn.getAmount() != null ? txn.getAmount() : 0L;
-            if (amount <= 0) {
-                throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID,
-                        "Số tiền giao dịch phải lớn hơn 0. Transaction ID: " + txn.getId());
-            }
-
-            UUID uid = txn.getTransactorId();
-
-            switch (type) {
-                case CONTRIBUTION -> {
-                    if (txn.getMoneySource() == MoneySource.FUND) {
-                        throw new BusinessException(
-                                ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID,
-                                "Nguồn tiền nộp quỹ không thể là tiền từ quỹ (FUND). Transaction ID: " + txn.getId());
-                    }
-                    if (uid == null) {
-                        throw new BusinessException(
-                                ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER,
-                                "Người nộp quỹ không được để trống (null). Transaction ID: " + txn.getId());
-                    }
-                    memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addContribution(amount);
-                }
-                case EXPENSE -> {
-                    if (txn.getMoneySource() == MoneySource.PERSONAL) {
-                        if (uid == null) {
-                            throw new BusinessException(
-                                    ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER,
-                                    "Người chi tiền túi không được để trống (null). Transaction ID: " + txn.getId());
-                        }
-                        memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addPaidOutOfPocket(amount);
-                    }
-                    allocateShareAmongParticipants(txn, amount, 1L, memberMap, memberPeriods);
-                }
-                case REFUND -> {
-                    if (uid == null) {
-                        throw new BusinessException(
-                                ErrorCode.GROUP_TXN_PAYER_NOT_MEMBER,
-                                "Người nhận hoàn tiền không được để trống (null). Transaction ID: " + txn.getId());
-                    }
-                    memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator()).addRefund(amount);
-                }
-                case ADJUSTMENT_DOWN ->
-                    // Quỹ hao hụt -> tăng share phải chịu (factor = +1)
-                        allocateShareAmongParticipants(txn, amount, 1L, memberMap, memberPeriods);
-                case ADJUSTMENT_UP ->
-                    // Quỹ dôi ra -> giảm share phải chịu (factor = -1)
-                        allocateShareAmongParticipants(txn, amount, -1L, memberMap, memberPeriods);
-                default -> throw new IllegalStateException("Loại giao dịch chưa được hỗ trợ: " + type);
-            }
-        });
-
-        return new MemberBalances(memberMap);
+    public static MemberBalances effectOf(GroupTxn txn) {
+        return effectOf(txn.getTransactorId(), txn.getAmount(), txn.getMoneySource(), txn.getType(),
+                txn.getParticipants());
     }
 
     /**
-     * Tính ảnh hưởng của một giao dịch lên số dư từng thành viên, theo đúng công thức của bảng
-     * {@code group_member_balances}. Giao dịch chưa {@code CONFIRMED} hoặc đã xoá không ảnh hưởng ai.
+     * Tính ảnh hưởng của một giao dịch lên số dư từng thành viên
      *
-     * @param txn Giao dịch cần tính
+     * @param transactorId người ứng tiền cho nhóm (nộp quỹ hoặc chi hộ bằng tiền cá nhân, cả hai đều tính vào contribution), null khi dùng tiền quỹ
+     * @param amount       số tiền giao dịch
+     * @param moneySource  nguồn tiền (FUND hoặc PERSONAL), chỉ ảnh hưởng tới EXPENSE: PERSONAL thì cộng contribution cho transactorId
+     * @param type         loại giao dịch, quyết định chỉ số nào được cộng: CONTRIBUTION cộng contribution, REFUND cộng refund, EXPENSE và ADJUSTMENT_DOWN cộng share, ADJUSTMENT_UP trừ share
+     * @param participants những người được chia tiền, dùng để tính share cho EXPENSE, ADJUSTMENT_* và phần được nhận cho REFUND
      * @return Ảnh hưởng theo từng thành viên, đối tượng mới mỗi lần gọi
      */
-    public static MemberBalances effectOf(GTransaction txn) {
-        Map<UUID, MemberBalanceAccumulator> map = new HashMap<>();
-        if (txn.getStatus() != GTransactionStatus.CONFIRMED || txn.getDeletedAt() != null) {
-            return new MemberBalances(map);
-        }
+    public static MemberBalances effectOf(
+            UUID transactorId,
+            long amount,
+            MoneySource moneySource,
+            GroupTxnType type,
+            List<GroupTxnParticipant> participants
+    ) {
 
-        UUID uid = txn.getTransactorId();
-        long amount = txn.getAmount();
-        switch (txn.getType()) {
-            case CONTRIBUTION -> accumulatorOf(map, uid).addContribution(amount);
+        MemberBalances res = new MemberBalances();
+
+        switch (type) {
+            case CONTRIBUTION -> res.addContribution(transactorId, amount);
             case EXPENSE -> {
-                if (txn.getMoneySource() == MoneySource.PERSONAL) {
-                    accumulatorOf(map, uid).addPaidOutOfPocket(amount);
+                if (moneySource == MoneySource.PERSONAL) {
+                    // cộng tiền túi cho người đã trả tiền
+                    res.addContribution(transactorId, amount);
                 }
-                addParticipantShares(txn, 1L, map);
+                addParticipantShares(participants, 1L, res);
             }
-            case REFUND -> accumulatorOf(map, uid).addRefund(amount);
-            case ADJUSTMENT_DOWN -> addParticipantShares(txn, 1L, map);
-            case ADJUSTMENT_UP -> addParticipantShares(txn, -1L, map);
+            case REFUND -> participants.forEach(p -> res.addRefund(p.getUserId(), p.getShareAmount()));
+            case ADJUSTMENT_DOWN -> addParticipantShares(participants, 1L, res);
+            case ADJUSTMENT_UP -> addParticipantShares(participants, -1L, res);
         }
-        return new MemberBalances(map);
+        return res;
     }
 
     // ---------------------------------------PRIVATE----------------------------------------------//
 
-    private static MemberBalanceAccumulator accumulatorOf(Map<UUID, MemberBalanceAccumulator> map, UUID userId) {
-        return map.computeIfAbsent(userId, k -> new MemberBalanceAccumulator());
-    }
-
-    // cộng thẳng phần chia đã ghi trong group_transaction_participants, giống câu SQL tổng hợp; từ V16 share_amount không còn null
-    private static void addParticipantShares(GTransaction txn, long factor, Map<UUID, MemberBalanceAccumulator> map) {
-        if (txn.getParticipants() == null) {
-            return;
-        }
-        for (TransactionParticipant p : txn.getParticipants()) {
-            accumulatorOf(map, p.getUserId()).addShare(p.getShareAmount() * factor);
-        }
-    }
-
     /**
-     * Phân bổ chi phí (share) cho các thành viên tham gia giao dịch.
+     * cộng thẳng phần chia đã ghi trong group_transaction_participants vào share của từng người
      *
-     * @param txn           Giao dịch đang phân bổ chi phí
-     * @param amount        Tổng số tiền cần phân bổ
-     * @param factor        Hệ số phân bổ (+1: tăng phần share phải gánh, -1:
-     *                      giảm phần share phải gánh)
-     * @param memberMap     Map tích lũy số dư của từng thành viên
-     * @param memberPeriods Danh sách chu kỳ thời gian tham gia nhóm
+     * @param participants những người được tính
+     * @param factor       +1: tăng, -1: giảm
+     * @param balances     số dư theo từng thành viên, hàm cộng dồn trực tiếp vào đối tượng này qua {@link MemberBalances#addShare(UUID, long)}
      */
-    private static void allocateShareAmongParticipants(
-            GTransaction txn,
-            long amount,
+    private static void addParticipantShares(
+            @NonNull List<GroupTxnParticipant> participants,
             long factor,
-            Map<UUID, MemberBalanceAccumulator> memberMap,
-            List<GroupMemberPeriod> memberPeriods) {
-        List<TransactionParticipant> raw = txn.getParticipants();
-        if (raw == null) raw = List.of();
-
-        if (!raw.isEmpty()) {
-            // Validate: Không trùng lặp userId và shareAmount phải > 0 (Mục 2 & Mục 8)
-            Set<UUID> seenUserIds = new HashSet<>();
-            for (TransactionParticipant p : raw) {
-                if (p.getUserId() == null || !seenUserIds.add(p.getUserId())) {
-                    throw new BusinessException(
-                            ErrorCode.GROUP_TXN_PARTICIPANT_DATA_INVALID,
-                            "Danh sách người tham gia có thành viên bị trùng lặp hoặc null: " + p.getUserId());
-                }
-                if (p.getShareAmount() != null && p.getShareAmount() <= 0) {
-                    throw new BusinessException(
-                            ErrorCode.GROUP_TXN_PARTICIPANT_DATA_INVALID,
-                            "Số tiền share của thành viên phải lớn hơn 0. User ID: " + p.getUserId());
-                }
-            }
-
-            List<TransactionParticipant> specified = new ArrayList<>();
-            List<TransactionParticipant> unspecified = new ArrayList<>();
-
-            for (TransactionParticipant p : raw) {
-                if (p.getShareAmount() != null) {
-                    specified.add(p);
-                } else {
-                    unspecified.add(p);
-                }
-            }
-
-            if (unspecified.isEmpty()) {
-                // Trường hợp 1: Tất cả đều có shareAmount -> Validate tổng = amount
-                long sum = 0L;
-                for (TransactionParticipant p : specified) {
-                    sum += p.getShareAmount();
-                }
-                if (sum != amount) {
-                    throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH);
-                }
-                for (TransactionParticipant p : specified) {
-                    memberMap.computeIfAbsent(p.getUserId(), k -> new MemberBalanceAccumulator())
-                            .addShare(p.getShareAmount() * factor);
-                }
-            } else if (specified.isEmpty()) {
-                // Trường hợp 2: Tất cả đều null -> Chia đều amount cho tất cả participants
-                List<UUID> userIds = unspecified.stream()
-                        .map(TransactionParticipant::getUserId)
-                        .toList();
-                allocateEvenly(txn, userIds, amount, factor, memberMap);
-            } else {
-                // Trường hợp 3: Hỗn hợp (Mục 6)
-                long sumSpecified = 0L;
-                for (TransactionParticipant p : specified) {
-                    sumSpecified += p.getShareAmount();
-                }
-                if (sumSpecified >= amount) {
-                    throw new BusinessException(
-                            ErrorCode.GROUP_TXN_PARTICIPANTS_SUM_MISMATCH,
-                            "Tổng số tiền các thành viên chỉ định phải nhỏ hơn số tiền giao dịch.");
-                }
-                // Người có shareAmount: giữ nguyên giá trị đã chỉ định
-                for (TransactionParticipant p : specified) {
-                    memberMap.computeIfAbsent(p.getUserId(), k -> new MemberBalanceAccumulator())
-                            .addShare(p.getShareAmount() * factor);
-                }
-                // Người có shareAmount = null: chia đều số tiền còn lại (amount - sumSpecified)
-                long remAmount = amount - sumSpecified;
-                List<UUID> nullUserIds = unspecified.stream()
-                        .map(TransactionParticipant::getUserId)
-                        .toList();
-                allocateEvenly(txn, nullUserIds, remAmount, factor, memberMap);
-            }
-        } else {
-            // Không có participant nào -> Danh sách thành viên có mặt tại occurredAt (Mục 2
-            // & Mục 6)
-            List<UUID> memberUserIds = getActiveMemberIdsAt(txn, memberPeriods);
-            if (memberUserIds.isEmpty()) {
-                throw new BusinessException(
-                        ErrorCode.GROUP_TXN_PARTICIPANT_NOT_MEMBER,
-                        "Không tìm thấy thành viên nào có mặt tại thời điểm giao dịch để phân bổ chi phí.");
-            }
-            allocateEvenly(txn, memberUserIds, amount, factor, memberMap);
+            MemberBalances balances
+    ) {
+        for (GroupTxnParticipant p : participants) {
+            balances.addShare(p.getUserId(), p.getShareAmount() * factor);
         }
     }
 
-    /**
-     * Lấy danh sách ID thành viên đang hoạt động tại thời điểm diễn ra giao dịch.
-     *
-     * @param txn           Giao dịch chứa thời điểm phát sinh (occurredAt)
-     * @param memberPeriods Danh sách chu kỳ thời gian thành viên
-     * @return Danh sách ID thành viên hợp lệ tại thời điểm giao dịch, đã được sắp
-     * xếp tăng dần
-     */
-    private static List<UUID> getActiveMemberIdsAt(
-            GTransaction txn,
-            List<GroupMemberPeriod> memberPeriods) {
-        if (memberPeriods != null) {
-            Instant occurredAt = txn.getOccurredAt();
-            return memberPeriods.stream()
-                    .filter(period -> period.isActiveAt(occurredAt))
-                    .map(GroupMemberPeriod::userId)
-                    .filter(Objects::nonNull)
-                    .distinct()
-                    .sorted(Comparator.naturalOrder())
-                    .toList();
-        }
 
-        return List.of();
-    }
-
-    /**
-     * Chia đều số tiền cho danh sách thành viên và phân bổ phần dư công bằng.
-     *
-     * @param txn       Giao dịch đang xử lý (dùng ID để xác định startIndex luân
-     *                  phiên)
-     * @param userIds   Danh sách userId cần chia đều
-     * @param amount    Số tiền cần chia
-     * @param factor    +1 (tăng share) hoặc -1 (giảm share)
-     * @param memberMap Map accumulator
-     */
-    private static void allocateEvenly(
-            GTransaction txn,
-            List<UUID> userIds,
-            long amount,
-            long factor,
-            Map<UUID, MemberBalanceAccumulator> memberMap) {
-        if (userIds == null || userIds.isEmpty() || amount == 0L) {
-            return;
-        }
-
-        List<UUID> sortedUserIds = userIds.stream()
-                .sorted(Comparator.naturalOrder())
-                .toList();
-
-        int n = sortedUserIds.size();
-        long base = amount / n;
-        long remainder = amount % n;
-
-        // Dùng Math.floorMod để tránh lỗi tràn số âm khi hashCode == Integer.MIN_VALUE
-        int hashCode = (txn != null && txn.getId() != null) ? txn.getId().hashCode() : 0;
-        int startIndex = Math.floorMod(hashCode, n);
-
-        long[] portions = new long[n];
-        Arrays.fill(portions, base);
-        for (int i = 0; i < remainder; i++) {
-            int idx = (startIndex + i) % n;
-            portions[idx] = base + 1;
-        }
-
-        for (int i = 0; i < n; i++) {
-            UUID uid = sortedUserIds.get(i);
-            memberMap.computeIfAbsent(uid, k -> new MemberBalanceAccumulator())
-                    .addShare(portions[i] * factor);
-        }
-    }
 }

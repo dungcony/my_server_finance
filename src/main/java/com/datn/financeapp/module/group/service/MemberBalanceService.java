@@ -7,15 +7,6 @@ import java.util.UUID;
 
 /**
  * Service quản lý bảng tổng hợp số dư thành viên nhóm ({@code group_member_balances}).
- * <p>
- * Các hàm trong interface:
- * <ul>
- *   <li>{@link #getBalances(UUID)}: Đọc số dư của cả nhóm, dùng cho báo cáo. Input: groupId. Output: MemberBalances.</li>
- *   <li>{@link #getBalancesForUpdate(UUID, Collection)}: Đọc số dư kèm khoá dòng, dùng khi kiểm hạn mức hoàn tiền. Input: groupId, userIds. Output: MemberBalances.</li>
- *   <li>{@link #applyDelta(UUID, MemberBalances, MemberBalances)}: Ghi phần chênh lệch giữa trước và sau một lần ghi giao dịch. Input: groupId, before, after. Output: void.</li>
- *   <li>{@link #lockGroupForBalanceChange(UUID)}: Khoá nhóm để các thao tác làm đổi số dư chạy lần lượt. Input: groupId. Output: void.</li>
- * </ul>
- * </p>
  */
 public interface MemberBalanceService {
 

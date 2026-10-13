@@ -1,65 +1,23 @@
 package com.datn.financeapp.module.group.helper;
 
-import com.datn.financeapp.module.group.enums.GroupStatus;
-import com.datn.financeapp.module.group.enums.MemberRole;
-import com.datn.financeapp.module.group.enums.MemberStatus;
+import com.datn.financeapp.module.group.entity.GroupTxn;
+import com.datn.financeapp.module.group.enums.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.UUID;
 
 /**
  * Thông tin định danh, vai trò và trạng thái phân quyền của thành viên trong nhóm.
- * <p>
- * Được sử dụng bởi các tầng Service/Validator để kiểm tra quyền hạn thao tác tài chính,
- * cấu hình nhóm hoặc xét duyệt giao dịch.
- * </p>
- * <p>
- * Các hàm trong class:
- * <ul>
- *   <li>{@link #isOwner()}: Kiểm tra quyền trưởng nhóm. Input: không. Output: boolean.</li>
- *   <li>{@link #isTreasurer()}: Kiểm tra quyền thủ quỹ. Input: không. Output: boolean.</li>
- * </ul>
- * </p>
- *
- * @param groupId             ID của nhóm tài chính
- * @param myId                ID của người dùng hiện tại đang xét quyền
- * @param groupStatus         Trạng thái hoạt động của nhóm ({@link GroupStatus})
- * @param isSettlementEnabled Trạng thái nhóm đã bật tính năng quyết toán hay chưa
- * @param memberStatus        Trạng thái thành viên trong nhóm ({@link MemberStatus})
- * @param memberRole          Vai trò của thành viên trong nhóm ({@link MemberRole})
- * @param keepperId           ID của thành viên đang chịu trách nhiệm giữ quỹ nhóm (Thủ quỹ), có thể null
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public record MemberAuthInfo(
         UUID groupId,
         UUID myId,
         GroupStatus groupStatus,
         Boolean isSettlementEnabled,
-        MemberStatus memberStatus,
-        MemberRole memberRole,
-        UUID keepperId
+        MemberStatus myStatus,
+        MemberRole myRole,
+        UUID fundkeeperId
 ) {
-    /**
-     * Constructor thuận tiện khi nhóm chưa xác định hoặc không chỉ định người giữ quỹ.
-     *
-     * @param groupId             ID của nhóm tài chính
-     * @param myId                ID của người dùng hiện tại
-     * @param groupStatus         Trạng thái hoạt động của nhóm
-     * @param isSettlementEnabled Nhóm có bật quyết toán không
-     * @param memberStatus        Trạng thái thành viên
-     * @param memberRole          Vai trò thành viên
-     */
-    public MemberAuthInfo(
-            UUID groupId,
-            UUID myId,
-            GroupStatus groupStatus,
-            Boolean isSettlementEnabled,
-            MemberStatus memberStatus,
-            MemberRole memberRole
-    ) {
-        this(groupId, myId, groupStatus, isSettlementEnabled, memberStatus, memberRole, null);
-    }
 
     /**
      * Kiểm tra xem thành viên có vai trò Trưởng nhóm (OWNER) hay không.
@@ -68,7 +26,7 @@ public record MemberAuthInfo(
      */
     @JsonIgnore
     public boolean isOwner() {
-        return memberRole == MemberRole.OWNER;
+        return myRole == MemberRole.OWNER;
     }
 
     /**
@@ -78,6 +36,49 @@ public record MemberAuthInfo(
      */
     @JsonIgnore
     public boolean isTreasurer() {
-        return keepperId != null && keepperId.equals(myId);
+        return fundkeeperId != null && fundkeeperId.equals(myId);
+    }
+
+    /**
+     * Kiểm tra xem thành viên hiện tại có active không.
+     *
+     * @return {@code true} nếu {@code myId} khớp với {@code keepperId}, ngược lại {@code false}
+     */
+    @JsonIgnore
+    public boolean isMember() {
+        return myRole == MemberRole.MEMBER && (fundkeeperId == null || !fundkeeperId.equals(myId));
+    }
+
+    @JsonIgnore
+    public boolean isEditGroupTransaction(GroupTxn transaction) {
+
+        if (transaction.getType() == GroupTxnType.ADJUSTMENT_UP || transaction.getType() == GroupTxnType.ADJUSTMENT_DOWN)
+            return false;
+
+        if (!transaction.getGroupId().equals(groupId))
+            return false;
+
+        // Chỉ thủ quỹ được thay đổi
+        if (isTreasurer())
+            return true;
+
+        // Nếu k phải thủ quỹ thì phải là do chính member đó tạo
+        if (!transaction.getCreatedBy().equals(myId))
+            return false;
+
+        // member thường chỉ thay đổi giao dịch đang pending
+        return transaction.getStatus() == GroupTxnStatus.PENDING;
+    }
+
+    public boolean inGroupNotDeleted() {
+        return groupStatus != GroupStatus.DELETED;
+    }
+
+    public boolean inGroupActive() {
+        return groupStatus == GroupStatus.ACTIVE;
+    }
+
+    public boolean isCreatorOrTransactorTxn(GroupTxn transaction) {
+        return myId.equals(transaction.getCreatedBy()) || myId.equals(transaction.getTransactorId());
     }
 }

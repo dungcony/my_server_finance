@@ -43,12 +43,6 @@ public class MemberBalance {
     private UUID userId;
 
     /**
-     * Tổng tiền túi người này đã chi hộ nhóm (EXPENSE nguồn PERSONAL).
-     */
-    @Column(name = "paid_out_of_pocket", nullable = false)
-    private long paidOutOfPocket;
-
-    /**
      * Tổng tiền người này đã nộp quỹ (CONTRIBUTION).
      */
     @Column(name = "contribution", nullable = false)

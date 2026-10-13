@@ -11,7 +11,7 @@ import java.util.List;
  * @param data       Danh sách các phần tử thông báo
  * @param pagination Dữ liệu phân trang
  */
-public record NotificationListResponse(boolean success, List<NotificationListItemResponse> data, PageMeta pagination) {
+public record NotificationListResponse(boolean success, List<NotificationRes> data, PageMeta pagination) {
 
     /**
      * Khởi tạo đối tượng phản hồi danh sách thông báo.
@@ -20,7 +20,7 @@ public record NotificationListResponse(boolean success, List<NotificationListIte
      * @param pagination Dữ liệu phân trang
      * @return Phản hồi danh sách thông báo
      */
-    public static NotificationListResponse of(List<NotificationListItemResponse> data, PageMeta pagination) {
+    public static NotificationListResponse of(List<NotificationRes> data, PageMeta pagination) {
         return new NotificationListResponse(true, data, pagination);
     }
 }

@@ -4,13 +4,12 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.group.dto.request.fund.FundKepperUpdateReq;
 import com.datn.financeapp.module.group.entity.Fund;
-import com.datn.financeapp.module.group.helper.TransactionHelper;
+import com.datn.financeapp.module.group.helper.GroupTxnHelper;
 import com.datn.financeapp.module.group.mapper.FundMapper;
 import com.datn.financeapp.module.group.repository.FundRepository;
-import com.datn.financeapp.module.group.service.GTransactionService;
+import com.datn.financeapp.module.group.service.GroupTxnCreateService;
+import com.datn.financeapp.module.group.service.GroupTxnGetService;
 import com.datn.financeapp.module.group.service.MemberService;
-import com.datn.financeapp.module.group.service.impl.FundServiceImpl;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +39,9 @@ class FundServiceImplTest {
     @Mock
     private FundRepository fundRepository;
     @Mock
-    private GTransactionService gTransactionService;
+    private GroupTxnGetService groupTxnGetService;
+    @Mock
+    private GroupTxnCreateService groupTxnCreateService;
     @Mock
     private GroupPermissionValidator permissionValidator;
     @Mock
@@ -48,7 +49,7 @@ class FundServiceImplTest {
     @Mock
     private MemberService memberService;
     @Mock
-    private TransactionHelper transactionHelper;
+    private GroupTxnHelper groupTxnHelper;
 
     private FundServiceImpl service;
 
@@ -59,8 +60,8 @@ class FundServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new FundServiceImpl(fundRepository, gTransactionService, permissionValidator, fundMapper,
-                memberService, transactionHelper);
+        service = new FundServiceImpl(fundRepository, groupTxnGetService, groupTxnCreateService, permissionValidator, fundMapper,
+                memberService, groupTxnHelper);
         groupId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
         newKeeperId = UUID.randomUUID();

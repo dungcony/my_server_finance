@@ -11,16 +11,12 @@ import com.datn.financeapp.module.group.dto.request.group.GroupJoinReq;
 import com.datn.financeapp.module.group.dto.request.group.GroupUpdateReq;
 import com.datn.financeapp.module.group.dto.request.member.MemberAddReq;
 import com.datn.financeapp.module.group.dto.request.member.MemberCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionBulkReviewReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionFilterReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionUpdateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnFilterReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnUpdateReq;
 import com.datn.financeapp.module.group.dto.response.group.GroupDetailRes;
-import com.datn.financeapp.module.group.enums.GTransactionType;
-import com.datn.financeapp.module.group.enums.MemberRole;
-import com.datn.financeapp.module.group.enums.MemberStatus;
-import com.datn.financeapp.module.group.enums.MoneySource;
-import com.datn.financeapp.module.group.service.*;
+import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.performance.ServicePerfSupport;
 import com.datn.financeapp.performance.ServicePerfSupport.Profile;
 import com.datn.financeapp.performance.SqlCountingConfig;
@@ -60,7 +56,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Đo hiệu năng (số câu SQL + thời gian) của từng hàm trong module {@code group}: {@link GroupService},
- * {@link MemberService}, {@link MemberBehavierService}, {@link GTransactionService},
+ * {@link MemberService}, {@link MemberBehavierService}, {@link GroupTxnGetService},
  * , {@link FundService}, {@link ReportService}. Khung đo và cách đọc báo cáo
  * xem {@link com.datn.financeapp.performance.ServicePerfSupport}.
  *
@@ -124,7 +120,10 @@ class GroupServicePerfIntegrationTest {
     private MemberBehavierService memberBehavierService;
 
     @Autowired
-    private GTransactionService gTransactionService;
+    private GroupTxnGetService groupTxnGetService;
+
+    @Autowired
+    private GroupTxnCreateService groupTxnCreateService;
 
     @Autowired
     private FundService fundService;
@@ -150,6 +149,7 @@ class GroupServicePerfIntegrationTest {
     private UUID ownerId;
     private List<UUID> pool;
     private UUID categoryId;
+    private String categoryCode;
     private UUID mainGroupId;
 
     @Test
@@ -162,6 +162,7 @@ class GroupServicePerfIntegrationTest {
             pool.add(createUser(userRole));
         categoryId = jdbcTemplate.queryForObject(
                 "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
+        categoryCode = jdbcTemplate.queryForObject("SELECT code FROM categories WHERE id = ?", String.class, categoryId);
 
         // pool.get(0) là thành viên thường của nhóm chính, cũng là người tạo giao dịch chờ duyệt
         mainGroupId = newGroup(FEW_MEMBERS - 1);
@@ -283,37 +284,37 @@ class GroupServicePerfIntegrationTest {
 
     private void measureTransactionService(Profile profile, UUID group) {
         AtomicReference<UUID> txn = new AtomicReference<>();
-        GroupTransactionFilterReq defaultPage = filter(20);
-        GroupTransactionFilterReq largestPage = filter(100);
+        GroupTxnFilterReq defaultPage = filter(20);
+        GroupTxnFilterReq largestPage = filter(100);
 
-        perf.measure(profile, "GTransactionService.create (chi tiêu, chia đều cho cả nhóm)",
-                () -> gTransactionService.create(ownerId, group, expenseRequest(ownerId)));
-        perf.measure(profile, "GTransactionService.create (nộp quỹ)",
-                () -> gTransactionService.create(ownerId, group, contributionRequest(ownerId)));
+        perf.measure(profile, "GTransactionCreateService.create (chi tiêu)",
+                () -> groupTxnCreateService.create(ownerId, group, expenseRequest(ownerId)));
+        perf.measure(profile, "GTransactionCreateService.create (nộp quỹ)",
+                () -> groupTxnCreateService.create(ownerId, group, contributionRequest(ownerId)));
         perf.measure(profile, "GTransactionService.list (trang mặc định, 20 bản ghi)",
-                () -> gTransactionService.list(ownerId, group, defaultPage));
+                () -> groupTxnGetService.list(ownerId, group, defaultPage));
         perf.measure(profile, "GTransactionService.list (trang lớn nhất, 100 bản ghi)",
-                () -> gTransactionService.list(ownerId, group, largestPage));
+                () -> groupTxnGetService.list(ownerId, group, largestPage));
         perf.measure(profile, "GTransactionService.myList",
-                () -> gTransactionService.myList(ownerId, group, largestPage));
+                () -> groupTxnGetService.myList(ownerId, group, largestPage));
         perf.measure(profile, "GTransactionService.listPending",
-                () -> gTransactionService.listPending(ownerId, group, 1, 100));
+                () -> groupTxnGetService.listPending(ownerId, group, 1, 100));
         perf.measure(profile, "GTransactionService.detail",
                 () -> txn.set(createExpense(group)),
-                () -> gTransactionService.detail(ownerId, group, txn.get()));
+                () -> groupTxnGetService.detail(ownerId, group, txn.get()));
         perf.measure(profile, "GTransactionService.update",
                 () -> txn.set(createExpense(group)),
-                () -> gTransactionService.update(ownerId, group, txn.get(), updateRequest()));
+                () -> groupTxnGetService.update(ownerId, group, txn.get(), updateRequest()));
         perf.measure(profile, "GTransactionService.delete",
                 () -> txn.set(createExpense(group)),
-                () -> gTransactionService.delete(ownerId, group, txn.get()));
+                () -> groupTxnGetService.delete(ownerId, group, txn.get()));
         perf.measure(profile, "GTransactionService.countPendingForGroup",
-                () -> gTransactionService.countPendingForGroup(group));
+                () -> groupTxnGetService.countPendingForGroup(group));
         perf.measure(profile, "GTransactionService.sumConfirmedAmount (toàn thời gian)",
-                () -> gTransactionService.sumConfirmedAmount(group, GTransactionType.EXPENSE));
+                () -> groupTxnGetService.sumConfirmedAmount(group, GroupTxnType.EXPENSE));
         perf.measure(profile, "GTransactionService.sumConfirmedAmount (theo kỳ)",
-                () -> gTransactionService.sumConfirmedAmount(
-                        group, GTransactionType.EXPENSE, Instant.now().minusSeconds(30L * 24 * 3600), Instant.now()));
+                () -> groupTxnGetService.sumConfirmedAmount(
+                        group, GroupTxnType.EXPENSE, Instant.now().minusSeconds(30L * 24 * 3600), Instant.now()));
     }
 
     // giao dịch chờ duyệt do thành viên thường (pool.get(0)) tạo trong nhóm chính
@@ -324,16 +325,16 @@ class GroupServicePerfIntegrationTest {
 
         perf.measure(profile, "GTransactionService.confirm",
                 () -> txn.set(createPendingExpense(group)),
-                () -> gTransactionService.confirm(ownerId, group, txn.get()));
+                () -> groupTxnGetService.confirm(ownerId, group, txn.get()));
         perf.measure(profile, "GTransactionService.reject",
                 () -> txn.set(createPendingExpense(group)),
-                () -> gTransactionService.reject(ownerId, group, txn.get()));
+                () -> groupTxnGetService.reject(ownerId, group, txn.get()));
         perf.measure(profile, "GTransactionService.bulkConfirm",
                 () -> txns.set(createPendingExpenses(group, batch)),
-                () -> gTransactionService.bulkConfirm(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
+                () -> groupTxnGetService.bulkConfirm(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
         perf.measure(profile, "GTransactionService.bulkReject",
                 () -> txns.set(createPendingExpenses(group, batch)),
-                () -> gTransactionService.bulkReject(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
+                () -> groupTxnGetService.bulkReject(ownerId, group, new GroupTransactionBulkReviewReq(txns.get())));
     }
 
     private void measureFundService(Profile profile, UUID group, int batch) {
@@ -373,11 +374,11 @@ class GroupServicePerfIntegrationTest {
 
         int created = 0;
         for (int i = 0; i < CONFIRMED_TRANSACTIONS; i++)
-            created += trySeed(() -> gTransactionService.create(ownerId, mainGroupId,
+            created += trySeed(() -> groupTxnCreateService.create(ownerId, mainGroupId,
                     expenseRequest(ownerId)));
         int createdPending = 0;
         for (int i = 0; i < PENDING_TRANSACTIONS; i++)
-            createdPending += trySeed(() -> gTransactionService.create(pool.get(0), mainGroupId,
+            createdPending += trySeed(() -> groupTxnCreateService.create(pool.get(0), mainGroupId,
                     expenseRequest(pool.get(0))));
         for (int i = 0; i < EXTRA_GROUPS; i++)
             newGroup(1);
@@ -440,36 +441,40 @@ class GroupServicePerfIntegrationTest {
         return requests;
     }
 
-    private GroupTransactionFilterReq filter(int size) {
-        return new GroupTransactionFilterReq(null, null, null, null, null, null, null, null, 1, size);
+    private GroupTxnFilterReq filter(int size) {
+        return new GroupTxnFilterReq(null, null, null, null, null, null, null, null, 1, size);
     }
 
-    private GroupTransactionCreateReq expenseRequest(UUID transactor) {
-        return new GroupTransactionCreateReq(
-                GTransactionType.EXPENSE, MoneySource.PERSONAL, 10_000L + counter.incrementAndGet(),
-                null, LocalDate.now(VIETNAM_ZONE), categoryId, transactor, "Chi đo hiệu năng", null);
+    // chi bằng tiền túi của transactor, chỉ mình transactor chịu phần chi phí
+    private GroupTxnCreateReq expenseRequest(UUID transactor) {
+        long amount = 10_000L + counter.incrementAndGet();
+        return new GroupTxnCreateReq(
+                GroupTxnType.EXPENSE, MoneySource.PERSONAL, amount,
+                Instant.now().minusSeconds(60), categoryCode, transactor, "Chi đo hiệu năng",
+                List.of(new GroupTxnParticipantReq(transactor, amount)));
     }
 
-    private GroupTransactionCreateReq contributionRequest(UUID transactor) {
-        return new GroupTransactionCreateReq(
-                GTransactionType.CONTRIBUTION, MoneySource.PERSONAL, 50_000L,
-                null, LocalDate.now(VIETNAM_ZONE), null, transactor, "Nộp quỹ đo hiệu năng", null);
+    private GroupTxnCreateReq contributionRequest(UUID transactor) {
+        return new GroupTxnCreateReq(
+                GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, 50_000L,
+                Instant.now().minusSeconds(60), null, transactor, "Nộp quỹ đo hiệu năng",
+                List.of(new GroupTxnParticipantReq(transactor, 50_000L)));
     }
 
     // không đổi số tiền: đổi tổng tiền thì nghiệp vụ bắt buộc gửi kèm lại danh sách người chia tiền
-    private GroupTransactionUpdateReq updateRequest() {
-        return new GroupTransactionUpdateReq(
+    private GroupTxnUpdateReq updateRequest() {
+        return new GroupTxnUpdateReq(
                 null, null, LocalDate.now(VIETNAM_ZONE), null, null, null, "Sửa đo hiệu năng", null);
     }
 
-    // giao dịch đã duyệt của chủ nhóm, chia đều cho toàn bộ thành viên của nhóm
+    // giao dịch đã duyệt của chủ nhóm
     private UUID createExpense(UUID group) {
-        return gTransactionService.create(ownerId, group, expenseRequest(ownerId)).id();
+        return groupTxnCreateService.create(ownerId, group, expenseRequest(ownerId)).id();
     }
 
     // thành viên thường tạo giao dịch nên rơi vào trạng thái chờ duyệt
     private UUID createPendingExpense(UUID group) {
-        return gTransactionService.create(pool.get(0), group, expenseRequest(pool.get(0))).id();
+        return groupTxnCreateService.create(pool.get(0), group, expenseRequest(pool.get(0))).id();
     }
 
     private List<UUID> createPendingExpenses(UUID group, int count) {

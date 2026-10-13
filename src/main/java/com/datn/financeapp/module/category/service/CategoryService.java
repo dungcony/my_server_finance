@@ -80,7 +80,7 @@ public interface CategoryService {
     CategoryResponse findActiveById(UUID id);
 
     /**
-     * Lấy id danh mục chưa xóa theo code. Dành cho module khác cần gắn giao dịch vào một danh mục
+     * Lấy id danh mục theo code, tra từ cache RAM (không query DB). Dành cho module khác cần gắn giao dịch vào một danh mục
      * hệ thống biết trước code (vd. giao dịch sinh từ nhóm).
      *
      * @param code code danh mục
@@ -88,6 +88,15 @@ public interface CategoryService {
      * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
      */
     UUID findIdByCode(String code);
+
+    /**
+     * Lấy code của nhiều danh mục theo id trong một lượt, tra từ cache RAM nên không query DB.
+     * Id không có trong cache bị bỏ qua.
+     *
+     * @param ids các ID danh mục
+     * @return map id → code
+     */
+    Map<UUID, String> findCodesByIds(Collection<UUID> ids);
 
     /**
      * Lấy nhiều danh mục theo id trong một lượt, kể cả đã xóa mềm (bản ghi cũ vẫn cần hiển thị tên).

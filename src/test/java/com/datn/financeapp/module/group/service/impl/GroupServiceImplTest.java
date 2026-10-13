@@ -17,10 +17,8 @@ import com.datn.financeapp.module.group.mapper.FundMapper;
 import com.datn.financeapp.module.group.mapper.GroupMapper;
 import com.datn.financeapp.module.group.repository.GroupRepository;
 import com.datn.financeapp.module.group.service.FundService;
-import com.datn.financeapp.module.group.service.GTransactionService;
+import com.datn.financeapp.module.group.service.GroupTxnGetService;
 import com.datn.financeapp.module.group.service.MemberService;
-import com.datn.financeapp.module.group.service.impl.GroupServiceImpl;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,7 +50,7 @@ class GroupServiceImplTest {
     private GroupRepository groupRepository;
 
     @Mock
-    private GTransactionService gTransactionService;
+    private GroupTxnGetService groupTxnGetService;
 
     @Mock
     private MemberService memberService;
@@ -201,7 +199,7 @@ class GroupServiceImplTest {
         @DisplayName("Chủ nhóm thấy cả số giao dịch lẫn số thành viên đang chờ duyệt")
         void pendingCount_owner_seesBoth() {
             when(permissionValidator.getAuthInfo(groupId, userId, true)).thenReturn(info(MemberRole.OWNER, UUID.randomUUID()));
-            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(3L);
+            when(groupTxnGetService.countPendingForGroup(groupId)).thenReturn(3L);
             when(memberService.countPendingMembers(groupId)).thenReturn(2L);
 
             GroupPendingCountRes res = groupService.pendingCount(userId, groupId);
@@ -214,7 +212,7 @@ class GroupServiceImplTest {
         @DisplayName("Thủ quỹ không phải chủ nhóm chỉ thấy số giao dịch, số thành viên chờ là 0")
         void pendingCount_treasurer_seesOnlyTransactions() {
             when(permissionValidator.getAuthInfo(groupId, userId, true)).thenReturn(info(MemberRole.MEMBER, userId));
-            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(3L);
+            when(groupTxnGetService.countPendingForGroup(groupId)).thenReturn(3L);
 
             GroupPendingCountRes res = groupService.pendingCount(userId, groupId);
 
@@ -233,7 +231,7 @@ class GroupServiceImplTest {
 
             assertThat(res.pendingTransactions()).isZero();
             assertThat(res.pendingMembers()).isZero();
-            verify(gTransactionService, never()).countPendingForGroup(any());
+            verify(groupTxnGetService, never()).countPendingForGroup(any());
             verify(memberService, never()).countPendingMembers(any());
         }
 
@@ -243,7 +241,7 @@ class GroupServiceImplTest {
             MemberAuthInfo archivedOwner = new MemberAuthInfo(groupId, userId, GroupStatus.ARCHIVED, true,
                     MemberStatus.ACTIVE, MemberRole.OWNER, UUID.randomUUID());
             when(permissionValidator.getAuthInfo(groupId, userId, true)).thenReturn(archivedOwner);
-            when(gTransactionService.countPendingForGroup(groupId)).thenReturn(0L);
+            when(groupTxnGetService.countPendingForGroup(groupId)).thenReturn(0L);
             when(memberService.countPendingMembers(groupId)).thenReturn(0L);
 
             GroupPendingCountRes res = groupService.pendingCount(userId, groupId);
@@ -305,7 +303,7 @@ class GroupServiceImplTest {
             Group group = buildGroup(GroupStatus.ARCHIVED, true);
             group.setFund(Fund.builder().currentBalance(0L).build());
             when(groupRepository.findNotDeletedWithFundById(groupId)).thenReturn(Optional.of(group));
-            when(gTransactionService.countUnresolvedForGroup(groupId)).thenReturn(0L);
+            when(groupTxnGetService.countUnresolvedForGroup(groupId)).thenReturn(0L);
 
             groupService.delete(userId, groupId);
 
@@ -331,7 +329,7 @@ class GroupServiceImplTest {
         void archive_usesDefaultOwnerValidation() {
             Group group = buildGroup(GroupStatus.ACTIVE, true);
             when(groupRepository.findActivatedWithFundById(groupId)).thenReturn(Optional.of(group));
-            when(gTransactionService.countUnresolvedForGroup(groupId)).thenReturn(0L);
+            when(groupTxnGetService.countUnresolvedForGroup(groupId)).thenReturn(0L);
 
             groupService.archive(userId, groupId);
 

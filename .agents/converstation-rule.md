@@ -73,7 +73,6 @@
 - Không đặt business logic vào Controller.
 - Không truy cập Repository trực tiếp từ Controller nếu project đang sử dụng Service layer.
 - Giữ nguyên API contract trừ khi người dùng yêu cầu thay đổi.
-- Khi viết javadocs thì ở class sẽ @link vào các hàm và giải thích sơ qua hàm (hàm để làm gì)
 
 ## Before Editing
 

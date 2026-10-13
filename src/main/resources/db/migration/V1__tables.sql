@@ -250,7 +250,6 @@ CREATE TABLE transactions (
     name         VARCHAR(150),
     source       VARCHAR(20)  NOT NULL DEFAULT 'MANUAL',
     recurring_id UUID,
-    receipt_url  TEXT,
     is_deleted   BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -486,7 +485,7 @@ CREATE TABLE group_transactions (
     id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id      UUID         NOT NULL,
     money_source  VARCHAR(20)  NOT NULL,
-    transactor_id UUID         NOT NULL,
+    transactor_id UUID,
     created_by    UUID         NOT NULL,
     category_id   UUID,
     type          VARCHAR(20)  NOT NULL,
@@ -522,10 +521,15 @@ CREATE TABLE group_transactions (
         (type = 'EXPENSE' AND category_id IS NOT NULL)
      OR (type = 'CONTRIBUTION' AND money_source = 'PERSONAL' AND category_id IS NULL)
      OR (type IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') AND money_source = 'FUND' AND category_id IS NULL)
+    ),
+    CONSTRAINT ck_gt_transactor CHECK (
+        (money_source = 'PERSONAL' AND transactor_id IS NOT NULL)
+     OR (money_source = 'FUND' AND transactor_id IS NULL)
     )
 );
 
 COMMENT ON TABLE group_transactions IS 'Giao dịch thu, chi, góp quỹ, kiểm kê của nhóm';
+COMMENT ON COLUMN group_transactions.transactor_id IS 'Người bỏ tiền túi (chi tiêu bằng tiền cá nhân, góp quỹ); NULL khi dùng tiền quỹ (hoàn tiền, chi từ quỹ, kiểm kê)';
 COMMENT ON COLUMN group_transactions.version IS 'Khoá lạc quan: tăng 1 mỗi lần ghi, chặn hai request duyệt/sửa cùng lúc';
 
 -- Bảng group_transaction_participants — Người cùng chia tiền

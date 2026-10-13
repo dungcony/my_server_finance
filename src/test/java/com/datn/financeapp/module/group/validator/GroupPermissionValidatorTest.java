@@ -2,12 +2,13 @@ package com.datn.financeapp.module.group.validator;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.module.group.entity.GroupTxn;
 import com.datn.financeapp.module.group.enums.GroupStatus;
+import com.datn.financeapp.module.group.enums.GroupTxnStatus;
 import com.datn.financeapp.module.group.enums.MemberRole;
 import com.datn.financeapp.module.group.enums.MemberStatus;
 import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.repository.GroupRepository;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -275,9 +276,9 @@ class GroupPermissionValidatorTest {
         return new MemberAuthInfo(groupId, userId, groupStatus, true, MemberStatus.ACTIVE, role, null);
     }
 
-    private com.datn.financeapp.module.group.entity.GTransaction txnWithStatus(
-            com.datn.financeapp.module.group.enums.GTransactionStatus status, UUID createdBy) {
-        return com.datn.financeapp.module.group.entity.GTransaction.builder()
+    private GroupTxn txnWithStatus(
+            GroupTxnStatus status, UUID createdBy) {
+        return GroupTxn.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)
                 .status(status)
@@ -286,26 +287,14 @@ class GroupPermissionValidatorTest {
     }
 
     @Test
-    @DisplayName("verifyTransactionDeletePermission: thủ quỹ huỷ được giao dịch ghi hộ đang chờ đồng ý do chính mình tạo")
-    void verifyTransactionDeletePermission_TreasurerCreatorOfAwaiting_Allowed() {
+    @DisplayName("verifyTransactionDeletePermission: thủ quỹ không xoá được giao dịch PENDING do chính mình tạo")
+    void verifyTransactionDeletePermission_TreasurerCreatorOfPending_Forbidden() {
         MemberAuthInfo treasurer = new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true,
                 MemberStatus.ACTIVE, MemberRole.MEMBER, userId);
-        var awaiting = txnWithStatus(
-                com.datn.financeapp.module.group.enums.GTransactionStatus.AWAITING_TRANSACTOR, userId);
+        var pending = txnWithStatus(
+                GroupTxnStatus.PENDING, userId);
 
-        assertThatCode(() -> validator.verifyTransactionDeletePermission(awaiting, userId, treasurer))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("verifyTransactionDeletePermission: thủ quỹ không huỷ được giao dịch chờ đồng ý do người khác tạo")
-    void verifyTransactionDeletePermission_TreasurerNotCreatorOfAwaiting_Forbidden() {
-        MemberAuthInfo treasurer = new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true,
-                MemberStatus.ACTIVE, MemberRole.MEMBER, userId);
-        var awaiting = txnWithStatus(
-                com.datn.financeapp.module.group.enums.GTransactionStatus.AWAITING_TRANSACTOR, UUID.randomUUID());
-
-        assertThatThrownBy(() -> validator.verifyTransactionDeletePermission(awaiting, userId, treasurer))
+        assertThatThrownBy(() -> validator.verifyTransactionDeletePermission(pending, userId, treasurer))
                 .isInstanceOfSatisfying(BusinessException.class,
                         e -> assertThat(e.getCode()).isEqualTo(ErrorCode.GROUP_TXN_DELETE_FORBIDDEN.getCode()));
     }
@@ -316,7 +305,7 @@ class GroupPermissionValidatorTest {
         MemberAuthInfo treasurer = new MemberAuthInfo(groupId, userId, GroupStatus.ACTIVE, true,
                 MemberStatus.ACTIVE, MemberRole.MEMBER, userId);
         var confirmed = txnWithStatus(
-                com.datn.financeapp.module.group.enums.GTransactionStatus.CONFIRMED, userId);
+                GroupTxnStatus.CONFIRMED, userId);
 
         assertThatThrownBy(() -> validator.verifyTransactionDeletePermission(confirmed, userId, treasurer))
                 .isInstanceOfSatisfying(BusinessException.class,

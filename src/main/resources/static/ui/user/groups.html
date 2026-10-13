@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhóm chung quỹ - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="user" data-active="groups" data-title="Nhóm chung quỹ">
+<main id="page">
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-title"><span>Vào nhóm bằng mã mời</span></div>
+            <div class="form-row">
+                <div class="form-group"><label for="inviteCode">Mã mời (8 ký tự)</label><input type="text" id="inviteCode" maxlength="16"></div>
+            </div>
+            <button class="btn" id="btnJoin">Tham gia</button>
+            <div class="muted mt">Nhóm bật "vào nhóm không cần duyệt" sẽ vào <code>ACTIVE</code> ngay, ngược lại ở <code>PENDING</code> chờ chủ nhóm duyệt.</div>
+        </div>
+        <div class="card">
+            <div class="card-title"><span>Tạo nhóm mới</span></div>
+            <p class="muted">Cần ít nhất 1 thành viên khác (nhập User ID, không gồm chính bạn). Thành viên được thêm vào <code>ACTIVE</code> ngay.</p>
+            <button class="btn" id="btnCreate">+ Tạo nhóm</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><span>Nhóm của tôi</span><button class="btn btn-secondary" id="btnReload">↻</button></div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Tên nhóm</th><th>Vai trò</th><th>Trạng thái</th><th>Mã mời</th><th>Thành viên</th><th class="right">Số dư quỹ</th><th class="right">Mục tiêu</th><th></th></tr></thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/groups.js"></script>
+</body>
+</html>

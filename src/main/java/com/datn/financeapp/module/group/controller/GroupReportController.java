@@ -27,12 +27,12 @@ public class GroupReportController {
             @PathVariable UUID groupId,
             @RequestParam(required = false) String month) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(reportService.getSummary(userId, groupId, month));
+        return ApiResponse.of(reportService.getSummary(groupId, month));
     }
 
     @GetMapping("/balances")
     public ApiResponse<GroupBalanceReportRes> balances(@PathVariable UUID groupId) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(reportService.getBalances(userId, groupId));
+        return ApiResponse.of(reportService.getBalances(groupId));
     }
 }

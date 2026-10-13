@@ -1,5 +1,6 @@
 package com.datn.financeapp.module.wallet.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -26,7 +27,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Wallet {
+public class Wallet extends AssignedIdEntity {
 
     @Id
     private UUID id;
@@ -52,7 +53,7 @@ public class Wallet {
 
     @Column(name = "icon")
     private String icon;
-    
+
     @Column(name = "color", columnDefinition = "bpchar(7)")
     private String color;
 
@@ -64,6 +65,4 @@ public class Wallet {
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
 }

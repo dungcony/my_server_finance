@@ -22,7 +22,7 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      * Mọi cặp (id, code), kể cả danh mục đã xóa mềm — code của danh mục đã xóa vẫn được giữ chỗ
      * nên không lọc {@code deleted}.
      */
-    @Query("SELECT new com.datn.financeapp.module.category.helper.CategoryCodeView(c.id, c.code) FROM Category c")
+    @Query("SELECT new com.datn.financeapp.module.category.helper.CategoryCodeView(c.id, c.code, c.deleted) FROM Category c")
     List<CategoryCodeView> findAllCodes();
 
     Optional<Category> findByCodeAndDeletedFalse(String code);

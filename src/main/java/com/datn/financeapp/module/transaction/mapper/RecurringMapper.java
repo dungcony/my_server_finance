@@ -1,10 +1,7 @@
 package com.datn.financeapp.module.transaction.mapper;
 
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
-import com.datn.financeapp.module.transaction.dto.response.RecurringDetailResponse;
-import com.datn.financeapp.module.transaction.dto.response.RecurringListItemResponse;
-import com.datn.financeapp.module.transaction.dto.response.RunNowResponse;
-import com.datn.financeapp.module.transaction.dto.response.TransactionDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.*;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
@@ -74,7 +71,7 @@ public interface RecurringMapper {
      * @param t chi tiết giao dịch đã được sinh ra từ khoản định kỳ
      * @return DTO {@link RecurringDetailResponse.GeneratedTransaction} tóm tắt
      */
-    default RecurringDetailResponse.GeneratedTransaction toGeneratedTransaction(TransactionDetailResponse t) {
+    default RecurringDetailResponse.GeneratedTransaction toGeneratedTransaction(TxnDetailResponse t) {
         if (t == null) {
             return null;
         }

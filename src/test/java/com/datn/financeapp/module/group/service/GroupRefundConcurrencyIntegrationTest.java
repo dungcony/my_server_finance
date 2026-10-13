@@ -5,17 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
 import com.datn.financeapp.module.group.entity.Group;
 import com.datn.financeapp.module.group.entity.Member;
-import com.datn.financeapp.module.group.enums.GTransactionType;
-import com.datn.financeapp.module.group.enums.GroupStatus;
-import com.datn.financeapp.module.group.enums.MemberRole;
-import com.datn.financeapp.module.group.enums.MemberStatus;
-import com.datn.financeapp.module.group.enums.MoneySource;
+import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.repository.GroupRepository;
 import com.datn.financeapp.module.group.repository.MemberRepository;
-import com.datn.financeapp.module.group.service.GTransactionService;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
@@ -71,7 +67,7 @@ class GroupRefundConcurrencyIntegrationTest {
     }
 
     @Autowired
-    private GTransactionService transactionService;
+    private GroupTxnCreateService createService;
 
     @Autowired
     private GroupRepository groupRepository;
@@ -99,8 +95,9 @@ class GroupRefundConcurrencyIntegrationTest {
         groupId = createGroupWithFund(ownerId, memberA);
 
         // chủ nhóm ghi A nộp quỹ nên được duyệt ngay, số dư ròng của A bằng BALANCE
-        transactionService.create(ownerId, groupId, new GroupTransactionCreateReq(GTransactionType.CONTRIBUTION,
-                MoneySource.PERSONAL, BALANCE, null, null, null, memberA, "Nộp quỹ", List.of()));
+        createService.create(ownerId, groupId, new GroupTxnCreateReq(GroupTxnType.CONTRIBUTION,
+                MoneySource.PERSONAL, BALANCE, Instant.now().minusSeconds(60), null, memberA, "Nộp quỹ",
+                List.of(new GroupTxnParticipantReq(memberA, BALANCE))));
     }
 
     @RepeatedTest(5)
@@ -113,9 +110,9 @@ class GroupRefundConcurrencyIntegrationTest {
         for (int i = 0; i < THREADS; i++) {
             futures.add(executor.submit(() -> {
                 startLatch.await();
-                return callAndCapture(() -> transactionService.create(ownerId, groupId, new GroupTransactionCreateReq(
-                        GTransactionType.REFUND, MoneySource.FUND, REFUND, null, null, null, memberA,
-                        "Hoàn tiền", List.of())));
+                return callAndCapture(() -> createService.create(ownerId, groupId, new GroupTxnCreateReq(
+                        GroupTxnType.REFUND, MoneySource.FUND, REFUND, Instant.now().minusSeconds(60), null, null,
+                        "Hoàn tiền", List.of(new GroupTxnParticipantReq(memberA, REFUND)))));
             }));
         }
 

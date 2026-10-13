@@ -243,8 +243,8 @@
                         <testExclude>com/datn/financeapp/module/report/**</testExclude>
                         <testExclude>com/datn/financeapp/module/scheduler/**</testExclude>
                         <testExclude>com/datn/financeapp/module/recurring/**</testExclude>
-                        <testExclude>com/datn/financeapp/module/category/**</testExclude>
-                        <testExclude>com/datn/financeapp/module/transaction/repository/TransactionRepositoryTest.java</testExclude>
+                        <testExclude>com/datn/financeapp/module/transaction/repository/TransactionRepositoryTest.java
+                        </testExclude>
                     </testExcludes>
                 </configuration>
             </plugin>

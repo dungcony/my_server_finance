@@ -83,6 +83,4 @@ public class RecurringTransaction extends AssignedIdEntity {
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
 }

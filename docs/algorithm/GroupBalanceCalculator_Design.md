@@ -49,11 +49,11 @@ Mỗi giao dịch có các trường liên quan đến tính toán:
 | `id`          | `UUID`               | Khóa chính                                              | 
 | `groupId`     | `UUID`               | Nhóm sở hữu giao dịch                                   |
 | `userId`      | `UUID`               | Người thực hiện giao dịch                               |
-| `type`        | `GTransactionType`   | Loại giao dịch (xem mục 5)                              |
+| `type`        | `GroupTxnType`       | Loại giao dịch (xem mục 5)                              |
 | `amount`      | `Long`               | Số tiền (đơn vị nhỏ nhất, luôn > 0)                     |
 | `moneySource` | `MoneySource`        | Nguồn tiền: `FUND` (quỹ) hoặc `PERSONAL` (tiền túi)     |
 | `occurredAt`  | `Instant`            | Thời điểm giao dịch xảy ra                              |
-| `status`      | `GTransactionStatus` | Chỉ tính giao dịch `CONFIRMED`                          |
+| `status`      | `GroupTxnStatus`     | Chỉ tính giao dịch `CONFIRMED`                          |
 | `deletedAt`   | `Instant` (nullable) | Chỉ tính giao dịch chưa bị xóa mềm (`deletedAt = null`) |
 
 **Điều kiện lọc:** Chỉ các giao dịch có `status = CONFIRMED` và `deletedAt IS NULL` mới được đưa vào tính toán. Sắp xếp
@@ -240,10 +240,10 @@ Phần tiền túi chi hộ $\sum P_i$ tự động triệt tiêu hoàn toàn.
 
 Hệ thống tài chính tuyệt đối **không âm thầm bỏ qua dữ liệu hoặc log cảnh báo rồi tiếp tục**:
 
-| Tình huống vi phạm                                                    | Hành vi xử lý                                          |
-|-----------------------------------------------------------------------|--------------------------------------------------------|
-| Giao dịch cần phân bổ share nhưng không có ai chịu (danh sách rỗng)   | **Throw BusinessException**                            |
-| Loại giao dịch mới chưa được khai báo trong switch                    | **Throw IllegalStateException** (fail-fast)            |
+| Tình huống vi phạm                                                    | Hành vi xử lý                                                    |
+|-----------------------------------------------------------------------|------------------------------------------------------------------|
+| Giao dịch cần phân bổ share nhưng không có ai chịu (danh sách rỗng)   | **Throw BusinessException**                                      |
+| Loại giao dịch mới chưa được khai báo trong switch                    | **Throw IllegalStateException** (fail-fast)                      |
 | $\sum \text{shareAmount} \neq \text{amount}$                          | **Throw BusinessException(GROUP_TXN_PARTICIPANTS_SUM_MISMATCH)** |
 | Chia hỗn hợp nhưng $\sum \text{shareAmount đã gán} \ge \text{amount}$ | **Throw BusinessException(GROUP_TXN_PARTICIPANTS_SUM_MISMATCH)** |
 | `shareAmount \le 0` hoặc trùng lặp `userId` trong cùng transaction    | **Throw BusinessException(GROUP_TXN_PARTICIPANT_DATA_INVALID)**  |

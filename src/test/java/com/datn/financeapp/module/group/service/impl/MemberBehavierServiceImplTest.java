@@ -11,8 +11,6 @@ import com.datn.financeapp.module.group.helper.MemberAuthInfo;
 import com.datn.financeapp.module.group.helper.MemberViewEnricher;
 import com.datn.financeapp.module.group.mapper.MemberMapper;
 import com.datn.financeapp.module.group.repository.MemberRepository;
-import com.datn.financeapp.module.group.service.impl.MemberBehavierServiceImpl;
-import com.datn.financeapp.module.group.validator.GroupPermissionValidator;
 import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.service.UserService;

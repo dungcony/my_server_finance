@@ -11,6 +11,5 @@ public enum NotiType {
     BUDGET_RENEWED,            // ngân sách tự gia hạn sang kỳ mới; reference_id là id ngân sách kỳ mới
     GOAL_COMPLETED,            // mục tiêu tiết kiệm hoàn thành; chưa có nơi nào sinh loại này
     GROUP_TXN_REVIEW_REQUEST,  // gửi chủ nhóm/thủ quỹ: giao dịch nhóm của thành viên cần duyệt; reference_id là id giao dịch nhóm
-    GROUP_TXN_CONSENT_REQUEST, // gửi người chi trả/nhận tiền: giao dịch nhóm ghi hộ cần đồng ý; reference_id là id giao dịch nhóm
-    GROUP_TXN_RECORDED         // gửi người thực hiện: giao dịch nhóm đã được xác nhận và ghi vào ví mặc định; reference_id là id giao dịch nhóm
+    GROUP_TXN_RECORD_REQUEST   // gửi người liên quan: giao dịch nhóm đã xác nhận, hỏi có muốn ghi vào sổ cá nhân không; data mang thông tin điền sẵn, reference_id là id giao dịch nhóm
 }

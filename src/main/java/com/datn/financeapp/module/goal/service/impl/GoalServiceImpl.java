@@ -17,7 +17,7 @@ import com.datn.financeapp.module.goal.entity.SavingsGoal;
 import com.datn.financeapp.module.goal.mapper.GoalMapper;
 import com.datn.financeapp.module.goal.repository.GoalContributionRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
-import com.datn.financeapp.module.transaction.service.TransactionService;
+import com.datn.financeapp.module.transaction.service.TxnService;
 import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
@@ -59,7 +59,7 @@ public class GoalServiceImpl implements GoalService {
     private final WalletService walletService;
     private final CategoryService categoryService;
     private final TransactionWriter transactionWriter;
-    private final TransactionService transactionService;
+    private final TxnService txnService;
     private final GoalMapper goalMapper;
 
     // ---------------------------------------------------------------------
@@ -234,7 +234,7 @@ public class GoalServiceImpl implements GoalService {
      * GOAL-04, api/09 mục B4 — THỨ TỰ NGƯỢC với sổ nợ (D-46), có lý do schema rõ ràng:
      *
      * <ol>
-     *   <li>Hoàn tác + xoá mềm giao dịch kèm theo (nếu có) qua {@link TransactionService#delete}
+     *   <li>Hoàn tác + xoá mềm giao dịch kèm theo (nếu có) qua {@link TxnService#delete}
      *   <li>Xoá bản ghi {@code goal_contributions}, trigger tự trừ lại {@code saved_amount} và tự
      *       MỞ LẠI {@code completed → in_progress}
      * </ol>
@@ -259,7 +259,7 @@ public class GoalServiceImpl implements GoalService {
 
         // Bước 1 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
         if (contribution.getTransactionId() != null) {
-            transactionService.delete(userId, contribution.getTransactionId());
+            txnService.delete(userId, contribution.getTransactionId());
         }
 
         // Bước 2 — flush ngay để trigger chạy và tính lại tiến độ trong cùng transaction.
@@ -331,7 +331,7 @@ public class GoalServiceImpl implements GoalService {
 
         if (revertTransactions) {
             for (UUID transactionId : transactionIds) {
-                transactionService.delete(userId, transactionId);
+                txnService.delete(userId, transactionId);
             }
         }
     }

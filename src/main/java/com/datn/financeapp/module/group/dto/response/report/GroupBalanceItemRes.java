@@ -6,7 +6,6 @@ public record GroupBalanceItemRes(
         UUID userId,
         String fullName,
         String status,
-        Long totalPaidOutOfPocket,
         Long totalRefunded,
         Long totalShareAmount,
         Long netBalance,

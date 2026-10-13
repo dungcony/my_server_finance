@@ -74,13 +74,13 @@ module/
 **PHẢI:**
 
 - **Entity Relationship Xuyên Module (Dùng ID thuần):**
-  - Lưu `UUID <domain>Id` (hoặc `Long <domain>Id`) thay vì quan hệ ORM trực tiếp.
-  - Tránh coupling ở tầng JPA/DB giữa 2 module.
-  - Tránh `LazyInitializationException` khi entity được truy xuất ngoài transaction gốc.
-  - Ép buộc mọi truy cập dữ liệu liên module phải đi qua Service API.
+    - Lưu `UUID <domain>Id` (hoặc `Long <domain>Id`) thay vì quan hệ ORM trực tiếp.
+    - Tránh coupling ở tầng JPA/DB giữa 2 module.
+    - Tránh `LazyInitializationException` khi entity được truy xuất ngoài transaction gốc.
+    - Ép buộc mọi truy cập dữ liệu liên module phải đi qua Service API.
 - **Enum Persistence:**
-  - Mọi thuộc tính enum trong Entity BẮT BUỘC phải dùng `@Enumerated(EnumType.STRING)`.
-  - Luôn lưu trữ dưới dạng chuỗi có ý nghĩa rõ ràng trong database.
+    - Mọi thuộc tính enum trong Entity BẮT BUỘC phải dùng `@Enumerated(EnumType.STRING)`.
+    - Luôn lưu trữ dưới dạng chuỗi có ý nghĩa rõ ràng trong database.
 
 **KHÔNG ĐƯỢC:**
 
@@ -95,67 +95,67 @@ module/
 **PHẢI:**
 
 - **Response Wrapper thống nhất (`ApiResponse<T>`):** Mọi Controller thành công PHẢI bọc kết quả qua `ApiResponse<T>`:
-  - Khai báo: `public record ApiResponse<T>(boolean success, T data, String msg)`
-  - Helper methods: `ApiResponse.of(data)` hoặc `ApiResponse.of(data, msg)`.
-  - Format JSON:
-    ```json
-    {
-      "success": true,
-      "data": {},
-      "msg": ""
-    }
-    ```
+    - Khai báo: `public record ApiResponse<T>(boolean success, T data, String msg)`
+    - Helper methods: `ApiResponse.of(data)` hoặc `ApiResponse.of(data, msg)`.
+    - Format JSON:
+      ```json
+      {
+        "success": true,
+        "data": {},
+        "msg": ""
+      }
+      ```
 
 - **Phân trang (Pagination):** Kết quả phân trang phải trả về dữ liệu kèm metadata phân trang chuẩn (`PageMeta`):
-  - Khai báo metadata: `public record PageMeta(int page, int pageSize, long totalItems, int totalPages)`
-  - Format JSON phân trang:
-    ```json
-    {
-      "success": true,
-      "data": {
-        "items": [],
-        "meta": {
-          "page": 1,
-          "page_size": 20,
-          "total_items": 100,
-          "total_pages": 5
-        }
-      },
-      "msg": ""
-    }
-    ```
+    - Khai báo metadata: `public record PageMeta(int page, int pageSize, long totalItems, int totalPages)`
+    - Format JSON phân trang:
+      ```json
+      {
+        "success": true,
+        "data": {
+          "items": [],
+          "meta": {
+            "page": 1,
+            "page_size": 20,
+            "total_items": 100,
+            "total_pages": 5
+          }
+        },
+        "msg": ""
+      }
+      ```
 
 - **Error Response Wrapper (`ErrorResponse`):** Định dạng trả về đồng nhất khi có lỗi từ `GlobalExceptionHandler`:
-  - Khai báo: `public record ErrorResponse(boolean success, ErrorBody error)` với
-    `ErrorBody(String code, String message, List<FieldError> fields, Object detail)`
-  - Format JSON:
-    ```json
-    {
-      "success": false,
-      "error": {
-        "code": "RESOURCE_NOT_FOUND",
-        "message": "Không tìm thấy dữ liệu",
-        "fields": [
-          { "field": "email", "message": "Email không đúng định dạng" }
-        ],
-        "detail": null
+    - Khai báo: `public record ErrorResponse(boolean success, ErrorBody error)` với
+      `ErrorBody(String code, String message, List<FieldError> fields, Object detail)`
+    - Format JSON:
+      ```json
+      {
+        "success": false,
+        "error": {
+          "code": "RESOURCE_NOT_FOUND",
+          "message": "Không tìm thấy dữ liệu",
+          "fields": [
+            { "field": "email", "message": "Email không đúng định dạng" }
+          ],
+          "detail": null
+        }
       }
-    }
-    ```
+      ```
 
 - **Phân loại DTO:**
-  - Tách thư mục `dto/request/` và `dto/response/`.
-  - Tách DTO theo mục đích rõ ràng: `<Domain>CreateRequest`, `<Domain>UpdateRequest`, `<Domain>SummaryResponse`,
-    `<Domain>DetailResponse`.
+    - Tách thư mục `dto/request/` và `dto/response/`.
+    - Tách DTO theo mục đích rõ ràng: `<Domain>CreateRequest`, `<Domain>UpdateRequest`, `<Domain>SummaryResponse`,
+      `<Domain>DetailResponse`.
 
 - **Quy ước Naming Case (JSON Body & Query Param):**
-  - **Trong Java code:** Toàn bộ thuộc tính DTO, Entity và Record khai báo theo chuẩn `camelCase` của Java (VD:
-    `pageSize`, `totalItems`, `userId`).
-  - **Trong HTTP API (JSON Body & Query Param):** Thống nhất dùng `snake_case` cho cả request/response payload
-    (`page_size`, `total_items`) và query param (`?page_size=20`).
-  - **Cơ chế chuyển đổi toàn cục:** Cấu hình qua Spring Boot (`spring.jackson.property-naming-strategy: SNAKE_CASE`
-    trong `application.yml`). Jackson tự động ánh xạ giữa Java camelCase và JSON snake_case, không cần gắn
-    `@JsonProperty` thủ công (trừ trường hợp đặc thù).
+    - **Trong Java code:** Toàn bộ thuộc tính DTO, Entity và Record khai báo theo chuẩn `camelCase` của Java (VD:
+      `pageSize`, `totalItems`, `userId`).
+    - **Trong HTTP API (JSON Body & Query Param):** Thống nhất dùng `snake_case` cho cả request/response payload
+      (`page_size`, `total_items`) và query param (`?page_size=20`).
+    - **Cơ chế chuyển đổi toàn cục:** Cấu hình qua Spring Boot (`spring.jackson.property-naming-strategy: SNAKE_CASE`
+      trong `application.yml`). Jackson tự động ánh xạ giữa Java camelCase và JSON snake_case, không cần gắn
+      `@JsonProperty` thủ công (trừ trường hợp đặc thù).
 
 **KHÔNG ĐƯỢC:**
 
@@ -169,11 +169,12 @@ module/
 
 **PHẢI:**
 
-- **Vị trí duy nhất:** Chỉ đặt `@Transactional` trên các **public method** tại tầng `*ServiceImpl`.
+- **Vị trí:** Đặt `@Transactional` trên các **class level** tại tầng `*ServiceImpl` nếu có nhiều public method sử dụng
+  cùng 1 loại transaction.
 - **Phân tách đọc/ghi:**
-  - Method truy vấn / đọc dữ liệu: `@Transactional(readOnly = true)` để tối ưu tài nguyên và bỏ qua dirty checking của
-    Hibernate.
-  - Method ghi / thay đổi dữ liệu: `@Transactional` (sử dụng propagation `REQUIRED` mặc định).
+    - Method truy vấn / đọc dữ liệu: `@Transactional(readOnly = true)` để tối ưu tài nguyên và bỏ qua dirty checking của
+      Hibernate.
+    - Method ghi / thay đổi dữ liệu: `@Transactional` (sử dụng propagation `REQUIRED` mặc định).
 - **Tránh Self-Invocation:** Không gọi trực tiếp `this.methodCoTransactional()` trong cùng một class vì Spring AOP proxy
   sẽ bị bypass, khiến transaction không được kích hoạt.
 
@@ -181,7 +182,6 @@ module/
 
 - Đặt `@Transactional` ở tầng Controller (gây giữ DB connection quá lâu).
 - Đặt `@Transactional` ở tầng Repository (Repository đã được Spring Data JPA quản lý).
-- Đặt `@Transactional` ở class-level trong ServiceImpl (dễ quên `readOnly = true` cho các method đọc).
 
 ---
 
@@ -190,13 +190,13 @@ module/
 **PHẢI:**
 
 - **Tầng 1 - Format / Field-level (Tại DTO):**
-  - Dùng Jakarta Bean Validation annotation chuẩn (`@NotNull`, `@NotBlank`, `@Size`, `@Positive`, `@Pattern`,
-    `@Email`...).
-  - Controller khai báo `@Valid` trước `@RequestBody`.
+    - Dùng Jakarta Bean Validation annotation chuẩn (`@NotNull`, `@NotBlank`, `@Size`, `@Positive`, `@Pattern`,
+      `@Email`...).
+    - Controller khai báo `@Valid` trước `@RequestBody`.
 - **Tầng 2 - Domain / State-level (Tại `<domain>/validator/`):**
-  - Áp dụng khi cần kiểm tra logic nghiệp vụ phức tạp: truy vấn DB kiểm tra tồn tại/trùng lặp, kiểm tra hạn mức
-    (quota), hoặc logic phụ thuộc giữa nhiều trường/nhiều entity.
-  - Validator ném exception cụ thể kế thừa từ `BusinessException`.
+    - Áp dụng khi cần kiểm tra logic nghiệp vụ phức tạp: truy vấn DB kiểm tra tồn tại/trùng lặp, kiểm tra hạn mức
+      (quota), hoặc logic phụ thuộc giữa nhiều trường/nhiều entity.
+    - Validator ném exception cụ thể kế thừa từ `BusinessException`.
 
 **KHÔNG ĐƯỢC:**
 
@@ -231,20 +231,20 @@ module/
 
 - **Tên Resource:** Dùng danh từ số nhiều ở dạng `kebab-case` (VD: `/users`, `/budgets`, `/wallets`).
 - **Path Variable Style:**
-  - Resource đơn cấp: Dùng `{id}` (VD: `/budgets/{id}`, `/wallets/{id}`).
-  - Nested resource (phụ thuộc cha-con): Dùng `{parentId}` cho resource cha và `{id}` cho resource con (VD:
-    `/wallets/{walletId}/transactions/{id}`).
-  - Giới hạn lồng nhau: **Tối đa 2 cấp** (VD: `/parents/{parentId}/children/{id}`). Tránh lồng quá 2 cấp
-    (Anti-pattern: `/a/{aId}/b/{bId}/c/{cId}/d`).
+    - Resource đơn cấp: Dùng `{id}` (VD: `/budgets/{id}`, `/wallets/{id}`).
+    - Nested resource (phụ thuộc cha-con): Dùng `{parentId}` cho resource cha và `{id}` cho resource con (VD:
+      `/wallets/{walletId}/transactions/{id}`).
+    - Giới hạn lồng nhau: **Tối đa 2 cấp** (VD: `/parents/{parentId}/children/{id}`). Tránh lồng quá 2 cấp
+      (Anti-pattern: `/a/{aId}/b/{bId}/c/{cId}/d`).
 - **Query Parameter Style:**
-  - Dùng `snake_case` cho toàn bộ query param: `?is_active=true`, `?from_date=2026-01-01`,
-    `?sort_by=created_at&sort_dir=desc`.
-  - Phân trang chuẩn: `?page=1&page_size=20`.
+    - Dùng `snake_case` cho toàn bộ query param: `?is_active=true`, `?from_date=2026-01-01`,
+      `?sort_by=created_at&sort_dir=desc`.
+    - Phân trang chuẩn: `?page=1&page_size=20`.
 - **HTTP Methods chuẩn:**
-  - `GET`: Lấy dữ liệu (idempotent, safe).
-  - `POST`: Tạo mới tài nguyên.
-  - `PUT` / `PATCH`: Cập nhật tài nguyên (toàn phần / một phần).
-  - `DELETE`: Xóa hoặc đổi trạng thái vô hiệu hóa.
+    - `GET`: Lấy dữ liệu (idempotent, safe).
+    - `POST`: Tạo mới tài nguyên.
+    - `PUT` / `PATCH`: Cập nhật tài nguyên (toàn phần / một phần).
+    - `DELETE`: Xóa hoặc đổi trạng thái vô hiệu hóa.
 - **Context Path & Versioning:** Lưu ý context-path / versioning (VD: `/v1`) đã được cấu hình tại cấu hình ứng dụng
   (application config). Do đó `@RequestMapping` ở Controller chỉ định nghĩa endpoint tài nguyên (VD:
   `@RequestMapping("/budgets")`), KHÔNG lặp lại tiền tố `/v1` hay `/api/v1`.
@@ -258,15 +258,15 @@ module/
 - **Chặn quyền tại Controller (Role/Permission):** Sử dụng `@PreAuthorize("hasAuthority('...')")` hoặc
   `@PreAuthorize("hasRole('...')")` tại Controller để kiểm soát quyền truy cập hệ thống.
 - **Xác thực quyền sở hữu tài nguyên tại Service (Chống IDOR):**
-  - `@PreAuthorize` chỉ bảo vệ vai trò chung, **KHÔNG** bảo vệ được dữ liệu cá nhân nếu user A gọi API với ID tài
-    nguyên của user B (Insecure Direct Object References).
-  - Tầng Service **BẮT BUỘC** phải xác thực tính sở hữu tài nguyên (Resource Ownership):
-    - _Cách 1 (Ưu tiên):_ Truy vấn qua Repository với điều kiện kép `findByIdAndUserId(id, userId)` (hoặc
-      `findByKeyAndTenantId(...)`).
-    - _Cách 2:_ Kiểm tra tường minh `if (!resource.getUserId().equals(currentUserId))` trước khi xử lý nghiệp vụ
-      đọc/ghi.
-    - Ném exception phù hợp (thường là `ResourceNotFoundException` để tránh rò rỉ sự tồn tại của dữ liệu người
-      khác).
+    - `@PreAuthorize` chỉ bảo vệ vai trò chung, **KHÔNG** bảo vệ được dữ liệu cá nhân nếu user A gọi API với ID tài
+      nguyên của user B (Insecure Direct Object References).
+    - Tầng Service **BẮT BUỘC** phải xác thực tính sở hữu tài nguyên (Resource Ownership):
+        - _Cách 1 (Ưu tiên):_ Truy vấn qua Repository với điều kiện kép `findByIdAndUserId(id, userId)` (hoặc
+          `findByKeyAndTenantId(...)`).
+        - _Cách 2:_ Kiểm tra tường minh `if (!resource.getUserId().equals(currentUserId))` trước khi xử lý nghiệp vụ
+          đọc/ghi.
+        - Ném exception phù hợp (thường là `ResourceNotFoundException` để tránh rò rỉ sự tồn tại của dữ liệu người
+          khác).
 - **Truyền danh tính chuẩn:** Controller lấy danh tính người dùng qua Security Context
   (`SecurityContextUtil.currentUserId()`) và truyền ID thuần (`UUID userId`) xuống Service.
 
@@ -286,10 +286,10 @@ module/
 - Tận dụng `MDC` (Mapped Diagnostic Context) với khóa `requestId` (hoặc `X-Request-Id`) để theo dõi trace log xuyên suốt
   từng request.
 - **Phân loại level log chuẩn:**
-  - `INFO`: Ghi nhận các mốc nghiệp vụ chính (bắt đầu job, hoàn thành transaction...).
-  - `WARN`: Cảnh báo logic, vi phạm validation, lỗi client 4xx.
-  - `ERROR`: Lỗi hệ thống 5xx, bắt buộc log kèm theo Throwable / Exception stack trace
-    (`log.error("Message...", ex)`).
+    - `INFO`: Ghi nhận các mốc nghiệp vụ chính (bắt đầu job, hoàn thành transaction...).
+    - `WARN`: Cảnh báo logic, vi phạm validation, lỗi client 4xx.
+    - `ERROR`: Lỗi hệ thống 5xx, bắt buộc log kèm theo Throwable / Exception stack trace
+      (`log.error("Message...", ex)`).
 - Che giấu (mask) dữ liệu nhạy cảm (mật khẩu, access/refresh token, OTP) trước khi log.
 
 **KHÔNG ĐƯỢC:**
@@ -335,25 +335,25 @@ module/
 - **Cấu trúc Package Mirror:** Thư mục test trong `src/test/java/` PHẢI mirror 1-1 với package cấu trúc trong
   `src/main/java/` (VD: `com.datn.financeapp.budget.service.impl.BudgetServiceImplTest`).
 - **Phân loại Test rõ ràng:**
-  - **Unit Test (`*Test.java` / `*ServiceImplTest.java`):**
-    - Áp dụng cho: ServiceImpl, Helper, Validator, Mapper, pure logic.
-    - Công nghệ: JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`).
-    - Nguyên tắc: Mock toàn bộ dependency (Repository, MailService...), kiểm thử biên, validation, exception logic.
-      Chạy cực nhanh, **KHÔNG** bật Spring Context.
-  - **Integration Test (`*IntegrationTest.java`):**
-    - Áp dụng cho: Controller API endpoints, Idempotency, Filter, Transaction Rollback, End-to-End flows.
-    - Công nghệ: `@SpringBootTest`, `MockMvc`, kết hợp `@Testcontainers` (PostgreSQL / Redis container độc lập).
-    - Nguyên tắc: Kiểm thử hành vi thực tế từ HTTP status, JSON payload, DB constraints và Security Access.
-  - **Repository Test (`*RepositoryTest.java`):**
-    - Áp dụng cho: Custom SQL query (`@Query`), complex projection, soft-delete query, dynamic specifications.
-    - Công nghệ: `@DataJpaTest` hoặc Testcontainers.
+    - **Unit Test (`*Test.java` / `*ServiceImplTest.java`):**
+        - Áp dụng cho: ServiceImpl, Helper, Validator, Mapper, pure logic.
+        - Công nghệ: JUnit 5 + Mockito (`@ExtendWith(MockitoExtension.class)`).
+        - Nguyên tắc: Mock toàn bộ dependency (Repository, MailService...), kiểm thử biên, validation, exception logic.
+          Chạy cực nhanh, **KHÔNG** bật Spring Context.
+    - **Integration Test (`*IntegrationTest.java`):**
+        - Áp dụng cho: Controller API endpoints, Idempotency, Filter, Transaction Rollback, End-to-End flows.
+        - Công nghệ: `@SpringBootTest`, `MockMvc`, kết hợp `@Testcontainers` (PostgreSQL / Redis container độc lập).
+        - Nguyên tắc: Kiểm thử hành vi thực tế từ HTTP status, JSON payload, DB constraints và Security Access.
+    - **Repository Test (`*RepositoryTest.java`):**
+        - Áp dụng cho: Custom SQL query (`@Query`), complex projection, soft-delete query, dynamic specifications.
+        - Công nghệ: `@DataJpaTest` hoặc Testcontainers.
 - **ArchUnit Test Suite:**
-  - Vị trí: Đặt tại package kiến trúc trong `src/test/java/` (VD: `com.datn.financeapp.architecture`).
-  - Mục đích: Tự động hóa kiểm tra các rule kiến trúc trong mỗi lần build `mvn test`:
-    - Không import chéo Repository/Entity giữa các module (Rule 2.2).
-    - Không tạo vòng lặp phụ thuộc (circular dependency) giữa các package.
-    - Không dùng quan hệ ORM trực tiếp xuyên module (Rule 2.3).
-    - Bắt buộc `@Enumerated(EnumType.STRING)` trên mọi thuộc tính enum trong Entity.
+    - Vị trí: Đặt tại package kiến trúc trong `src/test/java/` (VD: `com.datn.financeapp.architecture`).
+    - Mục đích: Tự động hóa kiểm tra các rule kiến trúc trong mỗi lần build `mvn test`:
+        - Không import chéo Repository/Entity giữa các module (Rule 2.2).
+        - Không tạo vòng lặp phụ thuộc (circular dependency) giữa các package.
+        - Không dùng quan hệ ORM trực tiếp xuyên module (Rule 2.3).
+        - Bắt buộc `@Enumerated(EnumType.STRING)` trên mọi thuộc tính enum trong Entity.
 
 **KHÔNG ĐƯỢC:**
 

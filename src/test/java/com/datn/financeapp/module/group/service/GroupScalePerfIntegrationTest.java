@@ -4,14 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.common.mail.EmailService;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionCreateReq;
-import com.datn.financeapp.module.group.dto.request.transaction.GroupTransactionFilterReq;
-import com.datn.financeapp.module.group.enums.GTransactionType;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnFilterReq;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
 import com.datn.financeapp.module.group.entity.MemberBalance;
 import com.datn.financeapp.module.group.repository.MemberBalanceRepository;
-import com.datn.financeapp.module.group.service.GTransactionService;
-import com.datn.financeapp.module.group.service.ReportService;
 import com.datn.financeapp.performance.SqlCountingConfig;
 import com.datn.financeapp.module.user.entity.Role;
 import com.datn.financeapp.module.user.entity.User;
@@ -115,7 +114,10 @@ class GroupScalePerfIntegrationTest {
     private EmailService emailService;
 
     @Autowired
-    private GTransactionService gTransactionService;
+    private GroupTxnGetService groupTxnGetService;
+
+    @Autowired
+    private GroupTxnCreateService groupTxnCreateService;
 
     @Autowired
     private ReportService reportService;
@@ -211,27 +213,27 @@ class GroupScalePerfIntegrationTest {
         LocalDate monthStart = YearMonth.now(VIETNAM_ZONE).atDay(1);
         LocalDate monthEnd = YearMonth.now(VIETNAM_ZONE).atEndOfMonth();
 
-        measure(scale, "GTransactionService.countPendingForGroup", () -> gTransactionService.countPendingForGroup(group));
+        measure(scale, "GTransactionService.countPendingForGroup", () -> groupTxnGetService.countPendingForGroup(group));
         measure(scale, "GTransactionService.sumConfirmedAmount (toàn thời gian)",
-                () -> gTransactionService.sumConfirmedAmount(group, GTransactionType.EXPENSE));
+                () -> groupTxnGetService.sumConfirmedAmount(group, GroupTxnType.EXPENSE));
         measure(scale, "GTransactionService.list (trang 1, 20 bản ghi)",
-                () -> gTransactionService.list(operator, group, filter(1, 20, null, null)));
+                () -> groupTxnGetService.list(operator, group, filter(1, 20, null, null)));
         measure(scale, "GTransactionService.list (trang 1, 100 bản ghi)",
-                () -> gTransactionService.list(operator, group, filter(1, 100, null, null)));
+                () -> groupTxnGetService.list(operator, group, filter(1, 100, null, null)));
         measure(scale, "GTransactionService.list (trang sâu: trang 1000 x 100)",
-                () -> gTransactionService.list(operator, group, filter(1000, 100, null, null)));
+                () -> groupTxnGetService.list(operator, group, filter(1000, 100, null, null)));
         measure(scale, "GTransactionService.list (lọc theo tháng này, 100 bản ghi)",
-                () -> gTransactionService.list(operator, group, filter(1, 100, monthStart, monthEnd)));
-        measure(scale, "GTransactionService.listPending", () -> gTransactionService.listPending(operator, group, 1, 100));
+                () -> groupTxnGetService.list(operator, group, filter(1, 100, monthStart, monthEnd)));
+        measure(scale, "GTransactionService.listPending", () -> groupTxnGetService.listPending(operator, group, 1, 100));
         measure(scale, "ReportService.getSummary (toàn thời gian)", () -> reportService.getSummary(operator, group, null));
         measure(scale, "ReportService.getSummary (theo tháng)", () -> reportService.getSummary(operator, group, thisMonth));
         measure(scale, "ReportService.getBalances", () -> reportService.getBalances(operator, group));
 
         // người nhận chọn ngoài phần tính giờ; hoàn 1đ cho người có số dư ròng lớn nhất để chắc chắn qua hạn mức
         UUID recipient = richestMember(group);
-        measure(scale, "GTransactionService.create (REFUND 1đ)", () -> gTransactionService.create(operator, group,
-                new GroupTransactionCreateReq(GTransactionType.REFUND, MoneySource.FUND, 1L, Instant.now(),
-                        null, null, recipient, "Đo hoàn tiền", List.of())));
+        measure(scale, "GTransactionCreateService.create (REFUND 1đ)", () -> groupTxnCreateService.create(operator, group,
+                new GroupTxnCreateReq(GroupTxnType.REFUND, MoneySource.FUND, 1L, Instant.now().minusSeconds(60),
+                        null, null, "Đo hoàn tiền", List.of(new GroupTxnParticipantReq(recipient, 1L)))));
     }
 
     private UUID richestMember(UUID group) {
@@ -261,8 +263,8 @@ class GroupScalePerfIntegrationTest {
                 cell.error() == null ? cell.sql() + " SQL / " + cell.ms() + "ms" : "LỖI: " + cell.error());
     }
 
-    private GroupTransactionFilterReq filter(int page, int size, LocalDate from, LocalDate to) {
-        return new GroupTransactionFilterReq(null, null, null, null, null, null, from, to, page, size);
+    private GroupTxnFilterReq filter(int page, int size, LocalDate from, LocalDate to) {
+        return new GroupTxnFilterReq(null, null, null, null, null, null, from, to, page, size);
     }
 
     // ---------------------------------------- dữ liệu ----------------------------------------
