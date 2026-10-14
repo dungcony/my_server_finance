@@ -1,19 +1,14 @@
 package com.datn.financeapp.module.wallet.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
+import com.datn.financeapp.module.wallet.enums.WalletType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.*;
 
-import java.time.Instant;
 import java.util.UUID;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /**
  * Entity đầy đủ cho bảng {@code wallets} — thay thế {@code common.wallet.WalletMinimal} tạm
@@ -38,21 +33,14 @@ public class Wallet extends AssignedIdEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
-    // CHECK IN ('cash','bank','e_wallet','credit_card').
     @Column(name = "type", nullable = false)
-    private String type;
+    private WalletType type;
 
-    @Column(name = "initial_balance", nullable = false)
-    private Long initialBalance;
+    @Column(name = "balance", nullable = false)
+    private Long balance; // số dư hiện có
 
-    @Column(name = "current_balance", nullable = false)
-    private Long currentBalance;
-
-    @Column(name = "include_in_total", nullable = false)
-    private Boolean includeInTotal;
-
-    @Column(name = "icon")
-    private String icon;
+    @Column(name = "icon_id")
+    private UUID iconId;
 
     @Column(name = "color", columnDefinition = "bpchar(7)")
     private String color;

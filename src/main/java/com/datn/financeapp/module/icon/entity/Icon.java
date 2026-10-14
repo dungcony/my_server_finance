@@ -1,13 +1,10 @@
-package com.datn.financeapp.module.category.entity;
+package com.datn.financeapp.module.icon.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
-import java.util.UUID;
-
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,9 +12,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.UUID;
+
 /**
- * Entity cho bảng {@code icons} — kho biểu tượng hệ thống (api/03-DANH-MUC.md mục 8). Người dùng
- * không tải ảnh riêng, chỉ chọn {@code icon_id} từ kho này.
+ * Entity cho bảng {@code icons} — kho biểu tượng hệ thống.
+ * Người dùng không tải ảnh riêng, chỉ chọn biểu tượng từ kho này.
  */
 @Entity
 @Table(name = "icons")
@@ -46,15 +45,4 @@ public class Icon extends AssignedIdEntity {
     @NotNull
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
-
-    @NotNull
-    @Column(name = "icon_group", nullable = false, length = 30)
-    private String iconGroup;
-
-    @Column(name = "search_keywords")
-    private String searchKeywords;
-
-    @NotNull
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder;
 }

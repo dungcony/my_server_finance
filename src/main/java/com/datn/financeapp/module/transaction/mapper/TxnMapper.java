@@ -1,5 +1,6 @@
 package com.datn.financeapp.module.transaction.mapper;
 
+import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
 import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import org.mapstruct.Mapper;
@@ -13,5 +14,5 @@ public interface TxnMapper {
     @Mapping(target = "displayName", source = "name")
     TxnDetailResponse toResponse(Transaction txn);
 
-    Transaction toEntity(Transaction txnDetailResponse);
+    Transaction toEntity(TxnCreateReq txnCreateReq);
 }

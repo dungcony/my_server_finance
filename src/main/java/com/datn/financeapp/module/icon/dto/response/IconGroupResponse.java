@@ -1,9 +1,9 @@
-package com.datn.financeapp.module.category.dto.response;
+package com.datn.financeapp.module.icon.dto.response;
 
 import java.util.List;
 
 /**
- * Một nhóm biểu tượng trong kết quả {@code GET /icons} (api/03-DANH-MUC.md mục 8).
+ * Một nhóm biểu tượng trong kết quả {@code GET /icons}.
  *
  * @param groupCode Mã nhóm (vd. {@code an_uong})
  * @param groupName Tên hiển thị của nhóm (vd. "Ăn uống")

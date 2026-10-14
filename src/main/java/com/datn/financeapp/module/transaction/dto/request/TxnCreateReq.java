@@ -3,6 +3,7 @@ package com.datn.financeapp.module.transaction.dto.request;
 import com.datn.financeapp.module.transaction.enums.TransactionSource;
 import com.datn.financeapp.module.transaction.enums.TransactionType;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -35,7 +36,8 @@ public record TxnCreateReq(
 
         @NotNull(message = "Danh mục không được để trống.")
         UUID categoryId,
-
+        
+        @PastOrPresent(message = "Thời gian giao dịch không được ở tương lai.")
         @NotNull(message = "Thời gian giao dịch không được để trống.")
         Instant occurredAt,
 

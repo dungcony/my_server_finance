@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Entity ánh xạ với bảng {@code categories}, đại diện cho danh mục thu/chi tài chính trong hệ thống.
@@ -30,6 +31,8 @@ import lombok.Setter;
 public class Category extends AssignedIdEntity {
 
     @Id
+    @NonNull
+    @NotNull
     private UUID id;
 
     @Size(max = 50)
@@ -49,9 +52,8 @@ public class Category extends AssignedIdEntity {
     private Category parent;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "icon_id", nullable = false)
-    private Icon icon;
+    @Column(name = "icon_id", nullable = false)
+    private UUID iconId;
 
     @NotNull
     @Size(min = 7, max = 7)

@@ -1,12 +1,12 @@
-package com.datn.financeapp.module.category.service.impl;
+package com.datn.financeapp.module.icon.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.category.dto.response.IconGroupListResponse;
-import com.datn.financeapp.module.category.dto.response.IconResponse;
-import com.datn.financeapp.module.category.entity.Icon;
-import com.datn.financeapp.module.category.mapper.IconMapper;
-import com.datn.financeapp.module.category.repository.IconRepository;
+import com.datn.financeapp.module.icon.dto.response.IconGroupListResponse;
+import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.entity.Icon;
+import com.datn.financeapp.module.icon.mapper.IconMapper;
+import com.datn.financeapp.module.icon.repository.IconRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -100,7 +101,8 @@ class IconImplTest {
         Icon coffee = icon("ca_phe", "an_uong");
         when(iconRepository.findByCodeAndIsActiveTrue("ca_phe")).thenReturn(Optional.of(coffee));
 
-        assertThat(iconImpl.getActive("ca_phe")).isSameAs(coffee);
+        IconResponse response = iconImpl.getActive("ca_phe");
+        assertThat(response.code()).isEqualTo("ca_phe");
     }
 
     @Test
@@ -109,6 +111,36 @@ class IconImplTest {
         assertThatThrownBy(() -> iconImpl.getActive("khong_co"))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.ICON_NOT_FOUND.getCode());
+    }
+
+    @Test
+    @DisplayName("getActiveById trả biểu tượng đang dùng theo ID")
+    void getActiveById_returnsActiveIcon() {
+        UUID id = UUID.randomUUID();
+        Icon coffee = icon("ca_phe", "an_uong");
+        coffee.setId(id);
+        when(iconRepository.findByIdAndIsActiveTrue(id)).thenReturn(Optional.of(coffee));
+
+        IconResponse response = iconImpl.getActiveById(id);
+        assertThat(response.code()).isEqualTo("ca_phe");
+    }
+
+    @Test
+    @DisplayName("getActiveByIds trả map các biểu tượng đang dùng theo danh sách ID")
+    void getActiveByIds_returnsMap() {
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        Icon icon1 = icon("ca_phe", "an_uong");
+        icon1.setId(id1);
+        Icon icon2 = icon("xe_may", "di_lai");
+        icon2.setId(id2);
+
+        when(iconRepository.findByIdInAndIsActiveTrue(List.of(id1, id2))).thenReturn(List.of(icon1, icon2));
+
+        Map<UUID, IconResponse> map = iconImpl.getActiveByIds(List.of(id1, id2));
+        assertThat(map).hasSize(2);
+        assertThat(map.get(id1).code()).isEqualTo("ca_phe");
+        assertThat(map.get(id2).code()).isEqualTo("xe_may");
     }
 
     private static Icon icon(String code, String group) {

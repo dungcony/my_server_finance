@@ -1,5 +1,8 @@
 package com.datn.financeapp.module.wallet.service.impl;
 
+import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.service.IconService;
+import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import com.datn.financeapp.common.exception.BusinessException;
@@ -28,17 +31,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Business logic CRUD ví (WALLET-01..05, api/02-VI.md mục 1-7). Mọi truy vấn chọn/sửa/xoá MỘT
- * ví theo id đi qua {@link WalletRepository} với điều kiện quyền D-27 sẵn có trong query —
- * không có quyền trả {@code NOT_FOUND} (404), không phải 403 (T-02-03).
- * <p>
- * {@code @Transactional} đặt TRÊN TỪNG PUBLIC METHOD theo mẫu {@code AuthService}.
- */
 @Service
 @RequiredArgsConstructor
 public class WalletServiceImpl implements WalletService {
@@ -47,152 +42,32 @@ public class WalletServiceImpl implements WalletService {
     private static final String DEFAULT_WALLET_NAME = "Tiền mặt";
 
     private final WalletRepository walletRepository;
-    private final JdbcTemplate jdbcTemplate;
     private final WalletMapper walletMapper;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public List<WalletResponse> list(UUID userId, String type, Boolean onlyInTotal, boolean includeShared) {
-        return walletRepository.findAllForUser(userId, type, onlyInTotal, includeShared).stream()
-                .map(this::toResponse)
-                .toList();
-    }
+    private final IconService iconService;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public WalletSummaryResponse summary(UUID userId) {
-        Long personalTotal = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
-                        + "WHERE user_id = ? AND include_in_total AND NOT is_deleted",
-                Long.class, userId);
-        Long personalWalletCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM wallets WHERE user_id = ? AND include_in_total AND NOT is_deleted",
-                Long.class, userId);
 
-        // Mô hình hai sổ ghi tách biệt (Two Separate Ledgers): ví cá nhân và quỹ nhóm là hai bảng
-        // độc lập hoàn toàn. Sổ cá nhân không còn chứa ví nhóm.
-        Long sharedTotal = 0L;
-        Long sharedWalletCount = 0L;
-
-        List<WalletSummaryResponse.ByTypeItem> byType = jdbcTemplate.query(
-                "SELECT type, COALESCE(SUM(current_balance), 0) AS total, COUNT(*) AS wallet_count "
-                        + "FROM wallets WHERE user_id = ? AND NOT is_deleted GROUP BY type",
-                (rs, rowNum) -> new WalletSummaryResponse.ByTypeItem(
-                        rs.getString("type"), rs.getLong("total"), rs.getLong("wallet_count")),
-                userId);
-
-        return new WalletSummaryResponse(
-                personalTotal == null ? 0 : personalTotal,
-                personalWalletCount == null ? 0 : personalWalletCount,
-                sharedTotal == null ? 0 : sharedTotal,
-                sharedWalletCount == null ? 0 : sharedWalletCount,
-                byType);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public WalletDetailResponse detail(UUID userId, UUID walletId) {
-        Wallet wallet = walletRepository
-                .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
-
-        WalletStatsResponse stats = loadStats(wallet.getId());
-
-        // D-37/TXN-09: currentBalance API = tiền thật đến hết hôm nay (trừ ngược giao dịch
-        // tương lai) — KHÔNG map thẳng cột wallet.getCurrentBalance() (đã gồm cả tương lai).
-        long currentBalanceAsOfToday = walletRepository
-                .findBalanceAsOf(wallet.getId(), LocalDate.now())
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
-        boolean hasFuture = walletRepository.hasFutureTransactions(wallet.getId());
-        Long projectedBalance = hasFuture ? wallet.getCurrentBalance() : null;
-
-        return new WalletDetailResponse(
-                wallet.getId(),
-                wallet.getName(),
-                wallet.getType(),
-                wallet.getInitialBalance(),
-                currentBalanceAsOfToday,
-                wallet.getIncludeInTotal(),
-                Boolean.TRUE.equals(wallet.getIsDefault()),
-                false,
-                null,
-                wallet.getIcon(),
-                wallet.getColor(),
-                stats,
-                wallet.getCreatedAt(),
-                projectedBalance);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Transactional
-    public WalletResponse create(UUID userId, CreateWalletRequest req) {
-        if (walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, req.name())) {
-            throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
-        }
-
-        if (req.groupId() != null) {
-            // Group thuộc Phase 5 — chưa tồn tại entity/nghiệp vụ kiểm tra thành viên. Ném lỗi
-            // tường minh thay vì tự bịa logic kiểm tra thành viên nhóm không kiểm chứng được
-            // (T-02-05).
-            throw new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED, "Chưa hỗ trợ tạo ví chung ở Phase 2 — Group thuộc Phase 5.");
-        }
-
-        Instant now = Instant.now();
-
-        Wallet wallet = Wallet.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .name(req.name())
-                .type(req.type())
-                .initialBalance(req.initialBalance())
-                .currentBalance(req.initialBalance())
-                .includeInTotal(req.includeInTotal() == null ? true : req.includeInTotal())
-                .icon(req.icon())
-                .color(req.color())
-                .isDeleted(false)
-                .createdAt(now)
-                .build();
-        walletRepository.save(wallet);
-
-        return toResponse(wallet);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
     @Transactional
     public void createDefaultCashWallet(UUID userId, Instant createdAt) {
+
+        IconResponse iconResponse = iconService.findDefaultWallet();
+
         Wallet cashWallet = Wallet.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
                 .name(DEFAULT_WALLET_NAME)
-                .type("cash")
-                .initialBalance(0L)
-                .currentBalance(0L)
-                .includeInTotal(true)
+                .type(WalletType.CASH)
+                .iconId(iconResponse.id())
+                .balance(0L)
                 .isDefault(true)
                 .isDeleted(false)
-                .createdAt(createdAt)
                 .build();
+
         walletRepository.save(cashWallet);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public UUID findDefaultWalletId(UUID userId) {
@@ -201,9 +76,7 @@ public class WalletServiceImpl implements WalletService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_FOUND));
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public WalletRefResponse findRefForUser(UUID userId, UUID walletId) {
@@ -216,9 +89,7 @@ public class WalletServiceImpl implements WalletService {
                 .orElse(null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public List<WalletRawBalanceResponse> listWithRawBalance(UUID userId, boolean includeShared) {
@@ -228,9 +99,7 @@ public class WalletServiceImpl implements WalletService {
                 .toList();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public Map<UUID, WalletRefResponse> findRefsForUser(Collection<UUID> walletIds, UUID userId) {
@@ -244,18 +113,14 @@ public class WalletServiceImpl implements WalletService {
         return byId;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public long requireRawBalance(UUID walletId) {
         return walletRepository.findCurrentBalanceNative(walletId).orElseThrow();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional
     public void lockWalletsInOrder(Set<UUID> walletIds, UUID userId) {
@@ -271,18 +136,14 @@ public class WalletServiceImpl implements WalletService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional
     public void adjustBalance(UUID walletId, long delta) {
         walletRepository.adjustBalance(walletId, delta);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public Long findRawBalance(UUID walletId) {
@@ -292,9 +153,7 @@ public class WalletServiceImpl implements WalletService {
         return walletRepository.findCurrentBalanceNative(walletId).orElse(null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public WalletRefResponse findRefById(UUID walletId) {
@@ -307,18 +166,14 @@ public class WalletServiceImpl implements WalletService {
                 .orElse(null);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional(readOnly = true)
     public long countActiveWallets(UUID userId) {
         return walletRepository.countByUserIdAndIsDeletedFalse(userId);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional
     public WalletResponse update(UUID userId, UUID walletId, UpdateWalletRequest req) {
@@ -356,9 +211,7 @@ public class WalletServiceImpl implements WalletService {
         return toResponse(wallet);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+
     @Override
     @Transactional
     public void delete(UUID userId, UUID walletId, boolean deleteTransactions) {

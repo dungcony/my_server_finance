@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.category.entity.Category;
-import com.datn.financeapp.module.category.entity.Icon;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;

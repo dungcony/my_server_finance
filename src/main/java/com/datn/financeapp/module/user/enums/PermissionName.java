@@ -34,7 +34,9 @@ public enum PermissionName {
     ROLE_PERMISSION_DELETE(Resource.ROLE_PERMISSION, Action.DELETE, "Thu hồi quyền hạn đã gán của vai trò"),
     CATEGORIES_MANAGE(Resource.CATEGORIES, Action.MANAGE, "Quản lý danh mục và biểu tượng mặc định hệ thống"),
     SYSTEM_VIEW_STATS(Resource.SYSTEM, Action.VIEW_STATS, "Xem báo cáo thống kê toàn hệ thống"),
-    GROUP_READ(Resource.GROUP, Action.READ, "xem toàn bộ group");
+    GROUP_READ(Resource.GROUP, Action.READ, "xem toàn bộ group"),
+    ICONS_UPDATE(Resource.ICONS, Action.UPDATE, "Tạo và cập nhật biểu tượng hệ thống"),
+    ICONS_DELETE(Resource.ICONS, Action.DELETE, "Xoá biểu tượng hệ thống");
 
     private final Resource resource;
     private final Action action;
@@ -75,7 +77,8 @@ public enum PermissionName {
         ROLE_PERMISSION("role_permission"),
         CATEGORIES("categories"),
         SYSTEM("system"),
-        GROUP("group");
+        GROUP("group"),
+        ICONS("icons");
 
         private final String key;
 

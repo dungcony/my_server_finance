@@ -6,11 +6,11 @@ import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.category.entity.Category;
-import com.datn.financeapp.module.category.entity.Icon;
 import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
 import com.datn.financeapp.module.category.repository.CategoryRepository;
-import com.datn.financeapp.module.category.service.IconService;
+import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.service.IconService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +59,10 @@ class CateImplTest {
     void setUp() {
         cateImpl = new CateImpl(categoryRepository, iconService, cateMapper, cateCache);
         lenient().when(categoryRepository.save(any(Category.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        lenient().when(cateMapper.toResponse(any(Category.class))).thenAnswer(invocation -> toResponse(invocation.getArgument(0)));
+        lenient().when(cateMapper.toResponse(any(Category.class), any())).thenAnswer(invocation -> toResponse(invocation.getArgument(0)));
+        lenient().when(iconService.getActive(any(String.class))).thenAnswer(invocation -> icon(invocation.getArgument(0)));
+        lenient().when(iconService.getActiveById(any(UUID.class))).thenAnswer(invocation -> icon("test"));
+        lenient().when(iconService.getActiveByIds(any())).thenReturn(java.util.Collections.emptyMap());
         TransactionSynchronizationManager.initSynchronization();
     }
 
@@ -248,14 +251,14 @@ class CateImplTest {
     @DisplayName("Cập nhật chỉ đổi trường được gửi lên, trường null giữ nguyên")
     void update_changesOnlyProvidedFields() {
         Category coffee = category("ca_phe", null);
-        Icon newIcon = icon("tra_sua");
+        IconResponse newIcon = icon("tra_sua");
         when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
         when(iconService.getActive("tra_sua")).thenReturn(newIcon);
 
         cateImpl.update("ca_phe", new CategoryUpdateReq("Trà sữa", null, "tra_sua", "#112233", null));
 
         assertThat(coffee.getName()).isEqualTo("Trà sữa");
-        assertThat(coffee.getIcon()).isSameAs(newIcon);
+        assertThat(coffee.getIconId()).isEqualTo(newIcon.id());
         assertThat(coffee.getColor()).isEqualTo("#112233");
         assertThat(coffee.getDescription()).isEqualTo("mô tả cũ");
         assertThat(coffee.getPath()).isEqualTo("ca_phe");
@@ -453,16 +456,8 @@ class CateImplTest {
         return new CategoryCreateReq(name, code, "mô tả", "ca_phe", "#3d6b7d", parentCode);
     }
 
-    private static Icon icon(String code) {
-        return Icon.builder()
-                .id(UUID.randomUUID())
-                .code(code)
-                .displayName(code)
-                .pathData("M0 0")
-                .isActive(true)
-                .iconGroup("an_uong")
-                .sortOrder(1)
-                .build();
+    private static IconResponse icon(String code) {
+        return new IconResponse(UUID.randomUUID(), code, code, "M0 0");
     }
 
     private static Category category(String code, Category parent) {
@@ -472,7 +467,7 @@ class CateImplTest {
                 .name("Ca " + code)
                 .description("mô tả cũ")
                 .parent(parent)
-                .icon(icon("an_uong"))
+                .iconId(UUID.randomUUID())
                 .color("#3d6b7d")
                 .level(parent == null ? 0 : parent.getLevel() + 1)
                 .path(parent == null ? code : parent.getPath() + "/" + code)

@@ -190,6 +190,9 @@ public enum ErrorCode {
     // Biểu tượng không tồn tại trong kho {@code icons} hoặc đã ngừng dùng.
     ICON_NOT_FOUND(HttpStatus.NOT_FOUND, "Biểu tượng không tồn tại hoặc đã ngừng dùng."),
 
+    // Mã biểu tượng đã tồn tại trong kho {@code icons}.
+    ICON_CODE_EXISTS(HttpStatus.CONFLICT, "Mã biểu tượng đã tồn tại."),
+
     /**
      * Thiếu danh mục hệ thống mà nghiệp vụ sổ nợ cần (lỗi dữ liệu nền, không phải lỗi người dùng). Là 500 chứ không phải 404 — đổi tên từ {@code CATEGORY_NOT_FOUND} cũ vì tên đó gợi nhầm sang lỗi tra cứu 404 thông thường (E1 mục 3).
      */

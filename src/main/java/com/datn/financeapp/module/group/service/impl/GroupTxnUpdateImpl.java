@@ -92,7 +92,6 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
         if (txn.getStatus() == GroupTxnStatus.CONFIRMED) {
             // tính lại tiền
             balanceService.applyDelta(txn.getGroupId(), before, BalanceCalculator.effectOf(txn));
-            applicationEventPublisher.publishEvent(new GroupTxnUpdateTransactorReq(txn.getId(), oldTransactorId, req.transactorId()));
         }
 
         long fundDelta = GroupTxnHelper.calculateDelta(txn) - oldDelta;

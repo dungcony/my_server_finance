@@ -1,4 +1,4 @@
-package com.datn.financeapp.module.category.dto.response;
+package com.datn.financeapp.module.icon.dto.response;
 
 import java.util.List;
 

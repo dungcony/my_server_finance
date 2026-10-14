@@ -9,6 +9,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.module.budget.service.BudgetSpendService;
+import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.transaction.dto.request.TransactionFilterRequest;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
@@ -43,7 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TxnServiceImpl implements TxnService {
 
-    private final TransactionRepository transactionRepository;
+    private final TransactionRepository txnRepository;
     private final BudgetSpendService budgetSpendService;
     private final WalletService walletService;
     private final CategoryService categoryService;
@@ -51,8 +52,6 @@ public class TxnServiceImpl implements TxnService {
     private final TransactionValidator transactionValidator;
     private final JdbcTemplate jdbcTemplate;
     private final TxnMapper txnMapper;
-
-    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     /**
      * {@inheritDoc}
@@ -63,43 +62,28 @@ public class TxnServiceImpl implements TxnService {
     @Override
     @Transactional
     public TxnDetailResponse create(UUID userId, TxnCreateReq req) {
-        // chuyển đổi thời điểm sang ngày theo múi giờ Việt Nam
-        LocalDate date = req.occurredAt() != null
-                ? req.occurredAt().atZone(VIETNAM_ZONE).toLocalDate()
-                : LocalDate.now(VIETNAM_ZONE);
 
+        if (req.amount() == null || req.amount() <= 0)
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
+
+        if (req.categoryId() == null)
+            throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_REQUIRED);
+
+        var category = categoryService.findActiveById(req.categoryId());
         // xác thực quyền sở hữu ví để ngăn chặn IDOR
-        WalletRefResponse wallet = walletService.findRefForUser(userId, req.walletId());
-        if (wallet == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
-        }
+        var wallet = walletService.findRefForUser(userId, req.walletId());
 
-        // thẩm định tính hợp lệ của giao dịch theo từng loại
-        transactionValidator.type(req.type(), req.amount(), req.categoryId(), date);
+        if (wallet == null)
+            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
 
         // mặc định nguồn thủ công nếu không chỉ định cụ thể
         TransactionSource source = req.source() != null ? req.source() : TransactionSource.MANUAL;
 
         // xây dựng lệnh ghi và thực thi đồng bộ số dư ví cùng ngân sách
-        TransactionWriteCommand cmd = new TransactionWriteCommand(
-                null,
-                userId,
-                req.walletId(),
-                req.categoryId(),
-                req.type(),
-                req.amount(),
-                date,
-                req.note(),
-                req.displayName(),
-                source,
-                null,
-                req.receiptUrl()
-        );
-        TransactionWriter.WriteResult writeResult = transactionWriter.write(cmd);
+        Transaction txn = txnMapper.toEntity(req);
+        txn.setSource(source);
 
-        // truy vấn lại bản ghi giao dịch vừa được lưu
-        Transaction txn = transactionRepository.findByIdAndUserIdAndIsDeletedFalse(writeResult.transactionId(), userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));
+        txnRepository.save(txn);
 
         return txnMapper.toResponse(txn);
     }
