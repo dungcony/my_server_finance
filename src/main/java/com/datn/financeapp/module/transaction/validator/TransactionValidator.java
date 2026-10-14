@@ -4,7 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.category.service.CategoryService;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -16,7 +16,7 @@ import java.util.UUID;
 /**
  * Kiểm tra nghiệp vụ của giao dịch theo loại, ném {@link BusinessException} khi vi phạm.
  * <ul>
- *   <li>{@link #type(TransactionType, Long, UUID, LocalDate)}: điểm vào duy nhất, chọn bộ luật theo loại giao dịch.</li>
+ *   <li>{@link #type(TxnType, Long, UUID, LocalDate)}: điểm vào duy nhất, chọn bộ luật theo loại giao dịch.</li>
  * </ul>
  */
 @Slf4j
@@ -37,7 +37,7 @@ public class TransactionValidator {
      * @param date       ngày giao dịch, {@code null} nghĩa là lấy hôm nay nên không kiểm
      * @throws BusinessException nếu vi phạm luật của loại giao dịch đó
      */
-    public void type(TransactionType type, Long amount, UUID categoryId, LocalDate date) {
+    public void type(TxnType type, Long amount, UUID categoryId, LocalDate date) {
         if (amount == null || amount <= 0) {
             throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
         }

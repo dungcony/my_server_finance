@@ -13,8 +13,8 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.budget.service.BudgetSpendService;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.repository.TransactionRepository;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
@@ -52,12 +52,12 @@ class TransactionWriterTest {
     private final UUID walletId = UUID.randomUUID();
     private final UUID categoryId = UUID.randomUUID();
 
-    private TransactionWriteCommand command(UUID id, UUID wallet, TransactionType type, long amount) {
+    private TransactionWriteCommand command(UUID id, UUID wallet, TxnType type, long amount) {
         return new TransactionWriteCommand(
-                id, userId, wallet, categoryId, type, amount, DATE, "ghi chú", "tên", TransactionSource.MANUAL, null, null);
+                id, userId, wallet, categoryId, type, amount, DATE, "ghi chú", "tên", TxnSource.MANUAL, null, null);
     }
 
-    private Transaction existing(TransactionType type, long amount) {
+    private Transaction existing(TxnType type, long amount) {
         return Transaction.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
@@ -66,7 +66,7 @@ class TransactionWriterTest {
                 .type(type)
                 .amount(amount)
                 .date(DATE)
-                .source(TransactionSource.MANUAL)
+                .source(TxnSource.MANUAL)
                 .isDeleted(false)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
@@ -78,7 +78,7 @@ class TransactionWriterTest {
     void write_expense_debitsWalletAndAddsBudgetSpend() {
         when(walletService.requireRawBalance(walletId)).thenReturn(900L);
 
-        TransactionWriter.WriteResult result = writer.write(command(null, walletId, TransactionType.EXPENSE, 100L));
+        TransactionWriter.WriteResult result = writer.write(command(null, walletId, TxnType.EXPENSE, 100L));
 
         verify(walletService).adjustBalance(walletId, -100L);
         verify(budgetSpendService).addExpense(userId, categoryId, DATE, 100L);
@@ -91,7 +91,7 @@ class TransactionWriterTest {
     void write_income_creditsWalletWithoutBudget() {
         when(walletService.requireRawBalance(walletId)).thenReturn(1_100L);
 
-        writer.write(command(null, walletId, TransactionType.INCOME, 100L));
+        writer.write(command(null, walletId, TxnType.INCOME, 100L));
 
         verify(walletService).adjustBalance(walletId, 100L);
         verifyNoInteractions(budgetSpendService);
@@ -100,7 +100,7 @@ class TransactionWriterTest {
     @Test
     @DisplayName("write LOAN: trừ ví và tính vào ngân sách giống EXPENSE")
     void write_loan_behavesLikeExpense() {
-        writer.write(command(null, walletId, TransactionType.LOAN, 300L));
+        writer.write(command(null, walletId, TxnType.LOAN, 300L));
 
         verify(walletService).adjustBalance(walletId, -300L);
         verify(budgetSpendService).addExpense(userId, categoryId, DATE, 300L);
@@ -111,7 +111,7 @@ class TransactionWriterTest {
     void write_withExplicitId_keepsThatId() {
         UUID id = UUID.randomUUID();
 
-        TransactionWriter.WriteResult result = writer.write(command(id, walletId, TransactionType.EXPENSE, 50L));
+        TransactionWriter.WriteResult result = writer.write(command(id, walletId, TxnType.EXPENSE, 50L));
 
         assertThat(result.transactionId()).isEqualTo(id);
     }
@@ -119,14 +119,14 @@ class TransactionWriterTest {
     @Test
     @DisplayName("overwrite: hoàn tác ví và ngân sách cũ rồi áp ví và ngân sách mới")
     void overwrite_revertsOldEffectThenAppliesNewOne() {
-        Transaction old = existing(TransactionType.EXPENSE, 100L);
+        Transaction old = existing(TxnType.EXPENSE, 100L);
         UUID newWalletId = UUID.randomUUID();
         when(transactionRepository.findByIdAndUserIdAndIsDeletedFalse(old.getId(), userId))
                 .thenReturn(Optional.of(old));
         when(walletService.requireRawBalance(newWalletId)).thenReturn(5_050L);
 
         TransactionWriter.WriteResult result =
-                writer.overwrite(command(old.getId(), newWalletId, TransactionType.INCOME, 50L));
+                writer.overwrite(command(old.getId(), newWalletId, TxnType.INCOME, 50L));
 
         // hoàn tác khoản chi cũ 100 ở ví cũ
         verify(walletService).adjustBalance(walletId, 100L);
@@ -134,7 +134,7 @@ class TransactionWriterTest {
         // áp khoản thu mới 50 ở ví mới, khoản thu không đụng ngân sách
         verify(walletService).adjustBalance(newWalletId, 50L);
         verify(budgetSpendService, never()).addExpense(any(), any(), any(), anyLong());
-        assertThat(old.getType()).isEqualTo(TransactionType.INCOME);
+        assertThat(old.getType()).isEqualTo(TxnType.INCOME);
         assertThat(old.getAmount()).isEqualTo(50L);
         assertThat(old.getWalletId()).isEqualTo(newWalletId);
         assertThat(old.getName()).isEqualTo("tên");
@@ -147,7 +147,7 @@ class TransactionWriterTest {
         UUID id = UUID.randomUUID();
         when(transactionRepository.findByIdAndUserIdAndIsDeletedFalse(id, userId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> writer.overwrite(command(id, walletId, TransactionType.EXPENSE, 10L)))
+        assertThatThrownBy(() -> writer.overwrite(command(id, walletId, TxnType.EXPENSE, 10L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getCode())
                 .isEqualTo(ErrorCode.NOT_FOUND.getCode());
@@ -158,7 +158,7 @@ class TransactionWriterTest {
     @Test
     @DisplayName("remove EXPENSE: xoá mềm, hoàn ví và hoàn ngân sách")
     void remove_expense_softDeletesAndRevertsEffects() {
-        Transaction old = existing(TransactionType.EXPENSE, 100L);
+        Transaction old = existing(TxnType.EXPENSE, 100L);
         when(transactionRepository.findByIdAndUserIdAndIsDeletedFalse(old.getId(), userId))
                 .thenReturn(Optional.of(old));
 
@@ -173,7 +173,7 @@ class TransactionWriterTest {
     @Test
     @DisplayName("remove INCOME: trừ lại ví và không đụng ngân sách")
     void remove_income_debitsWalletWithoutBudget() {
-        Transaction old = existing(TransactionType.INCOME, 70L);
+        Transaction old = existing(TxnType.INCOME, 70L);
         when(transactionRepository.findByIdAndUserIdAndIsDeletedFalse(old.getId(), userId))
                 .thenReturn(Optional.of(old));
 
@@ -200,7 +200,7 @@ class TransactionWriterTest {
     void write_expense_returnsAffectedBudgets() {
         when(budgetSpendService.addExpense(userId, categoryId, DATE, 10L)).thenReturn(List.of());
 
-        TransactionWriter.WriteResult result = writer.write(command(null, walletId, TransactionType.EXPENSE, 10L));
+        TransactionWriter.WriteResult result = writer.write(command(null, walletId, TxnType.EXPENSE, 10L));
 
         assertThat(result.affectedBudgets()).isEmpty();
     }

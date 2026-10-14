@@ -12,8 +12,6 @@ import com.datn.financeapp.module.report.dto.response.ReportHomeResponse;
 import com.datn.financeapp.module.report.dto.response.ReportSummaryResponse;
 import com.datn.financeapp.module.report.repository.ReportRepository;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.wallet.dto.response.WalletRawBalanceResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.time.LocalDate;
@@ -397,10 +395,10 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 .limit(10)
                 .toList();
         List<ReportHomeResponse.RecentTransactionItem> recentTransactions = new ArrayList<>();
-        Map<UUID, WalletRefResponse> walletCache = new HashMap<>();
+        Map<UUID, WalletSumaryRes> walletCache = new HashMap<>();
         Map<UUID, CategoryRefResponse> categoryCache = new HashMap<>();
         for (Transaction t : recent) {
-            WalletRefResponse wallet =
+            WalletSumaryRes wallet =
                     walletCache.computeIfAbsent(t.getWalletId(), walletService::findRefById);
             ReportHomeResponse.CategoryRef categoryRef = null;
             if (t.getCategoryId() != null) {

@@ -6,7 +6,6 @@ import com.datn.financeapp.module.debt.dto.response.DebtDetailResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtListItemResponse;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.entity.DebtPayment;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
 
 import java.math.BigDecimal;
@@ -19,7 +18,7 @@ import java.util.UUID;
 @Mapper(componentModel = "spring")
 public interface DebtMapper {
 
-    default DebtListItemResponse toListItem(Debt debt, WalletRefResponse wallet, int paymentCount) {
+    default DebtListItemResponse toListItem(Debt debt, WalletSumaryRes wallet, int paymentCount) {
         if (debt == null) {
             return null;
         }

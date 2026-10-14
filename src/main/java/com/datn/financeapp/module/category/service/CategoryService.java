@@ -62,8 +62,7 @@ public interface CategoryService {
     Map<UUID, CategoryResponse> findAllByIds(Collection<UUID> ids);
 
     /**
-     * Id của danh mục này cùng mọi tổ tiên của nó (đi lên tới gốc). Dùng để tìm các ngân sách phải
-     * cộng gộp một giao dịch ghi ở danh mục con.
+     * Id của danh mục này cùng mọi tổ tiên của nó (đi lên tới gốc). Dùng để tìm các ngân sách phải cộng gộp một giao dịch ghi ở danh mục con.
      *
      * @param id ID danh mục
      * @return danh sách id, rỗng nếu không có danh mục này

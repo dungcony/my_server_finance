@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.transaction.dto.request;
 
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -21,13 +21,13 @@ import java.util.UUID;
  * @param receiptUrl  URL hóa đơn
  */
 public record CreateTransactionRequest(
-        @NotNull TransactionType type,
+        @NotNull TxnType type,
         @NotNull Long amount,
         @NotNull UUID walletId,
         UUID categoryId,
         LocalDate date,
         @Size(max = 150) String displayName,
         @Size(max = 500) String note,
-        TransactionSource source,
+        TxnSource source,
         String receiptUrl) {
 }

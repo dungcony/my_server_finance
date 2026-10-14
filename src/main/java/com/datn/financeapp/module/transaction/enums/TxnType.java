@@ -1,6 +1,6 @@
 package com.datn.financeapp.module.transaction.enums;
 
-public enum TransactionType {
+public enum TxnType {
     EXPENSE, // chi tiêu
     INCOME, // thu nhập
     LOAN, // cho vay

@@ -1,6 +1,5 @@
 package com.datn.financeapp.module.notification.service;
 
-import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.enums.NotiType;
 

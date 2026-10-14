@@ -3,7 +3,7 @@ package com.datn.financeapp.module.transaction.helper;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
 import com.datn.financeapp.module.transaction.repository.RecurringTransactionRepository;
 
 import java.time.LocalDate;
@@ -98,7 +98,7 @@ public class RecurringPeriodWriter {
                 date,
                 rec.getNote(),
                 rec.getName(),
-                TransactionSource.RECURRING,
+                TxnSource.RECURRING,
                 rec.getId(),
                 null);
     }

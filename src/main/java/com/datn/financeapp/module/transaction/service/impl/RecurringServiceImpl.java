@@ -15,12 +15,11 @@ import com.datn.financeapp.module.transaction.dto.response.RunNowResponse;
 import com.datn.financeapp.module.transaction.dto.request.UpdateRecurringRequest;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
 import com.datn.financeapp.module.transaction.enums.FreequenType;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.mapper.RecurringMapper;
 import com.datn.financeapp.module.transaction.repository.RecurringTransactionRepository;
 import com.datn.financeapp.module.transaction.repository.TransactionRepository;
-import com.datn.financeapp.module.transaction.service.TxnService;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
+import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.time.Instant;
@@ -36,17 +35,17 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service xử lý các yêu cầu nghiệp vụ liên quan đến giao dịch định kỳ.
  * Triển khai giao diện {@link RecurringService}, tương tác với {@link RecurringTransactionRepository},
- * {@link TxnService} và {@link RecurringPeriodWriter}.
+ * {@link TxnBehavierService} và {@link RecurringPeriodWriter}.
  */
 @Service
 @RequiredArgsConstructor
 public class RecurringServiceImpl implements RecurringService {
 
     // khoản định kỳ chỉ sinh được thu hoặc chi, không sinh cho vay
-    private static final Set<TransactionType> VALID_TYPES = Set.of(TransactionType.EXPENSE, TransactionType.INCOME);
+    private static final Set<TxnType> VALID_TYPES = Set.of(TxnType.EXPENSE, TxnType.INCOME);
 
     private final RecurringTransactionRepository recurringRepository;
-    private final TxnService txnService;
+    private final TxnBehavierService txnBehavierService;
     private final TransactionRepository transactionRepository;
     private final WalletService walletService;
     private final CategoryService categoryService;
@@ -77,7 +76,7 @@ public class RecurringServiceImpl implements RecurringService {
         RecurringTransaction rec = requireOwned(userId, id);
 
         List<RecurringDetailResponse.GeneratedTransaction> history =
-                txnService.getByRecurring(userId, id).stream()
+                txnBehavierService.getByRecurring(userId, id).stream()
                         .map(recurringMapper::toGeneratedTransaction)
                         .toList();
 
@@ -94,7 +93,7 @@ public class RecurringServiceImpl implements RecurringService {
     @Override
     @Transactional
     public RecurringListItemResponse create(UUID userId, CreateRecurringRequest req) {
-        TransactionType type = parseType(req.type());
+        TxnType type = parseType(req.type());
         FreequenType frequency = parseFrequency(req.frequency());
 
         int interval = req.interval() == null ? 1 : req.interval();
@@ -223,8 +222,8 @@ public class RecurringServiceImpl implements RecurringService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy khoản định kỳ."));
     }
 
-    private WalletRefResponse requireWalletAccess(UUID walletId, UUID userId) {
-        WalletRefResponse wallet = walletService.findRefForUser(userId, walletId);
+    private WalletSumaryRes requireWalletAccess(UUID walletId, UUID userId) {
+        WalletSumaryRes wallet = walletService.findRefForUser(userId, walletId);
         if (wallet == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
         }
@@ -239,10 +238,10 @@ public class RecurringServiceImpl implements RecurringService {
         return categoryService.findActiveById(categoryId);
     }
 
-    private TransactionType parseType(String type) {
+    private TxnType parseType(String type) {
         // lỗi chung cho cả giá trị lạ lẫn LOAN: khoản định kỳ chỉ sinh được thu hoặc chi
         try {
-            TransactionType parsed = TransactionType.valueOf(type.toUpperCase());
+            TxnType parsed = TxnType.valueOf(type.toUpperCase());
             if (VALID_TYPES.contains(parsed)) {
                 return parsed;
             }
@@ -261,7 +260,7 @@ public class RecurringServiceImpl implements RecurringService {
     }
 
     private RecurringListItemResponse buildListItem(RecurringTransaction rec) {
-        WalletRefResponse wallet = walletService.findRefById(rec.getWalletId());
+        WalletSumaryRes wallet = walletService.findRefById(rec.getWalletId());
         CategoryResponse category = categoryService.findActiveById(rec.getCategoryId());
 
         long runCount = transactionRepository.countByRecurringIdAndIsDeletedFalse(rec.getId());

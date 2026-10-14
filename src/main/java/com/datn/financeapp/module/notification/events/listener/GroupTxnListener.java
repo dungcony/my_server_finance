@@ -6,7 +6,7 @@ import com.datn.financeapp.module.group.events.GroupTxnPendingEvent;
 import com.datn.financeapp.module.notification.enums.ActionNoti;
 import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.service.NotificationService;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -85,8 +85,8 @@ public class GroupTxnListener {
     // -------------------------------------PRIVATE----------------------------------//
 
     // hoàn tiền là tiền vào ví, các loại còn lại là tiền ra khỏi ví
-    private TransactionType txnTye(GroupTxnType type) {
-        return type == GroupTxnType.REFUND ? TransactionType.INCOME : TransactionType.EXPENSE;
+    private TxnType txnTye(GroupTxnType type) {
+        return type == GroupTxnType.REFUND ? TxnType.INCOME : TxnType.EXPENSE;
     }
 
     private String describe(GroupTxnType type) {

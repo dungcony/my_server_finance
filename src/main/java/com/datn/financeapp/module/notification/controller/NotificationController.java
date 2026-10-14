@@ -1,7 +1,6 @@
 package com.datn.financeapp.module.notification.controller;
 
 import com.datn.financeapp.common.response.ApiResponse;
-import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.service.NotificationService;

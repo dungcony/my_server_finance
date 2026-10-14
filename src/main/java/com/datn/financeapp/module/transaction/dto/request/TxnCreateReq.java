@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.transaction.dto.request;
 
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Positive;
@@ -25,7 +25,7 @@ import java.util.UUID;
  */
 public record TxnCreateReq(
         @NotNull(message = "Loại giao dịch không được để trống.")
-        TransactionType type,
+        TxnType type,
 
         @NotNull(message = "Số tiền không được để trống.")
         @Positive(message = "Số tiền phải lớn hơn 0.")
@@ -36,7 +36,7 @@ public record TxnCreateReq(
 
         @NotNull(message = "Danh mục không được để trống.")
         UUID categoryId,
-        
+
         @PastOrPresent(message = "Thời gian giao dịch không được ở tương lai.")
         @NotNull(message = "Thời gian giao dịch không được để trống.")
         Instant occurredAt,
@@ -47,7 +47,7 @@ public record TxnCreateReq(
         @Size(max = 500, message = "Ghi chú tối đa 500 ký tự.")
         String note,
 
-        TransactionSource source,
+        TxnSource source,
 
         @Size(max = 500, message = "Đường dẫn biên lai tối đa 500 ký tự.")
         String receiptUrl

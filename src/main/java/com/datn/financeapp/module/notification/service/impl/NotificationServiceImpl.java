@@ -5,7 +5,6 @@ import com.datn.financeapp.module.notification.service.NotificationService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
-import com.datn.financeapp.common.response.PageRequestParams;
 import com.datn.financeapp.module.notification.dto.response.NotificationRes;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.entity.Notification;

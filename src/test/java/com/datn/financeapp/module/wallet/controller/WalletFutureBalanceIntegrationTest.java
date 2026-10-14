@@ -11,8 +11,8 @@ import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
@@ -169,13 +169,13 @@ class WalletFutureBalanceIntegrationTest {
 
         // Giao dịch expense hôm nay 200000
         transactionWriter.write(new TransactionWriteCommand(
-                null, userId, walletUuid, anyCategoryId(), TransactionType.EXPENSE, 200_000,
-                LocalDate.now(), null, null, TransactionSource.MANUAL, null, null));
+                null, userId, walletUuid, anyCategoryId(), TxnType.EXPENSE, 200_000,
+                LocalDate.now(), null, null, TxnSource.MANUAL, null, null));
 
         // Giao dịch income ngày mai 500000
         transactionWriter.write(new TransactionWriteCommand(
-                null, userId, walletUuid, anyCategoryId(), TransactionType.INCOME, 500_000,
-                LocalDate.now().plusDays(1), null, null, TransactionSource.MANUAL, null, null));
+                null, userId, walletUuid, anyCategoryId(), TxnType.INCOME, 500_000,
+                LocalDate.now().plusDays(1), null, null, TxnSource.MANUAL, null, null));
 
         mockMvc.perform(get("/wallets/" + walletId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -192,8 +192,8 @@ class WalletFutureBalanceIntegrationTest {
 
         // Chỉ có giao dịch hôm nay, không có giao dịch tương lai.
         transactionWriter.write(new TransactionWriteCommand(
-                null, userId, walletUuid, anyCategoryId(), TransactionType.EXPENSE, 100_000,
-                LocalDate.now(), null, null, TransactionSource.MANUAL, null, null));
+                null, userId, walletUuid, anyCategoryId(), TxnType.EXPENSE, 100_000,
+                LocalDate.now(), null, null, TxnSource.MANUAL, null, null));
 
         mockMvc.perform(get("/wallets/" + walletId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())

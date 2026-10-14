@@ -38,7 +38,7 @@ import static org.mockito.Mockito.when;
  * Việc tạo giao dịch nằm ở {@code GTransactionCreateImpl}, test tương ứng là {@code GTransactionCreateImplTest}.
  */
 @ExtendWith(MockitoExtension.class)
-class TxnServiceTest {
+class TxnBehavierServiceTest {
 
     @Mock
     private GroupTxnRepository transactionRepository;

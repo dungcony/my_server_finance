@@ -1,6 +1,6 @@
 package com.datn.financeapp.module.transaction.controller;
 
-import com.datn.financeapp.module.transaction.service.TxnService;
+import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class TransactionController {
 
-    private final TxnService txnService;
+    private final TxnBehavierService txnBehavierService;
 
 }

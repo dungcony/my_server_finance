@@ -5,7 +5,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.budget.dto.response.BudgetAffectedRes;
 import com.datn.financeapp.module.budget.service.BudgetSpendService;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.repository.TransactionRepository;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
@@ -40,7 +40,7 @@ public class TransactionWriter {
     public WriteResult write(TransactionWriteCommand cmd) {
         UUID transactionId = cmd.id() != null ? cmd.id() : UUID.randomUUID();
         Instant now = Instant.now();
-        TransactionType type = cmd.type();
+        TxnType type = cmd.type();
 
         Transaction entity = Transaction.builder()
                 .id(transactionId)
@@ -130,7 +130,7 @@ public class TransactionWriter {
 
         List<BudgetAffectedRes> affectedBudgets = isSpending(entity)
                 ? budgetSpendService.addExpense(
-                        entity.getUserId(), entity.getCategoryId(), entity.getDate(), entity.getAmount())
+                entity.getUserId(), entity.getCategoryId(), entity.getDate(), entity.getAmount())
                 : List.of();
 
         return new WriteResult(entity.getId(), walletNewBalance, affectedBudgets);
@@ -148,20 +148,20 @@ public class TransactionWriter {
 
     // INCOME cộng vào ví, EXPENSE và LOAN (cho vay) trừ khỏi ví
     private long walletDelta(Transaction entity) {
-        return entity.getType() == TransactionType.INCOME ? entity.getAmount() : -entity.getAmount();
+        return entity.getType() == TxnType.INCOME ? entity.getAmount() : -entity.getAmount();
     }
 
     // chỉ khoản chi (EXPENSE, LOAN) mới ăn vào ngân sách
     private boolean isSpending(Transaction entity) {
-        return entity.getType() == TransactionType.EXPENSE || entity.getType() == TransactionType.LOAN;
+        return entity.getType() == TxnType.EXPENSE || entity.getType() == TxnType.LOAN;
     }
 
     /**
      * Record mô tả kết quả sau khi ghi nhận giao dịch.
      *
-     * @param transactionId               ID giao dịch vừa ghi
-     * @param walletNewBalance            số dư mới của ví nguồn
-     * @param affectedBudgets             các ngân sách bị khoản chi ảnh hưởng, rỗng nếu không phải khoản chi
+     * @param transactionId    ID giao dịch vừa ghi
+     * @param walletNewBalance số dư mới của ví nguồn
+     * @param affectedBudgets  các ngân sách bị khoản chi ảnh hưởng, rỗng nếu không phải khoản chi
      */
     public record WriteResult(
             UUID transactionId,

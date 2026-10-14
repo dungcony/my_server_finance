@@ -5,7 +5,6 @@ import com.datn.financeapp.module.report.dto.request.ExportRequest;
 import com.datn.financeapp.module.report.export.CsvReportWriter.TransactionExportRow;
 import com.datn.financeapp.module.report.repository.ReportRepository;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.nio.file.Path;
@@ -59,7 +58,7 @@ public class ExportAsyncRunner {
                     reportRepository.eligibleTransactions(userId, range[0], range[1], null);
 
             Map<UUID, CategoryRefResponse> categoryCache = new HashMap<>();
-            Map<UUID, WalletRefResponse> walletCache = new HashMap<>();
+            Map<UUID, WalletSumaryRes> walletCache = new HashMap<>();
             List<TransactionExportRow> rows = transactions.stream()
                     .map(t -> toRow(t, categoryCache, walletCache))
                     .toList();
@@ -84,14 +83,14 @@ public class ExportAsyncRunner {
     private TransactionExportRow toRow(
             Transaction t,
             Map<UUID, CategoryRefResponse> categoryCache,
-            Map<UUID, WalletRefResponse> walletCache) {
+            Map<UUID, WalletSumaryRes> walletCache) {
         String categoryName = "";
         if (t.getCategoryId() != null) {
             CategoryRefResponse category =
                     categoryCache.computeIfAbsent(t.getCategoryId(), categoryService::findRefById);
             categoryName = category == null ? "" : category.name();
         }
-        WalletRefResponse wallet =
+        WalletSumaryRes wallet =
                 walletCache.computeIfAbsent(t.getWalletId(), walletService::findRefById);
         String walletName = wallet == null ? "" : wallet.name();
         return new TransactionExportRow(

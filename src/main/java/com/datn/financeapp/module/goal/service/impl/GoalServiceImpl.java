@@ -17,10 +17,9 @@ import com.datn.financeapp.module.goal.entity.SavingsGoal;
 import com.datn.financeapp.module.goal.mapper.GoalMapper;
 import com.datn.financeapp.module.goal.repository.GoalContributionRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
-import com.datn.financeapp.module.transaction.service.TxnService;
+import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 import com.datn.financeapp.module.transaction.helper.TransactionWriter;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.time.Instant;
@@ -59,7 +58,7 @@ public class GoalServiceImpl implements GoalService {
     private final WalletService walletService;
     private final CategoryService categoryService;
     private final TransactionWriter transactionWriter;
-    private final TxnService txnService;
+    private final TxnBehavierService txnBehavierService;
     private final GoalMapper goalMapper;
 
     // ---------------------------------------------------------------------
@@ -96,7 +95,7 @@ public class GoalServiceImpl implements GoalService {
             throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID, "Số tiền đã có sẵn không được âm.");
         }
 
-        WalletRefResponse wallet = null;
+        WalletSumaryRes wallet = null;
         if (req.walletId() != null) {
             wallet = walletService.findRefForUser(userId, req.walletId());
             if (wallet == null) {
@@ -169,7 +168,7 @@ public class GoalServiceImpl implements GoalService {
             if (req.sourceWalletId() == null) {
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Thiếu ví nguồn để chuyển tiền.");
             }
-            WalletRefResponse sourceWallet = walletService.findRefForUser(userId, req.sourceWalletId());
+            WalletSumaryRes sourceWallet = walletService.findRefForUser(userId, req.sourceWalletId());
             if (sourceWallet == null) {
                 throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví nguồn.");
             }
@@ -234,7 +233,7 @@ public class GoalServiceImpl implements GoalService {
      * GOAL-04, api/09 mục B4 — THỨ TỰ NGƯỢC với sổ nợ (D-46), có lý do schema rõ ràng:
      *
      * <ol>
-     *   <li>Hoàn tác + xoá mềm giao dịch kèm theo (nếu có) qua {@link TxnService#delete}
+     *   <li>Hoàn tác + xoá mềm giao dịch kèm theo (nếu có) qua {@link TxnBehavierService#delete}
      *   <li>Xoá bản ghi {@code goal_contributions}, trigger tự trừ lại {@code saved_amount} và tự
      *       MỞ LẠI {@code completed → in_progress}
      * </ol>
@@ -259,7 +258,7 @@ public class GoalServiceImpl implements GoalService {
 
         // Bước 1 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
         if (contribution.getTransactionId() != null) {
-            txnService.delete(userId, contribution.getTransactionId());
+            txnBehavierService.delete(userId, contribution.getTransactionId());
         }
 
         // Bước 2 — flush ngay để trigger chạy và tính lại tiến độ trong cùng transaction.
@@ -331,7 +330,7 @@ public class GoalServiceImpl implements GoalService {
 
         if (revertTransactions) {
             for (UUID transactionId : transactionIds) {
-                txnService.delete(userId, transactionId);
+                txnBehavierService.delete(userId, transactionId);
             }
         }
     }
@@ -373,7 +372,7 @@ public class GoalServiceImpl implements GoalService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
     }
 
-    private WalletRefResponse loadWalletOrNull(UUID userId, UUID walletId) {
+    private WalletSumaryRes loadWalletOrNull(UUID userId, UUID walletId) {
         return walletService.findRefForUser(userId, walletId);
     }
 
@@ -383,7 +382,7 @@ public class GoalServiceImpl implements GoalService {
      * <p>{@code savedAmount} LUÔN đọc lại từ CSDL bằng query scalar thay vì lấy từ entity: entity
      * có thể là instance cũ trong Hibernate identity map từ trước lúc trigger chạy.
      */
-    private GoalListItemResponse toListItem(SavingsGoal goal, WalletRefResponse wallet) {
+    private GoalListItemResponse toListItem(SavingsGoal goal, WalletSumaryRes wallet) {
         long savedAmount = savingsGoalRepository
                 .findSavedAmountNative(goal.getId())
                 .orElse(0L);

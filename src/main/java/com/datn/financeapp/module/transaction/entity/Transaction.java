@@ -1,8 +1,8 @@
 package com.datn.financeapp.module.transaction.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,7 +11,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -46,7 +45,7 @@ public class Transaction extends AssignedIdEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private TransactionType type;
+    private TxnType type;
 
     @Column(name = "amount", nullable = false)
     private Long amount;
@@ -63,7 +62,7 @@ public class Transaction extends AssignedIdEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false)
-    private TransactionSource source;
+    private TxnSource source;
 
     @Column(name = "recurring_id")
     private UUID recurringId;

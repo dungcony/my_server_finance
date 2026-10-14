@@ -6,7 +6,6 @@ import com.datn.financeapp.module.goal.dto.response.GoalDetailResponse;
 import com.datn.financeapp.module.goal.dto.response.GoalListItemResponse;
 import com.datn.financeapp.module.goal.entity.GoalContribution;
 import com.datn.financeapp.module.goal.entity.SavingsGoal;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
 
 import java.math.BigDecimal;
@@ -20,7 +19,7 @@ public interface GoalMapper {
 
     default GoalListItemResponse toListItem(
             SavingsGoal goal,
-            WalletRefResponse wallet,
+            WalletSumaryRes wallet,
             long savedAmount,
             String status,
             IconRefResponse iconRef,

@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.transaction.helper;
 
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -27,12 +27,12 @@ public record TransactionWriteCommand(
         UUID userId,
         UUID walletId,
         UUID categoryId,
-        TransactionType type,
+        TxnType type,
         long amount,
         LocalDate date,
         String note,
         String name,
-        TransactionSource source,
+        TxnSource source,
         UUID recurringId,
         String receiptUrl) {
 }

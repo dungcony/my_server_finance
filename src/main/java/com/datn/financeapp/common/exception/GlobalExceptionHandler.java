@@ -1,18 +1,22 @@
 package com.datn.financeapp.common.exception;
 
 import com.datn.financeapp.common.logging.RequestLoggingFilter;
+import com.datn.financeapp.common.properties.TriggerProperty;
+import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.response.ErrorResponse;
 import com.datn.financeapp.common.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -155,12 +159,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
-    /**
-     * Client ngắt kết nối khi đang stream SSE (F5, đóng tab, broken pipe) hoặc timeout bất đồng bộ.
-     * Theo tài liệu docs/sse_exception_handling_spring_boot_3_security_6.md mục 6 & 11:
-     * Đây là hành vi bình thường của HTTP client, không phải lỗi máy chủ nên xử lý riêng ở mức DEBUG,
-     * dọn dẹp và không trả response body.
-     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        Throwable rootCause = ex.getRootCause();
+        ErrorCode errorCode = ErrorCode.INTERNAL_ERROR;
+
+        if (rootCause != null && rootCause.getMessage() != null) {
+            String msg = rootCause.getMessage();
+            for (Map.Entry<String, ErrorCode> entry : TriggerProperty.CONSTRAINT_MAP.entrySet()) {
+                if (msg.contains(entry.getKey())) {
+                    errorCode = entry.getValue();
+                    break;
+                }
+            }
+        }
+
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, errorCode.getCode() + ": " + ex.getMessage());
+
+        log.debug("Lỗi ràng buộc dữ liệu tại {} {}: [{}]", request.getMethod(), request.getRequestURI(), errorCode.getCode());
+
+        var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(errorCode.getCode(), errorCode.getDefaultMessage()));
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(body);
+    }
+
     @ExceptionHandler({
             ClientAbortException.class,
             AsyncRequestTimeoutException.class,
@@ -198,11 +219,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
-    /**
-     * Đổi tên trường Java (camelCase) sang tên trường API (snake_case) — api/00-QUY-UOC-CHUNG.md
-     * mục 4.4 dùng {@code category_id}, không phải {@code categoryId}. Client so khớp theo tên
-     * trường API để tô đỏ đúng ô nhập, nên trả camelCase là sai hợp đồng.
-     */
     private static String toSnakeCase(String field) {
         if (field == null) {
             return null;

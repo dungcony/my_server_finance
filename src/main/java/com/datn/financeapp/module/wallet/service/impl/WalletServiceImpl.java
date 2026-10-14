@@ -1,25 +1,15 @@
 package com.datn.financeapp.module.wallet.service.impl;
 
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
 import com.datn.financeapp.module.icon.service.IconService;
-import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.wallet.dto.request.CreateWalletRequest;
-import com.datn.financeapp.module.wallet.dto.request.UpdateWalletRequest;
-import com.datn.financeapp.module.wallet.dto.response.WalletDetailResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletRawBalanceResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletStatsResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletSummaryResponse;
+import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.entity.Wallet;
 import com.datn.financeapp.module.wallet.mapper.WalletMapper;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Set;
@@ -37,10 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class WalletServiceImpl implements WalletService {
-
-    // Tên ví cấp sẵn cho mọi tài khoản mới. Hiện ra trước mắt người dùng nên để tiếng Việt.
-    private static final String DEFAULT_WALLET_NAME = "Tiền mặt";
-
     private final WalletRepository walletRepository;
     private final WalletMapper walletMapper;
 
@@ -48,38 +34,22 @@ public class WalletServiceImpl implements WalletService {
 
 
     @Override
-    @Transactional
-    public void createDefaultCashWallet(UUID userId, Instant createdAt) {
-
-        IconResponse iconResponse = iconService.findDefaultWallet();
-
-        Wallet cashWallet = Wallet.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .name(DEFAULT_WALLET_NAME)
-                .type(WalletType.CASH)
-                .iconId(iconResponse.id())
-                .balance(0L)
-                .isDefault(true)
-                .isDeleted(false)
-                .build();
-
-        walletRepository.save(cashWallet);
-    }
-
-
-    @Override
     @Transactional(readOnly = true)
-    public UUID findDefaultWalletId(UUID userId) {
-        return walletRepository
-                .findDefaultWalletId(userId)
+    public WalletRes findDefaultWallet(UUID userId) {
+        return walletRepository.findByUserIdAndIsDefaultTrue(userId)
+                .map(w -> walletMapper.toResponse(w, ""))
                 .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_FOUND));
     }
 
+    @Override
+    public boolean myWallet(UUID userId, UUID walletId) {
+        return walletRepository.findByUserIdAndIsDefaultTrue(userId).isPresent();
+    }
+
 
     @Override
     @Transactional(readOnly = true)
-    public WalletRefResponse findRefForUser(UUID userId, UUID walletId) {
+    public WalletSumaryRes findRefForUser(UUID userId, UUID walletId) {
         if (walletId == null) {
             return null;
         }
@@ -102,10 +72,10 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<UUID, WalletRefResponse> findRefsForUser(Collection<UUID> walletIds, UUID userId) {
-        Map<UUID, WalletRefResponse> byId = new HashMap<>();
+    public Map<UUID, WalletSumaryRes> findRefsForUser(Collection<UUID> walletIds, UUID userId) {
+        Map<UUID, WalletSumaryRes> byId = new HashMap<>();
         for (UUID id : walletIds.stream().filter(Objects::nonNull).distinct().toList()) {
-            WalletRefResponse ref = findRefForUser(userId, id);
+            WalletSumaryRes ref = findRefForUser(userId, id);
             if (ref != null) {
                 byId.put(id, ref);
             }
@@ -156,7 +126,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional(readOnly = true)
-    public WalletRefResponse findRefById(UUID walletId) {
+    public WalletSumaryRes findRefById(UUID walletId) {
         if (walletId == null) {
             return null;
         }
@@ -171,85 +141,6 @@ public class WalletServiceImpl implements WalletService {
     @Transactional(readOnly = true)
     public long countActiveWallets(UUID userId) {
         return walletRepository.countByUserIdAndIsDeletedFalse(userId);
-    }
-
-
-    @Override
-    @Transactional
-    public WalletResponse update(UUID userId, UUID walletId, UpdateWalletRequest req) {
-        Map<String, Object> extra = req.extraFields();
-        if (extra.containsKey("current_balance") || extra.containsKey("currentBalance")
-                || extra.containsKey("type")) {
-            throw new BusinessException(ErrorCode.WALLET_BALANCE_NOT_EDITABLE);
-        }
-
-        Wallet wallet = walletRepository
-                .findByIdForUser(walletId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
-
-        if (req.name() != null) {
-            if (!req.name().equalsIgnoreCase(wallet.getName())
-                    && walletRepository.existsByUserIdAndNameIgnoreCaseAndIsDeletedFalse(userId, req.name())) {
-                throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
-            }
-            wallet.setName(req.name());
-        }
-        if (req.includeInTotal() != null) {
-            wallet.setIncludeInTotal(req.includeInTotal());
-        }
-        if (req.isDefault() != null) {
-            applyDefaultChange(userId, wallet, req.isDefault());
-        }
-        if (req.icon() != null) {
-            wallet.setIcon(req.icon());
-        }
-        if (req.color() != null) {
-            wallet.setColor(req.color());
-        }
-        walletRepository.save(wallet);
-
-        return toResponse(wallet);
-    }
-
-
-    @Override
-    @Transactional
-    public void delete(UUID userId, UUID walletId, boolean deleteTransactions) {
-        Wallet wallet = walletRepository
-                .findByIdForUserIncludingDeleted(walletId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví."));
-
-        if (Boolean.TRUE.equals(wallet.getIsDeleted())) {
-            // Đã xoá mềm từ trước — idempotent, không làm gì thêm, không ném lỗi.
-            return;
-        }
-
-        // trigger ở CSDL cũng chặn, nhưng chỉ báo lỗi lúc commit nên kiểm tra trước để trả lỗi nghiệp vụ
-        if (Boolean.TRUE.equals(wallet.getIsDefault())) {
-            throw new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_DELETABLE);
-        }
-
-        if (walletRepository.countByUserIdAndIsDeletedFalse(userId) <= 1) {
-            throw new BusinessException(ErrorCode.WALLET_LAST_NOT_DELETABLE);
-        }
-
-        Long transactionCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE wallet_id = ? AND NOT is_deleted",
-                Long.class, walletId);
-        boolean hasTransactions = transactionCount != null && transactionCount > 0;
-
-        if (hasTransactions && !deleteTransactions) {
-            throw new BusinessException(ErrorCode.WALLET_HAS_TRANSACTIONS);
-        }
-
-        if (hasTransactions) {
-            jdbcTemplate.update(
-                    "UPDATE transactions SET is_deleted = TRUE WHERE wallet_id = ?",
-                    walletId);
-        }
-
-        wallet.setIsDeleted(true);
-        walletRepository.save(wallet);
     }
 
     // đặt ví này làm mặc định thì bỏ cờ của ví cũ trước; bỏ cờ mặc định trực tiếp không được phép
@@ -287,7 +178,7 @@ public class WalletServiceImpl implements WalletService {
                 lastTransactionDate);
     }
 
-    private WalletResponse toResponse(Wallet wallet) {
+    private WalletRes toResponse(Wallet wallet) {
         // D-37/TXN-09: cùng logic trừ ngược như detail() — currentBalance API luôn là tiền thật
         // đến hết hôm nay, projectedBalance chỉ khác NULL khi ví có giao dịch tương lai.
         long currentBalanceAsOfToday = walletRepository

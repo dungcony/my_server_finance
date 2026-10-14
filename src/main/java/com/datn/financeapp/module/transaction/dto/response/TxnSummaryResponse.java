@@ -1,6 +1,6 @@
 package com.datn.financeapp.module.transaction.dto.response;
 
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -19,7 +19,7 @@ import java.util.UUID;
  */
 public record TxnSummaryResponse(
         UUID id,
-        TransactionType type,
+        TxnType type,
         Long amount,
         LocalDate date,
         String name,

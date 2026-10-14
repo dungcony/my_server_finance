@@ -19,10 +19,9 @@ import com.datn.financeapp.module.debt.entity.DebtPayment;
 import com.datn.financeapp.module.debt.mapper.DebtMapper;
 import com.datn.financeapp.module.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.module.debt.repository.DebtRepository;
-import com.datn.financeapp.module.transaction.service.TxnService;
+import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
 import com.datn.financeapp.module.transaction.helper.TransactionWriter;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.time.Instant;
@@ -72,7 +71,7 @@ public class DebtServiceImpl implements DebtService {
     private final CategoryService categoryService;
     private final WalletService walletService;
     private final TransactionWriter transactionWriter;
-    private final TxnService txnService;
+    private final TxnBehavierService txnBehavierService;
     private final DebtReminderWorker debtReminderWorker;
     private final DebtMapper debtMapper;
 
@@ -99,7 +98,7 @@ public class DebtServiceImpl implements DebtService {
             throw new BusinessException(ErrorCode.DEBT_DUE_DATE_INVALID);
         }
 
-        WalletRefResponse wallet = walletService.findRefForUser(userId, req.walletId());
+        WalletSumaryRes wallet = walletService.findRefForUser(userId, req.walletId());
         if (wallet == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
         }
@@ -182,7 +181,7 @@ public class DebtServiceImpl implements DebtService {
         }
 
         UUID walletId = req.walletId() != null ? req.walletId() : debt.getWalletId();
-        WalletRefResponse wallet = walletService.findRefForUser(userId, walletId);
+        WalletSumaryRes wallet = walletService.findRefForUser(userId, walletId);
         if (wallet == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
         }
@@ -247,7 +246,7 @@ public class DebtServiceImpl implements DebtService {
      *
      * <ol>
      *   <li>Xoá bản ghi trả nợ, trigger tự trừ lại paid_amount và tự MỞ LẠI settled -&gt; outstanding
-     *   <li>Xoá mềm giao dịch qua {@link TxnService#delete} để hoàn tác số dư ví đúng luồng
+     *   <li>Xoá mềm giao dịch qua {@link TxnBehavierService#delete} để hoàn tác số dư ví đúng luồng
      *       3 bước
      * </ol>
      *
@@ -270,7 +269,7 @@ public class DebtServiceImpl implements DebtService {
         debtPaymentRepository.flush();
 
         // Bước 2 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
-        txnService.delete(userId, transactionId);
+        txnBehavierService.delete(userId, transactionId);
     }
 
     /**
@@ -345,9 +344,9 @@ public class DebtServiceImpl implements DebtService {
         debtRepository.flush();
 
         for (UUID transactionId : paymentTransactionIds) {
-            txnService.delete(userId, transactionId);
+            txnBehavierService.delete(userId, transactionId);
         }
-        txnService.delete(userId, originTransactionId);
+        txnBehavierService.delete(userId, originTransactionId);
     }
 
     // ---------------------------------------------------------------------
@@ -358,7 +357,7 @@ public class DebtServiceImpl implements DebtService {
     @Transactional(readOnly = true)
     public List<DebtListItemResponse> list(UUID userId, String type, String status, Boolean isOverdue) {
         List<Debt> debts = debtRepository.findAllForUser(userId, type, status);
-        Map<UUID, WalletRefResponse> wallets = loadWallets(userId, debts);
+        Map<UUID, WalletSumaryRes> wallets = loadWallets(userId, debts);
 
         List<DebtListItemResponse> result = new ArrayList<>();
         for (Debt debt : debts) {
@@ -381,7 +380,7 @@ public class DebtServiceImpl implements DebtService {
                 .map(debtMapper::toHistoryItem)
                 .toList();
 
-        TransactionRefResponse originRef = txnService.findRefById(debt.getOriginTransactionId());
+        TransactionRefResponse originRef = txnBehavierService.findRefById(debt.getOriginTransactionId());
 
         return debtMapper.toDetailResponse(
                 debtMapper.toListItem(debt, loadWalletOrNull(userId, debt.getWalletId()), payments.size()),
@@ -493,18 +492,18 @@ public class DebtServiceImpl implements DebtService {
         return categoryService.findSystemCategoryId(name, type);
     }
 
-    private WalletRefResponse loadWalletOrNull(UUID userId, UUID walletId) {
+    private WalletSumaryRes loadWalletOrNull(UUID userId, UUID walletId) {
         return walletService.findRefForUser(userId, walletId);
     }
 
-    private Map<UUID, WalletRefResponse> loadWallets(UUID userId, List<Debt> debts) {
-        Map<UUID, WalletRefResponse> wallets = new HashMap<>();
+    private Map<UUID, WalletSumaryRes> loadWallets(UUID userId, List<Debt> debts) {
+        Map<UUID, WalletSumaryRes> wallets = new HashMap<>();
         debts.stream()
                 .map(d -> d.getWalletId())
                 .filter(Objects::nonNull)
                 .distinct()
                 .forEach(id -> {
-                    WalletRefResponse ref = walletService.findRefForUser(userId, id);
+                    WalletSumaryRes ref = walletService.findRefForUser(userId, id);
                     if (ref != null) {
                         wallets.put(id, ref);
                     }

@@ -1,6 +1,6 @@
 package com.datn.financeapp.module.transaction.dto.request;
 
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -13,7 +13,7 @@ import java.util.UUID;
  * {@code walletId} bắt buộc giống {@link CreateTransactionRequest}.
  */
 public record UpdateTransactionRequest(
-        @NotNull TransactionType type,
+        @NotNull TxnType type,
         @NotNull Long amount,
         @NotNull UUID walletId,
         UUID categoryId,

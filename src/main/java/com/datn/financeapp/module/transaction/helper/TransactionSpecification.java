@@ -4,8 +4,8 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.transaction.dto.request.TransactionFilterRequest;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.transaction.enums.TransactionSource;
-import com.datn.financeapp.module.transaction.enums.TransactionType;
+import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -67,12 +67,12 @@ public class TransactionSpecification {
 
             // điều kiện lọc theo loại giao dịch
             if (hasText(filter.type())) {
-                predicates.add(cb.equal(root.get("type"), toEnum(TransactionType.class, filter.type(), "type")));
+                predicates.add(cb.equal(root.get("type"), toEnum(TxnType.class, filter.type(), "type")));
             }
 
             // điều kiện lọc theo nguồn giao dịch
             if (hasText(filter.source())) {
-                predicates.add(cb.equal(root.get("source"), toEnum(TransactionSource.class, filter.source(), "source")));
+                predicates.add(cb.equal(root.get("source"), toEnum(TxnSource.class, filter.source(), "source")));
             }
 
             // điều kiện lọc theo ví

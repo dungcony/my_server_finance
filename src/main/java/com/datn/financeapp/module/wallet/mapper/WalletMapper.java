@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.wallet.mapper;
 
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
-import com.datn.financeapp.module.wallet.dto.response.WalletResponse;
+import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
+import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.entity.Wallet;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -9,19 +9,8 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface WalletMapper {
 
-    WalletRefResponse toRef(Wallet wallet);
-
-    @Mapping(target = "id", source = "wallet.id")
-    @Mapping(target = "name", source = "wallet.name")
-    @Mapping(target = "type", source = "wallet.type")
-    @Mapping(target = "currentBalance", source = "currentBalanceAsOfToday")
-    @Mapping(target = "includeInTotal", source = "wallet.includeInTotal")
-    @Mapping(target = "isDefault", source = "wallet.isDefault")
-    @Mapping(target = "isShared", constant = "false")
-    @Mapping(target = "groupId", expression = "java(null)")
-    @Mapping(target = "icon", source = "wallet.icon")
-    @Mapping(target = "color", source = "wallet.color")
-    @Mapping(target = "createdAt", source = "wallet.createdAt")
-    @Mapping(target = "projectedBalance", source = "projectedBalance")
-    WalletResponse toResponse(Wallet wallet, long currentBalanceAsOfToday, Long projectedBalance);
+    @Mapping(target = "icon", source = "icon")
+    WalletRes toResponse(Wallet wallet, String icon);
+    
+    Wallet toEntity(WalletCreateReq wallet);
 }

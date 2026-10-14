@@ -2,6 +2,14 @@
 -- V4 — Dữ liệu khởi tạo hệ thống (Master Seed Data)
 -- =============================================================
 
+INSERT INTO categories (code, name, icon_id, color, level, path)
+SELECT v.code, v.name, i.id, v.color, 0, v.code
+FROM (VALUES
+    ('gop_quy_nhom',        'Góp quỹ nhóm',           'gia_dinh', '#2f8272'),
+    ('nhan_hoan_tien_nhom', 'Nhận hoàn tiền từ nhóm', 'vi_tien',  '#4a7f6b')
+) AS v(code, name, icon_code, color)
+JOIN icons i ON i.code = v.icon_code;
+
 -- =============================================================
 -- KHO BIỂU TƯỢNG HỆ THỐNG (ICONS)
 -- =============================================================

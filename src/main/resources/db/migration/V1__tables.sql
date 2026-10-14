@@ -161,6 +161,7 @@ CREATE TABLE icons (
     search_keywords TEXT,
     sort_order      INTEGER      NOT NULL DEFAULT 0,
     is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
+    is_default boolean not null default false,
 
     CONSTRAINT uq_icons_code  UNIQUE (code),
     CONSTRAINT ck_icons_group CHECK (icon_group IN (
@@ -169,6 +170,7 @@ CREATE TABLE icons (
     ))
 );
 
+COMMENT ON COLUMN wallets.is_default IS 'Ví mặc định của người dùng, nhận các khoản tự ghi từ giao dịch nhóm. Mỗi người dùng luôn có đúng một ví mặc định chưa xoá';
 COMMENT ON COLUMN icons.path_data IS 'Đường vẽ SVG biểu tượng';
 
 -- Bảng categories — Cây danh mục nhiều cấp, chỉ admin quản lý, dùng chung cho mọi người dùng
@@ -388,16 +390,17 @@ CREATE TABLE notifications (
     type         VARCHAR(50)  NOT NULL,
     title        VARCHAR(150) NOT NULL,
     content      TEXT         NOT NULL,
+    data         jsonb,
     reference_id UUID,
     is_read      BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT ck_notif_type CHECK (type IN (
-        'budget_alert', 'debt_reminder', 'recurring_generated',
-        'budget_renewed', 'goal_completed'
-    ))
 );
+
+COMMENT ON COLUMN notifications.type IS 'Loại thông báo (tên hằng NotiType), app dựa vào đây để chọn icon và màn hình đích';
+COMMENT ON COLUMN notifications.reference_id IS 'Id đối tượng chính thông báo nhắc tới (ngân sách, khoản nợ, giao dịch nhóm...), tuỳ type; không có khoá ngoại';
+COMMENT ON COLUMN notifications.data IS 'Dữ liệu phụ để app điều hướng, json phẳng, null nếu không cần; không chứa trạng thái. VD thông báo giao dịch nhóm: {"action": "...", "group_id": "..."}';
 
 -- Bảng export_jobs — Tác vụ xuất báo cáo bất đồng bộ
 CREATE TABLE export_jobs (

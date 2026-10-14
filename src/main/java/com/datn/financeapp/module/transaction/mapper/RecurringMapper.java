@@ -3,7 +3,6 @@ package com.datn.financeapp.module.transaction.mapper;
 import com.datn.financeapp.module.category.dto.response.CategoryResponse;
 import com.datn.financeapp.module.transaction.dto.response.*;
 import com.datn.financeapp.module.transaction.entity.RecurringTransaction;
-import com.datn.financeapp.module.wallet.dto.response.WalletRefResponse;
 import org.mapstruct.Mapper;
 
 import java.time.LocalDate;
@@ -13,7 +12,7 @@ import java.util.UUID;
 
 /**
  * Mapper chuyển đổi giữa entity {@link RecurringTransaction} và các DTO response liên quan.
- * Cung cấp các phương thức ánh xạ chính như {@link #toListItemResponse(RecurringTransaction, WalletRefResponse, CategoryResponse, long)}
+ * Cung cấp các phương thức ánh xạ chính như {@link #toListItemResponse(RecurringTransaction, WalletSumaryRes, CategoryResponse, long)}
  * và {@link #toDetailResponse(RecurringListItemResponse, List)}.
  */
 @Mapper(componentModel = "spring")
@@ -30,7 +29,7 @@ public interface RecurringMapper {
      */
     default RecurringListItemResponse toListItemResponse(
             RecurringTransaction rec,
-            WalletRefResponse wallet,
+            WalletSumaryRes wallet,
             CategoryResponse category,
             long runCount) {
         if (rec == null) {

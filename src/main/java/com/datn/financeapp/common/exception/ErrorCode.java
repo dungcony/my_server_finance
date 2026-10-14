@@ -134,11 +134,8 @@ public enum ErrorCode {
     // Trùng tên ví trong cùng một chủ sở hữu.
     WALLET_NAME_EXISTS(HttpStatus.CONFLICT, "Đã có ví cùng tên."),
 
-    // Xoá ví cuối cùng — người dùng phải luôn còn ít nhất một ví.
-    WALLET_LAST_NOT_DELETABLE(HttpStatus.CONFLICT, "Phải còn ít nhất một ví."),
-
     // Xoá ví đang là ví mặc định — phải đặt ví khác làm mặc định trước.
-    WALLET_DEFAULT_NOT_DELETABLE(HttpStatus.CONFLICT, "Không xoá được ví mặc định, hãy chọn ví khác làm mặc định trước."),
+    WALLET_DEFAULT_NOT_DELETABLE(HttpStatus.CONFLICT, "Không thế xóa ví mặc định."),
 
     // Bỏ cờ mặc định của ví mặc định — chỉ đổi được bằng cách đặt ví khác làm mặc định.
     WALLET_DEFAULT_REQUIRED(HttpStatus.BAD_REQUEST, "Phải có một ví mặc định, hãy chọn ví khác làm mặc định."),
