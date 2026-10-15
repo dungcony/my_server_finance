@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,7 +19,7 @@ import org.springframework.data.repository.query.Param;
  * chiếu {@code db/migration/V2__giao_dich.sql} xác nhận bảng {@code transactions} không có cột
  * {@code group_id} (giống {@code CategoryRepository}, khác {@code WalletRepository}).
  */
-public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
 
     // Quyền D-27: transaction chỉ thuộc về đúng một user, không có nhánh nhóm.
     Optional<Transaction> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);

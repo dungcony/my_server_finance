@@ -4,7 +4,7 @@ import com.datn.financeapp.module.budget.entity.Budget;
 import com.datn.financeapp.module.budget.helper.BudgetSpentCalculator;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.budget.service.BudgetRenewalService;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.service.NotificationService;
@@ -91,7 +91,7 @@ public class BudgetRenewalImpl implements BudgetRenewalService {
     }
 
     private String categoryNameOf(UUID categoryId) {
-        CategoryResponse category = categoryService.findAllByIds(Set.of(categoryId)).get(categoryId);
+        CategoryRes category = categoryService.findAllByIds(Set.of(categoryId)).get(categoryId);
         return category != null ? category.name() : UNKNOWN_CATEGORY_NAME;
     }
 }

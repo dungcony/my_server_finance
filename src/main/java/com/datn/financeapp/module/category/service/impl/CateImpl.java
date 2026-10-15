@@ -2,7 +2,8 @@ package com.datn.financeapp.module.category.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.entity.Category;
 import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
@@ -38,7 +39,7 @@ public class CateImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public CategoryResponse findActiveById(UUID id) {
+    public CategoryRes findActiveById(UUID id) {
         Category category = categoryRepository
                 .findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
@@ -48,7 +49,7 @@ public class CateImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public CategoryResponse findIfIsleaf(UUID id) {
+    public CateSumaryRes findIfIsleaf(UUID id) {
         // lấy entity trực tiếp từ repository
         Category category = categoryRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
@@ -57,7 +58,7 @@ public class CateImpl implements CategoryService {
             throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_LEAF);
         }
         IconResponse icon = iconService.findActiveById(category.getIconId());
-        return cateMapper.toResponse(category, icon);
+        return cateMapper.toSumary(category, icon);
     }
 
     @Override
@@ -78,7 +79,7 @@ public class CateImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Map<UUID, CategoryResponse> findAllByIds(Collection<UUID> ids) {
+    public Map<UUID, CategoryRes> findAllByIds(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) {
             return Map.of();
         }

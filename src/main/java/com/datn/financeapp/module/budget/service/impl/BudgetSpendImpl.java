@@ -6,7 +6,7 @@ import com.datn.financeapp.module.budget.helper.BudgetProgress;
 import com.datn.financeapp.module.budget.helper.BudgetSpent;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.budget.service.BudgetSpendService;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.notification.service.NotificationService;
 
@@ -43,7 +43,7 @@ public class BudgetSpendImpl implements BudgetSpendService {
             return List.of();
         }
 
-        Map<UUID, CategoryResponse> categories = categoryService.findAllByIds(
+        Map<UUID, CategoryRes> categories = categoryService.findAllByIds(
                 updated.stream().map(BudgetSpent::categoryId).collect(Collectors.toSet()));
         LocalDate today = LocalDate.now();
 
@@ -80,7 +80,7 @@ public class BudgetSpendImpl implements BudgetSpendService {
         return budgetRepository.findSpentByIds(budgetIds);
     }
 
-    private BudgetAffectedRes toAffected(UUID userId, BudgetSpent budget, CategoryResponse category, LocalDate today) {
+    private BudgetAffectedRes toAffected(UUID userId, BudgetSpent budget, CategoryRes category, LocalDate today) {
         BudgetProgress progress = BudgetProgress.of(budget.limitAmount(), budget.spent(), budget.endDate(), today);
         boolean needsAttention = progress.status().needsAttention();
 

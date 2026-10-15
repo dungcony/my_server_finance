@@ -19,7 +19,7 @@ import com.datn.financeapp.module.budget.enums.PeriodType;
 import com.datn.financeapp.module.budget.helper.BudgetSpentCalculator;
 import com.datn.financeapp.module.budget.mapper.BudgetMapper;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 
 import java.time.Instant;
@@ -95,7 +95,7 @@ class BudgetImplTest {
                 .thenReturn(true);
 
         assertThatThrownBy(() -> budgetService.create(
-                        USER_ID, new CreateBudgetRequest(FOOD_ID, LIMIT, PeriodType.MONTH, null, null)))
+                USER_ID, new CreateBudgetRequest(FOOD_ID, LIMIT, PeriodType.MONTH, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
                 .isEqualTo(ErrorCode.BUDGET_ALREADY_EXISTS.getCode());
@@ -121,7 +121,7 @@ class BudgetImplTest {
         when(budgetRepository.findByIdAndUserId(BUDGET_ID, USER_ID)).thenReturn(Optional.of(budget(0L)));
 
         assertThatThrownBy(() -> budgetService.update(
-                        USER_ID, BUDGET_ID, new UpdateBudgetRequest(null, null, null, COFFEE_ID, null)))
+                USER_ID, BUDGET_ID, new UpdateBudgetRequest(null, null, null, COFFEE_ID, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
                 .isEqualTo(ErrorCode.BUDGET_CATEGORY_NOT_EDITABLE.getCode());
@@ -133,7 +133,7 @@ class BudgetImplTest {
         when(budgetRepository.findByIdAndUserId(BUDGET_ID, USER_ID)).thenReturn(Optional.of(budget(0L)));
 
         assertThatThrownBy(() -> budgetService.update(
-                        USER_ID, BUDGET_ID, new UpdateBudgetRequest(null, null, null, null, PeriodType.YEAR)))
+                USER_ID, BUDGET_ID, new UpdateBudgetRequest(null, null, null, null, PeriodType.YEAR)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
                 .isEqualTo(ErrorCode.BUDGET_CATEGORY_NOT_EDITABLE.getCode());
@@ -162,11 +162,11 @@ class BudgetImplTest {
         budget.setIsActive(false);
         when(budgetRepository.findByIdAndUserId(BUDGET_ID, USER_ID)).thenReturn(Optional.of(budget));
         when(budgetRepository.existsOverlapExceptId(
-                        USER_ID, FOOD_ID, budget.getStartDate(), budget.getEndDate(), BUDGET_ID))
+                USER_ID, FOOD_ID, budget.getStartDate(), budget.getEndDate(), BUDGET_ID))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> budgetService.update(
-                        USER_ID, BUDGET_ID, new UpdateBudgetRequest(null, null, true, null, null)))
+                USER_ID, BUDGET_ID, new UpdateBudgetRequest(null, null, true, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("code")
                 .isEqualTo(ErrorCode.BUDGET_ALREADY_EXISTS.getCode());
@@ -212,8 +212,8 @@ class BudgetImplTest {
                 .build();
     }
 
-    private static CategoryResponse category(UUID id, String name) {
-        return new CategoryResponse(id, name, name.toUpperCase(), null, null, null, "#112233", 0, true,
+    private static CategoryRes category(UUID id, String name) {
+        return new CategoryRes(id, name, name.toUpperCase(), null, null, null, "#112233", 0, true,
                 Instant.now(), false);
     }
 }

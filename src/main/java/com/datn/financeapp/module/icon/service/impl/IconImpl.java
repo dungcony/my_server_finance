@@ -49,9 +49,10 @@ public class IconImpl implements IconService {
     @Override
     @Transactional(readOnly = true)
     public IconResponse findActiveById(UUID id) {
-        if (id == null) {
-            return null;
-        }
+
+        if (id == null)
+            return new IconResponse();
+
         return iconRepository
                 .findByIdAndIsActiveTrue(id)
                 .map(iconMapper::toIconResponse)

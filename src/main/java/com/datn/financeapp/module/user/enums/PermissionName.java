@@ -32,11 +32,17 @@ public enum PermissionName {
     ROLE_PERMISSION_READ(Resource.ROLE_PERMISSION, Action.READ, "Xem quyền hạn đã gán cho vai trò"),
     ROLE_PERMISSION_UPDATE(Resource.ROLE_PERMISSION, Action.UPDATE, "Gán quyền hạn cho vai trò"),
     ROLE_PERMISSION_DELETE(Resource.ROLE_PERMISSION, Action.DELETE, "Thu hồi quyền hạn đã gán của vai trò"),
-    CATEGORIES_MANAGE(Resource.CATEGORIES, Action.MANAGE, "Quản lý danh mục và biểu tượng mặc định hệ thống"),
-    SYSTEM_VIEW_STATS(Resource.SYSTEM, Action.VIEW_STATS, "Xem báo cáo thống kê toàn hệ thống"),
+    CATEGORIES_UPDATE(Resource.CATEGORIES, Action.UPDATE, "Tạo và cập nhật danh mục và biểu tượng mặc định hệ thống"),
+    CATEGORIES_DELETE(Resource.CATEGORIES, Action.DELETE, "Xóa danh mục và biểu tượng mặc định hệ thống"),
     GROUP_READ(Resource.GROUP, Action.READ, "xem toàn bộ group"),
     ICONS_UPDATE(Resource.ICONS, Action.UPDATE, "Tạo và cập nhật biểu tượng hệ thống"),
-    ICONS_DELETE(Resource.ICONS, Action.DELETE, "Xoá biểu tượng hệ thống");
+    ICONS_DELETE(Resource.ICONS, Action.DELETE, "Xoá biểu tượng hệ thống"),
+    RECURRING_TXN_READ(Resource.RECURRING_TXN, Action.READ, ""),
+    RECURRING_TXN_DELETE(Resource.RECURRING_TXN, Action.DELETE, ""),
+    WALLET_READ(Resource.WALLET, Action.READ, ""),
+    WALLET_DELETE(Resource.WALLET, Action.DELETE, ""),
+    WALLET_UPDATE(Resource.WALLET, Action.UPDATE, ""),
+    ;
 
     private final Resource resource;
     private final Action action;
@@ -78,7 +84,10 @@ public enum PermissionName {
         CATEGORIES("categories"),
         SYSTEM("system"),
         GROUP("group"),
-        ICONS("icons");
+        ICONS("icons"),
+        RECURRING_TXN("recurring_txn"),
+        WALLET("wallet"),
+        ;
 
         private final String key;
 
@@ -92,8 +101,7 @@ public enum PermissionName {
         READ("read"),
         UPDATE("update"),
         DELETE("delete"),
-        MANAGE("manage"),
-        VIEW_STATS("view_stats");
+        ;
 
         private final String key;
 

@@ -16,7 +16,10 @@ import java.util.UUID;
  * @param note              Ghi chú đóng góp
  */
 public record CreateContributionRequest(
-        @NotNull @Positive Long amount,
+        @NotNull(message = "Số tiền không được để trống.")
+        @Positive(message = "Số tiền phải lớn hơn 0.")
+        Long amount,
+
         LocalDate contributedDate,
         UUID sourceWalletId,
         Boolean createTransaction,

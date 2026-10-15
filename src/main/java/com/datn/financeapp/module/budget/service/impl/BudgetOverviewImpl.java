@@ -8,7 +8,7 @@ import com.datn.financeapp.module.budget.helper.BudgetAlertText;
 import com.datn.financeapp.module.budget.helper.BudgetProgress;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.budget.service.BudgetOverviewService;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 
 import java.time.LocalDate;
@@ -65,7 +65,7 @@ public class BudgetOverviewImpl implements BudgetOverviewService {
                 .filter(budget -> progressOf(budget, today).status().needsAttention())
                 .sorted(Comparator.comparing((Budget budget) -> progressOf(budget, today).ratio()).reversed())
                 .toList();
-        Map<UUID, CategoryResponse> categories = categoryService.findAllByIds(
+        Map<UUID, CategoryRes> categories = categoryService.findAllByIds(
                 needingAttention.stream().map(Budget::getCategoryId).collect(Collectors.toSet()));
 
         return needingAttention.stream()
@@ -73,7 +73,7 @@ public class BudgetOverviewImpl implements BudgetOverviewService {
                 .toList();
     }
 
-    private BudgetAlertRes toAlert(Budget budget, CategoryResponse category, LocalDate today) {
+    private BudgetAlertRes toAlert(Budget budget, CategoryRes category, LocalDate today) {
         BudgetProgress progress = progressOf(budget, today);
         boolean over = progress.status() == BudgetStatus.OVER_LIMIT;
         return new BudgetAlertRes(

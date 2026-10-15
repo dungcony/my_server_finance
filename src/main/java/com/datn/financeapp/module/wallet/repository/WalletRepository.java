@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -64,7 +66,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     @Query(value = "SELECT id FROM wallets WHERE NOT is_deleted", nativeQuery = true)
     List<UUID> findAllActiveWalletIds();
 
-    List<Wallet> findAllByUserId(UUID userId);
+    Page<Wallet> findAllByUserId(UUID userId, Pageable pageable);
 
     Optional<Wallet> findByUserIdAndIsDefaultTrue(UUID userId);
 }

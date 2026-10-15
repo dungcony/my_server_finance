@@ -28,9 +28,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Group extends AssignedIdEntity {
 
-    @Id
-    private UUID id;
-
     @Column(name = "name", nullable = false, length = 100)
     private String name;
 
@@ -55,12 +52,6 @@ public class Group extends AssignedIdEntity {
     @Column(name = "is_join_without_confirm", nullable = false)
     @Builder.Default
     private Boolean isJoinWithoutConfirm = true;
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
 
     @OneToOne(mappedBy = "group")
     private Fund fund;

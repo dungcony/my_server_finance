@@ -1,9 +1,7 @@
 package com.datn.financeapp.module.category.service;
 
-import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
-import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
-import com.datn.financeapp.module.category.entity.Category;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,7 +20,7 @@ public interface CategoryService {
      * @return danh mục tìm được
      * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
      */
-    CategoryResponse findActiveById(UUID id);
+    CategoryRes findActiveById(UUID id);
 
     /**
      * Lấy một danh mục chưa xóa theo id. Và phải là lá
@@ -31,7 +29,7 @@ public interface CategoryService {
      * @return danh mục tìm được
      * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
      */
-    CategoryResponse findIfIsleaf(UUID id);
+    CateSumaryRes findIfIsleaf(UUID id);
 
     /**
      * Lấy id danh mục theo code, tra từ cache RAM (không query DB). Dành cho module khác cần gắn giao dịch vào một danh mục
@@ -59,7 +57,7 @@ public interface CategoryService {
      * @param ids các ID danh mục
      * @return map id → danh mục
      */
-    Map<UUID, CategoryResponse> findAllByIds(Collection<UUID> ids);
+    Map<UUID, CategoryRes> findAllByIds(Collection<UUID> ids);
 
     /**
      * Id của danh mục này cùng mọi tổ tiên của nó (đi lên tới gốc). Dùng để tìm các ngân sách phải cộng gộp một giao dịch ghi ở danh mục con.

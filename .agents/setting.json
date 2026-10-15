@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem *)",
+      "Bash(git *)",
+      "Bash(dir *)",
+      "Bash(mvn *)",
+      "Bash(docker *)",
+      "Bash(git diff *)",
+      "Bash(cd /d/projects/DATN && ls db/migration | tail -5; grep -rn \"ck_gm_dates\\\\|ck_gt_treasurer_confirmed\\\\|ck_gt_\" db/migration source/server/src/main/resources 2>/dev/null | head -20)",
+      "Bash(grep -n \"transactions/{tId}\\\\`\\\\|GROUP_TRANSACTION_NOT_BELONG_MEMBER\\\\|xem chi tiết giao dịch\\\\|Chi tiết giao dịch\" docs/design/group/api.md docs/design/group/rule.md)",
+      "Bash(grep -n \"/members\\\\`\" docs/design/group/api.md)",
+      "Bash(grep -v \"^ \\\\*\\\\|^/\\\\*\\\\*\")",
+      "Bash(mvn -o -q test-compile)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(awk -F'[:,]' '{t+=$2; f+=$4; e+=$6; s+=$8} END {print \"run=\"t\" fail=\"f\" err=\"e\" skip=\"s}')",
+      "Bash(sort -t= -k2 -n -r)",
+      "Bash(awk -F, 'NR>1 && $1==\"http_req_duration\" { t=int\\($2/15\\)*15; n[t]++; s[t]+=$3; if\\($3>m[t]\\) m[t]=$3 } END { for \\(t in n\\) printf \"%d %d %.0f %.0f\\\\n\", t, n[t], s[t]/n[t], m[t] }' target/k6-500.csv)",
+      "Bash(awk 'NR==1{t0=$1} {printf \"t+%3ds  req=%5d  avg=%6dms  max=%6dms\\\\n\", $1-t0, $2, $3, $4}')",
+      "Bash(awk -F'[ |]+' '{m=$2; t=$3+0; n[m]++; if\\(t>mx[m]\\) mx[m]=t} END {for \\(m in n\\) printf \"%6d lần  max=%6dms  %s\\\\n\", n[m], mx[m], m}')",
+      "Bash(awk '{print}')",
+      "Bash(awk -F: '{s=$2*60+$3; b=int\\(s/15\\)*15; c[b]++} END {for \\(b in c\\) printf \"%02d:%02d  %d dòng\\\\n\", b/60, b%60, c[b]}')"
+    ]
+  }
+}

@@ -20,8 +20,6 @@ import com.datn.financeapp.module.debt.mapper.DebtMapper;
 import com.datn.financeapp.module.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.module.debt.repository.DebtRepository;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
-import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
-import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.time.Instant;

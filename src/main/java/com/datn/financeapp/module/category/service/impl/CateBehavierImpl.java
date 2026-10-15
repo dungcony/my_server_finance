@@ -4,7 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.entity.Category;
 import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
@@ -38,7 +38,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
 
     @Override
     @Transactional
-    public CategoryResponse create(CategoryCreateReq req) {
+    public CategoryRes create(CategoryCreateReq req) {
         if (cateCache.existsCode(req.code()))
             throw new BusinessException(ErrorCode.CATEGORY_CODE_EXISTS);
 
@@ -72,7 +72,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CategoryResponse> getMasters() {
+    public List<CategoryRes> getMasters() {
         List<Category> categories = categoryRepository.findByParentIsNullAndDeletedFalseOrderByNameAsc();
         Map<UUID, IconResponse> iconMap = iconService.findActiveByIds(
                 categories.stream().map(Category::getIconId).toList());
@@ -83,7 +83,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CategoryResponse> getOfParent(String parentCode) {
+    public List<CategoryRes> getOfParent(String parentCode) {
         Category parent = findByCode(parentCode);
         List<Category> categories = categoryRepository.findByParent_IdAndDeletedFalseOrderByNameAsc(parent.getId());
         Map<UUID, IconResponse> iconMap = iconService.findActiveByIds(
@@ -95,7 +95,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
 
     @Override
     @Transactional
-    public CategoryResponse update(String cateCode, CategoryUpdateReq req) {
+    public CategoryRes update(String cateCode, CategoryUpdateReq req) {
         Category category = findByCode(cateCode);
         Category parent = req.parentCode() != null ? findByCode(req.parentCode()) : null;
 

@@ -56,12 +56,6 @@ import lombok.Setter;
 public class GroupTxn extends AssignedIdEntity {
 
     /**
-     * Khóa chính định danh duy nhất của giao dịch.
-     */
-    @Id
-    private UUID id;
-
-    /**
      * ID của nhóm tài chính sở hữu giao dịch này.
      */
     @Column(name = "group_id", nullable = false)

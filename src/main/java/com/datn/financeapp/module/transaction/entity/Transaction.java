@@ -31,9 +31,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Transaction extends AssignedIdEntity {
 
-    @Id
-    private UUID id;
-
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
@@ -47,16 +44,6 @@ public class Transaction extends AssignedIdEntity {
     @Column(name = "type", nullable = false)
     private TxnType type;
 
-    @Column(name = "amount", nullable = false)
-    private Long amount;
-
-    // ngày phát sinh giao dịch, KHÔNG có múi giờ, không convert.
-    @Column(name = "date", nullable = false)
-    private Instant occurredAt;
-
-    @Column(name = "note")
-    private String note;
-
     @Column(name = "name")
     private String name;
 
@@ -64,8 +51,15 @@ public class Transaction extends AssignedIdEntity {
     @Column(name = "source", nullable = false)
     private TxnSource source;
 
-    @Column(name = "recurring_id")
-    private UUID recurringId;
+    @Column(name = "amount", nullable = false)
+    private Long amount;
+
+    @Column(name = "note")
+    private String note;
+
+    // ngày phát sinh giao dịch, KHÔNG có múi giờ, không convert.
+    @Column(name = "occurred_at", nullable = false)
+    private Instant occurredAt;
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted;

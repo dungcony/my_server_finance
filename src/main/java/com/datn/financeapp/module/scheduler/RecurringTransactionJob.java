@@ -1,6 +1,5 @@
 package com.datn.financeapp.module.scheduler;
 
-import com.datn.financeapp.module.transaction.service.RecurringRunnerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;

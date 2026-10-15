@@ -30,9 +30,6 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Role extends AssignedIdEntity {
 
-    @Id
-    private UUID id;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private RoleName name;
@@ -42,9 +39,6 @@ public class Role extends AssignedIdEntity {
 
     @Column(name = "description")
     private String description;
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
 
     @Builder.Default
     @OneToMany(mappedBy = "role", fetch = FetchType.LAZY)

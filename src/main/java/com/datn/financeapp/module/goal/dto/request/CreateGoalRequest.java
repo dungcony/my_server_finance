@@ -19,8 +19,14 @@ import java.util.UUID;
  * @param initialAmount Số tiền nộp ban đầu khi tạo mục tiêu (Đơn vị: VND; tùy chọn)
  */
 public record CreateGoalRequest(
-        @NotBlank @Size(min = 1, max = 100) String name,
-        @NotNull @Positive Long targetAmount,
+        @NotBlank(message = "Tên mục tiêu không được để trống.")
+        @Size(min = 1, max = 100, message = "Tên mục tiêu phải từ 1 đến 100 ký tự.")
+        String name,
+
+        @NotNull(message = "Số tiền mục tiêu không được để trống.")
+        @Positive(message = "Số tiền mục tiêu phải lớn hơn 0.")
+        Long targetAmount,
+
         LocalDate targetDate,
         UUID walletId,
         UUID iconId,

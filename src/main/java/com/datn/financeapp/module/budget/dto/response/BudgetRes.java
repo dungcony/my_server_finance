@@ -2,7 +2,7 @@ package com.datn.financeapp.module.budget.dto.response;
 
 import com.datn.financeapp.module.budget.enums.BudgetStatus;
 import com.datn.financeapp.module.budget.enums.PeriodType;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,7 +27,7 @@ import java.util.UUID;
  */
 public record BudgetRes(
         UUID id,
-        CategoryResponse category,
+        CategoryRes category,
         long limitAmount,
         long spentAmount,
         long remaining,

@@ -2,7 +2,7 @@ package com.datn.financeapp.module.category.service;
 
 import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 
 import java.util.List;
 
@@ -13,14 +13,14 @@ public interface CategoryBehavierService {
      * @param category thông tin danh mục cần tạo
      * @return danh mục vừa tạo
      */
-    CategoryResponse create(CategoryCreateReq category);
+    CategoryRes create(CategoryCreateReq category);
 
     /**
      * Lấy các danh mục gốc (chưa xóa), sắp theo tên.
      *
      * @return danh sách danh mục gốc
      */
-    List<CategoryResponse> getMasters();
+    List<CategoryRes> getMasters();
 
     /**
      * Lấy các danh mục con trực tiếp (chưa xóa) của danh mục cha, sắp theo tên.
@@ -28,7 +28,7 @@ public interface CategoryBehavierService {
      * @param parentCode mã của danh mục cha
      * @return danh sách danh mục con
      */
-    List<CategoryResponse> getOfParent(String parentCode);
+    List<CategoryRes> getOfParent(String parentCode);
 
     /**
      * Cập nhật danh mục. Trường {@code null} trong yêu cầu được giữ nguyên; đổi cha thì
@@ -38,7 +38,7 @@ public interface CategoryBehavierService {
      * @param req      thông tin cập nhật
      * @return danh mục sau khi cập nhật
      */
-    CategoryResponse update(String cateCode, CategoryUpdateReq req);
+    CategoryRes update(String cateCode, CategoryUpdateReq req);
 
     /**
      * Xóa mềm danh mục cùng toàn bộ danh mục con cháu; mã của các danh mục đã xóa vẫn được giữ chỗ.

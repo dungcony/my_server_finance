@@ -94,7 +94,7 @@ module/
 
 **PHẢI:**
 
-- **Response Wrapper thống nhất (`ApiResponse<T>`):** Mọi Controller thành công PHẢI bọc kết quả qua `ApiResponse<T>`:
+- **Response Wrapper thống nhất (`ApiResponse<?>`):** Mọi Controller thành công PHẢI bọc kết quả qua `ApiResponse<?>`:
     - Khai báo: `public record ApiResponse<T>(boolean success, T data, String msg)`
     - Helper methods: `ApiResponse.of(data)` hoặc `ApiResponse.of(data, msg)`.
     - Format JSON:
@@ -144,9 +144,9 @@ module/
       ```
 
 - **Phân loại DTO:**
-    - Tách thư mục `dto/request/` và `dto/response/`.
-    - Tách DTO theo mục đích rõ ràng: `<Domain>CreateRequest`, `<Domain>UpdateRequest`, `<Domain>SummaryResponse`,
-      `<Domain>DetailResponse`.
+    - Tách thư mục `dto/req/` và `dto/res/`.
+    - Tách DTO theo mục đích rõ ràng: `<Domain>CreateReq`, `<Domain>UpdateReq`, `<Domain>SummaryRes`,
+      `<Domain>DetailRes`.
 
 - **Quy ước Naming Case (JSON Body & Query Param):**
     - **Trong Java code:** Toàn bộ thuộc tính DTO, Entity và Record khai báo theo chuẩn `camelCase` của Java (VD:

@@ -4,7 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.entity.Category;
 import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
@@ -219,9 +219,9 @@ class CateImplTest {
         Category salary = category("luong", null);
         when(categoryRepository.findByParentIsNullAndDeletedFalseOrderByNameAsc()).thenReturn(List.of(food, salary));
 
-        List<CategoryResponse> result = cateImpl.getMasters();
+        List<CategoryRes> result = cateImpl.getMasters();
 
-        assertThat(result).extracting(CategoryResponse::code).containsExactly("an_uong", "luong");
+        assertThat(result).extracting(CategoryRes::code).containsExactly("an_uong", "luong");
     }
 
     @Test
@@ -232,9 +232,9 @@ class CateImplTest {
         when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
         when(categoryRepository.findByParent_IdAndDeletedFalseOrderByNameAsc(parent.getId())).thenReturn(List.of(coffee));
 
-        List<CategoryResponse> result = cateImpl.getOfParent("an_uong");
+        List<CategoryRes> result = cateImpl.getOfParent("an_uong");
 
-        assertThat(result).extracting(CategoryResponse::code).containsExactly("ca_phe");
+        assertThat(result).extracting(CategoryRes::code).containsExactly("ca_phe");
     }
 
     @Test
@@ -475,8 +475,8 @@ class CateImplTest {
                 .build();
     }
 
-    private static CategoryResponse toResponse(Category category) {
-        return new CategoryResponse(
+    private static CategoryRes toResponse(Category category) {
+        return new CategoryRes(
                 category.getId(),
                 category.getName(),
                 category.getCode(),

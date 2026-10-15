@@ -17,4 +17,8 @@ public record IconResponse(
         String code,
         String displayName,
         String pathData) {
+
+    public IconResponse() {
+        this(null, null, null, null);
+    }
 }

@@ -4,41 +4,38 @@ import com.datn.financeapp.module.transaction.enums.TxnSource;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * DTO yêu cầu tạo mới một giao dịch tài chính cá nhân.
  *
- * @param type        Loại giao dịch (EXPENSE, INCOME, LOAN)
- * @param amount      Số tiền giao dịch; phải là số dương lớn hơn 0 (Đơn vị: VND)
- * @param walletId    ID định danh của ví phát sinh giao dịch
- * @param categoryId  ID định danh của danh mục tài chính (bắt buộc danh mục lá đối với thu/chi)
- * @param occurredAt  Thời điểm phát sinh giao dịch thực tế theo chuẩn ISO-8601
- * @param displayName Tên hoặc tiêu đề hiển thị của giao dịch (tối đa 150 ký tự)
- * @param note        Ghi chú chi tiết cho giao dịch (tối đa 500 ký tự)
- * @param source      Nguồn tạo giao dịch (MANUAL, AI, RECURRING); mặc định là MANUAL nếu không truyền
- * @param receiptUrl  Đường dẫn URL ảnh chụp biên lai / hóa đơn đính kèm (tối đa 500 ký tự)
+ * @param type        loại giao dịch (EXPENSE, INCOME, LOAN)
+ * @param amount      số tiền giao dịch
+ * @param walletId    ID ví phát sinh giao dịch
+ * @param categoryId  ID danh mục
+ * @param occurredAt  thời gian giao dịch
+ * @param displayName tên hiển thị
+ * @param note        ghi chú
+ * @param source      Nguồn giao dịch(tự ghi hay nhờ AI, hoặc là do reccurring tự động tạo)
+ * @param receiptUrl  URL hóa đơn
  */
 public record TxnCreateReq(
-        @NotNull(message = "Loại giao dịch không được để trống.")
+        @NotNull(message = "Type là bắt buộc")
         TxnType type,
 
-        @NotNull(message = "Số tiền không được để trống.")
-        @Positive(message = "Số tiền phải lớn hơn 0.")
+        @NotNull(message = "số tiền là bắt buộc")
         Long amount,
 
-        @NotNull(message = "Ví không được để trống.")
+        @NotNull(message = "cần lựa chọn ví để giao dịch")
         UUID walletId,
 
-        @NotNull(message = "Danh mục không được để trống.")
         UUID categoryId,
 
+        @NotNull(message = "Phải có thời gian giao dịch")
         @PastOrPresent(message = "Thời gian giao dịch không được ở tương lai.")
-        @NotNull(message = "Thời gian giao dịch không được để trống.")
         Instant occurredAt,
 
         @Size(max = 150, message = "Tên hiển thị tối đa 150 ký tự.")
@@ -46,10 +43,6 @@ public record TxnCreateReq(
 
         @Size(max = 500, message = "Ghi chú tối đa 500 ký tự.")
         String note,
-
         TxnSource source,
-
-        @Size(max = 500, message = "Đường dẫn biên lai tối đa 500 ký tự.")
-        String receiptUrl
-) {
+        String receiptUrl) {
 }

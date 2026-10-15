@@ -34,9 +34,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class User extends AssignedIdEntity {
 
-    @Id
-    private UUID id;
-
     // CHECK (email = lower(email)) ở DB — Service phải lowercase trước khi lưu.
     @Column(name = "email", nullable = false, unique = true)
     private String email;
@@ -65,15 +62,7 @@ public class User extends AssignedIdEntity {
     @Builder.Default
     @Column(name = "status", nullable = false)
     private UserStatus status = UserStatus.PENDING_VERIFY;
-
-    // Người dùng tự xoá tài khoản — xoá MỀM.
-    @Builder.Default
-    @Column(name = "is_deleted", nullable = false)
-    private boolean isDeleted = false;
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
+    
     @Builder.Default
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private Set<UserRole> userRoles = new HashSet<>();

@@ -56,11 +56,12 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 
 12. **`Transaction` (`transactions`):** Thực thể trung tâm lưu trữ toàn bộ giao dịch chi tiêu (`expense`), thu nhập
     (`income`) và chuyển tiền giữa các ví (`transfer`).
-13. **`RecurringTransaction` (`recurring_transactions`):** Thiết lập các khoản thu/chi định kỳ lặp lại tự động theo
+13. **`RecTxn` (`recurring_transactions`):** Thiết lập các khoản thu/chi định kỳ lặp lại tự động theo
     ngày/tuần/tháng/năm.
 14. **`AiDraft` (`ai_drafts`):** Bản nháp giao dịch được AI trích xuất tự động từ văn bản tự nhiên hoặc ảnh hóa đơn
     (OCR).
-15. **`Budget` (`budgets`):** Hạn mức ngân sách chi tiêu được thiết lập theo danh mục và chu kỳ thời gian, kèm số đã chi trong kỳ.
+15. **`Budget` (`budgets`):** Hạn mức ngân sách chi tiêu được thiết lập theo danh mục và chu kỳ thời gian, kèm số đã chi
+    trong kỳ.
 16. **`Debt` (`debts`):** Sổ theo dõi công nợ cá nhân (cho vay - `lending` hoặc đi vay - `borrowing`).
 17. **`DebtPayment` (`debt_payments`):** Lịch sử các lần thanh toán, trả bớt hoặc tất toán từng khoản nợ.
 18. **`SavingsGoal` (`savings_goals`):** Mục tiêu tích lũy tài chính trong tương lai kèm số tiền đích và hạn định.
@@ -89,36 +90,36 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 
 ### 2.1 Bảng tổng hợp mối liên kết và bản số (Multiplicity)
 
-| STT | Thực thể nguồn         | Mối liên kết (Verb) | Thực thể đích                                | Bản số (Card.) | Ý nghĩa nghiệp vụ                                                                       |
-|:---:|:-----------------------|:-------------------:|:---------------------------------------------|:--------------:|:----------------------------------------------------------------------------------------|
-|  1  | `User`                 |       sở hữu        | `Wallet`                                     |   $1 : 0..N$   | Một người dùng có thể tạo nhiều ví tiền; một ví thuộc đúng một người dùng.              |
-|  2  | `User`                 |      thực hiện      | `Transaction`                                |   $1 : 0..N$   | Một người dùng tạo nhiều giao dịch thu, chi, chuyển tiền.                               |
-|  3  | `Wallet`               |    nguồn chi/thu    | `Transaction`                                |   $1 : 0..N$   | Mỗi giao dịch bắt buộc gắn với một ví nguồn (`wallet_id`).                              |
-|  4  | `Wallet`               |  đích chuyển tiền   | `Transaction`                                | $0..1 : 0..N$  | Giao dịch loại `transfer` có ví nhận (`destination_wallet_id`).                         |
-|  5  | `Category`             |      phân loại      | `Transaction`                                | $0..1 : 0..N$  | Giao dịch `expense`/`income` bắt buộc gắn với một danh mục; `transfer` thì không.       |
-|  6  | `Category`             |     cấp cha của     | `Category`                                   | $0..1 : 0..N$  | Quan hệ phản thân (đệ quy) biểu diễn cây danh mục tối đa 2 cấp.                         |
-|  7  | `CategoryGroup`        |      gom nhóm       | `Category`                                   | $0..1 : 0..N$  | Mỗi nhóm lớn chứa nhiều danh mục gốc.                                                   |
-|  8  | `Icon`                 |   đại diện đồ họa   | `Category` / `CategoryGroup` / `SavingsGoal` |   $1 : 0..N$   | Biểu tượng SVG được tái sử dụng qua nhiều thực thể giao diện.                           |
-|  9  | `Wallet` - `Category`  |  liên kết cấu hình  | `WalletCategorySetting`                      |    $N : N$     | Cấu hình bật/tắt từng danh mục trên từng ví cá nhân.                                    |
-| 10  | `RecurringTransaction` |   tự động sinh ra   | `Transaction`                                | $0..1 : 0..N$  | Một thiết lập định kỳ tự động sinh ra nhiều giao dịch thực tế theo thời gian.           |
-| 11  | `AiDraft`              |  chuyển đổi thành   | `Transaction`                                | $0..1 : 0..1$  | Một bản nháp AI sau khi người dùng xác nhận sẽ tạo thành đúng một giao dịch.            |
-| 12  | `User`                 |      thiết lập      | `Budget`                                     |   $1 : 0..N$   | Người dùng tạo các hạn mức ngân sách chi tiêu.                                          |
-| 13  | `Category`             |   áp dụng hạn mức   | `Budget`                                     |   $1 : 0..N$   | Ngân sách bắt buộc áp dụng cho một danh mục chi (`expense`).                            |
-| 14  | `Transaction`          |   sinh ra gốc nợ    | `Debt`                                       |    $1 : 1$     | Mỗi khoản nợ/cho vay bắt nguồn từ một giao dịch tiền mặt gốc (`origin_transaction_id`). |
-| 15  | `Debt`                 |    được trả bởi     | `DebtPayment`                                |   $1 : 0..N$   | Một khoản nợ có thể được thanh toán qua nhiều đợt.                                      |
-| 16  | `Transaction`          |  thực hiện trả nợ   | `DebtPayment`                                |    $1 : 1$     | Mỗi đợt trả nợ gắn chặt với một giao dịch tài chính đối ứng.                            |
-| 17  | `SavingsGoal`          |    nhận tích lũy    | `GoalContribution`                           |   $1 : 0..N$   | Mục tiêu tiết kiệm nhận nhiều lần đóng góp tiền.                                        |
-| 18  | `Transaction`          |    nạp tích lũy     | `GoalContribution`                           |   $0..1 : 1$   | Lần nạp tiền có thể liên kết với một giao dịch trừ tiền ví.                             |
-| 19  | `User` - `Role`        |     gán vai trò     | `UserRole`                                   |    $N : N$     | Một người dùng có nhiều vai trò; một vai trò gán cho nhiều người.                       |
-| 20  | `Role` - `Permission`  |    gán quyền hạn    | `RolePermission`                             |    $N : N$     | Một vai trò chứa nhiều quyền chi tiết; một quyền thuộc nhiều vai trò.                   |
-| 21  | `User`                 |    duy trì phiên    | `RefreshToken`                               |   $1 : 0..N$   | Một tài khoản duy trì các phiên đăng nhập trên nhiều thiết bị.                          |
-| 22  | `Group`                |       sở hữu        | `GroupFund`                                  |    $1 : 1$     | **Mỗi nhóm có duy nhất một quỹ chung**, lập cùng lúc với nhóm (`group_id` UNIQUE).      |
-| 23  | `User`                 |  giữ quỹ (thủ quỹ)  | `GroupFund`                                  |   $1 : 0..N$   | Quỹ nhóm giao cho một thành viên nắm giữ (`keepper_id`).                                |
-| 24  | `Group`                |    có thành viên    | `GroupMember`                                |   $1 : 1..N$   | Nhóm phải có ít nhất 1 thành viên là chủ nhóm (`OWNER`).                                |
-| 25  | `User`                 |    tham gia vào     | `GroupMember`                                |   $1 : 0..N$   | Một người có thể tham gia nhiều nhóm hoặc nhiều khoảng thời gian trong cùng một nhóm.   |
-| 26  | `Group`                |      phát sinh      | `GroupTransaction`                           |   $1 : 0..N$   | Lịch sử chi tiêu, góp quỹ, kiểm kê của nhóm.                                            |
-| 27  | `GroupTransaction`     |     phân bổ cho     | `GroupTransactionParticipant`                |   $1 : 1..N$   | Mỗi khoản giao dịch nhóm phân chia phần chi phí cho các thành viên tham gia.            |
-| 28  | `Group` - `User`       |   tổng hợp số dư    | `GroupMemberBalance`                         |    $N : N$     | Lưu trữ số dư delta tích lũy của từng thành viên trong nhóm phục vụ quyết toán.         |
+| STT | Thực thể nguồn        | Mối liên kết (Verb) | Thực thể đích                                | Bản số (Card.) | Ý nghĩa nghiệp vụ                                                                       |
+|:---:|:----------------------|:-------------------:|:---------------------------------------------|:--------------:|:----------------------------------------------------------------------------------------|
+|  1  | `User`                |       sở hữu        | `Wallet`                                     |   $1 : 0..N$   | Một người dùng có thể tạo nhiều ví tiền; một ví thuộc đúng một người dùng.              |
+|  2  | `User`                |      thực hiện      | `Transaction`                                |   $1 : 0..N$   | Một người dùng tạo nhiều giao dịch thu, chi, chuyển tiền.                               |
+|  3  | `Wallet`              |    nguồn chi/thu    | `Transaction`                                |   $1 : 0..N$   | Mỗi giao dịch bắt buộc gắn với một ví nguồn (`wallet_id`).                              |
+|  4  | `Wallet`              |  đích chuyển tiền   | `Transaction`                                | $0..1 : 0..N$  | Giao dịch loại `transfer` có ví nhận (`destination_wallet_id`).                         |
+|  5  | `Category`            |      phân loại      | `Transaction`                                | $0..1 : 0..N$  | Giao dịch `expense`/`income` bắt buộc gắn với một danh mục; `transfer` thì không.       |
+|  6  | `Category`            |     cấp cha của     | `Category`                                   | $0..1 : 0..N$  | Quan hệ phản thân (đệ quy) biểu diễn cây danh mục tối đa 2 cấp.                         |
+|  7  | `CategoryGroup`       |      gom nhóm       | `Category`                                   | $0..1 : 0..N$  | Mỗi nhóm lớn chứa nhiều danh mục gốc.                                                   |
+|  8  | `Icon`                |   đại diện đồ họa   | `Category` / `CategoryGroup` / `SavingsGoal` |   $1 : 0..N$   | Biểu tượng SVG được tái sử dụng qua nhiều thực thể giao diện.                           |
+|  9  | `Wallet` - `Category` |  liên kết cấu hình  | `WalletCategorySetting`                      |    $N : N$     | Cấu hình bật/tắt từng danh mục trên từng ví cá nhân.                                    |
+| 10  | `RecTxn`              |   tự động sinh ra   | `Transaction`                                | $0..1 : 0..N$  | Một thiết lập định kỳ tự động sinh ra nhiều giao dịch thực tế theo thời gian.           |
+| 11  | `AiDraft`             |  chuyển đổi thành   | `Transaction`                                | $0..1 : 0..1$  | Một bản nháp AI sau khi người dùng xác nhận sẽ tạo thành đúng một giao dịch.            |
+| 12  | `User`                |      thiết lập      | `Budget`                                     |   $1 : 0..N$   | Người dùng tạo các hạn mức ngân sách chi tiêu.                                          |
+| 13  | `Category`            |   áp dụng hạn mức   | `Budget`                                     |   $1 : 0..N$   | Ngân sách bắt buộc áp dụng cho một danh mục chi (`expense`).                            |
+| 14  | `Transaction`         |   sinh ra gốc nợ    | `Debt`                                       |    $1 : 1$     | Mỗi khoản nợ/cho vay bắt nguồn từ một giao dịch tiền mặt gốc (`origin_transaction_id`). |
+| 15  | `Debt`                |    được trả bởi     | `DebtPayment`                                |   $1 : 0..N$   | Một khoản nợ có thể được thanh toán qua nhiều đợt.                                      |
+| 16  | `Transaction`         |  thực hiện trả nợ   | `DebtPayment`                                |    $1 : 1$     | Mỗi đợt trả nợ gắn chặt với một giao dịch tài chính đối ứng.                            |
+| 17  | `SavingsGoal`         |    nhận tích lũy    | `GoalContribution`                           |   $1 : 0..N$   | Mục tiêu tiết kiệm nhận nhiều lần đóng góp tiền.                                        |
+| 18  | `Transaction`         |    nạp tích lũy     | `GoalContribution`                           |   $0..1 : 1$   | Lần nạp tiền có thể liên kết với một giao dịch trừ tiền ví.                             |
+| 19  | `User` - `Role`       |     gán vai trò     | `UserRole`                                   |    $N : N$     | Một người dùng có nhiều vai trò; một vai trò gán cho nhiều người.                       |
+| 20  | `Role` - `Permission` |    gán quyền hạn    | `RolePermission`                             |    $N : N$     | Một vai trò chứa nhiều quyền chi tiết; một quyền thuộc nhiều vai trò.                   |
+| 21  | `User`                |    duy trì phiên    | `RefreshToken`                               |   $1 : 0..N$   | Một tài khoản duy trì các phiên đăng nhập trên nhiều thiết bị.                          |
+| 22  | `Group`               |       sở hữu        | `GroupFund`                                  |    $1 : 1$     | **Mỗi nhóm có duy nhất một quỹ chung**, lập cùng lúc với nhóm (`group_id` UNIQUE).      |
+| 23  | `User`                |  giữ quỹ (thủ quỹ)  | `GroupFund`                                  |   $1 : 0..N$   | Quỹ nhóm giao cho một thành viên nắm giữ (`keepper_id`).                                |
+| 24  | `Group`               |    có thành viên    | `GroupMember`                                |   $1 : 1..N$   | Nhóm phải có ít nhất 1 thành viên là chủ nhóm (`OWNER`).                                |
+| 25  | `User`                |    tham gia vào     | `GroupMember`                                |   $1 : 0..N$   | Một người có thể tham gia nhiều nhóm hoặc nhiều khoảng thời gian trong cùng một nhóm.   |
+| 26  | `Group`               |      phát sinh      | `GroupTransaction`                           |   $1 : 0..N$   | Lịch sử chi tiêu, góp quỹ, kiểm kê của nhóm.                                            |
+| 27  | `GroupTransaction`    |     phân bổ cho     | `GroupTransactionParticipant`                |   $1 : 1..N$   | Mỗi khoản giao dịch nhóm phân chia phần chi phí cho các thành viên tham gia.            |
+| 28  | `Group` - `User`      |   tổng hợp số dư    | `GroupMemberBalance`                         |    $N : N$     | Lưu trữ số dư delta tích lũy của từng thành viên trong nhóm phục vụ quyết toán.         |
 
 ---
 
@@ -213,8 +214,10 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 - `include_in_total` (BOOLEAN, NOT NULL, DEFAULT TRUE): Cờ cho phép tính vào tổng tài sản hiển thị.
 - `icon` (VARCHAR (50)), `color` (CHAR (7)): Mã icon và mã màu HEX giao diện.
 - `sort_order` (INTEGER, NOT NULL, DEFAULT 0): Thứ tự sắp xếp.
-- `is_default` (BOOLEAN, NOT NULL, DEFAULT FALSE): Ví mặc định nhận các khoản tự ghi từ giao dịch nhóm. Mỗi người dùng luôn có
-  đúng một ví mặc định chưa xóa: trigger `trg_users_default_wallet` tạo ví "Tiền mặt" mặc định khi tạo người dùng, constraint
+- `is_default` (BOOLEAN, NOT NULL, DEFAULT FALSE): Ví mặc định nhận các khoản tự ghi từ giao dịch nhóm. Mỗi người dùng
+  luôn có
+  đúng một ví mặc định chưa xóa: trigger `trg_users_default_wallet` tạo ví "Tiền mặt" mặc định khi tạo người dùng,
+  constraint
   trigger `trg_wallets_one_default` (hoãn đến lúc commit) chặn xóa mềm ví mặc định hoặc có hai ví mặc định.
 - `is_deleted` (BOOLEAN, NOT NULL, DEFAULT FALSE): Cờ xóa mềm ví.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT now ()): Thời điểm tạo.
@@ -455,8 +458,10 @@ Hệ thống quản lý tài chính cá nhân và nhóm được cấu trúc th�
 - `type` (VARCHAR (20), NOT NULL): Loại giao dịch (`EXPENSE`, `CONTRIBUTION`, `REFUND`, `ADJUSTMENT_UP`,
   `ADJUSTMENT_DOWN`).
 - `status` (VARCHAR (20), NOT NULL, DEFAULT 'PENDING'): Trạng thái duyệt (`PENDING` - chờ thủ quỹ/chủ nhóm duyệt,
-  `AWAITING_TRANSACTOR` - chờ người chi trả/nhận tiền đồng ý khoản do thủ quỹ/chủ nhóm ghi hộ, `CONFIRMED` - đã xác nhận,
-  `REJECTED` - từ chối). Khoản `CONFIRMED` thuộc loại ghi sổ cá nhân (`CONTRIBUTION`, `EXPENSE` bằng `PERSONAL`, `REFUND`)
+  `AWAITING_TRANSACTOR` - chờ người chi trả/nhận tiền đồng ý khoản do thủ quỹ/chủ nhóm ghi hộ, `CONFIRMED` - đã xác
+  nhận,
+  `REJECTED` - từ chối). Khoản `CONFIRMED` thuộc loại ghi sổ cá nhân (`CONTRIBUTION`, `EXPENSE` bằng `PERSONAL`,
+  `REFUND`)
   có một khoản trùng id ở sổ cá nhân của `transactor_id`; không có cột trạng thái ghi sổ riêng.
 - `reviewed_by` (UUID, FK $\rightarrow$ `users.id`, NULL): Người duyệt/từ chối giao dịch.
 - `reviewed_at` (TIMESTAMPTZ, NULL): Thời điểm duyệt.

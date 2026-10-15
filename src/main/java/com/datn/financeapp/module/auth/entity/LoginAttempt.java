@@ -1,5 +1,6 @@
 package com.datn.financeapp.module.auth.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -27,10 +28,7 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginAttempt {
-
-    @Id
-    private UUID id;
+public class LoginAttempt extends AssignedIdEntity {
 
     @Column(name = "email", nullable = false)
     private String email;

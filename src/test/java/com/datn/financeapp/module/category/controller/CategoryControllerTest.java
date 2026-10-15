@@ -2,7 +2,7 @@ package com.datn.financeapp.module.category.controller;
 
 import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -138,8 +138,8 @@ class CategoryControllerTest {
         verify(categoryService).delete("ca_phe");
     }
 
-    private static CategoryResponse response(String code, String parentCode) {
-        return new CategoryResponse(
+    private static CategoryRes response(String code, String parentCode) {
+        return new CategoryRes(
                 UUID.randomUUID(), "Tên " + code, code, "mô tả", parentCode, null, "#3d6b7d", 0, true, null, false);
     }
 }

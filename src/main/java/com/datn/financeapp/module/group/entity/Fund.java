@@ -31,9 +31,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Fund extends AssignedIdEntity {
 
-    @Id()
-    private UUID id;
-
     @Column(name = "group_id", nullable = false, unique = true)
     private UUID groupId;
 
@@ -49,7 +46,4 @@ public class Fund extends AssignedIdEntity {
     @Column(name = "current_balance", nullable = false)
     @Builder.Default
     private Long currentBalance = 0L;
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
 }

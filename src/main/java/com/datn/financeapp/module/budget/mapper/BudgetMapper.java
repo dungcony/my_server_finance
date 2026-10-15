@@ -3,7 +3,7 @@ package com.datn.financeapp.module.budget.mapper;
 import com.datn.financeapp.module.budget.dto.response.BudgetRes;
 import com.datn.financeapp.module.budget.entity.Budget;
 import com.datn.financeapp.module.budget.helper.BudgetProgress;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -28,5 +28,5 @@ public interface BudgetMapper {
     @Mapping(target = "daysRemaining", source = "progress.daysRemaining")
     @Mapping(target = "autoRenew", source = "budget.autoRenew")
     @Mapping(target = "isActive", source = "budget.isActive")
-    BudgetRes toRes(Budget budget, BudgetProgress progress, CategoryResponse category);
+    BudgetRes toRes(Budget budget, BudgetProgress progress, CategoryRes category);
 }

@@ -18,8 +18,6 @@ import com.datn.financeapp.module.goal.mapper.GoalMapper;
 import com.datn.financeapp.module.goal.repository.GoalContributionRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
-import com.datn.financeapp.module.transaction.helper.TransactionWriteCommand;
-import com.datn.financeapp.module.transaction.helper.TransactionWriter;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.time.Instant;

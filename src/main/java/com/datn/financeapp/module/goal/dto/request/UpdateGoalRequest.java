@@ -16,8 +16,12 @@ import java.util.UUID;
  * @param status       Trạng thái mục tiêu (chỉ chấp nhận {@code in_progress} hoặc {@code cancelled})
  */
 public record UpdateGoalRequest(
-        @Size(min = 1, max = 100) String name,
-        @Positive Long targetAmount,
+        @Size(min = 1, max = 100, message = "Tên mục tiêu phải từ 1 đến 100 ký tự.")
+        String name,
+
+        @Positive(message = "Số tiền mục tiêu phải lớn hơn 0.")
+        Long targetAmount,
+
         LocalDate targetDate,
         UUID iconId,
         String status) {

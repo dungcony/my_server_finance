@@ -14,5 +14,11 @@ import java.time.LocalDate;
  * @param include  các thông tin bổ sung cần bao gồm
  */
 public record ExportRequest(
-        @NotBlank String format, String period, LocalDate fromDate, LocalDate toDate, String include) {
+        @NotBlank(message = "Định dạng xuất báo cáo không được để trống.")
+        String format,
+
+        String period,
+        LocalDate fromDate,
+        LocalDate toDate,
+        String include) {
 }

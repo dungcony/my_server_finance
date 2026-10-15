@@ -12,7 +12,7 @@ import com.datn.financeapp.module.budget.helper.BudgetSpentCalculator;
 import com.datn.financeapp.module.budget.mapper.BudgetMapper;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.budget.service.BudgetService;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 
 import java.time.Instant;
@@ -47,7 +47,7 @@ public class BudgetImpl implements BudgetService {
     @Transactional(readOnly = true)
     public List<BudgetRes> list(UUID userId, Boolean isActive, PeriodType periodType) {
         List<Budget> budgets = budgetRepository.search(userId, isActive, periodType);
-        Map<UUID, CategoryResponse> categories = categoryService.findAllByIds(
+        Map<UUID, CategoryRes> categories = categoryService.findAllByIds(
                 budgets.stream().map(Budget::getCategoryId).collect(Collectors.toSet()));
         return budgets.stream()
                 .map(budget -> toRes(budget, categories.get(budget.getCategoryId())))
@@ -63,7 +63,7 @@ public class BudgetImpl implements BudgetService {
     @Override
     @Transactional
     public BudgetRes create(UUID userId, CreateBudgetRequest req) {
-        CategoryResponse category = categoryService.findActiveById(req.categoryId());
+        CategoryRes category = categoryService.findActiveById(req.categoryId());
 
         LocalDate start = req.startDate() != null
                 ? req.startDate()
@@ -141,12 +141,12 @@ public class BudgetImpl implements BudgetService {
     }
 
     private BudgetRes toRes(Budget budget) {
-        CategoryResponse category = categoryService.findAllByIds(Set.of(budget.getCategoryId()))
+        CategoryRes category = categoryService.findAllByIds(Set.of(budget.getCategoryId()))
                 .get(budget.getCategoryId());
         return toRes(budget, category);
     }
 
-    private BudgetRes toRes(Budget budget, CategoryResponse category) {
+    private BudgetRes toRes(Budget budget, CategoryRes category) {
         BudgetProgress progress = BudgetProgress.of(
                 budget.getLimitAmount(), budget.getSpent(), budget.getEndDate(), LocalDate.now());
         return budgetMapper.toRes(budget, progress, category);

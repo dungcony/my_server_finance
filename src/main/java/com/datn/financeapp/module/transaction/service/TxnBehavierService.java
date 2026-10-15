@@ -27,9 +27,9 @@ public interface TxnBehavierService {
      *
      * @param filters thông tin bộ lọc
      * @param page    thông tin phân trang và sắp xếp
-     * @return {@link TxnSummaryResponse}
+     * @return {@link TxnListRes}
      */
-    List<TxnSummaryResponse> gets(TransactionFilterRequest filters, Pageable page);
+    TxnListRes gets(TxnFilterRequest filters, Pageable page);
 
 
     /**
@@ -39,7 +39,7 @@ public interface TxnBehavierService {
      * @param req           thông tin cập nhật
      * @return {@link TxnDetailResponse} kết quả cập nhật
      */
-    TxnDetailResponse update(UUID transactionId, UpdateTransactionRequest req);
+    TxnDetailResponse update(UUID transactionId, TxnUpdateRequest req);
 
     /**
      * Xóa mềm một giao dịch và hoàn tất cập nhật lại số dư ví.

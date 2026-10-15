@@ -1,6 +1,7 @@
 package com.datn.financeapp.module.category.mapper;
 
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.entity.Category;
 import com.datn.financeapp.module.icon.dto.response.IconResponse;
 import org.mapstruct.Mapper;
@@ -21,6 +22,8 @@ public interface CateMapper {
     @Mapping(target = "isLeaf", source = "category.isLeaf")
     @Mapping(target = "createdAt", source = "category.createdAt")
     @Mapping(target = "isDeleted", source = "category.deleted")
-    CategoryResponse toResponse(Category category, IconResponse icon);
+    CategoryRes toResponse(Category category, IconResponse icon);
 
+    @Mapping(target = "icon", source = "icon")
+    CateSumaryRes toSumary(Category category, IconResponse icon);
 }

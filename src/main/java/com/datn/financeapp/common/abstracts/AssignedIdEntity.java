@@ -1,6 +1,8 @@
 package com.datn.financeapp.common.abstracts;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.data.domain.Persistable;
@@ -8,9 +10,14 @@ import org.springframework.data.domain.Persistable;
 import java.time.Instant;
 import java.util.UUID;
 
+@Getter
+@Setter
 @MappedSuperclass
 public abstract class AssignedIdEntity implements Persistable<UUID> {
 
+    @Id
+    private UUID id;
+    
     // mặc định: vừa tạo bằng code → là mới
     @Transient
     private boolean isNew = true;
@@ -22,6 +29,10 @@ public abstract class AssignedIdEntity implements Persistable<UUID> {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted;
 
     @Override
     public boolean isNew() {

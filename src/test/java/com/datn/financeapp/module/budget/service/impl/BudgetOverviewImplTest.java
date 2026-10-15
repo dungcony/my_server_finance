@@ -10,7 +10,7 @@ import com.datn.financeapp.module.budget.entity.Budget;
 import com.datn.financeapp.module.budget.enums.BudgetStatus;
 import com.datn.financeapp.module.budget.enums.PeriodType;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
-import com.datn.financeapp.module.category.dto.response.CategoryResponse;
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 
 import java.time.Instant;
@@ -112,8 +112,8 @@ class BudgetOverviewImplTest {
                 .build();
     }
 
-    private static CategoryResponse category(UUID id, String name) {
-        return new CategoryResponse(id, name, name.toUpperCase(), null, null, null, "#112233", 0, true,
+    private static CategoryRes category(UUID id, String name) {
+        return new CategoryRes(id, name, name.toUpperCase(), null, null, null, "#112233", 0, true,
                 Instant.now(), false);
     }
 }
