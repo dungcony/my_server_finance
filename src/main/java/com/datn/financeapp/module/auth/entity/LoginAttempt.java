@@ -30,6 +30,9 @@ import org.hibernate.type.SqlTypes;
 @AllArgsConstructor
 public class LoginAttempt extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
+
     @Column(name = "email", nullable = false)
     private String email;
 

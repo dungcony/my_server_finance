@@ -42,6 +42,8 @@ public enum PermissionName {
     WALLET_READ(Resource.WALLET, Action.READ, ""),
     WALLET_DELETE(Resource.WALLET, Action.DELETE, ""),
     WALLET_UPDATE(Resource.WALLET, Action.UPDATE, ""),
+    TXN_READ(Resource.TXN, Action.READ, ""),
+    TXN_DELETE(Resource.TXN, Action.DELETE, ""),
     ;
 
     private final Resource resource;
@@ -87,6 +89,7 @@ public enum PermissionName {
         ICONS("icons"),
         RECURRING_TXN("recurring_txn"),
         WALLET("wallet"),
+        TXN("transactions"),
         ;
 
         private final String key;

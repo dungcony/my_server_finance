@@ -2,7 +2,9 @@ package com.datn.financeapp.module.transaction.service;
 
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateReq;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleListRec;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleRes;
+import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
@@ -16,6 +18,12 @@ public interface RecTxnScheduleBehavierService {
      * @return thông tin chi tiết buổi lịch vừa tạo
      */
     RecTxnScheduleRes create(UUID userId, UUID recId, RecTxnScheduleCreateReq req);
+
+    /**
+     *
+     * @param userId id của người dùng nếu người gửi là admin thì là null
+     */
+    RecTxnScheduleListRec gets(UUID userId, UUID recId, Pageable pageable);
 
     /**
      * Cập nhật thông tin (ngày chạy, số tiền, trạng thái) của một buổi lịch cụ thể.

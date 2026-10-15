@@ -2,6 +2,7 @@ package com.datn.financeapp.module.transaction.dto.response;
 
 import com.datn.financeapp.module.transaction.enums.TxnType;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -12,7 +13,7 @@ import java.util.UUID;
  * @param id         ID giao dịch
  * @param type       loại giao dịch
  * @param amount     số tiền (luôn dương, chiều tiền suy từ {@code type})
- * @param date       ngày phát sinh
+ * @param occurredAt Thời gian phát sinh
  * @param name       tên hiển thị
  * @param walletId   ID ví phát sinh
  * @param categoryId ID danh mục
@@ -21,7 +22,7 @@ public record TxnSummaryRes(
         UUID id,
         TxnType type,
         Long amount,
-        LocalDate date,
+        Instant occurredAt,
         String name,
         UUID walletId,
         UUID categoryId) {

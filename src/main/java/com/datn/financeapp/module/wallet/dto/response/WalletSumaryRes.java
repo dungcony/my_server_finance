@@ -7,6 +7,6 @@ import java.util.UUID;
 public record WalletSumaryRes(
         UUID id,
         String name,
-        IconResponse icon
+        String icon
 ) {
 }

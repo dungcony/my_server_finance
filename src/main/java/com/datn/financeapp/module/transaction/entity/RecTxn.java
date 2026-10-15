@@ -31,6 +31,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class RecTxn extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
+    
     @Column(name = "name", nullable = false)
     private String name;
 

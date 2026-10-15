@@ -28,6 +28,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Member extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
     @Column(name = "group_id", nullable = false)
     private UUID groupId;
 

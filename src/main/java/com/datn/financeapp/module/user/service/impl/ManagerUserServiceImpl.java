@@ -149,7 +149,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được xóa tài khoản có cấp bậc cao hơn hoặc bằng chính mình.");
         }
 
-        user.setDeleted(true);
+        user.setIsDeleted(true);
         userRepository.save(user);
         userAuthCacheHelper.evictUserAuth(userId);
 
@@ -163,7 +163,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     public UserRes findByUserId(UUID userId) {
 
         User user = userRepository.findById(userId)
-                .filter(u -> !u.isDeleted())
+                .filter(u -> !u.getIsDeleted())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng."));
 
         int targetLevel = getLevel(userId);
@@ -189,7 +189,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
 
     private User getActiveUser(UUID userId) {
         return userRepository.findById(userId)
-                .filter(u -> !u.isDeleted())
+                .filter(u -> !u.getIsDeleted())
                 .orElseThrow(UserNotFoundException::new);
     }
 

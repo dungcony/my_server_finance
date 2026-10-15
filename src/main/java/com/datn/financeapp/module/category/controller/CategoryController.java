@@ -5,6 +5,7 @@ import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
 import com.datn.financeapp.module.category.dto.response.CategoryRes;
+import com.datn.financeapp.module.category.service.CategoryBehavierService;
 import com.datn.financeapp.module.category.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,16 +36,16 @@ public class CategoryController {
 
     private static final String MANAGE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_MANAGE.getValue())";
 
-    private final CategoryService categoryService;
+    private final CategoryBehavierService categoryBehavierService;
 
     @GetMapping
     public ApiResponse<List<CategoryRes>> getMasters() {
-        return ApiResponse.of(categoryService.getMasters());
+        return ApiResponse.of(categoryBehavierService.getMasters());
     }
 
     @GetMapping("/{code}/children")
     public ApiResponse<List<CategoryRes>> getOfParent(@PathVariable String code) {
-        return ApiResponse.of(categoryService.getOfParent(code));
+        return ApiResponse.of(categoryBehavierService.getOfParent(code));
     }
 
     @PostMapping
@@ -52,19 +53,19 @@ public class CategoryController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize(MANAGE)
     public ApiResponse<CategoryRes> create(@Valid @RequestBody CategoryCreateReq req) {
-        return ApiResponse.of(categoryService.create(req));
+        return ApiResponse.of(categoryBehavierService.create(req));
     }
 
     @PatchMapping("/{code}")
     @PreAuthorize(MANAGE)
     public ApiResponse<CategoryRes> update(@PathVariable String code, @Valid @RequestBody CategoryUpdateReq req) {
-        return ApiResponse.of(categoryService.update(code, req));
+        return ApiResponse.of(categoryBehavierService.update(code, req));
     }
 
     @DeleteMapping("/{code}")
     @PreAuthorize(MANAGE)
     public ApiResponse<Void> delete(@PathVariable String code) {
-        categoryService.delete(code);
+        categoryBehavierService.delete(code);
         return ApiResponse.of(null);
     }
 }

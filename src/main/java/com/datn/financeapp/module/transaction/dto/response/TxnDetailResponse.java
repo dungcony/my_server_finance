@@ -1,5 +1,9 @@
 package com.datn.financeapp.module.transaction.dto.response;
 
+import com.datn.financeapp.module.category.dto.response.CategoryRes;
+import com.datn.financeapp.module.transaction.enums.TxnType;
+import com.datn.financeapp.module.wallet.dto.response.WalletRes;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -10,14 +14,13 @@ import java.util.UUID;
  */
 public record TxnDetailResponse(
         UUID id,
-        String type,
+        WalletRes wallet,
+        CategoryRes category,
+        TxnType type,
         Long amount,
-        LocalDate date,
+        Instant occruredAt,
         String displayName,
         String note,
-        String source,
-        String receiptUrl,
-        UUID recurringId,
         Instant createdAt,
         Instant updatedAt) {
 

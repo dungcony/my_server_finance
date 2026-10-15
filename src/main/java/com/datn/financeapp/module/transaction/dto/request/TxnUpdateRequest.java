@@ -10,14 +10,11 @@ import java.util.UUID;
 
 
 public record TxnUpdateRequest(
-        @NotNull(message = "Loại giao dịch không được để trống.")
         TxnType type,
 
-        @NotNull(message = "Số tiền không được để trống.")
         @Positive(message = "Số tiền phải lớn hơn 0.")
         Long amount,
 
-        @NotNull(message = "Ví không được để trống.")
         UUID walletId,
 
         UUID categoryId,

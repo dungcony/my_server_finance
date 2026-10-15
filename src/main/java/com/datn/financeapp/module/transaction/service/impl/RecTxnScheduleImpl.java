@@ -34,7 +34,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
-public class RecTxnScheduleServiceImpl implements RecTxnScheduleService {
+public class RecTxnScheduleImpl implements RecTxnScheduleService {
 
     private final RecTxnScheduleRepository scheduleRepository;
     private final RecTxnRepository recTxnRepository;
@@ -137,7 +137,6 @@ public class RecTxnScheduleServiceImpl implements RecTxnScheduleService {
                 .amount(schedule.getAmount())
                 .name(rec.getName())
                 .note(rec.getNote())
-                .source(TxnSource.RECURRING)
                 .occurredAt(schedule.getRunAt())
                 .isDeleted(false)
                 .build();

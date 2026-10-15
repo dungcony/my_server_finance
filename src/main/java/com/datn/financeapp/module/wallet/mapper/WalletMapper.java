@@ -17,6 +17,13 @@ public interface WalletMapper {
     @Mapping(target = "icon", source = "icon")
     WalletSumaryRes toSumary(Wallet wallet, String icon);
 
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "isDefault", constant = "false")
+    @Mapping(target = "isDeleted", constant = "false")
     Wallet toEntity(WalletCreateReq wallet);
 
 }

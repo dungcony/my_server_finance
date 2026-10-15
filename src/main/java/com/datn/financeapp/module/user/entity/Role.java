@@ -30,6 +30,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Role extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
     @Enumerated(EnumType.STRING)
     @Column(name = "name", nullable = false, unique = true, length = 50)
     private RoleName name;

@@ -1,4 +1,4 @@
-package com.datn.financeapp.module.wallet.envents;
+package com.datn.financeapp.module.wallet.events;
 
 import com.datn.financeapp.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;

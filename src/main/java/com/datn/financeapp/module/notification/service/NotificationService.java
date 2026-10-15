@@ -2,6 +2,7 @@ package com.datn.financeapp.module.notification.service;
 
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.enums.NotiType;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +20,7 @@ public interface NotificationService {
      * @param pageParams Tham số phân trang (trang hiện tại, số lượng trên mỗi trang)
      * @return Danh sách thông báo phân trang kèm số lượng chưa đọc
      */
-    NotificationListResponse list(UUID userId, Boolean isRead, PageRequestParams pageParams);
+    NotificationListResponse list(UUID userId, Boolean isRead, Pageable pageParams);
 
     /**
      * Đánh dấu thông báo là đã đọc.

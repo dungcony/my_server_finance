@@ -7,7 +7,6 @@ import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateRe
 import com.datn.financeapp.module.transaction.dto.request.RecUpdateReq;
 import com.datn.financeapp.module.transaction.service.RecTxnBehavierService;
 import com.datn.financeapp.module.transaction.service.RecTxnScheduleBehavierService;
-import com.datn.financeapp.module.transaction.service.RecTxnScheduleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -29,8 +28,6 @@ public class RecController {
 
     private final RecTxnBehavierService recTxnBehavierService;
     private final RecTxnScheduleBehavierService scheduleBehavierService;
-    private final RecTxnScheduleService scheduleService;
-
     // luồng người dùng thông thường
 
     @GetMapping("/{id}")
@@ -70,7 +67,7 @@ public class RecController {
     public ApiResponse<?> getSchedules(
             @PathVariable UUID recId,
             @PageableDefault(size = 20, sort = "runAt", direction = Sort.Direction.ASC) Pageable pageable) {
-        return ApiResponse.of(scheduleService.findAll(recId, pageable));
+        return ApiResponse.of(scheduleBehavierService.gets(null, recId, pageable));
     }
 
     @PostMapping("/{recId}/schedules")
@@ -94,6 +91,15 @@ public class RecController {
     }
 
     // luồng quản trị viên
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.getValue())")
+    @GetMapping("/admin/{recId}/schedules")
+    public ApiResponse<?> gets(
+            @RequestParam(name = "user_id", required = false) UUID userId,
+            @PathVariable UUID recId,
+            Pageable pageable) {
+        return ApiResponse.of(scheduleBehavierService.gets(userId, recId, pageable));
+    }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.getValue())")
     @GetMapping("/admin/{id}")

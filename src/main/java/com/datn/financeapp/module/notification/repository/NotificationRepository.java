@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,18 +21,7 @@ import org.springframework.data.repository.query.Param;
  */
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    @Query(
-            value = """
-                    SELECT * FROM notifications WHERE user_id = :currentUser
-                    AND (CAST(:isRead AS boolean) IS NULL OR is_read = :isRead)
-                    ORDER BY created_at DESC LIMIT :limit OFFSET :offset
-                    """,
-            nativeQuery = true)
-    List<Notification> findAllForUser(
-            @Param("currentUser") UUID currentUser,
-            @Param("isRead") Boolean isRead,
-            @Param("limit") int limit,
-            @Param("offset") int offset);
+    Page<Notification> findAllByUserIdAndIsRead(UUID currentUser, Boolean isRead, Pageable pageable);
 
     @Query(
             value = """
@@ -43,7 +34,7 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     @Query(
             value = "SELECT * FROM notifications WHERE id = :id AND user_id = :currentUser",
             nativeQuery = true)
-    Optional<Notification> findByIdForUser(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
+    Optional<Notification> findByIdForUser(@Param("id") UUID id, UUID currentUser);
 
     @Modifying
     @Query("UPDATE Notification n SET n.isRead = TRUE WHERE n.id = :id AND n.userId = :currentUser")

@@ -24,7 +24,7 @@ public abstract class UserMapper {
     }
 
     @Mapping(target = "password", source = "password")
-    @Mapping(target = "isDeleted", expression = "java(user.isDeleted())")
+    @Mapping(target = "isDeleted", expression = "java(user.getIsDeleted())")
     @Mapping(target = "roles", expression = "java(mapRoles(user))")
     public abstract UserRes toResponse(User user);
 
@@ -32,6 +32,10 @@ public abstract class UserMapper {
     @Mapping(target = "plan", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "userRoles", ignore = true)
+    @Mapping(target = "blocked", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     public abstract User toEntity(UserCreateReq req);
 
     protected List<RoleResponse> mapRoles(User user) {

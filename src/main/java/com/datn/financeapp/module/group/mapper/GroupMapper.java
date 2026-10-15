@@ -60,6 +60,10 @@ public interface GroupMapper {
     @Mapping(target = "inviteCode", source = "inviteCode")
     @Mapping(target = "status", constant = "ACTIVE")
     @Mapping(target = "fund", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
     Group toEntity(
             GroupCreateReq req,
             UUID groupId,

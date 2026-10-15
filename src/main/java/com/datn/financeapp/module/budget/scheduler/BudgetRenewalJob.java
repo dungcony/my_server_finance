@@ -1,4 +1,4 @@
-package com.datn.financeapp.module.scheduler;
+package com.datn.financeapp.module.budget.scheduler;
 
 import com.datn.financeapp.module.budget.service.BudgetRenewalService;
 import lombok.RequiredArgsConstructor;

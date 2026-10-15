@@ -80,7 +80,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
             throw new WrongPasswordException(ErrorCode.AUTH_PASSWORD_INCORRECT);
         }
 
-        user.setDeleted(true);
+        user.setIsDeleted(true);
         userRepository.save(user);
 
         eventPublisher.publishEvent(new UserDeletedEvent(uid));

@@ -57,8 +57,7 @@ public class AuthServiceImpl implements AuthService {
         UserRes user = userService.create(
                 UserCreateReq.forEmail(
                         req.email(),
-                        passwordEncoder.encode(req.password()),
-                        now
+                        passwordEncoder.encode(req.password())
                 )
         );
         sendEmail(req.email(), OtpType.REGISTER_OTP, now);

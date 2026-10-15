@@ -2,9 +2,11 @@ package com.datn.financeapp.module.transaction.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateReq;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleListRec;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleRes;
 import com.datn.financeapp.module.transaction.entity.RecTxnSchedule;
 import com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus;
@@ -14,6 +16,8 @@ import com.datn.financeapp.module.transaction.repository.RecTxnScheduleRepositor
 import com.datn.financeapp.module.transaction.service.RecTxnScheduleBehavierService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +66,24 @@ public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService
 
         RecTxnSchedule saved = scheduleRepository.save(schedule);
         return scheduleMapper.toResponse(saved);
+    }
+
+    @Override
+    public RecTxnScheduleListRec gets(UUID userId, UUID recId, Pageable pageable) {
+
+        if (userId == null)
+            userId = SecurityContextUtil.currentUserId();
+
+        // kiểm tra giao dịch định kỳ cha có tồn tại
+        Page<RecTxnSchedule> recTxnSchedules = scheduleRepository.findByUserIdAndRecTxnIdAndIsDeletedFalse(userId, recId, pageable);
+
+
+        return new RecTxnScheduleListRec(
+                recTxnSchedules.getContent().stream()
+                        .map(scheduleMapper::toResponse)
+                        .toList(),
+                PageMeta.from(recTxnSchedules)
+        );
     }
 
     /**

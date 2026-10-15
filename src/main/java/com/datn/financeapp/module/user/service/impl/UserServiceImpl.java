@@ -14,8 +14,8 @@ import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.event.publiser.UserCreateEvent;
 import com.datn.financeapp.module.user.exception.UserBlockedException;
 import com.datn.financeapp.module.user.exception.UserNotFoundException;
-import com.datn.financeapp.module.user.mapper.UserMapper;
 import com.datn.financeapp.module.user.helper.RolePermissionCacheHelper;
+import com.datn.financeapp.module.user.mapper.UserMapper;
 import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.module.user.repository.UserRoleRepository;
 import com.datn.financeapp.module.user.service.UserService;
@@ -26,8 +26,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -53,7 +55,7 @@ public class UserServiceImpl implements UserService {
         if (user.getStatus() == null)
             user.setStatus(UserStatus.PENDING_VERIFY);
 
-        user.setDeleted(false);
+        user.setIsDeleted(false);
 
         userRepository.save(user);
         assignDefaultRole(user);
@@ -67,14 +69,14 @@ public class UserServiceImpl implements UserService {
 
         if (req.email() != null)
             return userRepository.findByEmail(req.email())
-                    .filter(u -> u.isDeleted() == req.deleted())
+                    .filter(u -> u.getIsDeleted() == req.deleted())
                     .map(userMapper::toResponse)
                     .orElseThrow(UserNotFoundException::new);
 
 
         if (req.id() != null)
             return userRepository.findById(req.id())
-                    .filter(u -> u.isDeleted() == req.deleted())
+                    .filter(u -> u.getIsDeleted() == req.deleted())
                     .map(userMapper::toResponse)
                     .orElseThrow(UserNotFoundException::new);
 
@@ -102,7 +104,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserRes updateStatus(String email, UserStatus status) {
         User user = userRepository.findByEmail(email)
-                .filter(u -> !u.isDeleted())
+                .filter(u -> !u.getIsDeleted())
                 .orElseThrow(UserNotFoundException::new);
 
         user.setStatus(status);
@@ -113,7 +115,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserRes updatePass(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .filter(u -> !u.isDeleted())
+                .filter(u -> !u.getIsDeleted())
                 .orElseThrow(UserNotFoundException::new);
 
         if (user.isLocked())
@@ -127,13 +129,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserRes resolveGoogleUser(String email, String googleId, Instant now) {
+    public UserRes resolveGoogleUser(String email, String googleId) {
         // đã từng đăng nhập Google
         User user = userRepository.findByEmail(email)
                 .orElse(null);
 
         if (user == null)
-            return createGoogleUser(email, googleId, now);
+            return createGoogleUser(email, googleId);
 
         if (user.getGoogleId() == null)
             user.setGoogleId(googleId);
@@ -158,7 +160,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void validUser(String email) {
         User user = userRepository.findByEmail(email)
-                .filter(u -> !u.isDeleted())
+                .filter(u -> !u.getIsDeleted())
                 .orElseThrow(UserNotFoundException::new);
 
         // kiểm tra khoá trước: tài khoản bị khoá không còn ở trạng thái ACTIVE nên nếu kiểm tra xác thực trước,
@@ -174,7 +176,7 @@ public class UserServiceImpl implements UserService {
     //-------------------------------------PRIVATE-------------------------------//
 
 
-    private UserRes createGoogleUser(String email, String googleId, Instant now) {
+    private UserRes createGoogleUser(String email, String googleId) {
         return persistNewUser(User.builder()
                 .id(UUID.randomUUID())
                 .email(email)
@@ -182,8 +184,6 @@ public class UserServiceImpl implements UserService {
                 .googleId(googleId)
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(now)
                 .build());
     }
 

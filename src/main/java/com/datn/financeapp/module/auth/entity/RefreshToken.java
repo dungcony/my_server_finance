@@ -29,6 +29,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class RefreshToken extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
+
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 

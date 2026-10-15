@@ -11,13 +11,11 @@ public record UserCreateReq(
         String firstName,
         String lastName,
         String avatarUrl,
-        UserStatus status,
-        Instant createdAt) {
+        UserStatus status) {
 
     public static UserCreateReq forGoogle(
             String email,
-            String googleId,
-            Instant now) {
+            String googleId) {
         return new UserCreateReq(
                 email,
                 null,
@@ -25,14 +23,12 @@ public record UserCreateReq(
                 null,
                 null,
                 null,
-                UserStatus.ACTIVE,
-                now);
+                UserStatus.ACTIVE);
     }
 
     public static UserCreateReq forEmail(
             String email,
-            String password,
-            Instant now) {
+            String password) {
         return new UserCreateReq(
                 email,
                 password,
@@ -40,7 +36,6 @@ public record UserCreateReq(
                 null,
                 null,
                 null,
-                UserStatus.PENDING_VERIFY,
-                now);
+                UserStatus.PENDING_VERIFY);
     }
 }

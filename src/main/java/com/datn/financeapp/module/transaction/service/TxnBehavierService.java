@@ -33,6 +33,15 @@ public interface TxnBehavierService {
 
 
     /**
+     * Truy vấn chi tiết một giao dịch theo ID và người dùng.
+     *
+     * @param id     ID giao dịch
+     * @param userId ID người dùng (nếu null sẽ lấy từ context)
+     * @return {@link TxnDetailResponse} chi tiết giao dịch
+     */
+    TxnDetailResponse detail(UUID id, UUID userId);
+
+    /**
      * Cập nhật thông tin giao dịch hiện có.
      *
      * @param transactionId ID giao dịch cần sửa
@@ -44,8 +53,17 @@ public interface TxnBehavierService {
     /**
      * Xóa mềm một giao dịch và hoàn tất cập nhật lại số dư ví.
      *
+     * @param userId        ID người dùng (nếu null sẽ lấy từ context)
      * @param transactionId ID giao dịch cần xóa
      */
-    void softDelete(UUID transactionId);
+    void softDelete(UUID userId, UUID transactionId);
+
+    /**
+     * Xóa mềm nhiều giao dịch cùng lúc.
+     *
+     * @param userId ID người dùng (nếu null sẽ lấy từ context)
+     * @param ids    danh sách ID giao dịch cần xóa
+     */
+    void bulkDelete(UUID userId, List<UUID> ids);
 
 }

@@ -28,14 +28,6 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
     Page<RecTxnSchedule> findByRecTxnIdAndIsDeletedFalse(UUID recId, Pageable pageable);
 
     /**
-     * Tìm thông tin buổi lịch cụ thể theo ID.
-     *
-     * @param id ID buổi lịch
-     * @return {@link Optional} chứa buổi lịch nếu tìm thấy và chưa bị xóa
-     */
-    Optional<RecTxnSchedule> findByIdAndIsDeletedFalse(UUID id);
-
-    /**
      * Tìm thông tin buổi lịch cụ thể theo ID và quyền sở hữu của người dùng.
      *
      * @param id     ID buổi lịch
@@ -43,15 +35,6 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
      * @return {@link Optional} chứa buổi lịch nếu tìm thấy và chưa bị xóa
      */
     Optional<RecTxnSchedule> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
-
-    /**
-     * Tìm danh sách các buổi lịch trong khoảng thời gian để hiển thị giao diện Calendar.
-     *
-     * @param from thời điểm bắt đầu khoảng tìm kiếm
-     * @param to   thời điểm kết thúc khoảng tìm kiếm
-     * @return danh sách các buổi lịch thỏa mãn điều kiện
-     */
-    List<RecTxnSchedule> findByRunAtBetweenAndIsDeletedFalse(Instant from, Instant to);
 
     /**
      * Tìm các buổi lịch đến hạn chạy tự động phục vụ Scheduler engine.
@@ -78,4 +61,6 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
      * @return số lượng bản ghi thỏa mãn
      */
     long countByRecTxnIdAndStatusAndIsDeletedFalse(UUID recId, RecTxnScheduleStatus status);
+
+    Page<RecTxnSchedule> findByUserIdAndRecTxnIdAndIsDeletedFalse(UUID userId, UUID recId, Pageable pageable);
 }

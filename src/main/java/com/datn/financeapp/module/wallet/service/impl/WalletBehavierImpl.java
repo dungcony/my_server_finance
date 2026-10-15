@@ -93,6 +93,9 @@ public class WalletBehavierImpl implements WalletBehavierService {
             throw new BusinessException(ErrorCode.WALLET_NAME_EXISTS);
 
         Wallet wallet = walletMapper.toEntity(req);
+        wallet.setUserId(userId);
+        wallet.setId(UUID.randomUUID());
+        
         String iconData = "";
         if (req.iconId() != null)
             iconData = iconService.findActiveById(req.iconId()).pathData();
@@ -106,7 +109,7 @@ public class WalletBehavierImpl implements WalletBehavierService {
     @Override
     @Transactional
     public WalletRes update(UUID userId, UUID walletId, WalletupdateReq req) {
-        
+
         if (userId == null)
             userId = SecurityContextUtil.currentUserId();
 

@@ -25,5 +25,7 @@ public interface CateMapper {
     CategoryRes toResponse(Category category, IconResponse icon);
 
     @Mapping(target = "icon", source = "icon")
+    @Mapping(target = "code", source = "category.code")
+    @Mapping(target = "name", source = "category.name")
     CateSumaryRes toSumary(Category category, IconResponse icon);
 }

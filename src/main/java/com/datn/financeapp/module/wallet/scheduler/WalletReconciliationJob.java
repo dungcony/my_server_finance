@@ -1,6 +1,6 @@
-package com.datn.financeapp.module.scheduler;
+package com.datn.financeapp.module.wallet.scheduler;
 
-import com.datn.financeapp.module.wallet.service.WalletTransferService;
+import com.datn.financeapp.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * Scheduled Job thực hiện đối chiếu và cân bằng số dư thực tế cho toàn bộ các ví.
- * Sử dụng {@link WalletTransferService} để tự động sửa các chênh lệch số dư.
  * Tham chiếu phương thức thực thi chính {@link #run()}.
  */
 @Component
@@ -16,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class WalletReconciliationJob {
 
-    private final WalletTransferService walletTransferService;
+    private final WalletService walletService;
 
     /**
      * Thực thi tác vụ đối chiếu số dư ví định kỳ lúc 01:00 sáng (Asia/Ho_Chi_Minh).
@@ -24,7 +23,7 @@ public class WalletReconciliationJob {
     @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Ho_Chi_Minh")
     public void run() {
         try {
-            walletTransferService.reconcileAllWallets();
+            walletService.reconcileAll();
             log.info("Đã chạy xong tác vụ đối chiếu số dư ví");
         } catch (Exception e) {
             log.error("Lỗi khi chạy tác vụ đối chiếu số dư ví", e);

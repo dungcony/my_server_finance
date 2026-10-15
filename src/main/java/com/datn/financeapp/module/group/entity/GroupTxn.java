@@ -55,6 +55,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class GroupTxn extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
     /**
      * ID của nhóm tài chính sở hữu giao dịch này.
      */

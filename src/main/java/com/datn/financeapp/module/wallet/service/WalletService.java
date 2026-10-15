@@ -1,13 +1,8 @@
 package com.datn.financeapp.module.wallet.service;
 
-import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,11 +28,24 @@ public interface WalletService {
     WalletSumaryRes findSumary(UUID walletId, UUID userId);
 
     /**
+     * Lấy ví của user
+     *
+     * @param walletId ví
+     * @return thông tin cơ bản để hiển thị
+     */
+    WalletSumaryRes findSumary(UUID walletId);
+
+    /**
      * Kiểm tra ví có phải của user k
      *
      * @param userId   id user
      * @param walletId id ví
      * @return true nếu là ví của bản thân
      */
-    boolean myWallet(UUID userId, UUID walletId);
+    WalletRes findIfMyWallet(UUID userId, UUID walletId);
+
+    /**
+     * Đối chiếu số dư cho toàn bộ ví trong hệ thống (dùng cho công việc định kỳ).
+     */
+    void reconcileAll();
 }

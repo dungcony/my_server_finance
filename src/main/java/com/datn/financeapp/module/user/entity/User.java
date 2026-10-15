@@ -3,6 +3,7 @@ package com.datn.financeapp.module.user.entity;
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -34,6 +35,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class User extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
+
     // CHECK (email = lower(email)) ở DB — Service phải lowercase trước khi lưu.
     @Column(name = "email", nullable = false, unique = true)
     private String email;
@@ -62,19 +66,22 @@ public class User extends AssignedIdEntity {
     @Builder.Default
     @Column(name = "status", nullable = false)
     private UserStatus status = UserStatus.PENDING_VERIFY;
-    
+
     @Builder.Default
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private Set<UserRole> userRoles = new HashSet<>();
 
+    @JsonIgnore
     public boolean isLocked() {
         return this.status == UserStatus.BLOCKED;
     }
 
+    @JsonIgnore
     public void setBlocked(boolean blocked) {
         this.status = blocked ? UserStatus.BLOCKED : UserStatus.ACTIVE;
     }
 
+    @JsonIgnore
     public boolean isConfirm() {
         return this.status == UserStatus.ACTIVE;
     }

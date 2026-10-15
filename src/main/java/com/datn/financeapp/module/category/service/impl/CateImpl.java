@@ -62,6 +62,19 @@ public class CateImpl implements CategoryService {
     }
 
     @Override
+    public CategoryRes findCateIfIsleaf(UUID id) {
+        // lấy entity trực tiếp từ repository
+        Category category = categoryRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        // kiểm tra điều kiện danh mục lá trên entity trước khi map
+        if (!Boolean.TRUE.equals(category.getIsLeaf())) {
+            throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_LEAF);
+        }
+        IconResponse icon = iconService.findActiveById(category.getIconId());
+        return cateMapper.toResponse(category, icon);
+    }
+
+    @Override
     public UUID findIdByCode(String code) {
         return cateCache.findActiveId(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));

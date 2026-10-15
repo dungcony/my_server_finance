@@ -115,7 +115,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
         }
 
         if (req.endAt() != null) {
-            rec.setEndDate(req.endAt());
+            rec.setEndAt(req.endAt());
         }
 
         recurringRepository.saveAndFlush(rec);

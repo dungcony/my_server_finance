@@ -8,7 +8,7 @@ import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
-import com.datn.financeapp.module.scheduler.WalletReconciliationJob;
+import com.datn.financeapp.module.wallet.scheduler.WalletReconciliationJob;
 import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;

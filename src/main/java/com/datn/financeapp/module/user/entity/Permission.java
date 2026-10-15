@@ -24,6 +24,9 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Permission extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
+    
     @Column(name = "name", nullable = false, unique = true, length = 100)
     private PermissionName name;
 

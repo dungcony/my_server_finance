@@ -9,17 +9,19 @@ import com.datn.financeapp.module.wallet.mapper.WalletMapper;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
 import com.datn.financeapp.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WalletServiceImpl implements WalletService {
     private final WalletRepository walletRepository;
     private final WalletMapper walletMapper;
-
     private final IconService iconService;
 
 
@@ -39,7 +41,32 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    public boolean myWallet(UUID userId, UUID walletId) {
-        return walletRepository.findByUserIdAndIsDefaultTrue(userId).isPresent();
+    public WalletSumaryRes findSumary(UUID walletId) {
+        return walletRepository.findByIdAndIsDefaultTrue(walletId)
+                .map(w -> walletMapper.toSumary(w, ""))
+                .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_FOUND));
+    }
+
+    @Override
+    public WalletRes findIfMyWallet(UUID userId, UUID walletId) {
+        var wallet = walletRepository.findByUserIdAndIsDefaultTrue(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND));
+
+        return walletMapper.toResponse(wallet, iconService.findActiveById(wallet.getIconId()).pathData());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void reconcileAll() {
+        List<UUID> allWalletIds = walletRepository.findAllIds();
+        for (UUID walletId : allWalletIds) {
+            try {
+                walletRepository.reconcil(walletId);
+            } catch (Exception e) {
+                log.error("Lỗi khi đối chiếu ví {}", walletId, e);
+            }
+        }
     }
 }

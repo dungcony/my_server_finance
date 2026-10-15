@@ -32,6 +32,15 @@ public interface CategoryService {
     CateSumaryRes findIfIsleaf(UUID id);
 
     /**
+     * Lấy một danh mục chưa xóa theo id. Và phải là lá
+     *
+     * @param id ID danh mục
+     * @return danh mục tìm được
+     * @throws com.datn.financeapp.common.exception.BusinessException nếu không có hoặc đã xóa
+     */
+    CategoryRes findCateIfIsleaf(UUID id);
+
+    /**
      * Lấy id danh mục theo code, tra từ cache RAM (không query DB). Dành cho module khác cần gắn giao dịch vào một danh mục
      * hệ thống biết trước code (vd. giao dịch sinh từ nhóm).
      *

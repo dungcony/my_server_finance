@@ -19,5 +19,9 @@ public interface MemberMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "joinedAt", ignore = true)
     @Mapping(target = "leftAt", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
     Member toEntity(MemberCreateReq req);
 }

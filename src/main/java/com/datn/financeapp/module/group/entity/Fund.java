@@ -31,6 +31,8 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Fund extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
     @Column(name = "group_id", nullable = false, unique = true)
     private UUID groupId;
 

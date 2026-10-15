@@ -1,6 +1,7 @@
 package com.datn.financeapp.common.abstracts;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
@@ -15,9 +16,6 @@ import java.util.UUID;
 @MappedSuperclass
 public abstract class AssignedIdEntity implements Persistable<UUID> {
 
-    @Id
-    private UUID id;
-    
     // mặc định: vừa tạo bằng code → là mới
     @Transient
     private boolean isNew = true;

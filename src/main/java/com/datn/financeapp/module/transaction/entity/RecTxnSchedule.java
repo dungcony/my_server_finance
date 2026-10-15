@@ -19,6 +19,9 @@ import java.util.UUID;
 @Table(name = "recurring_transaction_schedules")
 public class RecTxnSchedule extends AssignedIdEntity {
     
+    @Id
+    private UUID id;
+
     // thời gian dự kiến chạy (người dùng có thể sửa đổi riêng buổi này)
     @Column(name = "run_at", nullable = false)
     private Instant runAt;
@@ -36,7 +39,7 @@ public class RecTxnSchedule extends AssignedIdEntity {
     @Column(name = "user_id")
     private UUID userId;
 
-    // bên RecurringTransactionSchedule
+    //     bên RecurringTransactionSchedule
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recurring_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)

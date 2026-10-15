@@ -53,3 +53,41 @@ CREATE CONSTRAINT TRIGGER trg_wallets_only_one_default
     AFTER INSERT OR UPDATE OF is_default, is_deleted ON wallets
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION fn_wallets_only_one_default();
+
+-- Tự động tạo giao dịch số dư ban đầu khi tạo ví có số dư lớn hơn 0
+CREATE OR REPLACE FUNCTION fn_wallets_initial_transaction()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.balance > 0 THEN
+        INSERT INTO transactions (
+            id,
+            user_id,
+            wallet_id,
+            type,
+            amount,
+            occurred_at,
+            name,
+            note,
+            source,
+            is_deleted
+        ) VALUES (
+            gen_random_uuid(),
+            NEW.user_id,
+            NEW.id,
+            'INCOME',
+            NEW.balance,
+            COALESCE(NEW.created_at, now()),
+            'Số dư ban đầu',
+            'Tự động tạo từ số dư ban đầu khi mở ví',
+            'MANUAL',
+            FALSE
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_wallets_initial_transaction ON wallets;
+CREATE TRIGGER trg_wallets_initial_transaction
+    AFTER INSERT ON wallets
+    FOR EACH ROW EXECUTE FUNCTION fn_wallets_initial_transaction();

@@ -1,15 +1,13 @@
-package com.datn.financeapp.module.scheduler;
-
-import com.datn.financeapp.common.idempotency.IdempotencyKeyRepository;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+package com.datn.financeapp.common.idempotency;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Scheduled Job định kỳ dọn dẹp các idempotency key quá hạn lưu trữ.

@@ -19,8 +19,6 @@ import java.util.UUID;
  * @param occurredAt  thời gian giao dịch
  * @param displayName tên hiển thị
  * @param note        ghi chú
- * @param source      Nguồn giao dịch(tự ghi hay nhờ AI, hoặc là do reccurring tự động tạo)
- * @param receiptUrl  URL hóa đơn
  */
 public record TxnCreateReq(
         @NotNull(message = "Type là bắt buộc")
@@ -42,7 +40,5 @@ public record TxnCreateReq(
         String displayName,
 
         @Size(max = 500, message = "Ghi chú tối đa 500 ký tự.")
-        String note,
-        TxnSource source,
-        String receiptUrl) {
+        String note) {
 }

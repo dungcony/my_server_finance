@@ -31,6 +31,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class Transaction extends AssignedIdEntity {
 
+    @Id
+    private UUID id;
+
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
@@ -46,10 +49,6 @@ public class Transaction extends AssignedIdEntity {
 
     @Column(name = "name")
     private String name;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "source", nullable = false)
-    private TxnSource source;
 
     @Column(name = "amount", nullable = false)
     private Long amount;

@@ -6,7 +6,6 @@ import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 import com.datn.financeapp.module.user.enums.UserStatus;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,7 +24,7 @@ public interface UserService {
 
     // Đăng nhập Google: đã liên kết googleId thì trả về luôn, trùng email thì liên kết vào tài khoản đó,
     // chưa có gì thì tạo mới. Ném UserNotFoundException/UserBlockedException nếu tài khoản không đủ điều kiện.
-    UserRes resolveGoogleUser(String email, String googleId, Instant now);
+    UserRes resolveGoogleUser(String email, String googleId);
 
     boolean existByEmail(String email);
 

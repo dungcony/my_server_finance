@@ -30,10 +30,14 @@ public interface RecurringMapper {
      * @param walletSumaryRes thông tin tóm tắt ví tiền
      * @return DTO phản hồi chi tiết giao dịch định kỳ
      */
-    @Mapping(target = "id", source = "recurringTransaction.id")
-    @Mapping(target = "displayName", source = "recurringTransaction.name")
+    @Mapping(target = "id", source = "recTxn.id")
+    @Mapping(target = "displayName", source = "recTxn.name")
     @Mapping(target = "wallet", source = "walletSumaryRes")
     @Mapping(target = "category", source = "cateSumaryRes")
+    @Mapping(target = "startDate", source = "recTxn.startAt")           // <-- map startAt sang startDate
+    @Mapping(target = "endDate", source = "recTxn.endAt")               // <-- map endAt sang endDate
+    @Mapping(target = "frequencyType", source = "recTxn.frequency")
+    // <-- map frequency sang frequencyType
     RecDetailRes toDetalRes(
             RecTxn recTxn,
             CateSumaryRes cateSumaryRes,
@@ -49,9 +53,12 @@ public interface RecurringMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "name", source = "displayName")
-    @Mapping(target = "startDate", source = "startAt")
-    @Mapping(target = "endDate", source = "endAt")
+    @Mapping(target = "startAt", source = "startAt")
+    @Mapping(target = "endAt", source = "endAt")
     @Mapping(target = "isEnabled", constant = "true")
     @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     RecTxn toEntity(RecCreateReq req);
 }

@@ -227,13 +227,16 @@
                             <version>${mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <compilerArg>-Amapstruct.disableBuilders=true</compilerArg>
+                    </compilerArgs>
 
                     <!-- Chỉ build các module đang làm việc: loại trừ mã nguồn chính -->
                     <excludes>
                         <exclude>com/datn/financeapp/module/goal/**</exclude>
                         <exclude>com/datn/financeapp/module/debt/**</exclude>
                         <exclude>com/datn/financeapp/module/report/**</exclude>
-                        <exclude>com/datn/financeapp/module/scheduler/**</exclude>
+                        <exclude>com/datn/financeapp/module/budget/**</exclude>
                     </excludes>
 
                     <!-- Loại trừ mã nguồn test tương ứng -->

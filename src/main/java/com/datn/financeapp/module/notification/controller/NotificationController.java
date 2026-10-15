@@ -4,29 +4,13 @@ import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.notification.dto.response.NotificationListResponse;
 import com.datn.financeapp.module.notification.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Controller xử lý các yêu cầu HTTP quản lý thông báo người dùng.
- * <p>
- * <b>Các endpoint chính:</b>
- * <ul>
- *   <li>{@link #list(Boolean, Integer, Integer)}: {@code GET /notifications} - Danh sách thông báo phân trang</li>
- *   <li>{@link #markRead(UUID)}: {@code PATCH /notifications/{id}/read} - Đánh dấu thông báo là đã đọc</li>
- * </ul>
- * </p>
- *
- * @see NotificationService
- */
 @RestController
 @RequestMapping("/notifications")
 @RequiredArgsConstructor
@@ -37,11 +21,9 @@ public class NotificationController {
     @GetMapping
     public NotificationListResponse list(
             @RequestParam(name = "is_read", required = false) Boolean isRead,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+            Pageable pageable) {
         UUID userId = SecurityContextUtil.currentUserId();
-        PageRequestParams pageParams = PageRequestParams.of(page, pageSize, "created_at", "desc");
-        return notificationService.list(userId, isRead, pageParams);
+        return notificationService.list(userId, isRead, pageable);
     }
 
     @PatchMapping("/{id}/read")

@@ -42,7 +42,7 @@ public interface RecTxnScheduleMapper {
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "recTxn", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
-    @Mapping(target = "isNew", ignore = true)
+    @Mapping(target = "new", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     RecTxnSchedule toEntity(RecTxnScheduleCreateReq req);

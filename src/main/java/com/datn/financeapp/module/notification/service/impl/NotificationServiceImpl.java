@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,17 +41,12 @@ public class NotificationServiceImpl implements NotificationService {
      */
     @Override
     @Transactional(readOnly = true)
-    public NotificationListResponse list(UUID userId, Boolean isRead, PageRequestParams pageParams) {
-        int limit = pageParams.pageSize();
-        int offset = (pageParams.page() - 1) * pageParams.pageSize();
+    public NotificationListResponse list(UUID userId, Boolean isRead, Pageable pageable) {
 
-        List<Notification> notifications = notificationRepository.findAllForUser(userId, isRead, limit, offset);
-        long totalItems = notificationRepository.countForUser(userId, isRead);
-        int totalPages = (int) Math.ceil((double) totalItems / pageParams.pageSize());
+        Page<Notification> notifications = notificationRepository.findAllByUserIdAndIsRead(userId, isRead, pageable);
 
-        List<NotificationRes> data =
-                notifications.stream().map(notificationMapper::toRes).toList();
-        PageMeta pagination = new PageMeta(pageParams.page(), pageParams.pageSize(), totalItems, totalPages);
+        List<NotificationRes> data = notifications.stream().map(notificationMapper::toRes).toList();
+        PageMeta pagination = PageMeta.from(notifications);
 
         return NotificationListResponse.of(data, pagination);
     }
