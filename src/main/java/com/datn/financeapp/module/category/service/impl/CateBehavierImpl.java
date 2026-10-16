@@ -18,12 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +41,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
         Category parent = req.parentCode() != null ? findByCode(req.parentCode()) : null;
         UUID id = UUID.randomUUID();
 
-        if (categoryRepository.existsByNameIgnoreCaseAndDeletedFalseAndIdNot(req.name(), id))
+        if (categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(req.name(), id))
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
 
         Category category = Category.builder()
@@ -59,7 +54,6 @@ public class CateBehavierImpl implements CategoryBehavierService {
                 .color(req.color())
                 .level(levelUnder(parent))
                 .path(pathUnder(parent, req.code()))
-                .createdAt(Instant.now())
                 .build();
 
         if (parent != null)
@@ -73,7 +67,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
     @Override
     @Transactional(readOnly = true)
     public List<CategoryRes> getMasters() {
-        List<Category> categories = categoryRepository.findByParentIsNullAndDeletedFalseOrderByNameAsc();
+        List<Category> categories = categoryRepository.findByParentIsNullAndIsDeletedFalseOrderByNameAsc();
         Map<UUID, IconResponse> iconMap = iconService.findActiveByIds(
                 categories.stream().map(Category::getIconId).toList());
         return categories.stream()
@@ -85,7 +79,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
     @Transactional(readOnly = true)
     public List<CategoryRes> getOfParent(String parentCode) {
         Category parent = findByCode(parentCode);
-        List<Category> categories = categoryRepository.findByParent_IdAndDeletedFalseOrderByNameAsc(parent.getId());
+        List<Category> categories = categoryRepository.findByParent_IdAndIsDeletedFalseOrderByNameAsc(parent.getId());
         Map<UUID, IconResponse> iconMap = iconService.findActiveByIds(
                 categories.stream().map(Category::getIconId).toList());
         return categories.stream()
@@ -111,17 +105,17 @@ public class CateBehavierImpl implements CategoryBehavierService {
         }
 
         if (req.name() != null
-                && categoryRepository.existsByNameIgnoreCaseAndDeletedFalseAndIdNot(req.name(), category.getId())) {
+                && categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(req.name(), category.getId())) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
+        // chọn icon mới thì phải còn bật (findActiveById báo ICON_NOT_FOUND), giữ icon cũ thì chỉ hiển thị
         IconResponse icon;
         if (req.iconId() != null) {
             icon = iconService.findActiveById(req.iconId());
-            category.setIconId(icon.id());
-        } else {
-            icon = iconService.findActiveById(category.getIconId());
-        }
+            category.setIconId(req.iconId());
+        } else
+            icon = iconService.findActiveByIds(List.of(category.getIconId())).get(category.getIconId());
 
         if (req.name() != null) {
             category.setName(req.name());
@@ -140,25 +134,25 @@ public class CateBehavierImpl implements CategoryBehavierService {
     public void delete(String cateCode) {
 
         Category category = findByCode(cateCode);
-        category.setDeleted(true);
+        category.setIsDeleted(true);
 
         List<UUID> deletedIds = new ArrayList<>(List.of(category.getId()));
         // xóa các danh mục con
         categoryRepository.findDescendants(category.getPath()).forEach(descendant -> {
-            descendant.setDeleted(true);
+            descendant.setIsDeleted(true);
             deletedIds.add(descendant.getId());
         });
         markDeletedAfterCommit(deletedIds);
         Category parent = category.getParent();
 
         if (parent != null)
-            parent.setIsLeaf(!categoryRepository.existsByParent_IdAndDeletedFalse(parent.getId()));
+            parent.setIsLeaf(!categoryRepository.existsByParent_IdAndIsDeletedFalse(parent.getId()));
     }
 
     // ------------------------------PRIVATE METHOD-------------------------------//
     private Category findByCode(String code) {
         return categoryRepository
-                .findByCodeAndDeletedFalse(code)
+                .findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
     }
 
@@ -187,7 +181,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
         newParent.setIsLeaf(false);
         // Kiểm tra cha cũ: nếu không còn danh mục con nào khác đang hoạt động thì chuyển thành nút lá
         if (oldParent != null)
-            oldParent.setIsLeaf(!categoryRepository.existsByParent_IdAndDeletedFalse(oldParent.getId()));
+            oldParent.setIsLeaf(!categoryRepository.existsByParent_IdAndIsDeletedFalse(oldParent.getId()));
     }
 
     // Xác định cấp bậc theo nút cha: danh mục gốc là cấp 0, danh mục con kế thừa và tăng thêm 1 cấp

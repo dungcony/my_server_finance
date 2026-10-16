@@ -1,5 +1,7 @@
 package com.datn.financeapp.module.transaction.dto.request;
 
+import org.springframework.web.bind.annotation.BindParam;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -25,11 +27,10 @@ public record TxnFilterRequest(
         Instant to,
         String period,
         String type,
-        UUID walletId,
-        UUID categoryId,
+        @BindParam("wallet_id") UUID walletId,
+        @BindParam("category_id") UUID categoryId,
         String source,
         String search,
-        Long minAmount,
-        Long maxAmount) {
-
+        @BindParam("min_amount") Long minAmount,
+        @BindParam("max_amount") Long maxAmount) {
 }

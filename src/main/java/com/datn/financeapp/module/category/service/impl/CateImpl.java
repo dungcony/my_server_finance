@@ -41,9 +41,9 @@ public class CateImpl implements CategoryService {
     @Transactional(readOnly = true)
     public CategoryRes findActiveById(UUID id) {
         Category category = categoryRepository
-                .findByIdAndDeletedFalse(id)
+                .findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-        IconResponse icon = iconService.findActiveById(category.getIconId());
+        IconResponse icon = iconOf(category);
         return cateMapper.toResponse(category, icon);
     }
 
@@ -51,26 +51,26 @@ public class CateImpl implements CategoryService {
     @Transactional(readOnly = true)
     public CateSumaryRes findIfIsleaf(UUID id) {
         // lấy entity trực tiếp từ repository
-        Category category = categoryRepository.findByIdAndDeletedFalse(id)
+        Category category = categoryRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
         // kiểm tra điều kiện danh mục lá trên entity trước khi map
         if (!Boolean.TRUE.equals(category.getIsLeaf())) {
             throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_LEAF);
         }
-        IconResponse icon = iconService.findActiveById(category.getIconId());
+        IconResponse icon = iconOf(category);
         return cateMapper.toSumary(category, icon);
     }
 
     @Override
     public CategoryRes findCateIfIsleaf(UUID id) {
         // lấy entity trực tiếp từ repository
-        Category category = categoryRepository.findByIdAndDeletedFalse(id)
+        Category category = categoryRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
         // kiểm tra điều kiện danh mục lá trên entity trước khi map
         if (!Boolean.TRUE.equals(category.getIsLeaf())) {
             throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_NOT_LEAF);
         }
-        IconResponse icon = iconService.findActiveById(category.getIconId());
+        IconResponse icon = iconOf(category);
         return cateMapper.toResponse(category, icon);
     }
 
@@ -127,6 +127,12 @@ public class CateImpl implements CategoryService {
                         .map(Category::getId)
                         .toList())
                 .orElse(List.of());
+    }
+
+    // icon danh mục chỉ để hiển thị: icon đã bị tắt thì trả null (response để trống icon),
+    // không được chặn việc kiểm danh mục khi ghi giao dịch
+    private IconResponse iconOf(Category category) {
+        return iconService.findActiveByIds(List.of(category.getIconId())).get(category.getIconId());
     }
 
 }

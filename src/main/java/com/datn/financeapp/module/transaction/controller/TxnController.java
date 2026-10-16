@@ -35,8 +35,8 @@ public class TxnController {
     @GetMapping
     public ApiResponse<?> gets(
             @ModelAttribute TxnFilterRequest filters,
-            @PageableDefault(sort = "date", direction = Sort.Direction.DESC) Pageable page) {
-        return ApiResponse.of(txnBehavierService.gets(filters, page));
+            Pageable page) {
+        return ApiResponse.of(txnBehavierService.gets(null, filters, page));
     }
 
     @GetMapping("/{id}")
@@ -48,15 +48,14 @@ public class TxnController {
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody TxnCreateReq req) {
-        UUID userId = SecurityContextUtil.currentUserId();
-        return ApiResponse.of(txnBehavierService.create(userId, req));
+        return ApiResponse.of(txnBehavierService.create(null, req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<?> update(
             @PathVariable UUID id,
             @Valid @RequestBody TxnUpdateRequest req) {
-        return ApiResponse.of(txnBehavierService.update(id, req));
+        return ApiResponse.of(txnBehavierService.update(null, id, req));
     }
 
     @DeleteMapping("/bulk")
@@ -73,12 +72,20 @@ public class TxnController {
 
     // luồng quản trị viên
 
+    @GetMapping("/admin")
+    public ApiResponse<?> adminGets(
+            @RequestParam(name = "user_id") UUID userId,
+            @ModelAttribute TxnFilterRequest filters,
+            Pageable page) {
+        return ApiResponse.of(txnBehavierService.gets(userId, filters, page));
+    }
+
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_READ.getValue())")
     @GetMapping("/admin/{id}")
     public ApiResponse<?> adminDetail(
             @PathVariable UUID id,
             @RequestParam(name = "user_id", required = false) UUID userId) {
-        return ApiResponse.of(txnBehavierService.detail(id, userId));
+        return ApiResponse.of(txnBehavierService.detail(userId, id));
     }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_DELETE.getValue())")

@@ -42,7 +42,8 @@ public interface WalletBehavierService {
     WalletRes update(UUID userId, UUID walletId, WalletupdateReq req);
 
     /**
-     * Xóa ví tài chính (xóa mềm). Xóa ví sẽ xóa luôn các giao dịch cùng ví
+     * Xóa ví tài chính (xóa mềm). Các giao dịch của ví được xoá mềm theo bằng trigger
+     * {@code trg_wallets_soft_delete_cascade} , số dư ví tự về 0. Không xoá được ví mặc định.
      *
      * @param walletId ID ví
      */

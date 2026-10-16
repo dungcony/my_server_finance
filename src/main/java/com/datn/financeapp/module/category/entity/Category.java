@@ -52,7 +52,7 @@ public class Category extends AssignedIdEntity {
     private Category parent;
 
     @NotNull
-    @Column(name = "icon_id", nullable = false)
+    @Column(name = "icon_id")
     private UUID iconId;
 
     @NotNull
@@ -74,13 +74,4 @@ public class Category extends AssignedIdEntity {
     @Size(max = 255)
     @Column(name = "path", nullable = false)
     private String path;
-
-    @NotNull
-    @Column(name = "deleted", nullable = false)
-    @Builder.Default
-    private Boolean deleted = false;
-
-    @NotNull
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
 }

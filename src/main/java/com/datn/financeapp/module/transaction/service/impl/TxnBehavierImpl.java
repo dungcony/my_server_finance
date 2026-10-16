@@ -34,17 +34,6 @@ import java.util.UUID;
 
 /**
  * Triển khai dịch vụ quản lý giao dịch tài chính cá nhân {@link TxnBehavierService}.
- * <p>
- * Cung cấp các thao tác nghiệp vụ:
- * <ul>
- *   <li>{@link #create(UUID, TxnCreateReq)}: Tạo mới giao dịch và xác thực danh mục lá, quyền sở hữu ví.</li>
- *   <li>{@link #gets(TxnFilterRequest, Pageable)}: Truy vấn danh sách tóm tắt giao dịch phân trang theo bộ lọc.</li>
- *   <li>{@link #detail(UUID, UUID)}: Truy vấn chi tiết một giao dịch theo ID và người dùng.</li>
- *   <li>{@link #update(UUID, TxnUpdateRequest)}: Cập nhật thông tin chi tiết của giao dịch hiện có.</li>
- *   <li>{@link #softDelete(UUID, UUID)}: Xóa mềm giao dịch theo cơ chế idempotent và chặn khi gắn liền với khoản nợ.</li>
- *   <li>{@link #bulkDelete(UUID, List)}: Xóa mềm nhiều giao dịch cùng lúc.</li>
- * </ul>
- * </p>
  */
 @Service
 @RequiredArgsConstructor
@@ -66,13 +55,15 @@ public class TxnBehavierImpl implements TxnBehavierService {
     @Override
     @Transactional
     public TxnDetailResponse create(UUID userId, TxnCreateReq req) {
-        if (req.amount() == null || req.amount() <= 0) {
-            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
-        }
 
-        if (req.categoryId() == null) {
+        if (userId == null)
+            userId = SecurityContextUtil.currentUserId();
+
+        if (req.amount() == null || req.amount() <= 0)
+            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
+
+        if (req.categoryId() == null)
             throw new BusinessException(ErrorCode.TRANSACTION_CATEGORY_REQUIRED);
-        }
 
         // kiểm tra danh mục là lá
         var cate = categoryService.findCateIfIsleaf(req.categoryId());
@@ -96,8 +87,10 @@ public class TxnBehavierImpl implements TxnBehavierService {
      */
     @Override
     @Transactional(readOnly = true)
-    public TxnListRes gets(TxnFilterRequest filter, Pageable page) {
-        UUID userId = SecurityContextUtil.currentUserId();
+    public TxnListRes gets(UUID userId, TxnFilterRequest filter, Pageable page) {
+
+        if (userId == null)
+            userId = SecurityContextUtil.currentUserId();
 
         Specification<Transaction> spec = TxnSpecifial.filter(userId, filter);
 
@@ -142,8 +135,11 @@ public class TxnBehavierImpl implements TxnBehavierService {
      */
     @Override
     @Transactional
-    public TxnDetailResponse update(UUID transactionId, TxnUpdateRequest req) {
-        UUID userId = SecurityContextUtil.currentUserId();
+    public TxnDetailResponse update(UUID userId, UUID transactionId, TxnUpdateRequest req) {
+
+        if (userId == null)
+            userId = SecurityContextUtil.currentUserId();
+
         WalletRes wallet;
         CategoryRes category;
 
@@ -191,9 +187,8 @@ public class TxnBehavierImpl implements TxnBehavierService {
     @Override
     @Transactional
     public void softDelete(UUID userId, UUID transactionId) {
-        if (userId == null) {
+        if (userId == null)
             userId = SecurityContextUtil.currentUserId();
-        }
 
         Transaction txn = txnRepository.findByIdAndUserId(transactionId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));

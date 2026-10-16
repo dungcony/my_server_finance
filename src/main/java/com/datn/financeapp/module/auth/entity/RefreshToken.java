@@ -51,7 +51,4 @@ public class RefreshToken extends AssignedIdEntity {
 
     @Column(name = "device_info")
     private String deviceInfo;
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
 }

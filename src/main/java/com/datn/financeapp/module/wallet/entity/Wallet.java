@@ -2,10 +2,7 @@ package com.datn.financeapp.module.wallet.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import com.datn.financeapp.module.wallet.enums.WalletType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.UUID;
@@ -33,11 +30,14 @@ public class Wallet extends AssignedIdEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private WalletType type;
 
-    @Column(name = "balance", nullable = false)
-    private Long balance; // số dư hiện có
+    // số dư hiện có, chỉ ghi lúc tạo ví; sau đó do trigger trg_transactions_wallet_balance và job đối chiếu cập nhật,
+    // updatable = false để save(wallet) không ghi đè số dư cũ trong bộ nhớ lên số trigger vừa cộng
+    @Column(name = "balance", nullable = false, updatable = false)
+    private Long balance;
 
     @Column(name = "icon_id")
     private UUID iconId;

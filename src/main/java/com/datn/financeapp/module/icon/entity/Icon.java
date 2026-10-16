@@ -31,7 +31,7 @@ public class Icon extends AssignedIdEntity {
     private UUID id;
 
     @NotNull
-    @Column(name = "code", nullable = false)
+    @Column(name = "code", nullable = false, unique = true)
     private String code;
 
     @NotNull

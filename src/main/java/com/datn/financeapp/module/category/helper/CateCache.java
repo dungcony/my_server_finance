@@ -69,7 +69,7 @@ public class CateCache {
         rows.forEach(row -> {
             newIdToCode.put(row.id(), row.code());
             newCodeToId.put(row.code(), row.id());
-            if (Boolean.TRUE.equals(row.deleted())) {
+            if (Boolean.TRUE.equals(row.isDeleted())) {
                 newDeletedIds.add(row.id());
             }
         });

@@ -16,15 +16,16 @@ spring:
     properties:
       hibernate:
         format_sql: false
-        ddl-auto: validate
         jdbc:
           batch_size: 50
         order_inserts: true
         default_batch_fetch_size: 100
     open-in-view: false
+    hibernate:
+      ddl-auto: validate
 
   flyway:
-    locations: classpath:db/migration
+    locations: classpath:db/migration_v2
     encoding: UTF-8
     baseline-on-migrate: false
 

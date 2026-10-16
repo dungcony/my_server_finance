@@ -97,7 +97,7 @@ class CateImplTest {
     void create_child_buildsPathFromParentAndParentStopsBeingLeaf() {
         Category parent = category("an_uong", null);
         when(iconService.getActive("ca_phe")).thenReturn(icon("ca_phe"));
-        when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
 
         cateImpl.create(createReq("ca_phe", "Cà phê", "an_uong"));
 
@@ -186,8 +186,8 @@ class CateImplTest {
     void create_duplicateName_throws() {
         Category parent = category("an_uong", null);
         when(iconService.getActive("ca_phe")).thenReturn(icon("ca_phe"));
-        when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
-        when(categoryRepository.existsByNameIgnoreCaseAndDeletedFalseAndIdNot(eq("Cà phê"), any(UUID.class)))
+        when(categoryRepository.findByCodeAndIsDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
+        when(categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(eq("Cà phê"), any(UUID.class)))
                 .thenReturn(true);
 
         assertThatThrownBy(() -> cateImpl.create(createReq("ca_phe", "Cà phê", "an_uong")))
@@ -217,7 +217,7 @@ class CateImplTest {
     void getMasters_returnsMappedRoots() {
         Category food = category("an_uong", null);
         Category salary = category("luong", null);
-        when(categoryRepository.findByParentIsNullAndDeletedFalseOrderByNameAsc()).thenReturn(List.of(food, salary));
+        when(categoryRepository.findByParentIsNullAndIsDeletedFalseOrderByNameAsc()).thenReturn(List.of(food, salary));
 
         List<CategoryRes> result = cateImpl.getMasters();
 
@@ -229,8 +229,8 @@ class CateImplTest {
     void getOfParent_returnsMappedChildren() {
         Category parent = category("an_uong", null);
         Category coffee = category("ca_phe", parent);
-        when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
-        when(categoryRepository.findByParent_IdAndDeletedFalseOrderByNameAsc(parent.getId())).thenReturn(List.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("an_uong")).thenReturn(Optional.of(parent));
+        when(categoryRepository.findByParent_IdAndIsDeletedFalseOrderByNameAsc(parent.getId())).thenReturn(List.of(coffee));
 
         List<CategoryRes> result = cateImpl.getOfParent("an_uong");
 
@@ -252,7 +252,7 @@ class CateImplTest {
     void update_changesOnlyProvidedFields() {
         Category coffee = category("ca_phe", null);
         IconResponse newIcon = icon("tra_sua");
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
         when(iconService.getActive("tra_sua")).thenReturn(newIcon);
 
         cateImpl.update("ca_phe", new CategoryUpdateReq("Trà sữa", null, "tra_sua", "#112233", null));
@@ -276,8 +276,8 @@ class CateImplTest {
     @DisplayName("Đổi tên trùng với danh mục cùng cấp thì báo CATEGORY_NAME_EXISTS")
     void update_duplicateName_throws() {
         Category coffee = category("ca_phe", null);
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
-        when(categoryRepository.existsByNameIgnoreCaseAndDeletedFalseAndIdNot("Trà sữa", coffee.getId())).thenReturn(true);
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot("Trà sữa", coffee.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> cateImpl.update("ca_phe", new CategoryUpdateReq("Trà sữa", null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
@@ -294,8 +294,8 @@ class CateImplTest {
         moved.setIsLeaf(false);
         Category grandChild = category("y", moved);
         Category newParent = category("moi", null);
-        when(categoryRepository.findByCodeAndDeletedFalse("x")).thenReturn(Optional.of(moved));
-        when(categoryRepository.findByCodeAndDeletedFalse("moi")).thenReturn(Optional.of(newParent));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("x")).thenReturn(Optional.of(moved));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("moi")).thenReturn(Optional.of(newParent));
         when(categoryRepository.findDescendants("cu/x")).thenReturn(List.of(grandChild));
 
         cateImpl.update("x", new CategoryUpdateReq(null, null, null, null, "moi"));
@@ -313,7 +313,7 @@ class CateImplTest {
     @DisplayName("Đổi cha sang chính nó thì báo CATEGORY_PARENT_INVALID")
     void update_parentIsSelf_throws() {
         Category x = category("x", null);
-        when(categoryRepository.findByCodeAndDeletedFalse("x")).thenReturn(Optional.of(x));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("x")).thenReturn(Optional.of(x));
 
         assertThatThrownBy(() -> cateImpl.update("x", new CategoryUpdateReq(null, null, null, null, "x")))
                 .isInstanceOf(BusinessException.class)
@@ -325,8 +325,8 @@ class CateImplTest {
     void update_parentIsDescendant_throws() {
         Category x = category("x", null);
         Category y = category("y", x);
-        when(categoryRepository.findByCodeAndDeletedFalse("x")).thenReturn(Optional.of(x));
-        when(categoryRepository.findByCodeAndDeletedFalse("y")).thenReturn(Optional.of(y));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("x")).thenReturn(Optional.of(x));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("y")).thenReturn(Optional.of(y));
 
         assertThatThrownBy(() -> cateImpl.update("x", new CategoryUpdateReq(null, null, null, null, "y")))
                 .isInstanceOf(BusinessException.class)
@@ -350,7 +350,7 @@ class CateImplTest {
         Category food = category("an_uong", null);
         Category coffee = category("ca_phe", food);
         Category latte = category("latte", coffee);
-        when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(food));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("an_uong")).thenReturn(Optional.of(food));
         when(categoryRepository.findDescendants("an_uong")).thenReturn(List.of(coffee, latte));
 
         cateImpl.delete("an_uong");
@@ -366,8 +366,8 @@ class CateImplTest {
         Category food = category("an_uong", null);
         food.setIsLeaf(false);
         Category coffee = category("ca_phe", food);
-        when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(food));
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("an_uong")).thenReturn(Optional.of(food));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
         assertThatThrownBy(() -> cateImpl.delete("an_uong"))
                 .isInstanceOf(BusinessException.class)
@@ -382,7 +382,7 @@ class CateImplTest {
         Category parent = category("an_uong", null);
         parent.setIsLeaf(false);
         Category coffee = category("ca_phe", parent);
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
         cateImpl.delete("ca_phe");
 
@@ -396,8 +396,8 @@ class CateImplTest {
         Category parent = category("an_uong", null);
         parent.setIsLeaf(false);
         Category coffee = category("ca_phe", parent);
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
-        when(categoryRepository.existsByParent_IdAndDeletedFalse(parent.getId())).thenReturn(true);
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.existsByParent_IdAndIsDeletedFalse(parent.getId())).thenReturn(true);
 
         cateImpl.delete("ca_phe");
 
@@ -409,7 +409,7 @@ class CateImplTest {
     @DisplayName("Danh mục thay thế không tồn tại thì báo CATEGORY_NOT_FOUND và không xóa")
     void delete_replacementNotFound_throws() {
         Category coffee = category("ca_phe", null);
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
         assertThatThrownBy(() -> cateImpl.delete("ca_phe"))
                 .isInstanceOf(BusinessException.class)
@@ -423,8 +423,8 @@ class CateImplTest {
         Category coffee = category("ca_phe", null);
         Category food = category("an_uong", null);
         food.setIsLeaf(false);
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
-        when(categoryRepository.findByCodeAndDeletedFalse("an_uong")).thenReturn(Optional.of(food));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("an_uong")).thenReturn(Optional.of(food));
 
         assertThatThrownBy(() -> cateImpl.delete("ca_phe"))
                 .isInstanceOf(BusinessException.class)
@@ -436,7 +436,7 @@ class CateImplTest {
     @DisplayName("Danh mục thay thế là chính nó thì báo VALIDATION_ERROR và không xóa")
     void delete_replacementIsSelf_throws() {
         Category coffee = category("ca_phe", null);
-        when(categoryRepository.findByCodeAndDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
+        when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
         assertThatThrownBy(() -> cateImpl.delete("ca_phe"))
                 .isInstanceOf(BusinessException.class)

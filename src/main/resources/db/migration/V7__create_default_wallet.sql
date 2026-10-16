@@ -18,15 +18,21 @@ ON CONFLICT (code) DO NOTHING;
 
 -- 2. Cập nhật icon cho các ví mặc định hiện có (nếu có)
 UPDATE wallets
-SET icon = 'default_wallet'
-WHERE is_default AND (icon IS NULL OR icon = '');
+SET icon_id = (SELECT id FROM icons WHERE code = 'default_wallet')
+WHERE is_default AND icon_id IS NULL;
 
 -- 3. Trigger 1: Tự động tạo ví tiền mặt mặc định khi có người dùng mới
 CREATE OR REPLACE FUNCTION fn_users_default_wallet()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO wallets (user_id, name, type, is_default, icon)
-    VALUES (NEW.id, 'Tiền mặt', 'cash', TRUE, 'default_wallet');
+    INSERT INTO wallets (user_id, name, type, is_default, icon_id)
+    VALUES (
+        NEW.id,
+        'Tiền mặt',
+        'CASH',
+        TRUE,
+        (SELECT id FROM icons WHERE code = 'default_wallet')
+    );
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

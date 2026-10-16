@@ -157,17 +157,10 @@ CREATE TABLE icons (
     code            VARCHAR(50)  NOT NULL,
     display_name    VARCHAR(100) NOT NULL,
     path_data       TEXT         NOT NULL,
-    icon_group      VARCHAR(30)  NOT NULL,
-    search_keywords TEXT,
-    sort_order      INTEGER      NOT NULL DEFAULT 0,
     is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
     is_default boolean not null default false,
 
-    CONSTRAINT uq_icons_code  UNIQUE (code),
-    CONSTRAINT ck_icons_group CHECK (icon_group IN (
-        'an_uong', 'di_lai', 'mua_sam', 'giai_tri',
-        'suc_khoe', 'hoc_tap', 'tai_chinh', 'khac'
-    ))
+    CONSTRAINT uq_icons_code  UNIQUE (code)
 );
 
 COMMENT ON COLUMN wallets.is_default IS 'Ví mặc định của người dùng, nhận các khoản tự ghi từ giao dịch nhóm. Mỗi người dùng luôn có đúng một ví mặc định chưa xoá';

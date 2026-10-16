@@ -21,7 +21,7 @@ public interface CateMapper {
     @Mapping(target = "level", source = "category.level")
     @Mapping(target = "isLeaf", source = "category.isLeaf")
     @Mapping(target = "createdAt", source = "category.createdAt")
-    @Mapping(target = "isDeleted", source = "category.deleted")
+    @Mapping(target = "isDeleted", source = "category.isDeleted")
     CategoryRes toResponse(Category category, IconResponse icon);
 
     @Mapping(target = "icon", source = "icon")

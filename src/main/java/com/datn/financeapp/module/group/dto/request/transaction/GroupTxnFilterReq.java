@@ -1,25 +1,23 @@
 package com.datn.financeapp.module.group.dto.request.transaction;
 
-import com.datn.financeapp.module.group.enums.GroupTxnStatus;
 import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
+import org.springframework.web.bind.annotation.BindParam;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
 public record GroupTxnFilterReq(
-        MoneySource moneySource,
+        @BindParam("money_source") MoneySource moneySource,
         GroupTxnType type,
-        UUID transactorId,
-        UUID createId,
-        Instant fromOccurredAt,
-        Instant toOccurredAt,
-        LocalDate startDate,
-        LocalDate endDate,
+        @BindParam("transactor_id") UUID transactorId,
+        @BindParam("create_id") UUID createId,
+        @BindParam("from_occurred_at") Instant fromOccurredAt,
+        @BindParam("to_occurred_at") Instant toOccurredAt,
+        @BindParam("start_date") LocalDate startDate,
+        @BindParam("end_date") LocalDate endDate,
         Integer page,
         Integer size
 ) {

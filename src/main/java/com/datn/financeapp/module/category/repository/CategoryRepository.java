@@ -22,12 +22,12 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      * Mọi cặp (id, code), kể cả danh mục đã xóa mềm — code của danh mục đã xóa vẫn được giữ chỗ
      * nên không lọc {@code deleted}.
      */
-    @Query("SELECT new com.datn.financeapp.module.category.helper.CategoryCodeView(c.id, c.code, c.deleted) FROM Category c")
+    @Query("SELECT new com.datn.financeapp.module.category.helper.CategoryCodeView(c.id, c.code, c.isDeleted) FROM Category c")
     List<CategoryCodeView> findAllCodes();
 
-    Optional<Category> findByCodeAndDeletedFalse(String code);
+    Optional<Category> findByCodeAndIsDeletedFalse(String code);
 
-    Optional<Category> findByIdAndDeletedFalse(UUID id);
+    Optional<Category> findByIdAndIsDeletedFalse(UUID id);
 
     /**
      * Các danh mục (kể cả đã xóa mềm — code được giữ chỗ) có {@code code} nằm trong tập cho trước, dùng
@@ -35,11 +35,11 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      */
     List<Category> findByCodeIn(Collection<String> codes);
 
-    List<Category> findByParentIsNullAndDeletedFalseOrderByNameAsc();
+    List<Category> findByParentIsNullAndIsDeletedFalseOrderByNameAsc();
 
-    List<Category> findByParent_IdAndDeletedFalseOrderByNameAsc(UUID parentId);
+    List<Category> findByParent_IdAndIsDeletedFalseOrderByNameAsc(UUID parentId);
 
-    boolean existsByParent_IdAndDeletedFalse(UUID parentId);
+    boolean existsByParent_IdAndIsDeletedFalse(UUID parentId);
 
     /**
      * Mọi danh mục con cháu (mọi cấp, kể cả đã xóa mềm để {@code path} luôn nhất quán) của nút có
@@ -53,5 +53,5 @@ public interface CategoryRepository extends JpaRepository<Category, UUID> {
      * Có danh mục nào khác (chưa xóa) trùng tên, không phân biệt hoa thường, không — tên là duy nhất
      * toàn cây. Bỏ qua chính {@code id} để sửa danh mục không tự trùng với nó.
      */
-    boolean existsByNameIgnoreCaseAndDeletedFalseAndIdNot(String name, UUID id);
+    boolean existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(String name, UUID id);
 }

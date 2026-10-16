@@ -59,7 +59,4 @@ public class Transaction extends AssignedIdEntity {
     // ngày phát sinh giao dịch, KHÔNG có múi giờ, không convert.
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
-
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted;
 }

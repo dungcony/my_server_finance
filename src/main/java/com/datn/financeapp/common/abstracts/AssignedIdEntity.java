@@ -30,7 +30,7 @@ public abstract class AssignedIdEntity implements Persistable<UUID> {
 
 
     @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted;
+    private Boolean isDeleted = false;
 
     @Override
     public boolean isNew() {

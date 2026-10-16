@@ -4,6 +4,7 @@ import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
 import com.datn.financeapp.module.wallet.dto.request.WalletupdateReq;
+import com.datn.financeapp.module.wallet.service.ReconcilHistoryService;
 import com.datn.financeapp.module.wallet.service.WalletBehavierService;
 import jakarta.validation.Valid;
 
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WalletController {
 
     private final WalletBehavierService walletBehavierService;
+    private final ReconcilHistoryService reconcilHistoryService;
 
     private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.getValue())";
     private static final String MANAGE_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_UPDATE.getValue())";
@@ -64,6 +66,20 @@ public class WalletController {
             @PathVariable UUID id
     ) {
         return ApiResponse.of(walletBehavierService.softDelete(null, id));
+    }
+
+    @GetMapping("/{id}/reconciliations")
+    public ApiResponse<?> reconciliations(
+            @PathVariable UUID id,
+            Pageable pageable
+    ) {
+        return ApiResponse.of(reconcilHistoryService.getsByWallet(null, id, pageable));
+    }
+
+    @PreAuthorize(MANAGE_GET)
+    @GetMapping("/admin/reconciliations")
+    public ApiResponse<?> adminReconciliations(Pageable pageable) {
+        return ApiResponse.of(reconcilHistoryService.gets(pageable));
     }
 
     @PreAuthorize(MANAGE_GET)
