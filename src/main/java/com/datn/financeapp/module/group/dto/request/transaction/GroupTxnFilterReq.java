@@ -17,9 +17,7 @@ public record GroupTxnFilterReq(
         @BindParam("from_occurred_at") Instant fromOccurredAt,
         @BindParam("to_occurred_at") Instant toOccurredAt,
         @BindParam("start_date") LocalDate startDate,
-        @BindParam("end_date") LocalDate endDate,
-        Integer page,
-        Integer size
+        @BindParam("end_date") LocalDate endDate
 ) {
 
     public Instant resolveFrom() {

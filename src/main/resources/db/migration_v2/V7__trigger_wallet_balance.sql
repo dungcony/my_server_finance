@@ -1,5 +1,5 @@
 -- =============================================================
--- V6 — Trigger số dư ví: số dư luôn bằng tổng giao dịch chưa xoá của ví
+-- Trigger số dư ví: số dư luôn bằng tổng giao dịch chưa xoá của ví
 -- Hai trigger trong file phụ thuộc nhau: sửa một cái phải xem lại cái kia, tránh cộng trùng.
 -- =============================================================
 
@@ -47,7 +47,7 @@ CREATE TRIGGER trg_transactions_wallet_balance
 -- -------------------------------------------------------------
 -- Tạo ví có số dư > 0 thì sinh giao dịch thu "Số dư ban đầu".
 -- Đưa số dư về 0 trước, để trg_transactions_wallet_balance cộng lại qua giao dịch này (không cộng trùng).
--- Không ghi category_id, source, is_deleted: để DB lấy giá trị mặc định.
+-- Không ghi category_code, is_deleted: để DB lấy giá trị mặc định.
 -- -------------------------------------------------------------
 CREATE OR REPLACE FUNCTION fn_wallets_initial_transaction()
 RETURNS TRIGGER AS $$

@@ -17,7 +17,7 @@ public record TxnUpdateReq(
 
         UUID walletId,
 
-        UUID categoryId,
+        String categoryCode,
 
         @PastOrPresent(message = "Thời gian giao dịch không được ở tương lai.")
         Instant occuredAt,

@@ -1,6 +1,6 @@
 -- =============================================================
--- V2 — Biểu tượng và danh mục thu chi
--- icons đặt trước categories vì categories.icon_code trỏ tới icons; wallets (V3) cũng dùng icons
+-- Biểu tượng và danh mục thu chi
+-- icons đặt trước categories vì categories.icon_code trỏ tới icons; wallets cũng dùng icons
 -- =============================================================
 
 -- icons --
@@ -16,10 +16,10 @@ CREATE TABLE icons (
     CONSTRAINT uq_icons_code UNIQUE (code)
 );
 
--- seed icon ví mặc định (trigger tạo ví mặc định ở V6 lấy icon theo code này) --
-INSERT INTO icons (code, display_name, path_data, is_active)
+-- seed icon ví mặc định (trigger tạo ví mặc định lấy icon theo code này) --
+INSERT INTO icons (code, display_name, path_data)
 VALUES ('default_wallet', 'Ví mặc định',
-        'M3 7a2 2 0 012-2h13v3M3 7v11a2 2 0 002 2h14a1 1 0 001-1v-3M18 11h4v4h-4a2 2 0 010-4z', TRUE)
+        'M3 7a2 2 0 012-2h13v3M3 7v11a2 2 0 002 2h14a1 1 0 001-1v-3M18 11h4v4h-4a2 2 0 010-4z')
 ON CONFLICT (code) DO NOTHING;
 
 -- categories: cây danh mục nhiều cấp, admin quản lý, dùng chung cho mọi người dùng --
@@ -29,7 +29,7 @@ CREATE TABLE categories (
     name        VARCHAR(50)  NOT NULL,
     description VARCHAR(255),
     parent_id   UUID,
-    icon_code   char(50)     ,
+    icon_code   varchar(50)     ,
     color       VARCHAR(7)   NOT NULL,
     level       INTEGER      NOT NULL DEFAULT 0,
     is_leaf     BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -40,7 +40,7 @@ CREATE TABLE categories (
 
     CONSTRAINT uq_cat_code   UNIQUE (code),
     CONSTRAINT fk_cat_parent FOREIGN KEY (parent_id) REFERENCES categories (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_code)   REFERENCES icons (code)      ON DELETE RESTRICT,
+    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_code)   REFERENCES icons (code) ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT ck_cat_color  CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
     CONSTRAINT ck_cat_level  CHECK (level >= 0),
     CONSTRAINT ck_cat_parent CHECK (parent_id IS DISTINCT FROM id),
@@ -116,8 +116,8 @@ ON CONFLICT (code) DO NOTHING;
 -- =============================================================
 
 -- danh mục gốc: level 0, path = code, mặc định là lá
-INSERT INTO categories (code, name, icon_id, color, level, path)
-SELECT v.code, v.name, i.id, v.color, 0, v.code
+INSERT INTO categories (code, name, icon_code, color, level, path)
+SELECT v.code, v.name, i.code, v.color, 0, v.code
 FROM (VALUES
     ('an_uong',             'Ăn uống',                'an_uong',   '#3d6b7d'),
     ('di_lai',              'Đi lại',                 'xe_may',    '#4a6f5c'),
@@ -141,8 +141,8 @@ FROM (VALUES
 JOIN icons i ON i.code = v.icon_code;
 
 -- danh mục con: level = level cha + 1, path = path cha + '/' + code, màu thừa hưởng từ cha
-INSERT INTO categories (code, name, parent_id, icon_id, color, level, path)
-SELECT v.code, v.name, p.id, i.id, p.color, p.level + 1, p.path || '/' || v.code
+INSERT INTO categories (code, name, parent_id, icon_code, color, level, path)
+SELECT v.code, v.name, p.id, i.code, p.color, p.level + 1, p.path || '/' || v.code
 FROM (VALUES
     ('an_uong',       'an_sang',       'Ăn sáng',       'banh_mi'),
     ('an_uong',       'an_trua',       'Ăn trưa',       'an_uong'),

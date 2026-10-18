@@ -1,12 +1,12 @@
 -- =============================================================
--- V7 — Trigger xoá ví: xoá mềm ví thì xoá mềm giao dịch, tắt giao dịch định kỳ và bỏ các buổi lịch chưa chạy của ví
+-- Trigger xoá ví: xoá mềm ví thì xoá mềm giao dịch, tắt giao dịch định kỳ và bỏ các buổi lịch chưa chạy của ví
 -- =============================================================
 
 -- -------------------------------------------------------------
 -- Chỉ chạy khi is_deleted đổi từ false sang true (WHEN bên dưới).
 -- Hibernate ghi lại mọi cột mỗi lần save(wallet) nên UPDATE OF is_deleted chạy cả khi đổi tên ví,
 -- điều kiện WHEN chặn các lần đó.
--- Mỗi giao dịch bị xoá mềm sẽ kích hoạt trg_transactions_wallet_balance (V6), số dư ví tự về 0.
+-- Mỗi giao dịch bị xoá mềm sẽ kích hoạt trg_transactions_wallet_balance, số dư ví tự về 0.
 -- -------------------------------------------------------------
 CREATE OR REPLACE FUNCTION fn_wallets_soft_delete_cascade()
 RETURNS TRIGGER AS $$

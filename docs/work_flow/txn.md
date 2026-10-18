@@ -7,6 +7,10 @@ Code chính: [TxnBehavierImpl](../../src/main/java/com/datn/financeapp/module/tr
 **Số dư ví do trigger lo:** mọi thay đổi trên bảng `transactions` đều chạy `trg_transactions_wallet_balance`
 ([V7](../../src/main/resources/db/migration_v2/V7__trigger_wallet_balance.sql)). Java không cộng trừ số dư.
 
+**Danh mục lá do trigger chặn nốt:** `trg_transactions_category_leaf`
+([V11](../../src/main/resources/db/migration_v2/V11__trigger_transaction_category_leaf.sql)) chạy khi insert hoặc đổi
+`category_code`, khoá dòng danh mục (`FOR SHARE`) để không bị race với admin đổi cây danh mục.
+
 | Loại giao dịch | Ảnh hưởng số dư ví |
 |---|---|
 | `INCOME` (thu) | `+ amount` |
@@ -22,7 +26,8 @@ create
 -> phải có category_id (không → TRANSACTION_CATEGORY_REQUIRED)
 -> danh mục phải tồn tại, chưa xoá, là lá (không → CATEGORY_NOT_FOUND / TRANSACTION_CATEGORY_NOT_LEAF)
 -> ví phải của user và chưa xoá (không → NOT_FOUND)
--> insert transactions (is_deleted = false, source = MANUAL)
+-> insert transactions (is_deleted = false)
+   -> [trigger] danh mục phải là lá, chưa xoá (không → TRANSACTION_CATEGORY_NOT_LEAF / CATEGORY_NOT_FOUND)
    -> [trigger] cộng trừ số dư ví theo loại
 -> trả chi tiết giao dịch kèm ví và danh mục
 ```
@@ -40,7 +45,6 @@ gets
      wallet_id, category_id   (category_id chỉ lọc đúng danh mục đó, không gộp danh mục con)
      search                   tìm trong name, note (không phân biệt hoa thường)
      min_amount, max_amount
-     source                   MANUAL / RECURRING (đang lỗi, xem cuối file)
 -> phân trang ?page=1&page_size=20, mặc định sắp theo created_at giảm dần
 -> trả danh sách tóm tắt + page_meta
 ```
@@ -68,6 +72,7 @@ update
 -> có date → không được ở tương lai (TRANSACTION_DATE_IN_FUTURE), lưu 00:00 giờ VN của ngày đó
 -> đổi type, amount, display_name, note nếu có gửi
 -> save
+   -> [trigger] có đổi danh mục thì danh mục mới phải là lá, chưa xoá
    -> [trigger] trừ ảnh hưởng cũ khỏi ví cũ, cộng ảnh hưởng mới vào ví mới
 -> trả chi tiết
 ```
@@ -100,7 +105,4 @@ Admin: `DELETE /transactions/admin/{id}` (quyền `transactions:delete`).
 
 ## Lỗi đang mở (xem [review-03](../problem/review-03-transaction.md))
 
-- T2: lọc theo `source` lỗi vì entity `Transaction` chưa có field `source`.
-- T3: giao dịch "Số dư ban đầu" (không có danh mục) và giao dịch có danh mục đã xoá / không còn là lá thì không xem, sửa được.
-- T5: sửa giao dịch gửi `type` EXPENSE/INCOME kèm `category_id` mới lại bị báo thiếu danh mục (điều kiện bị ngược).
-- T7: so "ngày tương lai" theo giờ UTC thay vì giờ VN.
+- T6: sửa `amount`/`type` của giao dịch gốc khoản nợ chưa bị chặn; trigger chặn xoá báo `P0001` chưa có trong `CONSTRAINT_MAP`.

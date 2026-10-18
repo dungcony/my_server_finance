@@ -41,7 +41,7 @@ public class Category extends AssignedIdEntity {
     private String name;
 
     @Size(max = 50)
-    @Column(name = "code", nullable = false, length = 50)
+    @Column(name = "code", unique = true, nullable = false, length = 50)
     private String code;
 
     @Column(name = "description")

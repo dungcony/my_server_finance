@@ -96,6 +96,30 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
     }
 
     /**
+     * vấn đề chạy mọi lịch trong 1 transaction và không kiểm tra danh mục.
+     * Nếu một cấu hình định kỳ trỏ vào danh mục đã xoá / không còn là lá
+     * → trigger báo lỗi → PostgreSQL huỷ cả transaction
+     * → mọi lịch của lần chạy đó rollback, lần sau lặp lại.
+     * try/catch trong vòng lặp không cứu được vì lỗi xảy ra lúc flush.
+     */
+    @Override
+    @Transactional
+    public void processDueSchedules() {
+        List<RecTxnSchedule> dueList = scheduleRepository.findByStatusAndRunAtLessThanEqualAndIsDeletedFalse(
+                RecTxnScheduleStatus.PENDING,
+                Instant.now()
+        );
+
+        for (RecTxnSchedule schedule : dueList) {
+            try {
+                processSingleSchedule(schedule);
+            } catch (Exception ex) {
+                log.error("Lỗi khi xử lý buổi lịch định kỳ id: {}", schedule.getId(), ex);
+            }
+        }
+    }
+
+    /**
      * Dựng danh sách buổi PENDING bắt đầu từ mốc cho trước tới ngày kết thúc hoặc đủ số buổi đệm.
      */
     private List<RecTxnSchedule> buildSchedules(RecTxn recTxn, Instant from) {
@@ -134,25 +158,6 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
         return schedules;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @Transactional
-    public void processDueSchedules() {
-        List<RecTxnSchedule> dueList = scheduleRepository.findByStatusAndRunAtLessThanEqualAndIsDeletedFalse(
-                RecTxnScheduleStatus.PENDING,
-                Instant.now()
-        );
-
-        for (RecTxnSchedule schedule : dueList) {
-            try {
-                processSingleSchedule(schedule);
-            } catch (Exception ex) {
-                log.error("Lỗi khi xử lý buổi lịch định kỳ id: {}", schedule.getId(), ex);
-            }
-        }
-    }
 
     private void processSingleSchedule(RecTxnSchedule schedule) {
         RecTxn rec = schedule.getRecTxn();
@@ -164,7 +169,7 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
         Transaction txn = Transaction.builder()
                 .userId(schedule.getUserId())
                 .walletId(rec.getWalletId())
-                .categoryId(rec.getCategoryId())
+                .categoryCode(rec.getCategoryCode())
                 .type(rec.getType())
                 .amount(schedule.getAmount())
                 .name(rec.getName())

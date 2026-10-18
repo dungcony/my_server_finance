@@ -58,8 +58,13 @@ public class IconBehavierImpl implements IconBehavierService {
         Icon icon = iconRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ICON_NOT_FOUND));
 
-        if (req.code() != null && req.code().equals(icon.getCode()) && !iconRepository.existsByCode(req.code()))
+        if (req.code() != null && !req.code().equals(icon.getCode())) {
+            if (iconRepository.existsByCode(req.code()))
+                throw new BusinessException(ErrorCode.ICON_CODE_EXISTS);
             icon.setCode(req.code());
+        }
+
+
         if (req.displayName() != null) icon.setDisplayName(req.displayName());
         if (req.pathData() != null) icon.setPathData(req.pathData());
 
@@ -71,7 +76,7 @@ public class IconBehavierImpl implements IconBehavierService {
     public IconRes delete(String code) {
         Icon icon = iconRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ICON_NOT_FOUND));
-        icon.setIsDeleted(false);
+        icon.setIsDeleted(true);
         return iconMapper.toIconResponse(icon);
     }
 }

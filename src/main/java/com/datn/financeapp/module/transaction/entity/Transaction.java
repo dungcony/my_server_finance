@@ -40,8 +40,8 @@ public class Transaction extends AssignedIdEntity {
     @Column(name = "wallet_id", nullable = false)
     private UUID walletId;
 
-    @Column(name = "category_id")
-    private UUID categoryId;
+    @Column(name = "category_code")
+    private String categoryCode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)

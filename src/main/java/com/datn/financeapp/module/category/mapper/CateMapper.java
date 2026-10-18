@@ -22,7 +22,7 @@ public interface CateMapper {
     @Mapping(target = "isLeaf", source = "category.isLeaf")
     @Mapping(target = "createdAt", source = "category.createdAt")
     @Mapping(target = "isDeleted", source = "category.isDeleted")
-    CategoryRes toResponse(Category category, IconRes icon);
-    
+    CategoryRes toResponse(Category category, String icon);
+
     CateSumaryRes toSumary(Category category, String icon);
 }

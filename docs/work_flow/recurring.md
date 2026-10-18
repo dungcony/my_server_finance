@@ -99,6 +99,5 @@ Trigger `trg_wallets_soft_delete_cascade` ([V8](../../src/main/resources/db/migr
 - R3: `start_at` bị chặn ở tương lai; chọn ngày bắt đầu trong quá khứ thì scheduler sinh bù dồn một lần.
 - R4: có `end_at` thì sinh toàn bộ buổi một lần, không giới hạn số lượng.
 - R6: tắt hoặc xoá định kỳ thì buổi `PENDING` vẫn bị quét lại mỗi giờ; bật lại thì chạy bù dồn.
-- R7: giao dịch sinh ra chưa ghi `source = RECURRING`.
 - R8: API sửa buổi lịch cho đổi trạng thái tuỳ ý (VD `SUCCESS` → `PENDING` làm sinh giao dịch lần 2).
 - R9: không gửi `category_id` thì tạo định kỳ báo `CATEGORY_NOT_FOUND`.

@@ -27,8 +27,7 @@ public class IconController {
     private final IconBehavierService iconBehavierService;
 
     @GetMapping
-    public ApiResponse<Slice<IconRes>> getAll(
-            @PageableDefault(size = 20, sort = "sortOrder") Pageable pageable) {
+    public ApiResponse<Slice<IconRes>> getAll(Pageable pageable) {
         return ApiResponse.of(iconBehavierService.getAll(pageable));
     }
 

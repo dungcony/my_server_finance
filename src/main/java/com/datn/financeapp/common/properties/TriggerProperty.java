@@ -9,6 +9,8 @@ public class TriggerProperty {
             "uq_wallets_user_name", ErrorCode.WALLET_NAME_EXISTS,
             "uq_wallets_user_name_type", ErrorCode.WALLET_NAME_EXISTS,
             "uq_users_email", ErrorCode.AUTH_EMAIL_ALREADY_EXISTS,
-            "uq_roles_name", ErrorCode.USER_ROLE_PERMISSION_ALREADY_ASSIGNED
+            "uq_roles_name", ErrorCode.USER_ROLE_PERMISSION_ALREADY_ASSIGNED,
+            "TRANSACTION_CATEGORY_NOT_LEAF", ErrorCode.TRANSACTION_CATEGORY_NOT_LEAF,
+            "TRANSACTION_CATEGORY_DELETED", ErrorCode.CATEGORY_NOT_FOUND
     );
 }

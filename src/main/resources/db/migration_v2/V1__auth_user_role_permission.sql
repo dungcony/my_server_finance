@@ -1,5 +1,5 @@
 -- =============================================================
--- V1 — Người dùng, vai trò, quyền và hạ tầng xác thực
+-- Người dùng, vai trò, quyền và hạ tầng xác thực
 -- =============================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";

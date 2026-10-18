@@ -1,4 +1,4 @@
--- bảng icons và categories nằm ở V2__categories.sql --
+-- bảng icons và categories được tạo ở migration categories_icon --
 
 -- wallets --
 CREATE TABLE wallets (
@@ -7,7 +7,7 @@ CREATE TABLE wallets (
     name       VARCHAR(50) NOT NULL,
     type       VARCHAR(20) NOT NULL,
     balance    BIGINT      NOT NULL DEFAULT 0,
-    icon_code  char(50),
+    icon_code  varchar(50),
     color      CHAR(7),
     sort_order INTEGER     NOT NULL DEFAULT 0,
     is_default BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -16,7 +16,7 @@ CREATE TABLE wallets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_wal_user  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_wal_icon  FOREIGN KEY (icon_code) REFERENCES icons (code) ON DELETE SET NULL,
+    CONSTRAINT fk_wal_icon  FOREIGN KEY (icon_code) REFERENCES icons (code) ON UPDATE CASCADE ON DELETE SET NULL,
    -- CONSTRAINT ck_wal_type  CHECK (type IN ('CASH', 'BANK', 'E_WALLET')),
     CONSTRAINT ck_wal_color CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$')
 );
@@ -25,12 +25,12 @@ CREATE UNIQUE INDEX uq_wallets_user_name ON wallets (user_id, name) WHERE NOT is
 CREATE INDEX idx_wallets_user ON wallets (user_id, sort_order) WHERE NOT is_deleted;
 
 -- transactions: giao dịch thu, chi, cho vay của cá nhân --
--- số dư ví do trigger trg_transactions_wallet_balance (V6) cập nhật theo bảng này
+-- số dư ví do trigger trg_transactions_wallet_balance cập nhật theo bảng này
 CREATE TABLE transactions (
     id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID         NOT NULL,
     wallet_id   UUID         NOT NULL,
-    category_id UUID,
+    category_code VARCHAR(50),
     type        VARCHAR(10)  NOT NULL,
     amount      BIGINT       NOT NULL,
     occurred_at TIMESTAMPTZ  NOT NULL,
@@ -42,25 +42,23 @@ CREATE TABLE transactions (
 
     CONSTRAINT fk_txn_user     FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
     CONSTRAINT fk_txn_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id),
-    CONSTRAINT fk_txn_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_txn_category FOREIGN KEY (category_code) REFERENCES categories (code) ON DELETE RESTRICT,
     CONSTRAINT ck_txn_type     CHECK (type IN ('EXPENSE', 'INCOME', 'LOAN')),
-    CONSTRAINT ck_txn_source   CHECK (source IN ('MANUAL', 'RECURRING')),
     CONSTRAINT ck_txn_amount   CHECK (amount > 0)
 );
 
-COMMENT ON COLUMN transactions.category_id IS 'NULL với giao dịch "Số dư ban đầu" do trigger sinh';
-COMMENT ON COLUMN transactions.source      IS 'Tên enum TxnSource: MANUAL (nhập tay), RECURRING (sinh từ giao dịch định kỳ)';
+COMMENT ON COLUMN transactions.category_code IS 'NULL với giao dịch "Số dư ban đầu" do trigger sinh';
 
 CREATE INDEX idx_txn_user_date     ON transactions (user_id, occurred_at DESC) WHERE NOT is_deleted;
 CREATE INDEX idx_txn_wallet_date   ON transactions (wallet_id, occurred_at) WHERE NOT is_deleted;
-CREATE INDEX idx_txn_category_date ON transactions (category_id, occurred_at) WHERE NOT is_deleted AND category_id IS NOT NULL;
+CREATE INDEX idx_txn_category_date ON transactions (category_code, occurred_at) WHERE NOT is_deleted AND category_code IS NOT NULL;
 
 -- recurring_transactions: cấu hình giao dịch định kỳ (entity RecTxn) --
 CREATE TABLE recurring_transactions (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID         NOT NULL,
     wallet_id       UUID         NOT NULL,
-    category_id     UUID,
+    category_code     VARCHAR(50),
     name            VARCHAR(100) NOT NULL,
     type            VARCHAR(10)  NOT NULL,
     amount          BIGINT       NOT NULL,
@@ -76,7 +74,7 @@ CREATE TABLE recurring_transactions (
 
     CONSTRAINT fk_rec_user      FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
     CONSTRAINT fk_rec_wallet    FOREIGN KEY (wallet_id)   REFERENCES wallets    (id),
-    CONSTRAINT fk_rec_category  FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_rec_category  FOREIGN KEY (category_code) REFERENCES categories (code) ON DELETE RESTRICT,
     CONSTRAINT ck_rec_type      CHECK (type IN ('EXPENSE', 'INCOME', 'LOAN')),
     CONSTRAINT ck_rec_amount    CHECK (amount > 0),
     CONSTRAINT ck_rec_frequency CHECK (frequency IN ('HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR')),

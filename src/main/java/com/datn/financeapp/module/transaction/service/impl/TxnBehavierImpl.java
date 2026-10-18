@@ -53,15 +53,15 @@ public class TxnBehavierImpl implements TxnBehavierService {
             userId = SecurityContextUtil.currentUserId();
 
         // kiểm tra danh mục là lá
-        var cate = categoryService.findIfIsleaf(req.categoryId());
+        var cate = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh mục gửi lên không hợp lệ"));
 
         // kiểm tra ví là của user
         var wallet = walletService.findSumaryByIdAndUser(req.walletId(), userId, false)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Ví phải là của user thì mới có thể tạo giao dịch"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Ví gửi lên không hợp lệ"));
 
         // xây dựng entity và lưu giao dịch
         Transaction txn = txnMapper.toEntity(req);
-
         txn.setId(UUID.randomUUID());
         txn.setUserId(userId);
         txnRepository.save(txn);
@@ -110,8 +110,8 @@ public class TxnBehavierImpl implements TxnBehavierService {
         }
 
         // xem nên k cần cate là lá
-        var cate = txn.getCategoryId() == null ? null
-                : categoryService.findByIdAndIsDeletedAndIsLeaf(txn.getCategoryId(), true, false).orElse(null);
+        var cate = txn.getCategoryCode() == null ? null
+                : categoryService.findByCodeAndIsDeletedAndIsLeaf(txn.getCategoryCode(), true, false).orElse(null);
 
         var wallet = walletService.findSumaryByIdAndUser(txn.getWalletId(), txn.getUserId(), true)
                 .orElse(null);
@@ -138,11 +138,11 @@ public class TxnBehavierImpl implements TxnBehavierService {
         if (req.displayName() != null) txn.setName(req.displayName());
         if (req.note() != null) txn.setNote(req.note());
 
-        if (req.categoryId() != null) {
-            var tmp = categoryService.findByIdAndIsDeletedAndIsLeaf(req.categoryId(), false, true);
+        if (req.categoryCode() != null) {
+            var tmp = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true);
             if (tmp.isEmpty())
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "danh mục truyền lên cần phải tồn tại và không được phép tồn tại danh mục con");
-            txn.setCategoryId(req.categoryId());
+            txn.setCategoryCode(req.categoryCode());
         }
 
         if (req.walletId() != null) {

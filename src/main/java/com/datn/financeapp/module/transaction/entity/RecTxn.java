@@ -33,7 +33,7 @@ public class RecTxn extends AssignedIdEntity {
 
     @Id
     private UUID id;
-    
+
     @Column(name = "name", nullable = false)
     private String name;
 
@@ -43,8 +43,8 @@ public class RecTxn extends AssignedIdEntity {
     @Column(name = "wallet_id", nullable = false)
     private UUID walletId;
 
-    @Column(name = "category_id")
-    private UUID categoryId;
+    @Column(name = "category_code")
+    private String categoryCode;
 
     // loại giao dịch sẽ được sinh ra mỗi kỳ (EXPENSE, INCOME, LOAN)
     @Enumerated(EnumType.STRING)

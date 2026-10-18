@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Scheduled Job thực hiện đối chiếu và cân bằng số dư thực tế cho toàn bộ các ví.
@@ -21,6 +22,7 @@ public class WalletReconciliationJob {
     /**
      * Thực thi tác vụ đối chiếu số dư ví định kỳ lúc 01:00 sáng (Asia/Ho_Chi_Minh).
      */
+    @Transactional
     @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Ho_Chi_Minh")
     public void run() {
         try {

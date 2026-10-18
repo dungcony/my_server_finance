@@ -1,5 +1,5 @@
 -- =============================================================
--- V5 — Trigger ví mặc định: tự tạo ví khi có user mới, ràng buộc mỗi user đúng một ví mặc định
+-- Trigger ví mặc định: tự tạo ví khi có user mới, ràng buộc mỗi user đúng một ví mặc định
 -- =============================================================
 
 -- -------------------------------------------------------------
@@ -8,13 +8,13 @@
 CREATE OR REPLACE FUNCTION fn_users_default_wallet()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO wallets (user_id, name, type, is_default, icon_id)
+    INSERT INTO wallets (user_id, name, type, is_default, icon_code)
     VALUES (
         NEW.id,
         'Tiền mặt',
         'CASH',
         TRUE,
-        (SELECT id FROM icons WHERE code = 'default_wallet')
+        'default_wallet'
     );
     RETURN NEW;
 END;

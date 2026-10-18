@@ -27,7 +27,7 @@ public record CategoryRes(
         String code,
         String description,
         String parentCode,
-        IconRes icon,
+        String icon,
         String color,
         Integer level,
         Boolean isLeaf,

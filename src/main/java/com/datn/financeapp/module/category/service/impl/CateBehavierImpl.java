@@ -6,19 +6,17 @@ import com.datn.financeapp.module.category.dto.request.CategoryCreateReq;
 import com.datn.financeapp.module.category.dto.request.CategoryUpdateReq;
 import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.category.entity.Category;
-import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
 import com.datn.financeapp.module.category.repository.CategoryRepository;
 import com.datn.financeapp.module.category.service.CategoryBehavierService;
-import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +27,11 @@ public class CateBehavierImpl implements CategoryBehavierService {
     private final CategoryRepository categoryRepository;
     private final IconService iconService;
     private final CateMapper cateMapper;
-    private final CateCache cateCache;
 
     @Override
     @Transactional
     public CategoryRes create(CategoryCreateReq req) {
-        if (cateCache.existsCode(req.code()))
+        if (categoryRepository.existsByCode(req.code()))
             throw new BusinessException(ErrorCode.CATEGORY_CODE_EXISTS);
 
         var icon = iconService.findByCode(req.iconCode(), false)
@@ -60,42 +57,41 @@ public class CateBehavierImpl implements CategoryBehavierService {
             parent.setIsLeaf(false);
 
         categoryRepository.save(category);
-        registerCodeAfterCommit(category.getId(), req.code());
-        return cateMapper.toResponse(category, icon);
+        return cateMapper.toResponse(category, icon.pathData());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CategoryRes> getMasters() {
         List<Category> categories = categoryRepository.findByParentIsNullAndIsDeletedFalseOrderByNameAsc();
-        Map<UUID, IconRes> iconMap = iconService.findActiveByIds(
-                categories.stream().map(Category::getIconId).toList());
+        var iconMap = iconService.findIconsByCodes(categories.stream().map(Category::getIconCode).toList());
         return categories.stream()
-                .map(c -> cateMapper.toResponse(c, iconMap.get(c.getIconId())))
+                .map(c -> cateMapper.toResponse(c, iconMap.get(c.getIconCode())))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CategoryRes> getOfParent(String parentCode) {
+
         Category parent = findByCode(parentCode);
         List<Category> categories = categoryRepository.findByParent_IdAndIsDeletedFalseOrderByNameAsc(parent.getId());
-        Map<UUID, IconRes> iconMap = iconService.findActiveByIds(
-                categories.stream().map(Category::getIconId).toList());
+
+        var iconMap = iconService.findIconsByCodes(categories.stream().map(Category::getIconCode).toList());
         return categories.stream()
-                .map(c -> cateMapper.toResponse(c, iconMap.get(c.getIconId())))
+                .map(c -> cateMapper.toResponse(c, iconMap.get(c.getIconCode())))
                 .toList();
     }
 
     @Override
     @Transactional
     public CategoryRes update(String cateCode, CategoryUpdateReq req) {
+
         Category category = findByCode(cateCode);
         Category parent = req.parentCode() != null ? findByCode(req.parentCode()) : null;
 
         if (parent != null) {
-            boolean isSameParent = category.getParent() != null
-                    && Objects.equals(category.getParent().getId(), parent.getId());
+            boolean isSameParent = category.getParent() != null && Objects.equals(category.getParent().getId(), parent.getId());
 
             if (!isSameParent) {
                 if (Objects.equals(category.getId(), parent.getId()) || parent.getPath().startsWith(category.getPath() + PATH_SEPARATOR))
@@ -104,29 +100,21 @@ public class CateBehavierImpl implements CategoryBehavierService {
             }
         }
 
-        if (req.name() != null
-                && categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(req.name(), category.getId())) {
-            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
-        }
-
         // chọn icon mới thì phải còn bật (findActiveByCode báo ICON_NOT_FOUND), giữ icon cũ thì chỉ hiển thị
-        IconRes icon;
-        if (req.iconId() != null) {
-            icon = iconService.findActiveByCode(req.iconId());
-            category.setIconId(req.iconId());
-        } else
-            icon = iconService.findActiveByIds(List.of(category.getIconId())).get(category.getIconId());
+        if (req.iconCode() != null) {
+            iconService.findByCode(req.iconCode(), false)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "icon gửi lên không hợp lệ"));
+            category.setIconCode(req.iconCode());
+        }
 
-        if (req.name() != null) {
-            category.setName(req.name());
-        }
-        if (req.description() != null) {
-            category.setDescription(req.description());
-        }
-        if (req.color() != null) {
-            category.setColor(req.color());
-        }
-        return cateMapper.toResponse(category, icon);
+        if (req.name() != null && categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(req.name(), category.getId()))
+            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
+
+        if (req.name() != null) category.setName(req.name());
+        if (req.description() != null) category.setDescription(req.description());
+        if (req.color() != null) category.setColor(req.color());
+
+        return cateMapper.toResponse(category, iconService.findIconByCode(category.getIconCode()));
     }
 
     @Override
@@ -136,13 +124,8 @@ public class CateBehavierImpl implements CategoryBehavierService {
         Category category = findByCode(cateCode);
         category.setIsDeleted(true);
 
-        List<UUID> deletedIds = new ArrayList<>(List.of(category.getId()));
         // xóa các danh mục con
-        categoryRepository.findDescendants(category.getPath()).forEach(descendant -> {
-            descendant.setIsDeleted(true);
-            deletedIds.add(descendant.getId());
-        });
-        markDeletedAfterCommit(deletedIds);
+        categoryRepository.findDescendants(category.getPath()).forEach(descendant -> descendant.setIsDeleted(true));
         Category parent = category.getParent();
 
         if (parent != null)
@@ -194,23 +177,4 @@ public class CateBehavierImpl implements CategoryBehavierService {
         return parent == null ? code : parent.getPath() + PATH_SEPARATOR + code;
     }
 
-    // Đồng bộ mã danh mục vào cache chỉ sau khi transaction ghi DB đã commit thành công
-    private void registerCodeAfterCommit(UUID id, String code) {
-        runAfterCommit(() -> cateCache.register(id, code));
-    }
-
-    // Xóa mềm danh mục khỏi cache sau khi transaction DB đã commit xong để tránh lỗi bất đồng bộ
-    private void markDeletedAfterCommit(List<UUID> ids) {
-        runAfterCommit(() -> cateCache.markDeleted(ids));
-    }
-
-    // Đăng ký hook thực thi sau khi transaction commit thành công để đảm bảo tính nhất quán với cache
-    private void runAfterCommit(Runnable action) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
-    }
 }

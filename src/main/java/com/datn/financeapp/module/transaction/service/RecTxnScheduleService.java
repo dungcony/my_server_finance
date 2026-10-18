@@ -24,10 +24,4 @@ public interface RecTxnScheduleService {
      * Quét và xử lý các buổi lịch đến hạn chạy tự động để sinh giao dịch thực tế.
      */
     void processDueSchedules();
-
-    /**
-     * Tự động sinh danh sách các buổi lịch ban đầu khi vừa tạo mới giao dịch định kỳ.
-     *
-     */
-    void generateInitialSchedules(RecTxnCreateEvent event);
 }
