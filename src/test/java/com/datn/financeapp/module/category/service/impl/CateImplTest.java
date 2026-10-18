@@ -9,7 +9,7 @@ import com.datn.financeapp.module.category.entity.Category;
 import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
 import com.datn.financeapp.module.category.repository.CategoryRepository;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -251,7 +251,7 @@ class CateImplTest {
     @DisplayName("Cập nhật chỉ đổi trường được gửi lên, trường null giữ nguyên")
     void update_changesOnlyProvidedFields() {
         Category coffee = category("ca_phe", null);
-        IconResponse newIcon = icon("tra_sua");
+        IconRes newIcon = icon("tra_sua");
         when(categoryRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
         when(iconService.getActive("tra_sua")).thenReturn(newIcon);
 
@@ -456,8 +456,8 @@ class CateImplTest {
         return new CategoryCreateReq(name, code, "mô tả", "ca_phe", "#3d6b7d", parentCode);
     }
 
-    private static IconResponse icon(String code) {
-        return new IconResponse(UUID.randomUUID(), code, code, "M0 0");
+    private static IconRes icon(String code) {
+        return new IconRes(UUID.randomUUID(), code, code, "M0 0");
     }
 
     private static Category category(String code, Category parent) {

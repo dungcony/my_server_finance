@@ -199,7 +199,7 @@ class GroupServicePerfIntegrationTest {
         perf.measure(profile, "GroupService.create",
                 () -> groupService.create(ownerId, groupRequest(memberIds(0, batch), true)));
         perf.measure(profile, "GroupService.list", () -> groupService.list(ownerId));
-        perf.measure(profile, "GroupService.detail", () -> groupService.detail(ownerId, group));
+        perf.measure(profile, "GroupService.get", () -> groupService.detail(ownerId, group));
         perf.measure(profile, "GroupService.update",
                 () -> groupService.update(ownerId, group,
                         new GroupUpdateReq("Nhóm đo hiệu năng", "Mô tả mới", null, null, null)));
@@ -299,7 +299,7 @@ class GroupServicePerfIntegrationTest {
                 () -> groupTxnGetService.myList(ownerId, group, largestPage));
         perf.measure(profile, "GTransactionService.listPending",
                 () -> groupTxnGetService.listPending(ownerId, group, 1, 100));
-        perf.measure(profile, "GTransactionService.detail",
+        perf.measure(profile, "GTransactionService.get",
                 () -> txn.set(createExpense(group)),
                 () -> groupTxnGetService.detail(ownerId, group, txn.get()));
         perf.measure(profile, "GTransactionService.update",

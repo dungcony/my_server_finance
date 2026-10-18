@@ -44,6 +44,7 @@ public enum PermissionName {
     WALLET_UPDATE(Resource.WALLET, Action.UPDATE, ""),
     TXN_READ(Resource.TXN, Action.READ, ""),
     TXN_DELETE(Resource.TXN, Action.DELETE, ""),
+    TXN_UPDATE(Resource.TXN, Action.UPDATE, ""),
     ;
 
     private final Resource resource;

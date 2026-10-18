@@ -1,10 +1,50 @@
-# SCHEDULER
+# Workflow — Scheduler (tác vụ chạy định kỳ)
 
-## reconcil wallet
+| Job | Lịch chạy | Code |
+|---|---|---|
+| Sinh giao dịch định kỳ | Mỗi giờ, phút 0 (đổi được qua `app.recurring.cron`) | [RecTxnScheduler](../../src/main/java/com/datn/financeapp/module/transaction/scheduler/RecTxnScheduler.java) |
+| Đối chiếu số dư ví | 01:00 mỗi ngày, giờ VN | [WalletReconciliationJob](../../src/main/java/com/datn/financeapp/module/wallet/scheduler/WalletReconciliationJob.java) |
+| Dọn khoá chống ghi trùng | 03:00 mỗi ngày, giờ VN | [IdempotencyCleanupJob](../../src/main/java/com/datn/financeapp/common/idempotency/IdempotencyCleanupJob.java) |
 
-- lịch sẽ chạy vào lúc 1:00 AM mỗi ngày
-- sẽ cộng tổng số dư của giao dịch rồi đưa vào con số
-- sau đó sẽ so sánh với wallet.balance
-- nếu khác nhau sẽ cập nhật
-- mỗi ví bị sửa ghi một dòng vào `reconcil_history` (số dư cũ, số dư đúng), trong cùng câu SQL đối chiếu
-- bình thường số dư đã được trigger `trg_transactions_wallet_balance` cập nhật theo từng giao dịch, job này chỉ là lưới an toàn
+## Sinh giao dịch định kỳ — mỗi giờ
+
+```
+RecTxnScheduler.executeDueSchedules
+-> RecTxnScheduleImpl.processDueSchedules
+   -> lấy các buổi lịch PENDING, chưa xoá, run_at <= bây giờ
+   -> với từng buổi:
+        định kỳ đã tắt hoặc đã xoá → bỏ qua
+        -> tạo giao dịch thật (occurred_at = run_at, số tiền của buổi)
+           -> [trigger trg_transactions_wallet_balance] cộng trừ số dư ví
+        -> buổi → SUCCESS
+        -> định kỳ vô hạn → thêm một buổi PENDING mới
+           định kỳ có ngày kết thúc và hết buổi PENDING → tắt định kỳ
+```
+
+Chi tiết từng bước và các lỗi đang mở xem [recurring.md](recurring.md).
+
+## Đối chiếu số dư ví — 01:00
+
+Bình thường số dư ví đã được trigger `trg_transactions_wallet_balance` cập nhật theo từng giao dịch. Job này chỉ là **lưới an toàn**, sửa những ví bị lệch vì lý do khác (sửa tay trong DB, lỗi cũ...).
+
+```
+WalletReconciliationJob.run
+-> WalletServiceImpl.reconcileAll (một transaction)
+   -> WalletRepository.reconcileAll: MỘT câu SQL cho mọi ví chưa xoá
+        tính tổng giao dịch chưa xoá của từng ví (thu +, chi và cho vay −)
+        -> ví nào balance khác tổng → sửa balance = tổng
+        -> mỗi ví vừa sửa ghi một dòng reconcil_history (số dư cũ, số dư đúng)
+   -> log số ví đã sửa
+```
+
+Xem lịch sử: `GET /wallets/{id}/reconciliations` (chủ ví), `GET /wallets/admin/reconciliations` (admin). Xem [wallet.md](wallet.md).
+
+## Dọn khoá chống ghi trùng — 03:00
+
+Các API có `@Idempotent` (tạo ví, tạo giao dịch...) lưu khoá chống ghi trùng vào bảng `idempotency_keys`.
+
+```
+IdempotencyCleanupJob.cleanup
+-> xoá các dòng idempotency_keys tạo cách đây hơn 24 giờ
+-> log số dòng đã xoá
+```

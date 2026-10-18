@@ -267,8 +267,6 @@ module/
           đọc/ghi.
         - Ném exception phù hợp (thường là `ResourceNotFoundException` để tránh rò rỉ sự tồn tại của dữ liệu người
           khác).
-- **Truyền danh tính chuẩn:** Controller lấy danh tính người dùng qua Security Context
-  (`SecurityContextUtil.currentUserId()`) và truyền ID thuần (`UUID userId`) xuống Service.
 
 **KHÔNG ĐƯỢC:**
 

@@ -143,6 +143,7 @@ public enum ErrorCode {
     // Người dùng không có ví mặc định — không xảy ra nhờ trigger ở CSDL, nếu gặp là lỗi dữ liệu.
     WALLET_DEFAULT_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "Không tìm thấy ví mặc định."),
 
+    WALLET_NOT_FOUND(HttpStatus.NOT_FOUND, "Ví không tồn tại"),
     // Xoá ví còn giao dịch mà chưa xác nhận xoá kèm.
     WALLET_HAS_TRANSACTIONS(HttpStatus.CONFLICT, "Ví còn giao dịch, cần xác nhận xoá kèm giao dịch."),
 

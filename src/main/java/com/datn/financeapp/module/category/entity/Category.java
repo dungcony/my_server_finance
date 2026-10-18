@@ -52,8 +52,8 @@ public class Category extends AssignedIdEntity {
     private Category parent;
 
     @NotNull
-    @Column(name = "icon_id")
-    private UUID iconId;
+    @Column(name = "icon_code")
+    private String iconCode;
 
     @NotNull
     @Size(min = 7, max = 7)

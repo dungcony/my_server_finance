@@ -12,16 +12,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/**
- * Repository JPA cho {@link Transaction}. Hỗ trợ truy vấn và tổng hợp giao dịch như {@link #findByIdAndUserIdAndIsDeletedFalse},
- * {@link #search} và {@link #summary}. Khác {@code WalletRepository}, quyền D-27 ở đây suy
- * thẳng từ {@code transactions.user_id} — KHÔNG áp vế nhóm gia đình ({@code group_id}), vì đối
- * chiếu {@code db/migration/V2__giao_dich.sql} xác nhận bảng {@code transactions} không có cột
- * {@code group_id} (giống {@code CategoryRepository}, khác {@code WalletRepository}).
- */
 public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
 
-    // Quyền D-27: transaction chỉ thuộc về đúng một user, không có nhánh nhóm.
+    // : transaction chỉ thuộc về đúng một user, không có nhánh nhóm.
     Optional<Transaction> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
 
     /**
@@ -31,129 +24,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
      */
     Optional<Transaction> findByIdAndUserId(UUID id, UUID userId);
 
-    // Số giao dịch còn sống của một người dùng.
-    long countByUserIdAndIsDeletedFalse(UUID userId);
-
-    /**
-     * Dùng cho D-32 (plan sau): chặn xoá giao dịch đang gắn với một khoản trả nợ
-     * ({@code debt_payments.transaction_id}, {@code ON DELETE RESTRICT} + {@code UNIQUE} —
-     * db/migration/V4__so_no_muc_tieu.sql). Viết sẵn ở đây vì thuộc điểm nối của entity, dùng
-     * lại thay vì viết lại điều kiện EXISTS ở nơi khác.
-     */
-    @Query(value = "SELECT EXISTS(SELECT 1 FROM debt_payments WHERE transaction_id = :id)", nativeQuery = true)
-    boolean existsDebtPaymentLink(@Param("id") UUID id);
-
-    /**
-     * TXN-01/TXN-08 (api/04-GIAO-DICH.md mục 1). Điều kiện quyền {@code user_id = :userId} nằm
-     * NGAY TRONG câu SQL (T-03-09). {@code categoryTree} PHẢI là mảng UUID lấy từ {@code
-     * CategoryRepository.findCategoryTree(categoryId)} (TXN-08) — cộng gộp danh mục con vào cha,
-     * KHÔNG tự viết {@code category_id = :categoryId} đơn thuần ở đây hay bất kỳ nơi nào khác.
-     * {@code search} bind qua {@code @Param}, không nối chuỗi Java (T-03-08, chống SQL injection).
-     */
-    @Query(
-            value = """
-                    SELECT t.* FROM transactions t
-                    WHERE t.user_id = :userId AND NOT t.is_deleted
-                    AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date))
-                    AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date))
-                    AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text))
-                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid))
-                    AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[])))
-                    AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text))
-                    AND (CAST(:search AS text) IS NULL OR t.name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%'))
-                    AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint))
-                    AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))
-                    ORDER BY
-                    CASE WHEN CAST(:sortBy AS text) = 'amount' AND CAST(:sortOrder AS text) = 'asc' THEN t.amount END ASC,
-                    CASE WHEN CAST(:sortBy AS text) = 'amount' AND CAST(:sortOrder AS text) = 'desc' THEN t.amount END DESC,
-                    CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'asc' THEN t.created_at END ASC,
-                    CASE WHEN CAST(:sortBy AS text) = 'created_at' AND CAST(:sortOrder AS text) = 'desc' THEN t.created_at END DESC,
-                    CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'asc' THEN t.date END ASC,
-                    CASE WHEN (CAST(:sortBy AS text) IS NULL OR CAST(:sortBy AS text) = 'date') AND CAST(:sortOrder AS text) = 'desc' THEN t.date END DESC,
-                    t.created_at DESC
-                    LIMIT :limit OFFSET :offset
-                    """,
-            nativeQuery = true)
-    List<Transaction> search(
-            @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
-            @Param("type") String type,
-            @Param("walletId") UUID walletId,
-            @Param("categoryTree") UUID[] categoryTree,
-            @Param("source") String source,
-            @Param("search") String search,
-            @Param("minAmount") Long minAmount,
-            @Param("maxAmount") Long maxAmount,
-            @Param("sortBy") String sortBy,
-            @Param("sortOrder") String sortOrder,
-            @Param("limit") int limit,
-            @Param("offset") int offset);
-
-    // Cùng điều kiện WHERE với {@link #search}, không phân trang — phục vụ {@code total_items}.
-    @Query(
-            value = """
-                    SELECT COUNT(*) FROM transactions t
-                    WHERE t.user_id = :userId AND NOT t.is_deleted
-                    AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date))
-                    AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date))
-                    AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text))
-                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid))
-                    AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[])))
-                    AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text))
-                    AND (CAST(:search AS text) IS NULL OR t.name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%'))
-                    AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint))
-                    AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))
-                    """,
-            nativeQuery = true)
-    long countSearch(
-            @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
-            @Param("type") String type,
-            @Param("walletId") UUID walletId,
-            @Param("categoryTree") UUID[] categoryTree,
-            @Param("source") String source,
-            @Param("search") String search,
-            @Param("minAmount") Long minAmount,
-            @Param("maxAmount") Long maxAmount);
-
-    /**
-     * Tổng thu/chi trên TOÀN BỘ kết quả lọc (không phân trang). LOAN (cho vay) tính vào tổng chi.
-     */
-    @Query(
-            value = """
-                    SELECT
-                    COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS total_income,
-                    COALESCE(SUM(CASE WHEN t.type IN ('EXPENSE', 'LOAN') THEN t.amount END), 0) AS total_expense
-                    FROM transactions t
-                    WHERE t.user_id = :userId AND NOT t.is_deleted
-                    AND (CAST(:fromDate AS date) IS NULL OR t.date >= CAST(:fromDate AS date))
-                    AND (CAST(:toDate AS date) IS NULL OR t.date <= CAST(:toDate AS date))
-                    AND (CAST(:type AS text) IS NULL OR t.type = CAST(:type AS text))
-                    AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid))
-                    AND (CAST(:categoryTree AS uuid[]) IS NULL OR t.category_id = ANY(CAST(:categoryTree AS uuid[])))
-                    AND (CAST(:source AS text) IS NULL OR t.source = CAST(:source AS text))
-                    AND (CAST(:search AS text) IS NULL OR t.name ILIKE CONCAT('%',CAST(:search AS text),'%') OR t.note ILIKE CONCAT('%',CAST(:search AS text),'%'))
-                    AND (CAST(:minAmount AS bigint) IS NULL OR t.amount >= CAST(:minAmount AS bigint))
-                    AND (CAST(:maxAmount AS bigint) IS NULL OR t.amount <= CAST(:maxAmount AS bigint))
-                    """,
-            nativeQuery = true)
-    SummaryProjection summary(
-            @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
-            @Param("type") String type,
-            @Param("walletId") UUID walletId,
-            @Param("categoryTree") UUID[] categoryTree,
-            @Param("source") String source,
-            @Param("search") String search,
-            @Param("minAmount") Long minAmount,
-            @Param("maxAmount") Long maxAmount);
-
-    interface SummaryProjection {
-        Long getTotalIncome();
-
-        Long getTotalExpense();
-    }
+    Optional<Transaction> findByIdAndIsDeletedFalse(UUID transactionId);
 }

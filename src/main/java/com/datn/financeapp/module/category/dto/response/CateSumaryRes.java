@@ -1,10 +1,14 @@
 package com.datn.financeapp.module.category.dto.response;
 
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import java.util.UUID;
 
 public record CateSumaryRes(
+        @JsonIgnore UUID id,
         String name,
         String code,
-        IconResponse icon
+        String icon,
+        String color
 ) {
 }

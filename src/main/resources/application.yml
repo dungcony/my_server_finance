@@ -1,7 +1,7 @@
 server:
   servlet:
     context-path: ${API_PATH:}
-    
+
 spring:
   profiles:
     active: ${PROFILES_ACTIVE:}
@@ -9,13 +9,7 @@ spring:
     name: financeapp
   jackson:
     property-naming-strategy: SNAKE_CASE
-  data:
-    web:
-      pageable:
-        max-page-size: 100          # Giới hạn tối đa (nếu client truyền size > 100 thì Spring tự ép về 100)
-        default-page-size: 20      # Kích thước mặc định khi client không truyền param size
-        one-indexed-parameters: true # Trang bắt đầu từ 1 thay vì 0 (rất tiện, không cần tính toán thủ công)
-        size-parameter: page_size
+
   mail:
     host: ${MAIL_HOST:}
     port: ${MAIL_PORT:}

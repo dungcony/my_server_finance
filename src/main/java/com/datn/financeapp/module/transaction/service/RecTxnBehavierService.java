@@ -15,7 +15,7 @@ public interface RecTxnBehavierService {
      * @param id     ID giao dịch định kỳ
      * @return Chi tiết giao dịch định kỳ
      */
-    RecDetailRes detail(UUID id, UUID userId);
+    RecDetailRes get(UUID id, UUID userId);
 
     /**
      * Tạo mới một giao dịch định kỳ.

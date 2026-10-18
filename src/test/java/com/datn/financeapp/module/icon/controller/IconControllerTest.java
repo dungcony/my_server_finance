@@ -2,7 +2,7 @@ package com.datn.financeapp.module.icon.controller;
 
 import com.datn.financeapp.module.icon.dto.request.IconCreateReq;
 import com.datn.financeapp.module.icon.dto.request.IconUpdateReq;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconBehavierService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -57,7 +57,7 @@ class IconControllerTest {
     @Test
     @DisplayName("GET /icons trả danh sách biểu tượng phân trang Slice")
     void getAll_returnsSlice() throws Exception {
-        IconResponse icon = new IconResponse(UUID.randomUUID(), "ca_phe", "Ly cà phê", "M6 8h12");
+        IconRes icon = new IconRes(UUID.randomUUID(), "ca_phe", "Ly cà phê", "M6 8h12");
         when(iconBehavierService.getAll(any()))
                 .thenReturn(new SliceImpl<>(List.of(icon), PageRequest.of(0, 20), false));
 
@@ -76,7 +76,7 @@ class IconControllerTest {
     void create_validRequest_returnsCreated() throws Exception {
         IconCreateReq req = new IconCreateReq(
                 "tra_sua", "Trà sữa", "M1 1h5", "an_uong", "trà sữa,uống", 1);
-        IconResponse icon = new IconResponse(UUID.randomUUID(), "tra_sua", "Trà sữa", "M1 1h5");
+        IconRes icon = new IconRes(UUID.randomUUID(), "tra_sua", "Trà sữa", "M1 1h5");
 
         when(iconBehavierService.create(any(IconCreateReq.class))).thenReturn(icon);
 
@@ -96,7 +96,7 @@ class IconControllerTest {
     void update_validRequest_returnsUpdated() throws Exception {
         UUID id = UUID.randomUUID();
         IconUpdateReq req = new IconUpdateReq("Trà đào", "M2 2", "an_uong", "đào", 2, true);
-        IconResponse icon = new IconResponse(id, "tra_sua", "Trà đào", "M2 2");
+        IconRes icon = new IconRes(id, "tra_sua", "Trà đào", "M2 2");
 
         when(iconBehavierService.update(eq(id), any(IconUpdateReq.class))).thenReturn(icon);
 
@@ -114,7 +114,7 @@ class IconControllerTest {
     @DisplayName("DELETE /icons/{id} vô hiệu hóa biểu tượng thành công")
     void delete_validId_returnsDeleted() throws Exception {
         UUID id = UUID.randomUUID();
-        IconResponse icon = new IconResponse(id, "tra_sua", "Trà sữa", "M1 1h5");
+        IconRes icon = new IconRes(id, "tra_sua", "Trà sữa", "M1 1h5");
 
         when(iconBehavierService.delete(id)).thenReturn(icon);
 

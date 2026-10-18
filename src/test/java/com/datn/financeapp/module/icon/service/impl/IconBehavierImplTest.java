@@ -4,7 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.icon.dto.request.IconCreateReq;
 import com.datn.financeapp.module.icon.dto.request.IconUpdateReq;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.entity.Icon;
 import com.datn.financeapp.module.icon.mapper.IconMapper;
 import com.datn.financeapp.module.icon.repository.IconRepository;
@@ -48,7 +48,7 @@ class IconBehavierImplTest {
         iconBehavier = new IconBehavierImpl(iconRepository, iconMapper);
         lenient().when(iconMapper.toIconResponse(any(Icon.class))).thenAnswer(invocation -> {
             Icon icon = invocation.getArgument(0);
-            return new IconResponse(icon.getId(), icon.getCode(), icon.getDisplayName(), icon.getPathData());
+            return new IconRes(icon.getId(), icon.getCode(), icon.getDisplayName(), icon.getPathData());
         });
     }
 
@@ -59,7 +59,7 @@ class IconBehavierImplTest {
                 "xe_dap", "Xe đạp", "M0 0h10", "di_lai", "phương tiện,xe", 2);
         when(iconRepository.existsByCode("xe_dap")).thenReturn(false);
 
-        IconResponse res = iconBehavier.create(req);
+        IconRes res = iconBehavier.create(req);
 
         ArgumentCaptor<Icon> captor = ArgumentCaptor.forClass(Icon.class);
         verify(iconRepository).save(captor.capture());
@@ -98,12 +98,12 @@ class IconBehavierImplTest {
         Icon icon2 = icon("di_lai", "di_lai");
         Slice<Icon> iconSlice = new SliceImpl<>(List.of(icon1, icon2), pageable, false);
 
-        when(iconRepository.findByIsActiveTrue(pageable)).thenReturn(iconSlice);
+        when(iconRepository.findByIsDeletedFalse(pageable)).thenReturn(iconSlice);
 
-        Slice<IconResponse> result = iconBehavier.getAll(pageable);
+        Slice<IconRes> result = iconBehavier.getAll(pageable);
 
         assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent()).extracting(IconResponse::code).containsExactly("an_uong", "di_lai");
+        assertThat(result.getContent()).extracting(IconRes::code).containsExactly("an_uong", "di_lai");
     }
 
     @Test
@@ -118,7 +118,7 @@ class IconBehavierImplTest {
         IconUpdateReq req = new IconUpdateReq(
                 "Ăn uống & Cà phê", "M1 1", "an_uong", "cafe,trasua", 5, true);
 
-        IconResponse res = iconBehavier.update(id, req);
+        IconRes res = iconBehavier.update(id, req);
 
         assertThat(existing.getDisplayName()).isEqualTo("Ăn uống & Cà phê");
         assertThat(existing.getPathData()).isEqualTo("M1 1");
@@ -150,7 +150,7 @@ class IconBehavierImplTest {
 
         when(iconRepository.findById(id)).thenReturn(Optional.of(existing));
 
-        IconResponse res = iconBehavier.delete(id);
+        IconRes res = iconBehavier.delete(id);
 
         assertThat(existing.getIsActive()).isFalse();
         assertThat(res.code()).isEqualTo("ca_phe");

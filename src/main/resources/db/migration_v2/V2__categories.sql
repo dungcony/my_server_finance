@@ -1,6 +1,6 @@
 -- =============================================================
 -- V2 — Biểu tượng và danh mục thu chi
--- icons đặt trước categories vì categories.icon_id trỏ tới icons; wallets (V3) cũng dùng icons
+-- icons đặt trước categories vì categories.icon_code trỏ tới icons; wallets (V3) cũng dùng icons
 -- =============================================================
 
 -- icons --
@@ -9,7 +9,6 @@ CREATE TABLE icons (
     code         VARCHAR(50)  NOT NULL,
     display_name VARCHAR(100) NOT NULL,
     path_data    TEXT         NOT NULL,
-    is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
     is_deleted   BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -30,7 +29,7 @@ CREATE TABLE categories (
     name        VARCHAR(50)  NOT NULL,
     description VARCHAR(255),
     parent_id   UUID,
-    icon_id     UUID         NOT NULL,
+    icon_code   char(50)     ,
     color       VARCHAR(7)   NOT NULL,
     level       INTEGER      NOT NULL DEFAULT 0,
     is_leaf     BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -41,7 +40,7 @@ CREATE TABLE categories (
 
     CONSTRAINT uq_cat_code   UNIQUE (code),
     CONSTRAINT fk_cat_parent FOREIGN KEY (parent_id) REFERENCES categories (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_id)   REFERENCES icons (id)      ON DELETE RESTRICT,
+    CONSTRAINT fk_cat_icon   FOREIGN KEY (icon_code)   REFERENCES icons (code)      ON DELETE RESTRICT,
     CONSTRAINT ck_cat_color  CHECK (color ~ '^#[0-9A-Fa-f]{6}$'),
     CONSTRAINT ck_cat_level  CHECK (level >= 0),
     CONSTRAINT ck_cat_parent CHECK (parent_id IS DISTINCT FROM id),

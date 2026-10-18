@@ -5,6 +5,9 @@ import com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
@@ -63,4 +66,38 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
     long countByRecTxnIdAndStatusAndIsDeletedFalse(UUID recId, RecTxnScheduleStatus status);
 
     Page<RecTxnSchedule> findByUserIdAndRecTxnIdAndIsDeletedFalse(UUID userId, UUID recId, Pageable pageable);
+
+    /**
+     * Xoá hẳn các buổi chưa chạy: mọi buổi PENDING và buổi SKIPPED còn ở tương lai.
+     *
+     * @param recId ID giao dịch định kỳ cha
+     * @return số buổi đã xoá
+     */
+    @Modifying
+    @Query("""
+            DELETE FROM RecTxnSchedule s
+            WHERE s.recTxn.id = :recId
+              AND (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.PENDING
+                   OR (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.SKIPPED
+                       AND s.runAt > CURRENT_TIMESTAMP))
+            """)
+    int deleteUnprocessed(@Param("recId") UUID recId);
+
+    /**
+     * Cập nhật số tiền cho các buổi chưa chạy, giữ nguyên ngày chạy.
+     *
+     * @param recId  ID giao dịch định kỳ cha
+     * @param amount số tiền mới
+     * @return số buổi đã cập nhật
+     */
+    @Modifying
+    @Query("""
+            UPDATE RecTxnSchedule s
+            SET s.amount = :amount
+            WHERE s.recTxn.id = :recId
+              AND (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.PENDING
+                   OR (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.SKIPPED
+                       AND s.runAt > CURRENT_TIMESTAMP))
+            """)
+    int updateUnprocessedAmount(@Param("recId") UUID recId, @Param("amount") Long amount);
 }

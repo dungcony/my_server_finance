@@ -1,10 +1,7 @@
 package com.datn.financeapp.module.transaction.service;
 
-import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleCreateReq;
-import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateReq;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleListRec;
-import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleRes;
-import com.datn.financeapp.module.transaction.entity.RecTxn;
+import com.datn.financeapp.module.transaction.events.RecTxnCreateEvent;
 import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
@@ -23,16 +20,14 @@ public interface RecTxnScheduleService {
      */
     RecTxnScheduleListRec findAll(UUID recId, Pageable pageable);
 
-
-    /**
-     * Tự động sinh danh sách các buổi lịch ban đầu khi vừa tạo mới giao dịch định kỳ.
-     *
-     * @param recTxn thực thể cấu hình giao dịch định kỳ vừa được lưu
-     */
-    void generateInitialSchedules(RecTxn recTxn);
-
     /**
      * Quét và xử lý các buổi lịch đến hạn chạy tự động để sinh giao dịch thực tế.
      */
     void processDueSchedules();
+
+    /**
+     * Tự động sinh danh sách các buổi lịch ban đầu khi vừa tạo mới giao dịch định kỳ.
+     *
+     */
+    void generateInitialSchedules(RecTxnCreateEvent event);
 }

@@ -7,7 +7,7 @@ CREATE TABLE wallets (
     name       VARCHAR(50) NOT NULL,
     type       VARCHAR(20) NOT NULL,
     balance    BIGINT      NOT NULL DEFAULT 0,
-    icon_id    UUID,
+    icon_code  char(50),
     color      CHAR(7),
     sort_order INTEGER     NOT NULL DEFAULT 0,
     is_default BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -16,7 +16,7 @@ CREATE TABLE wallets (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT fk_wal_user  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-    CONSTRAINT fk_wal_icon  FOREIGN KEY (icon_id) REFERENCES icons (id) ON DELETE SET NULL,
+    CONSTRAINT fk_wal_icon  FOREIGN KEY (icon_code) REFERENCES icons (code) ON DELETE SET NULL,
    -- CONSTRAINT ck_wal_type  CHECK (type IN ('CASH', 'BANK', 'E_WALLET')),
     CONSTRAINT ck_wal_color CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$')
 );
@@ -36,7 +36,6 @@ CREATE TABLE transactions (
     occurred_at TIMESTAMPTZ  NOT NULL,
     name        VARCHAR(150),
     note        TEXT,
-    source      VARCHAR(20)  NOT NULL DEFAULT 'MANUAL',
     is_deleted  BOOLEAN      NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),

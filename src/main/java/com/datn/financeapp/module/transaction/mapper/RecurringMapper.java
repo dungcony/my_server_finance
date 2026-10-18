@@ -9,6 +9,8 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
+import java.util.UUID;
+
 /**
  * Mapper chuyển đổi giữa entity {@link RecTxn} và các DTO liên quan.
  * <p>
@@ -50,8 +52,8 @@ public interface RecurringMapper {
      * @param req yêu cầu tạo mới giao dịch định kỳ
      * @return thực thể cấu hình giao dịch định kỳ
      */
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "userId", source = "userId")
     @Mapping(target = "name", source = "displayName")
     @Mapping(target = "startAt", source = "startAt")
     @Mapping(target = "endAt", source = "endAt")
@@ -60,5 +62,5 @@ public interface RecurringMapper {
     @Mapping(target = "new", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    RecTxn toEntity(RecCreateReq req);
+    RecTxn toEntity(RecCreateReq req, UUID id, UUID userId);
 }

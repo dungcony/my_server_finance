@@ -4,7 +4,7 @@ import lombok.Getter;
 
 /**
  * Exception nghiệp vụ tổng quát mang theo mã lỗi + HTTP status xác định.
- * GlobalExceptionHandler chuyển thẳng thành {success:false, error:{code, message, detail}}.
+ * GlobalExceptionHandler chuyển thẳng thành {success:false, error:{code, message, get}}.
  *
  * <p><b>Mã lỗi chỉ nhận qua {@link ErrorCode}.</b> Constructor nhận {@code String} đã được gỡ ở
  * bước E5 — chính nó là thứ cho phép gõ sai mã mà build vẫn qua. Muốn thêm mã lỗi mới thì khai

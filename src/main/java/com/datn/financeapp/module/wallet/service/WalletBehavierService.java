@@ -1,6 +1,7 @@
 package com.datn.financeapp.module.wallet.service;
 
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
+import com.datn.financeapp.module.wallet.dto.request.WalletFillterReq;
 import com.datn.financeapp.module.wallet.dto.request.WalletupdateReq;
 import com.datn.financeapp.module.wallet.dto.response.WalletListRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletRes;
@@ -14,23 +15,29 @@ import java.util.UUID;
 public interface WalletBehavierService {
 
     /**
-     * Lấy danh sách ví tài chính của người dùng theo bộ lọc.
-     *
-     * @return danh sách phản hồi thông tin ví
-     */
-    WalletListRes gets(UUID userId, Pageable pageable);
-
-    WalletListRes getAll(Pageable pageable);
-
-    WalletRes get(UUID userId, UUID walletId);
-
-    /**
      * Tạo mới một ví tài chính.
      *
      * @param req thông tin tạo ví
      * @return DTO thông tin ví vừa tạo
      */
-    WalletRes create(UUID userId, WalletCreateReq req);
+    WalletRes create(WalletCreateReq req, boolean isAdmin);
+
+    /**
+     * Lấy danh sách ví tài chính của người dùng theo bộ lọc
+     *
+     * @param filter  thông tin fillter
+     * @param isAdmin đánh dấu người gọi là user hay admin/manager
+     * @return danh sách phản hồi thông tin ví
+     */
+    WalletListRes gets(WalletFillterReq filter, Pageable pageable, boolean isAdmin);
+
+    /**
+     * Lấy thông tin chi tiết của 1 ví
+     *
+     * @param walletId id vi
+     * @param isAdmin  người gọi là admin
+     */
+    WalletRes get(UUID walletId, boolean isAdmin);
 
     /**
      * Cập nhật thông tin ví.
@@ -39,7 +46,7 @@ public interface WalletBehavierService {
      * @param req      DTO cập nhật ví
      * @return DTO thông tin ví sau cập nhật
      */
-    WalletRes update(UUID userId, UUID walletId, WalletupdateReq req);
+    WalletRes update(UUID walletId, WalletupdateReq req, boolean isAdmin);
 
     /**
      * Xóa ví tài chính (xóa mềm). Các giao dịch của ví được xoá mềm theo bằng trigger
@@ -47,5 +54,5 @@ public interface WalletBehavierService {
      *
      * @param walletId ID ví
      */
-    Void softDelete(UUID userId, UUID walletId);
+    Void softDelete(UUID walletId, boolean isAdmin);
 }

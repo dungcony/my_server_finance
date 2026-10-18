@@ -16,7 +16,7 @@ public interface TxnBehavierService {
     /**
      * Tạo mới một giao dịch đơn lẻ.
      *
-     * @param userId ID người dùng null tức là admin gửi xem
+     * @param userId ID người dùng null tức là admin gửi
      * @param req    thông tin yêu cầu tạo giao dịch
      * @return {@link TxnDetailResponse} kết quả tạo giao dịch
      */
@@ -29,34 +29,31 @@ public interface TxnBehavierService {
      * @param page    thông tin phân trang và sắp xếp
      * @return {@link TxnListRes}
      */
-    TxnListRes gets(UUID userId, TxnFilterRequest filters, Pageable page);
+    TxnListRes gets(TxnFilterRequest filters, Pageable page, boolean isAdmin);
 
 
     /**
-     * Truy vấn chi tiết một giao dịch theo ID và người dùng.
+     * Truy vấn chi tiết một giao dịch theo ID.
      *
-     * @param id     ID giao dịch
-     * @param userId ID người dùng (nếu null sẽ lấy từ context)
+     * @param id ID giao dịch
      * @return {@link TxnDetailResponse} chi tiết giao dịch
      */
-    TxnDetailResponse detail(UUID userId, UUID id);
+    TxnDetailResponse get(UUID id, boolean isAdmin);
 
     /**
      * Cập nhật thông tin giao dịch hiện có.
      *
      * @param txnId ID giao dịch cần sửa
-     * @param req   thông tin cập nhật
-     * @return {@link TxnDetailResponse} kết quả cập nhật
+     * @param req   thông tin cập nhật=
      */
-    TxnDetailResponse update(UUID userId, UUID txnId, TxnUpdateRequest req);
+    void update(UUID txnId, TxnUpdateReq req, boolean isAdmin);
 
     /**
      * Xóa mềm một giao dịch và hoàn tất cập nhật lại số dư ví.
      *
-     * @param userId ID người dùng (nếu null sẽ lấy từ context)
-     * @param txnId  ID giao dịch cần xóa
+     * @param txnId ID giao dịch cần xóa
      */
-    void softDelete(UUID userId, UUID txnId);
+    void softDelete(UUID txnId, boolean isAdmin);
 
     /**
      * Xóa mềm nhiều giao dịch cùng lúc.

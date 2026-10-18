@@ -25,11 +25,11 @@ public record CategoryCreateReq(
         @Size(max = 50, message = "Mã danh mục không được vượt quá 50 ký tự.")
         @Pattern(regexp = "^[a-z0-9_]+$", message = "Mã chỉ gồm chữ thường, số và dấu gạch dưới.")
         String code,
-        
+
         @NotBlank(message = "Mô tả không được để trống.")
         String description,
 
-        UUID iconId,
+        String iconCode,
 
         @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.")
         String color,

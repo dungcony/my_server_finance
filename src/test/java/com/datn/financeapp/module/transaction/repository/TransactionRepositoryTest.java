@@ -140,7 +140,7 @@ class TransactionRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByIdAndUserIdAndIsDeletedFalse: Phân lập dữ liệu theo user và lọc xóa mềm")
+    @DisplayName("findByIdAndUserIdAndIsDeleted: Phân lập dữ liệu theo user và lọc xóa mềm")
     void findByIdAndUserIdAndIsDeletedFalse_EnforcesIsolation() {
         Transaction active = createTransaction(userId, "expense", 50_000, LocalDate.now(), "Coffee", false);
         Transaction deleted = createTransaction(userId, "expense", 20_000, LocalDate.now(), "Snack", true);

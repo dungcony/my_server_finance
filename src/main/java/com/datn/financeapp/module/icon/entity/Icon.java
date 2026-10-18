@@ -41,8 +41,4 @@ public class Icon extends AssignedIdEntity {
     @NotNull
     @Column(name = "path_data", nullable = false)
     private String pathData;
-
-    @NotNull
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive;
 }

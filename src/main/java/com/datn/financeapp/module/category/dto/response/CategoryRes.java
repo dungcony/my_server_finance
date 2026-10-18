@@ -1,6 +1,6 @@
 package com.datn.financeapp.module.category.dto.response;
 
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.Instant;
@@ -27,7 +27,7 @@ public record CategoryRes(
         String code,
         String description,
         String parentCode,
-        IconResponse icon,
+        IconRes icon,
         String color,
         Integer level,
         Boolean isLeaf,

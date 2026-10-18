@@ -256,7 +256,7 @@ class GroupServiceImplTest {
     class ArchivedGroupTests {
 
         @Test
-        @DisplayName("detail: thành viên xem được chi tiết nhóm đã lưu trữ, tư cách thành viên do danh sách ACTIVE quyết định")
+        @DisplayName("get: thành viên xem được chi tiết nhóm đã lưu trữ, tư cách thành viên do danh sách ACTIVE quyết định")
         void detail_archivedGroup_stillReadable() {
             Group group = buildGroup(GroupStatus.ARCHIVED, true);
             when(groupRepository.findNotDeletedWithFundById(groupId)).thenReturn(Optional.of(group));
@@ -270,7 +270,7 @@ class GroupServiceImplTest {
         }
 
         @Test
-        @DisplayName("detail: người ngoài nhóm có thật nhận GROUP_MEMBER_REQUIRED (rule.md quy tắc 8)")
+        @DisplayName("get: người ngoài nhóm có thật nhận GROUP_MEMBER_REQUIRED (rule.md quy tắc 8)")
         void detail_nonMember_throwsForbiddenNotGroupMember() {
             Group group = buildGroup(GroupStatus.ACTIVE, true);
             when(groupRepository.findNotDeletedWithFundById(groupId)).thenReturn(Optional.of(group));
@@ -287,7 +287,7 @@ class GroupServiceImplTest {
         }
 
         @Test
-        @DisplayName("detail: nhóm không tồn tại hoặc đã xoá thì GROUP_NOT_FOUND")
+        @DisplayName("get: nhóm không tồn tại hoặc đã xoá thì GROUP_NOT_FOUND")
         void detail_missingGroup_throwsGroupNotFound() {
             when(groupRepository.findNotDeletedWithFundById(groupId)).thenReturn(Optional.empty());
 

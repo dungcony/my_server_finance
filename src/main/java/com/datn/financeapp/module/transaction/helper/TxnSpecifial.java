@@ -4,7 +4,6 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.transaction.dto.request.TxnFilterRequest;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.transaction.enums.TxnSource;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
@@ -15,33 +14,22 @@ import java.util.*;
 
 /**
  * Lớp trợ giúp xây dựng điều kiện truy vấn động (JPA Specification) cho giao dịch cá nhân.
- * <p>
- * <b>Các hàm chính:</b>
- * <ul>
- *   <li>{@link #filter(UUID, TxnFilterRequest, Collection)}: Xây dựng điều kiện lọc kèm danh sách ID danh mục cây</li>
- *   <li>{@link #filter(UUID, TxnFilterRequest)}: Xây dựng điều kiện lọc mặc định cho một người dùng</li>
- * </ul>
- * </p>
  */
 public class TxnSpecifial {
 
     private static final char LIKE_ESCAPE = '\\';
 
-    public static Specification<Transaction> filter(
-            UUID userId,
-            TxnFilterRequest filter,
-            Collection<UUID> categoryIds) {
+    public static Specification<Transaction> filter(TxnFilterRequest filter) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            // điều kiện bắt buộc: chỉ lấy giao dịch thuộc sở hữu của người dùng và chưa xóa mềm
-            if (userId != null)
-                predicates.add(cb.equal(root.get("userId"), userId));
-
-            predicates.add(cb.isFalse(root.get("isDeleted")));
-
             if (filter == null)
                 return cb.and(predicates.toArray(new Predicate[0]));
+
+            if (filter.userId() != null)
+                predicates.add(cb.equal(root.get("userId"), filter.userId()));
+
+            if (filter.isDeleted() != null)
+                predicates.add(cb.equal(root.get("isDeleted"), filter.isDeleted()));
 
             // điều kiện lọc theo khoảng thời gian phát sinh giao dịch
             if (filter.from() != null)
@@ -52,22 +40,16 @@ public class TxnSpecifial {
 
             // điều kiện lọc theo loại giao dịch
             if (hasText(filter.type()))
-                predicates.add(cb.equal(root.get("type"), toEnum(TxnType.class, filter.type(), "type")));
+                predicates.add(cb.equal(root.get("type"), toTxnType(filter.type())));
 
-
-            // điều kiện lọc theo nguồn giao dịch
-            if (hasText(filter.source()))
-                predicates.add(cb.equal(root.get("source"), toEnum(TxnSource.class, filter.source(), "source")));
 
             // điều kiện lọc theo ví
             if (filter.walletId() != null)
                 predicates.add(cb.equal(root.get("walletId"), filter.walletId()));
 
             // điều kiện lọc theo danh mục: nếu truyền danh mục cây thì lọc theo danh sách, ngược lại lấy trực tiếp categoryId
-            if (categoryIds != null)
-                predicates.add(categoryIds.isEmpty() ? cb.disjunction() : root.get("categoryId").in(categoryIds));
-            else if (filter.categoryId() != null)
-                predicates.add(cb.equal(root.get("categoryId"), filter.categoryId()));
+            if (filter.categoryIds() != null)
+                predicates.add(filter.categoryIds().isEmpty() ? cb.disjunction() : root.get("categoryId").in(filter.categoryIds()));
 
             // điều kiện tìm kiếm từ khóa trong tên hoặc ghi chú
             if (hasText(filter.search()))
@@ -82,10 +64,6 @@ public class TxnSpecifial {
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
-    }
-
-    public static Specification<Transaction> filter(UUID userId, TxnFilterRequest filter) {
-        return filter(userId, filter, null);
     }
 
     // tìm kiếm từ khóa không phân biệt hoa thường trong tên hoặc ghi chú
@@ -106,11 +84,11 @@ public class TxnSpecifial {
     }
 
     // chuyển đổi chuỗi sang enum an toàn với thông báo lỗi rõ ràng
-    private static <E extends Enum<E>> E toEnum(Class<E> enumType, String value, String field) {
+    private static TxnType toTxnType(String value) {
         try {
-            return Enum.valueOf(enumType, value.trim().toUpperCase(Locale.ROOT));
+            return TxnType.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Giá trị của '" + field + "' không hợp lệ.");
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Giá trị của 'type' không hợp lệ.");
         }
     }
 

@@ -39,8 +39,8 @@ public class Wallet extends AssignedIdEntity {
     @Column(name = "balance", nullable = false, updatable = false)
     private Long balance;
 
-    @Column(name = "icon_id")
-    private UUID iconId;
+    @Column(name = "icon_code")
+    private String iconCode;
 
     @Column(name = "color", columnDefinition = "bpchar(7)")
     private String color;

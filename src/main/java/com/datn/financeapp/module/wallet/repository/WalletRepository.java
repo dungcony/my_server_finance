@@ -1,32 +1,44 @@
 package com.datn.financeapp.module.wallet.repository;
 
+import com.datn.financeapp.module.group.helper.GroupTxnSpecification;
 import com.datn.financeapp.module.wallet.entity.Wallet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
 
-public interface WalletRepository extends JpaRepository<Wallet, UUID> {
+public interface WalletRepository extends JpaRepository<Wallet, UUID>, JpaSpecificationExecutor<Wallet> {
 
     long countByUserIdAndIsDeletedFalse(UUID userId);
 
     boolean existsByUserIdAndNameAndIsDeletedFalse(UUID userId, String name);
 
-    Optional<Wallet> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
+    @Modifying
+    @Query("""
+            insert into Wallet (id, userId, name, type, balance, iconCode, color, isDefault, isDeleted)
+            select :#{#w.id}, :#{#w.userId}, :#{#w.name}, :#{#w.type}, :#{#w.balance},
+                   :#{#w.iconCode}, :#{#w.color}, :#{#w.isDefault}, false
+            where not exists (
+                select 1 from Wallet x
+                where x.userId = :#{#w.userId}
+                  and x.name = :#{#w.name}
+                  and x.isDeleted = false)
+            """)
+    int insertIfNameNotExist(@Param("w") Wallet wallet);
 
-    Optional<Wallet> findByUserIdAndIsDefaultTrue(UUID userId);
+    Optional<Wallet> findByIdAndUserIdAndIsDeleted(UUID id, UUID userId, boolean isDeleted);
 
     Page<Wallet> findAllByUserIdAndIsDeleted(UUID userId, Boolean isDeleted, Pageable pageable);
 
     /**
      * Đối chiếu số dư của mọi ví chưa xoá theo tổng giao dịch, chỉ sửa những ví đang lệch và ghi mỗi ví đã sửa
      * một dòng vào {@code reconcil_history} (số dư cũ, số dư đúng) trong cùng câu lệnh.
-     *
-     * @return số ví đã được sửa số dư, cũng là số dòng lịch sử vừa ghi
      */
     @Modifying
     @Query(
@@ -56,6 +68,9 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
                     """,
             nativeQuery = true
     )
-    int reconcileAll();
+    void reconcileAll();
 
+    Optional<Wallet> findByIdAndUserId(UUID walletId, UUID userId);
+
+    Optional<Wallet> findByIdAndIsDeletedFalse(UUID walletId);
 }

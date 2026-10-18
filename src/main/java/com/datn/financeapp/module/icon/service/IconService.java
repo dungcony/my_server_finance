@@ -1,11 +1,8 @@
 package com.datn.financeapp.module.icon.service;
 
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
-import org.jspecify.annotations.NonNull;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service đọc kho biểu tượng hệ thống.
@@ -13,34 +10,20 @@ import java.util.UUID;
 public interface IconService {
 
     /**
-     * Lấy default icon
+     * Tìm Icon theo code
      *
+     * @param code           code icon
+     * @param includeDeleted false là chỉ lấy chưa xoá, true là cho phép cả 2
      */
-    IconResponse findDefaultWallet();
+    Optional<IconRes> findByCode(String code, boolean includeDeleted);
 
     /**
-     * Lấy biểu tượng đang dùng theo mã code.
+     * Lấy giá trị iconPath bằng code
      *
-     * @param code mã code biểu tượng
-     * @return thông tin biểu tượng
+     * @param code Có thể null
+     * @return "" nếu code = null hoặc k tìm thấy icon
      */
-    IconResponse findActiveByCode(String code);
+    String findIconByCode(String code);
 
-    /**
-     * Lấy biểu tượng đang bật theo id. Hàm dùng nội bộ: bên gọi phải tự kiểm {@code id} khác null
-     * (ví chưa chọn biểu tượng thì không gọi hàm này).
-     *
-     * @param id ID biểu tượng, không được null
-     * @return thông tin biểu tượng
-     * @throws com.datn.financeapp.common.exception.BusinessException {@code ICON_NOT_FOUND} nếu biểu tượng không tồn tại hoặc đã tắt
-     */
-    IconResponse findActiveById(@NonNull UUID id);
-
-    /**
-     * Lấy map các biểu tượng đang dùng theo danh sách ID.
-     *
-     * @param ids danh sách ID biểu tượng
-     * @return map ID sang IconResponse
-     */
-    Map<UUID, IconResponse> findActiveByIds(Collection<UUID> ids);
+    Map<String, String> findIconsByCodes(List<String> codes);
 }

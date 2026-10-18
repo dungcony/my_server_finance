@@ -4,6 +4,7 @@ import com.datn.financeapp.module.transaction.enums.TxnSource;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
@@ -24,6 +25,7 @@ public record TxnCreateReq(
         @NotNull(message = "Type là bắt buộc")
         TxnType type,
 
+        @PositiveOrZero(message = "số tiền phải > 0")
         @NotNull(message = "số tiền là bắt buộc")
         Long amount,
 

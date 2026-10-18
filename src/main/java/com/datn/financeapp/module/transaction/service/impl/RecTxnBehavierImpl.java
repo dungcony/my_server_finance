@@ -9,6 +9,8 @@ import com.datn.financeapp.module.transaction.dto.request.RecCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.RecUpdateReq;
 import com.datn.financeapp.module.transaction.dto.response.RecDetailRes;
 import com.datn.financeapp.module.transaction.entity.RecTxn;
+import com.datn.financeapp.module.transaction.events.RecTxnCreateEvent;
+import com.datn.financeapp.module.transaction.events.RecTxnUpdateEvent;
 import com.datn.financeapp.module.transaction.mapper.RecurringMapper;
 import com.datn.financeapp.module.transaction.repository.RecTxnRepository;
 import com.datn.financeapp.module.transaction.service.RecTxnBehavierService;
@@ -16,35 +18,41 @@ import com.datn.financeapp.module.transaction.service.RecTxnScheduleService;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import com.datn.financeapp.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecTxnBehavierImpl implements RecTxnBehavierService {
 
     private final RecTxnRepository recurringRepository;
-    private final RecTxnScheduleService scheduleService;
     private final WalletService walletService;
     private final CategoryService categoryService;
     private final RecurringMapper recurringMapper;
+
+    private final ApplicationEventPublisher publisher;
 
     /**
      * {@inheritDoc}
      */
     @Override
     @Transactional(readOnly = true)
-    public RecDetailRes detail(UUID id, UUID userId) {
+    public RecDetailRes get(UUID id, UUID userId) {
+
         var rec = recurringRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy recurring"));
 
         if (userId == null)
             userId = SecurityContextUtil.currentUserId();
 
-        var wallet = walletService.findSumary(rec.getWalletId(), userId);
-        var cate = categoryService.findIfIsleaf(rec.getCategoryId());
+        // vì là lấy nên nếu k có thì truyền vào null
+        var wallet = walletService.findSumaryByIdAndUser(rec.getWalletId(), userId);
+        var cate = categoryService.findSumaryActiveById(rec.getCategoryId());
 
         return recurringMapper.toDetalRes(rec, cate, wallet);
 
@@ -57,21 +65,22 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
     @Transactional
     public RecDetailRes create(UUID userId, RecCreateReq req) {
 
-        RecTxn rec = recurringMapper.toEntity(req);
-        rec.setId(UUID.randomUUID());
-
+        log.debug("tạo recTxn");
         // user tự tạo thì phải lấy id theo token gửi lên để check
         if (userId == null)
             userId = SecurityContextUtil.currentUserId();
 
-        var cate = categoryService.findIfIsleaf(req.categoryId());
-        var wallet = walletService.findSumary(req.walletId(), userId);
-        rec.setUserId(userId);
+        var cate = categoryService.findIfIsleaf(req.categoryId()); // khi tạo thì phải là lá
+        var wallet = walletService.findSumaryIfWalletBelongToUserId(req.walletId(), userId);
+
+        RecTxn rec = recurringMapper.toEntity(req, UUID.randomUUID(), userId);
 
         recurringRepository.save(rec);
 
+        log.debug("recurring save {}, start create RecTxnSchedule", rec);
         // tự động sinh các buổi lịch con ban đầu
-        scheduleService.generateInitialSchedules(rec);
+        publisher.publishEvent(new RecTxnCreateEvent(rec));
+        log.debug("create schedule success");
 
         return recurringMapper.toDetalRes(rec, cate, wallet);
     }
@@ -92,17 +101,12 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
         var rec = recurringRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy recurring"));
 
-        if (req.displayName() != null) {
-            rec.setName(req.displayName());
-        }
-        if (req.amount() != null) {
-            rec.setAmount(req.amount());
-        }
-        if (req.note() != null) {
-            rec.setNote(req.note());
-        }
+        // so với giá trị cũ trước khi ghi đè
+        boolean scheduleChanged = isScheduleChanged(rec, req);
+        boolean amountChanged = req.amount() != null && !req.amount().equals(rec.getAmount());
+
         if (req.walletId() != null) {
-            wallet = walletService.findSumary(req.walletId(), userId);
+            wallet = walletService.findSumaryIfWalletBelongToUserId(req.walletId(), userId);
             rec.setWalletId(req.walletId());
         }
         if (req.categoryId() != null) {
@@ -114,13 +118,27 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
             rec.setFrequency(req.frequency());
         }
 
-        if (req.endAt() != null) {
-            rec.setEndAt(req.endAt());
-        }
+        if (req.endAt() != null) rec.setEndAt(req.endAt());
+        if (req.displayName() != null) rec.setName(req.displayName());
+        if (req.amount() != null) rec.setAmount(req.amount());
+        if (req.note() != null) rec.setNote(req.note());
 
         recurringRepository.saveAndFlush(rec);
 
+        // đổi số tiền hoặc lịch lặp thì đồng bộ lại các buổi chưa chạy
+        if (scheduleChanged || amountChanged)
+            publisher.publishEvent(new RecTxnUpdateEvent(rec, scheduleChanged));
+
         return recurringMapper.toDetalRes(rec, cate, wallet);
+    }
+
+    /**
+     * Kiểm tra request có đổi tần suất, bước lặp hoặc ngày kết thúc so với cấu hình hiện tại không.
+     */
+    private boolean isScheduleChanged(RecTxn rec, RecUpdateReq req) {
+        return (req.frequency() != null && req.frequency() != rec.getFrequency())
+                || (req.interval() != null && !req.interval().equals(rec.getInterval()))
+                || (req.endAt() != null && !req.endAt().equals(rec.getEndAt()));
     }
 
     @Override

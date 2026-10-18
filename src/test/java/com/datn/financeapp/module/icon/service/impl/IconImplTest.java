@@ -2,8 +2,7 @@ package com.datn.financeapp.module.icon.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.icon.dto.response.IconGroupListResponse;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.entity.Icon;
 import com.datn.financeapp.module.icon.mapper.IconMapper;
 import com.datn.financeapp.module.icon.repository.IconRepository;
@@ -42,7 +41,7 @@ class IconImplTest {
         iconImpl = new IconImpl(iconRepository, iconMapper);
         lenient().when(iconMapper.toIconResponse(any(Icon.class))).thenAnswer(invocation -> {
             Icon icon = invocation.getArgument(0);
-            return new IconResponse(icon.getId(), icon.getCode(), icon.getDisplayName(), icon.getPathData());
+            return new IconRes(icon.getId(), icon.getCode(), icon.getDisplayName(), icon.getPathData());
         });
     }
 
@@ -58,10 +57,10 @@ class IconImplTest {
         assertThat(result.group()).hasSize(2);
         assertThat(result.group().get(0).groupCode()).isEqualTo("an_uong");
         assertThat(result.group().get(0).groupName()).isEqualTo("Ăn uống");
-        assertThat(result.group().get(0).items()).extracting(IconResponse::code).containsExactly("an_uong", "ca_phe");
+        assertThat(result.group().get(0).items()).extracting(IconRes::code).containsExactly("an_uong", "ca_phe");
         assertThat(result.group().get(1).groupCode()).isEqualTo("di_lai");
         assertThat(result.group().get(1).groupName()).isEqualTo("Đi lại");
-        assertThat(result.group().get(1).items()).extracting(IconResponse::code).containsExactly("xe_may");
+        assertThat(result.group().get(1).items()).extracting(IconRes::code).containsExactly("xe_may");
     }
 
     @Test
@@ -99,9 +98,9 @@ class IconImplTest {
     @DisplayName("getActive trả biểu tượng đang dùng theo code")
     void getActive_returnsActiveIcon() {
         Icon coffee = icon("ca_phe", "an_uong");
-        when(iconRepository.findByCodeAndIsActiveTrue("ca_phe")).thenReturn(Optional.of(coffee));
+        when(iconRepository.findByCodeAndIsDeletedFalse("ca_phe")).thenReturn(Optional.of(coffee));
 
-        IconResponse response = iconImpl.getActive("ca_phe");
+        IconRes response = iconImpl.getActive("ca_phe");
         assertThat(response.code()).isEqualTo("ca_phe");
     }
 
@@ -119,9 +118,9 @@ class IconImplTest {
         UUID id = UUID.randomUUID();
         Icon coffee = icon("ca_phe", "an_uong");
         coffee.setId(id);
-        when(iconRepository.findByIdAndIsActiveTrue(id)).thenReturn(Optional.of(coffee));
+        when(iconRepository.findByIdAndIsDeletedFalse(id)).thenReturn(Optional.of(coffee));
 
-        IconResponse response = iconImpl.getActiveById(id);
+        IconRes response = iconImpl.getActiveById(id);
         assertThat(response.code()).isEqualTo("ca_phe");
     }
 
@@ -137,7 +136,7 @@ class IconImplTest {
 
         when(iconRepository.findByIdInAndIsActiveTrue(List.of(id1, id2))).thenReturn(List.of(icon1, icon2));
 
-        Map<UUID, IconResponse> map = iconImpl.getActiveByIds(List.of(id1, id2));
+        Map<UUID, IconRes> map = iconImpl.getActiveByIds(List.of(id1, id2));
         assertThat(map).hasSize(2);
         assertThat(map.get(id1).code()).isEqualTo("ca_phe");
         assertThat(map.get(id2).code()).isEqualTo("xe_may");

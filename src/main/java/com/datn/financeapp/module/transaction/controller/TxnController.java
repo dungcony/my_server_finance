@@ -2,20 +2,16 @@ package com.datn.financeapp.module.transaction.controller;
 
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
-import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.TxnFilterRequest;
-import com.datn.financeapp.module.transaction.dto.request.TxnUpdateRequest;
+import com.datn.financeapp.module.transaction.dto.request.TxnUpdateReq;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,12 +32,12 @@ public class TxnController {
     public ApiResponse<?> gets(
             @ModelAttribute TxnFilterRequest filters,
             Pageable page) {
-        return ApiResponse.of(txnBehavierService.gets(null, filters, page));
+        return ApiResponse.of(txnBehavierService.gets(filters, page, false));
     }
 
     @GetMapping("/{id}")
     public ApiResponse<?> detail(@PathVariable UUID id) {
-        return ApiResponse.of(txnBehavierService.detail(id, null));
+        return ApiResponse.of(txnBehavierService.get(id, false));
     }
 
     @PostMapping
@@ -51,49 +47,57 @@ public class TxnController {
         return ApiResponse.of(txnBehavierService.create(null, req));
     }
 
-    @PutMapping("/{id}")
-    public ApiResponse<?> update(
+    @PatchMapping("/{id}")
+    public ApiResponse<Void> update(
             @PathVariable UUID id,
-            @Valid @RequestBody TxnUpdateRequest req) {
-        return ApiResponse.of(txnBehavierService.update(null, id, req));
-    }
-
-    @DeleteMapping("/bulk")
-    public ApiResponse<Void> bulkDelete(@RequestBody List<UUID> ids) {
-        txnBehavierService.bulkDelete(null, ids);
+            @Valid @RequestBody TxnUpdateReq req) {
+        txnBehavierService.update(id, req, false);
         return ApiResponse.of(null);
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> softDelete(@PathVariable UUID id) {
-        txnBehavierService.softDelete(null, id);
+        txnBehavierService.softDelete(id, false);
         return ApiResponse.of(null);
     }
 
     // luồng quản trị viên
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_UPDATE.getValue())")
+    @PostMapping("/admin")
+    public ApiResponse<?> adminCreate(
+            @RequestParam(name = "user_id") UUID userId,
+            @Valid @RequestBody TxnCreateReq req) {
+        return ApiResponse.of(txnBehavierService.create(userId, req));
+    }
 
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_READ.getValue())")
     @GetMapping("/admin")
     public ApiResponse<?> adminGets(
-            @RequestParam(name = "user_id") UUID userId,
             @ModelAttribute TxnFilterRequest filters,
             Pageable page) {
-        return ApiResponse.of(txnBehavierService.gets(userId, filters, page));
+        return ApiResponse.of(txnBehavierService.gets(filters, page, true));
     }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_READ.getValue())")
     @GetMapping("/admin/{id}")
-    public ApiResponse<?> adminDetail(
-            @PathVariable UUID id,
-            @RequestParam(name = "user_id", required = false) UUID userId) {
-        return ApiResponse.of(txnBehavierService.detail(userId, id));
+    public ApiResponse<?> adminDetail(@PathVariable UUID id) {
+        return ApiResponse.of(txnBehavierService.get(id, true));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_UPDATE.getValue())")
+    @PatchMapping("/admin")
+    public ApiResponse<?> adminUpdate(
+            @RequestParam(name = "txn_id") UUID txnId,
+            @Valid @RequestBody TxnUpdateReq req) {
+        txnBehavierService.update(txnId, req, true);
+
+        return ApiResponse.of(null);
     }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).TXN_DELETE.getValue())")
     @DeleteMapping("/admin/{id}")
-    public ApiResponse<?> adminDelete(
-            @PathVariable UUID id,
-            @RequestParam(name = "user_id") UUID userId) {
-        txnBehavierService.softDelete(userId, id);
+    public ApiResponse<?> adminDelete(@PathVariable UUID id) {
+        txnBehavierService.softDelete(id, true);
         return ApiResponse.of(null);
     }
 }

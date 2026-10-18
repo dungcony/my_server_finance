@@ -10,7 +10,7 @@ import com.datn.financeapp.module.category.helper.CateCache;
 import com.datn.financeapp.module.category.mapper.CateMapper;
 import com.datn.financeapp.module.category.repository.CategoryRepository;
 import com.datn.financeapp.module.category.service.CategoryBehavierService;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,30 +37,30 @@ public class CateBehavierImpl implements CategoryBehavierService {
         if (cateCache.existsCode(req.code()))
             throw new BusinessException(ErrorCode.CATEGORY_CODE_EXISTS);
 
-        IconResponse icon = iconService.findActiveById(req.iconId());
+        var icon = iconService.findByCode(req.iconCode(), false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Icon gửi lên không hợp lệ"));
+
         Category parent = req.parentCode() != null ? findByCode(req.parentCode()) : null;
-        UUID id = UUID.randomUUID();
-
-        if (categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(req.name(), id))
-            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
-
         Category category = Category.builder()
-                .id(id)
+                .id(UUID.randomUUID())
                 .code(req.code())
                 .name(req.name())
                 .description(req.description())
                 .parent(parent)
-                .iconId(icon.id())
+                .iconCode(icon.code())
                 .color(req.color())
                 .level(levelUnder(parent))
                 .path(pathUnder(parent, req.code()))
                 .build();
 
+        if (categoryRepository.existsByNameIgnoreCaseAndIsDeletedFalseAndIdNot(req.name(), category.getId()))
+            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
+
         if (parent != null)
             parent.setIsLeaf(false);
 
         categoryRepository.save(category);
-        registerCodeAfterCommit(id, req.code());
+        registerCodeAfterCommit(category.getId(), req.code());
         return cateMapper.toResponse(category, icon);
     }
 
@@ -68,7 +68,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
     @Transactional(readOnly = true)
     public List<CategoryRes> getMasters() {
         List<Category> categories = categoryRepository.findByParentIsNullAndIsDeletedFalseOrderByNameAsc();
-        Map<UUID, IconResponse> iconMap = iconService.findActiveByIds(
+        Map<UUID, IconRes> iconMap = iconService.findActiveByIds(
                 categories.stream().map(Category::getIconId).toList());
         return categories.stream()
                 .map(c -> cateMapper.toResponse(c, iconMap.get(c.getIconId())))
@@ -80,7 +80,7 @@ public class CateBehavierImpl implements CategoryBehavierService {
     public List<CategoryRes> getOfParent(String parentCode) {
         Category parent = findByCode(parentCode);
         List<Category> categories = categoryRepository.findByParent_IdAndIsDeletedFalseOrderByNameAsc(parent.getId());
-        Map<UUID, IconResponse> iconMap = iconService.findActiveByIds(
+        Map<UUID, IconRes> iconMap = iconService.findActiveByIds(
                 categories.stream().map(Category::getIconId).toList());
         return categories.stream()
                 .map(c -> cateMapper.toResponse(c, iconMap.get(c.getIconId())))
@@ -109,10 +109,10 @@ public class CateBehavierImpl implements CategoryBehavierService {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
-        // chọn icon mới thì phải còn bật (findActiveById báo ICON_NOT_FOUND), giữ icon cũ thì chỉ hiển thị
-        IconResponse icon;
+        // chọn icon mới thì phải còn bật (findActiveByCode báo ICON_NOT_FOUND), giữ icon cũ thì chỉ hiển thị
+        IconRes icon;
         if (req.iconId() != null) {
-            icon = iconService.findActiveById(req.iconId());
+            icon = iconService.findActiveByCode(req.iconId());
             category.setIconId(req.iconId());
         } else
             icon = iconService.findActiveByIds(List.of(category.getIconId())).get(category.getIconId());

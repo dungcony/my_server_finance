@@ -1,62 +1,67 @@
 package com.datn.financeapp.module.icon.service.impl;
 
-import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
-import com.datn.financeapp.module.icon.entity.Icon;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.mapper.IconMapper;
 import com.datn.financeapp.module.icon.repository.IconRepository;
 import com.datn.financeapp.module.icon.service.IconService;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class IconImpl implements IconService {
 
     private final IconRepository iconRepository;
     private final IconMapper iconMapper;
 
+
     @Override
-    public IconResponse findDefaultWallet() {
-        return iconRepository.findByCodeAndIsActiveTrue("default_wallet")
-                .map(iconMapper::toIconResponse)
-                .orElse(new IconResponse());
+    public Optional<IconRes> findByCode(String code, boolean includeDeleted) {
+        if (!includeDeleted)
+            return iconRepository.findByCodeAndIsDeletedFalse(code)
+                    .map(iconMapper::toIconResponse);
+
+        return iconRepository.findByCode(code)
+                .map(iconMapper::toIconResponse);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public IconResponse findActiveByCode(String code) {
-        return iconRepository
-                .findByCodeAndIsActiveTrue(code)
-                .map(iconMapper::toIconResponse)
-                .orElse(new IconResponse());
+    public String findIconByCode(String code) {
+
+        if (code == null)
+            return "";
+
+        var icon = iconRepository.findByCodeAndIsDeletedFalse(code)
+                .orElse(null);
+
+        if (icon == null)
+            return "";
+
+        return icon.getPathData();
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public IconResponse findActiveById(@NonNull UUID id) {
+    public Map<String, String> findIconsByCodes(List<String> codes) {
+        Map<String, String> res = new HashMap<>();
 
-        return iconRepository.findByIdAndIsActiveTrue(id)
-                .map(iconMapper::toIconResponse)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ICON_NOT_FOUND));
-    }
+        if (codes == null)
+            return res;
 
-    @Override
-    @Transactional(readOnly = true)
-    public Map<UUID, IconResponse> findActiveByIds(Collection<UUID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return iconRepository.findByIdInAndIsActiveTrue(ids).stream()
-                .collect(Collectors.toMap(Icon::getId, iconMapper::toIconResponse));
+        List<String> remaining = new ArrayList<>(new LinkedHashSet<>(codes));
+
+        iconRepository.findAllByCodeInAndIsDeleted(remaining, false)
+                .forEach(i -> {
+                    res.put(i.getCode(), i.getPathData());
+                    remaining.remove(i.getCode());
+                });
+
+        remaining.forEach(code -> res.put(code, ""));
+
+
+        return res;
     }
 }

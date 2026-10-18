@@ -1,6 +1,5 @@
 package com.datn.financeapp.module.wallet.mapper;
 
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
 import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
@@ -21,7 +20,6 @@ public interface WalletMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "userId", ignore = true)
     @Mapping(target = "isDefault", constant = "false")
     @Mapping(target = "isDeleted", constant = "false")
     Wallet toEntity(WalletCreateReq wallet);

@@ -110,7 +110,6 @@ public class TokenServiceImpl implements TokenService {
                 .email(email)
                 .tokenHash(sha256Hex(rawToken))
                 .expiresAt(Instant.now().plus(refreshTokenTTL, ChronoUnit.DAYS))
-                .createdAt(Instant.now())
                 .build();
         refreshTokenRepository.save(refreshToken);
         return rawToken;

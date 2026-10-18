@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.wallet.dto.response;
 
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.wallet.enums.WalletType;
-import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -13,8 +13,7 @@ public record WalletRes(
         WalletType type,
         Long balance,
         boolean isDefault,
-        UUID iconId,
-        String icon,
+        IconRes icon,
         String color,
         Instant createdAt) {
 }

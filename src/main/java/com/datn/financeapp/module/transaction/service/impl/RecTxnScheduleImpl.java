@@ -8,7 +8,8 @@ import com.datn.financeapp.module.transaction.entity.RecTxn;
 import com.datn.financeapp.module.transaction.entity.RecTxnSchedule;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus;
-import com.datn.financeapp.module.transaction.enums.TxnSource;
+import com.datn.financeapp.module.transaction.events.RecTxnCreateEvent;
+import com.datn.financeapp.module.transaction.events.RecTxnUpdateEvent;
 import com.datn.financeapp.module.transaction.helper.RecScheduleCalculator;
 import com.datn.financeapp.module.transaction.mapper.RecTxnScheduleMapper;
 import com.datn.financeapp.module.transaction.repository.RecTxnRepository;
@@ -17,6 +18,7 @@ import com.datn.financeapp.module.transaction.repository.TransactionRepository;
 import com.datn.financeapp.module.transaction.service.RecTxnScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -61,14 +63,44 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
         );
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
+
     @Transactional
-    public void generateInitialSchedules(RecTxn recTxn) {
+    @EventListener
+    public void generateInitialSchedules(RecTxnCreateEvent event) {
+        RecTxn recTxn = event.recTxn();
+        scheduleRepository.saveAll(buildSchedules(recTxn, recTxn.getStartAt()));
+    }
+
+    /**
+     * Đồng bộ các buổi chưa chạy sau khi sửa giao dịch định kỳ.
+     */
+    @Transactional
+    @EventListener
+    public void syncSchedules(RecTxnUpdateEvent event) {
+        RecTxn recTxn = event.recTxn();
+
+        // chỉ đổi số tiền thì cập nhật thẳng, giữ nguyên ngày chạy
+        if (!event.scheduleChanged()) {
+            scheduleRepository.updateUnprocessedAmount(recTxn.getId(), recTxn.getAmount());
+            return;
+        }
+
+        scheduleRepository.deleteUnprocessed(recTxn.getId());
+
+        // mốc là buổi đã chạy gần nhất, chưa chạy buổi nào thì bắt đầu lại từ startAt
+        Instant from = scheduleRepository.findTopByRecTxnIdAndIsDeletedFalseOrderByRunAtDesc(recTxn.getId())
+                .map(latest -> scheduleCalculator.nextOccurrence(latest.getRunAt(), recTxn.getFrequency(), recTxn.getInterval()))
+                .orElse(recTxn.getStartAt());
+
+        scheduleRepository.saveAll(buildSchedules(recTxn, from));
+    }
+
+    /**
+     * Dựng danh sách buổi PENDING bắt đầu từ mốc cho trước tới ngày kết thúc hoặc đủ số buổi đệm.
+     */
+    private List<RecTxnSchedule> buildSchedules(RecTxn recTxn, Instant from) {
         List<RecTxnSchedule> schedules = new ArrayList<>();
-        Instant current = recTxn.getStartAt();
+        Instant current = from;
         int count = 0;
         // số lượng đệm tối đa nếu lặp vô hạn
         int maxBuffer = 12;
@@ -99,7 +131,7 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
             count++;
         }
 
-        scheduleRepository.saveAll(schedules);
+        return schedules;
     }
 
     /**
@@ -138,7 +170,6 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
                 .name(rec.getName())
                 .note(rec.getNote())
                 .occurredAt(schedule.getRunAt())
-                .isDeleted(false)
                 .build();
         txn.setId(UUID.randomUUID());
         transactionRepository.save(txn);

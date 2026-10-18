@@ -4,7 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.icon.dto.request.IconCreateReq;
 import com.datn.financeapp.module.icon.dto.request.IconUpdateReq;
-import com.datn.financeapp.module.icon.dto.response.IconResponse;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.entity.Icon;
 import com.datn.financeapp.module.icon.mapper.IconMapper;
 import com.datn.financeapp.module.icon.repository.IconRepository;
@@ -29,16 +29,16 @@ public class IconBehavierImpl implements IconBehavierService {
 
     @Override
     @Transactional
-    public IconResponse create(IconCreateReq req) {
-        if (iconRepository.existsByCode(req.code())) {
+    public IconRes create(IconCreateReq req) {
+
+        if (iconRepository.existsByCode(req.code()))
             throw new BusinessException(ErrorCode.ICON_CODE_EXISTS);
-        }
+
         Icon icon = Icon.builder()
                 .id(UUID.randomUUID())
                 .code(req.code())
                 .displayName(req.displayName())
                 .pathData(req.pathData())
-                .isActive(true)
                 .build();
 
         iconRepository.save(icon);
@@ -47,35 +47,31 @@ public class IconBehavierImpl implements IconBehavierService {
 
     @Override
     @Transactional(readOnly = true)
-    public Slice<IconResponse> getAll(Pageable pageable) {
-        return iconRepository.findByIsActiveTrue(pageable)
+    public Slice<IconRes> getAll(Pageable pageable) {
+        return iconRepository.findByIsDeletedFalse(pageable)
                 .map(iconMapper::toIconResponse);
     }
 
     @Override
     @Transactional
-    public IconResponse update(UUID id, IconUpdateReq req) {
-        Icon icon = iconRepository.findById(id)
+    public IconRes update(String code, IconUpdateReq req) {
+        Icon icon = iconRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ICON_NOT_FOUND));
 
-        if (req.displayName() != null) {
-            icon.setDisplayName(req.displayName());
-        }
-        if (req.pathData() != null) {
-            icon.setPathData(req.pathData());
-        }
-        if (req.isActive() != null) {
-            icon.setIsActive(req.isActive());
-        }
+        if (req.code() != null && req.code().equals(icon.getCode()) && !iconRepository.existsByCode(req.code()))
+            icon.setCode(req.code());
+        if (req.displayName() != null) icon.setDisplayName(req.displayName());
+        if (req.pathData() != null) icon.setPathData(req.pathData());
+
         return iconMapper.toIconResponse(icon);
     }
 
     @Override
     @Transactional
-    public IconResponse delete(UUID id) {
-        Icon icon = iconRepository.findById(id)
+    public IconRes delete(String code) {
+        Icon icon = iconRepository.findByCodeAndIsDeletedFalse(code)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ICON_NOT_FOUND));
-        icon.setIsActive(false);
+        icon.setIsDeleted(false);
         return iconMapper.toIconResponse(icon);
     }
 }

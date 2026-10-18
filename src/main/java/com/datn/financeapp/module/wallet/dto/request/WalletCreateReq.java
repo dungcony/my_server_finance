@@ -17,7 +17,9 @@ public record WalletCreateReq(
         @NotNull(message = "Số dư ban đầu không được để trống")
         Long balance,
 
-        UUID iconId,
+        UUID userId,
+        @NotBlank(message = "Hãy chọn icon")
+        String iconCode,
 
         @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Mã màu phải có dạng #RRGGBB.")
         String color) {
