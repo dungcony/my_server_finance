@@ -1,6 +1,7 @@
 package com.datn.financeapp.module.user.service;
 
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
+import com.datn.financeapp.module.user.dto.request.UnlockUserRequest;
 import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 
@@ -10,6 +11,8 @@ import java.util.UUID;
 public interface ManagerUserService {
 
     void lockUser(UUID managerId, BlockUserRequest req);
+
+    void unlockUser(UUID managerId, UnlockUserRequest req);
 
     void addRoleToUser(UpdateUserRoleReq req);
 

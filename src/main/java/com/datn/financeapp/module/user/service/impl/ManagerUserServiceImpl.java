@@ -5,6 +5,7 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.BlacklistedUserRepository;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
+import com.datn.financeapp.module.user.dto.request.UnlockUserRequest;
 import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 import com.datn.financeapp.module.user.entity.Role;
@@ -71,6 +72,36 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         eventPublisher.publishEvent(new UserLockedEvent(req.userId()));
 
         log.info("User {} đã khóa tài khoản user {} với lý do: {}", managerId, req.userId(), req.reason());
+    }
+
+    @Transactional
+    @Override
+    public void unlockUser(UUID managerId, UnlockUserRequest req) {
+        if (req.userId().equals(managerId))
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không thể tự mở khóa tài khoản của chính mình.");
+
+        User user = getActiveUser(req.userId());
+
+        int targetLevel = getLevel(req.userId());
+        int managerLevel = getLevel(managerId);
+
+        // Số nhỏ = quyền cao — không được mở khóa user có cấp bậc cao hơn hoặc bằng chính mình.
+        if (targetLevel <= managerLevel) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Không được mở khóa tài khoản có cấp bậc cao hơn hoặc bằng chính mình.");
+        }
+
+        if (user.getStatus() != UserStatus.BLOCKED) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Tài khoản không ở trạng thái bị khóa.");
+        }
+
+        user.setStatus(UserStatus.ACTIVE);
+        userRepository.save(user);
+
+        // Xóa khỏi danh sách blacklist trong Redis & làm mới cache
+        blacklistedUserRepository.remove(req.userId());
+        userAuthCacheHelper.evictUserAuth(user.getId());
+
+        log.info("User {} đã mở khóa tài khoản user {}", managerId, req.userId());
     }
 
     @Transactional

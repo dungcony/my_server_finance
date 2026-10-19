@@ -36,7 +36,7 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
     @Transactional(noRollbackFor = BusinessException.class)
     @Override
     public AuthRes login(EmailLoginRequest req, ClientInfo client) {
-        String email = req.email().toLowerCase().trim();
+        String email = req.email().toLowerCase();
 
         if (isLockedOut(email))
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_LOCKED);

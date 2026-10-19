@@ -107,6 +107,9 @@ public class UserServiceImpl implements UserService {
                 .filter(u -> !u.getIsDeleted())
                 .orElseThrow(UserNotFoundException::new);
 
+        if (user.isLocked())
+            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
+
         user.setStatus(status);
 
         return userMapper.toResponse(userRepository.save(user));
@@ -208,10 +211,8 @@ public class UserServiceImpl implements UserService {
         log.info("đang đăng ký roles.....");
         rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_USER).ifPresent(role -> {
             UserRole userRole = new UserRole(user.getId(), role.getId());
-            userRole.setUser(user);
-            userRole.setRole(role);
-            userRoleRepository.save(userRole);
-            user.getUserRoles().add(userRole);
+            UserRole save = userRoleRepository.save(userRole);
+            user.getUserRoles().add(save);
         });
     }
 }

@@ -3,6 +3,7 @@ package com.datn.financeapp.module.user.controller;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
+import com.datn.financeapp.module.user.dto.request.UnlockUserRequest;
 import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
 import com.datn.financeapp.module.user.service.ManagerUserService;
 import jakarta.validation.Valid;
@@ -39,6 +40,14 @@ public class ManagerUserController {
             @Valid @RequestBody BlockUserRequest req) {
         adminUserService.lockUser(SecurityContextUtil.currentUserId(), req);
         return ApiResponse.of(null, "Khóa tài khoản người dùng thành công");
+    }
+
+    @PatchMapping("/unlock")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).USERS_UPDATE.getValue())")
+    public ApiResponse<Void> unlockUser(
+            @Valid @RequestBody UnlockUserRequest req) {
+        adminUserService.unlockUser(SecurityContextUtil.currentUserId(), req);
+        return ApiResponse.of(null, "Mở khóa tài khoản người dùng thành công");
     }
 
     @PostMapping("/role")

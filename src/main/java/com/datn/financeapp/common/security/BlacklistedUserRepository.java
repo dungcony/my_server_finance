@@ -21,4 +21,8 @@ public interface BlacklistedUserRepository extends CrudRepository<BlacklistedUse
                 .blockedAt(Instant.now())
                 .build());
     }
+
+    default void remove(UUID userId) {
+        deleteById(userId.toString());
+    }
 }

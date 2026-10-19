@@ -1,7 +1,6 @@
 package com.datn.financeapp.module.auth.service.impl;
 
 import com.datn.financeapp.module.auth.dto.request.*;
-import com.datn.financeapp.module.auth.dto.request.*;
 import com.datn.financeapp.module.auth.dto.response.AuthRes;
 import com.datn.financeapp.module.auth.dto.response.RegisterRes;
 import com.datn.financeapp.module.auth.dto.response.TokenRes;
@@ -50,32 +49,34 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public RegisterRes register(RegisterRequest req) {
         Instant now = Instant.now();
+        String email = req.email().toLowerCase();
 
-        if (userService.existByEmail(req.email()))
+        if (userService.existByEmail(email))
             throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
 
         UserRes user = userService.create(
                 UserCreateReq.forEmail(
-                        req.email(),
+                        email,
                         passwordEncoder.encode(req.password())
                 )
         );
-        sendEmail(req.email(), OtpType.REGISTER_OTP, now);
+        sendEmail(email, OtpType.REGISTER_OTP, now);
 
         return new RegisterRes(
                 user.id(),
-                req.email()
+                email
         );
     }
 
 
     @Override
     public AuthRes verifyEmail(VerifyEmailRequest req) {
-        verifyOtp(req.email(), req.code(), OtpType.REGISTER_OTP);
+        String email = req.email().toLowerCase();
+        verifyOtp(email, req.code(), OtpType.REGISTER_OTP);
 
-        otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, req.email());
+        otpRepository.deleteByTypeAndEmail(OtpType.REGISTER_OTP, email);
 
-        var user = userService.updateStatus(req.email(), UserStatus.ACTIVE);
+        var user = userService.updateStatus(email, UserStatus.ACTIVE);
 
         return new AuthRes(
                 user,
@@ -93,10 +94,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resendVerification(ResendVerificationRequest req) {
         Instant now = Instant.now();
+        String email = req.email().toLowerCase();
 
-        // Tài khoản đã xoá hoặc bị khoá im lặng như req.email() chưa đăng ký — không gửi mã, không báo
-        // lỗi, để người gửi không suy ra được trạng thái tài khoản.
-        var u = userService.get(new UserGetReq(req.email()));
+        var u = userService.get(new UserGetReq(email));
 
         if (u.isBlocked())
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
@@ -104,13 +104,13 @@ public class AuthServiceImpl implements AuthService {
         if (u.isConfirm())
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_ALREADY_VERIFIED);
 
-        OtpModel otp = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, req.email())
+        OtpModel otp = otpRepository.findByTypeAndEmail(OtpType.REGISTER_OTP, email)
                 .orElse(null);
 
         if (otp != null && Duration.between(otp.getCreatedAt(), now).getSeconds() < 60)
             throw new BusinessException(ErrorCode.RATE_LIMIT_EXCEEDED, "Vui lòng chờ 60 giây trước khi yêu cầu gửi lại mã.");
 
-        sendEmail(req.email(), OtpType.REGISTER_OTP, now);
+        sendEmail(email, OtpType.REGISTER_OTP, now);
     }
 
     @Transactional(noRollbackFor = BusinessException.class)
@@ -154,23 +154,25 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void forgotPassword(ForgotPasswordRequest req) {
+        String email = req.email().toLowerCase();
 
         // đếm lượt trước khi tra email: email lạ cũng tốn lượt, và hết lượt thì không có thư nào được gửi
-        forgotPasswordRateLimiter.consume(req.email());
+        forgotPasswordRateLimiter.consume(email);
 
-        userService.validUser(req.email());
+        userService.validUser(email);
 
-        sendEmail(req.email(), OtpType.PASSWORD_RESET_OTP, Instant.now());
+        sendEmail(email, OtpType.PASSWORD_RESET_OTP, Instant.now());
     }
 
     @Override
     public void resetPassword(ResetPasswordRequest req) {
+        String email = req.email().toLowerCase();
 
-        verifyOtp(req.email(), req.resetCode(), OtpType.PASSWORD_RESET_OTP);
-        userService.updatePass(req.email(), req.newPassword());
-        otpRepository.deleteByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, req.email());
+        verifyOtp(email, req.resetCode(), OtpType.PASSWORD_RESET_OTP);
+        userService.updatePass(email, req.newPassword());
+        otpRepository.deleteByTypeAndEmail(OtpType.PASSWORD_RESET_OTP, email);
 
-        tokenService.revokeAllByEmail(req.email());
+        tokenService.revokeAllByEmail(email);
     }
 
     //--------------------------------------------PRIVATE----------------------------------------//

@@ -1,19 +1,15 @@
 package com.datn.financeapp.module.category.repository;
 
 import com.datn.financeapp.module.category.entity.Category;
-import com.datn.financeapp.module.category.helper.CategoryCodeView;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Repository JPA cho {@link Category}. Danh mục là cây nhiều cấp do admin quản lý, dùng chung cho
@@ -21,20 +17,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
 
-    /**
-     * Mọi cặp (id, code), kể cả danh mục đã xóa mềm — code của danh mục đã xóa vẫn được giữ chỗ
-     * nên không lọc {@code deleted}.
-     */
-    @Query("SELECT new com.datn.financeapp.module.category.helper.CategoryCodeView(c.id, c.code, c.isDeleted) FROM Category c")
-    List<CategoryCodeView> findAllCodes();
 
     Optional<Category> findByCodeAndIsDeletedFalse(String code);
-
-    /**
-     * Các danh mục (kể cả đã xóa mềm — code được giữ chỗ) có {@code code} nằm trong tập cho trước, dùng
-     * để dựng danh sách tổ tiên từ {@code path} (chuỗi code nối bằng {@code /}).
-     */
-    List<Category> findByCodeIn(Collection<String> codes);
 
     List<Category> findByParentIsNullAndIsDeletedFalseOrderByNameAsc();
 
