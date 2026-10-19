@@ -1,7 +1,5 @@
 package com.datn.financeapp.unitTest.user.controller;
 
-import com.datn.financeapp.module.user.controller.*;
-
 
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.user.controller.UserController;
@@ -9,7 +7,7 @@ import com.datn.financeapp.module.user.dto.response.UserRes;
 
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.module.user.dto.request.DeleteAccountRequest;
-import com.datn.financeapp.module.user.dto.request.UpdateProfileRequest;
+import com.datn.financeapp.module.user.dto.request.ProfileUpdateRequest;
 import com.datn.financeapp.module.user.dto.request.UpdatePassReq;
 
 import com.datn.financeapp.module.user.enums.UserPlan;
@@ -122,9 +120,9 @@ class UserControllerTest {
     @Test
     @DisplayName("PATCH /users/me: Cập nhật thông tin hồ sơ -> 200 OK")
     void updateProfile_Success_ReturnsUpdatedProfile() throws Exception {
-        UpdateProfileRequest req = new UpdateProfileRequest("Minh", "Tran", "new-avatar.png");
+        ProfileUpdateRequest req = new ProfileUpdateRequest("Minh", "Tran", "new-avatar.png");
         UserRes updated = new UserRes(currentUserId, "test@example.com", "Minh", "Tran", UserPlan.FREE, UserStatus.ACTIVE, null, "dummy_password", null, false);
-        when(userBehavierService.updateMe(eq(currentUserId), any(UpdateProfileRequest.class))).thenReturn(updated);
+        when(userBehavierService.updateMe(eq(currentUserId), any(ProfileUpdateRequest.class))).thenReturn(updated);
 
         mockMvc.perform(patch("/users/me")
                         .contentType(MediaType.APPLICATION_JSON)

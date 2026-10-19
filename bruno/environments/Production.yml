@@ -55,7 +55,17 @@ variables:
     enabled: true
     secret: false
     type: text
+  - name: categoryCode
+    value: ""
+    enabled: true
+    secret: false
+    type: text
   - name: iconId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: iconCode
     value: ""
     enabled: true
     secret: false
@@ -127,5 +137,8 @@ variables:
     value: ""
     description: ""
   - name: newOwnerId
+    value: ""
+    description: ""
+  - name: orderCode
     value: ""
     description: ""

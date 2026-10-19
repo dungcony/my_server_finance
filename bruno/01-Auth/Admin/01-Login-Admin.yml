@@ -8,25 +8,20 @@ http:
   url: "{{baseUrl}}/auth/login"
   headers:
     - name: Content-Type
-      value: "application/json"
+      value: application/json
   body:
     type: json
     data: |-
       {
-        "email": "{{adminEmail}}",
-        "password": "{{adminPassword}}"
+        "email": "{{admin}}",
+        "password": "{{admin}}"
       }
-
-runtime:
-  postResponse: |-
-    if (res.status === 200 && res.body && res.body.data && res.body.data.access_token) {
-      bru.setEnvVar("adminAccessToken", res.body.data.access_token);
-      if (res.body.data.refresh_token) {
-        bru.setEnvVar("adminRefreshToken", res.body.data.refresh_token);
-      }
-    }
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Đăng nhập bằng tài khoản Quản trị viên (Admin). Tự động lưu adminAccessToken và adminRefreshToken vào environment.

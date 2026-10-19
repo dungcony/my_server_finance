@@ -1,0 +1,24 @@
+info:
+  name: "08. Xóa nợ khó đòi"
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/debts/admin/{{debtId}}/write-off"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "Không thể liên lạc được đối tác"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (DEBT_UPDATE): Đánh dấu nợ khó đòi, không hoàn tiền vào ví."

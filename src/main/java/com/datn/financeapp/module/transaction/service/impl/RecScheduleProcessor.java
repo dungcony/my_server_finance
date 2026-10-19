@@ -95,7 +95,7 @@ public class RecScheduleProcessor {
                                     .amount(rec.getAmount())
                                     .status(RecTxnScheduleStatus.PENDING)
                                     .userId(rec.getUserId())
-                                    .recTxn(rec)
+                                    .recTxnId(rec.getId())
                                     .build();
                             newSchedule.setId(UUID.randomUUID());
                             newSchedule.setIsDeleted(false);

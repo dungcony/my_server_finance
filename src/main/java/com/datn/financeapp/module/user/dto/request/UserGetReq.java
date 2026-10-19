@@ -16,4 +16,8 @@ public record UserGetReq(
         this(null, email, false);
     }
 
+    public UserGetReq(String email, boolean isDeleted) {
+        this(null, email, isDeleted);
+    }
+
 }

@@ -1,14 +1,12 @@
 package com.datn.financeapp.unitTest.user.service;
 
-import com.datn.financeapp.module.user.service.*;
-
 
 import com.datn.financeapp.module.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.BlacklistedUserRepository;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
-import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
+import com.datn.financeapp.module.user.dto.request.UserRoleUpdateReq;
 import com.datn.financeapp.module.user.entity.Role;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.entity.UserRole;
@@ -152,7 +150,7 @@ class AdminUserServiceTest {
                 .id(targetUserId)
                 .email("victim@example.com")
                 .status(UserStatus.ACTIVE)
-                
+
                 .build();
 
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
@@ -172,7 +170,7 @@ class AdminUserServiceTest {
     void addRoleToUser_UserNotFound_ThrowsNotFound() {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_USER)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.NOT_FOUND.getCode());
 
@@ -185,7 +183,7 @@ class AdminUserServiceTest {
         User user = User.builder()
                 .id(targetUserId)
                 .email("user@example.com")
-                
+
                 .build();
         // ROLE_ADMIN (level 1) là cấp cao nhất — không ai gán được nó qua endpoint này (kể cả
         // chính admin khác), nên test gán role phải dùng ROLE_USER (level 10, yếu hơn admin).
@@ -200,7 +198,7 @@ class AdminUserServiceTest {
         when(rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         when(userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())).thenReturn(false);
 
-        adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER));
+        adminUserService.addRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_USER));
 
         verify(userRoleRepository).save(any(UserRole.class));
     }
@@ -211,7 +209,7 @@ class AdminUserServiceTest {
         User user = User.builder()
                 .id(targetUserId)
                 .email("user@example.com")
-                
+
                 .build();
         Role adminRoleTarget = Role.builder()
                 .id(UUID.randomUUID())
@@ -223,7 +221,7 @@ class AdminUserServiceTest {
         when(userRepository.findById(targetUserId)).thenReturn(Optional.of(user));
         when(rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_ADMIN)).thenReturn(Optional.of(adminRoleTarget));
 
-        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_ADMIN)))
+        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_ADMIN)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.FORBIDDEN.getCode());
 
@@ -241,7 +239,7 @@ class AdminUserServiceTest {
         when(rolePermissionCacheHelper.findRoleByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         when(userRoleRepository.existsByUserIdAndRoleId(user.getId(), role.getId())).thenReturn(true);
 
-        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+        assertThatThrownBy(() -> adminUserService.addRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_USER)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.USER_ROLE_ALREADY_ASSIGNED.getCode());
 
@@ -263,7 +261,7 @@ class AdminUserServiceTest {
         stubAdminWithLevel(1);
         stubRemovalTarget(RoleName.ROLE_USER, 10);
 
-        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_USER)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.USER_DEFAULT_ROLE_NOT_REMOVABLE.getCode());
 
@@ -278,7 +276,7 @@ class AdminUserServiceTest {
         Role role = stubRemovalTarget(RoleName.ROLE_ADMIN, 1);
         when(userRoleRepository.existsByUserIdAndRoleId(targetUserId, role.getId())).thenReturn(true);
 
-        adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_ADMIN));
+        adminUserService.removeRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_ADMIN));
 
         verify(userRoleRepository).deleteByUserIdAndRoleId(targetUserId, role.getId());
     }
@@ -289,7 +287,7 @@ class AdminUserServiceTest {
         stubAdminWithLevel(1);
         stubRemovalTarget(RoleName.ROLE_ADMIN, 1);
 
-        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_ADMIN)))
+        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_ADMIN)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.FORBIDDEN.getCode());
 
@@ -302,7 +300,7 @@ class AdminUserServiceTest {
         stubAdminWithLevel(10);
         stubRemovalTarget(RoleName.ROLE_USER, 10);
 
-        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER)))
+        assertThatThrownBy(() -> adminUserService.removeRoleToUser(new UserRoleUpdateReq(targetUserId, RoleName.ROLE_USER)))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.FORBIDDEN.getCode());
 

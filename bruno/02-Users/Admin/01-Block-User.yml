@@ -8,9 +8,9 @@ http:
   url: "{{baseUrl}}/admin/user/lock"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: Bearer {{adminAccessToken}}
     - name: Content-Type
-      value: "application/json"
+      value: application/json
   body:
     type: json
     data: |-
@@ -21,5 +21,9 @@ http:
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: "Dành cho Admin: Khóa tài khoản người dùng."

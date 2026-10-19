@@ -1,0 +1,16 @@
+info:
+  name: "02. Chi tiết giao dịch"
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/transactions/admin/{{transactionId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (TXN_READ): Chi tiết giao dịch bất kỳ."

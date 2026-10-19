@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 02. Chi tiết giao dịch định kỳ
   type: http
   seq: 2
@@ -8,9 +8,13 @@ http:
   url: "{{baseUrl}}/recurring/{{recurringId}}"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Xem chi tiết một lịch định kỳ theo ID.

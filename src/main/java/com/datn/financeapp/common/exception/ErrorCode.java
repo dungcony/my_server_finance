@@ -42,16 +42,10 @@ public enum ErrorCode {
     // Không được phép truy cập tài nguyên này. Do {@code GlobalExceptionHandler} phát.
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này."),
 
-    /**
-     * Không tìm thấy bản ghi.
-     *
-     * <p>
-     * <b>Cố ý dùng chung một mã cho mọi loại tài nguyên</b> — ví, danh mục, giao dịch, ngân sách đều trả {@code NOT_FOUND}. Đây là quy tắc nghiệp vụ bất biến số 7: khi người dùng không có quyền, trả 404 chứ không 403, để không lộ việc bản ghi có tồn tại hay không. Tách thành {@code WALLET_NOT_FOUND}, {@code BUDGET_NOT_FOUND}… sẽ khiến chính mã lỗi tiết lộ loại tài nguyên vừa dò trúng — đúng thứ thiết kế đang giấu. Câu thông báo thì được ghi đè theo ngữ cảnh, vì nó chỉ hiện cho chủ sở hữu hợp lệ.
-     */
     NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bản ghi."),
 
     // Vi phạm ràng buộc duy nhất.
-    DUPLICATE(HttpStatus.CONFLICT, "Bản ghi đã tồn tại."),
+    CONFLICT(HttpStatus.CONFLICT, "Bản ghi đã tồn tại."),
 
     // Gọi quá nhiều lần.
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau."),
@@ -418,7 +412,23 @@ public enum ErrorCode {
 
     GROUP_MINIMUM_MEMBERS_REQUIRED(HttpStatus.BAD_REQUEST, "1 nhóm phải có từ 2 người trở lên"),
 
-    GROUP_OWNER_IN_MEMBER_LIST(HttpStatus.BAD_REQUEST, "người tạo k được trong danh sách member");
+    GROUP_OWNER_IN_MEMBER_LIST(HttpStatus.BAD_REQUEST, "người tạo k được trong danh sách member"),
+
+    // ---------------------------------------------------------------------
+    // Thanh toán & nâng cấp premium — docs/api/payment.md
+    // ---------------------------------------------------------------------
+
+    // Cổng thanh toán payOS trả lỗi hoặc không phản hồi.
+    PAYMENT_PROVIDER_ERROR(HttpStatus.BAD_GATEWAY, "Cổng thanh toán đang gặp sự cố, vui lòng thử lại sau."),
+
+    // Chưa bật hoặc chưa cấu hình khoá payOS.
+    PAYMENT_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "Chức năng thanh toán chưa sẵn sàng."),
+
+    // Webhook payOS sai chữ ký hoặc sai định dạng.
+    PAYMENT_WEBHOOK_INVALID(HttpStatus.BAD_REQUEST, "Webhook thanh toán không hợp lệ."),
+
+    // Mua gói premium khi gói hiện tại còn hạn.
+    PREMIUM_ALREADY_ACTIVE(HttpStatus.CONFLICT, "Gói premium của bạn vẫn còn hạn, hết hạn mới có thể mua thêm.");
 
 
     private final HttpStatus status;

@@ -22,3 +22,5 @@ COMMENT ON COLUMN notifications.reference_id IS 'Id đối tượng chính thôn
 COMMENT ON COLUMN notifications.data IS 'Dữ liệu phụ để app điều hướng, json phẳng, null nếu không cần';
 
 CREATE INDEX idx_notif_user_created ON notifications (user_id, created_at DESC);
+CREATE UNIQUE INDEX uq_notif_user_ref_day_type
+ON notifications (user_id, reference_id, ((created_at AT TIME ZONE 'UTC')::date), type);

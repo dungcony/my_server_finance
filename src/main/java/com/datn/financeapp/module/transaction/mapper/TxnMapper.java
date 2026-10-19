@@ -1,12 +1,10 @@
 package com.datn.financeapp.module.transaction.mapper;
 
 import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
-import com.datn.financeapp.module.category.dto.response.CategoryRes;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.dto.response.TxnSummaryRes;
 import com.datn.financeapp.module.transaction.entity.Transaction;
-import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -26,7 +24,7 @@ public interface TxnMapper {
     @Mapping(target = "updatedAt", source = "txn.updatedAt")
     @Mapping(target = "wallet", source = "wallet")
     @Mapping(target = "category", source = "category")
-    TxnDetailResponse toResponse(Transaction txn, CateSumaryRes category, WalletSumaryRes wallet);
+    TxnDetailRes toResponse(Transaction txn, CateSumaryRes category, WalletSumaryRes wallet);
 
 
     @Mapping(target = "id", ignore = true)

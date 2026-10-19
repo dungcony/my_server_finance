@@ -238,7 +238,7 @@ class RecTxnRunnerIntegrationTest {
     }
 
     /**
-     * Lỗi ở một buổi lịch (ví dụ vi phạm ràng buộc dữ liệu) không làm chết cả lô,
+     * Lỗi ở một buổi lịch (ví dụ ví đã bị xoá) không làm chết cả lô,
      * buổi hỏng chuyển sang FAILED, còn buổi lành vẫn SUCCESS.
      */
     @Test
@@ -266,24 +266,31 @@ class RecTxnRunnerIntegrationTest {
         jdbcTemplate.update("UPDATE recurring_transaction_schedules SET run_date = ? WHERE id = ?",
                 java.sql.Date.valueOf(today), brokenScheduleId);
 
-        // Ép khoản hỏng trỏ tới ví không tồn tại (gây Foreign Key exception khi insert transaction)
-        jdbcTemplate.update("UPDATE recurring_transactions SET wallet_id = ? WHERE id = ?",
-                UUID.randomUUID(), UUID.fromString(brokenId));
+        // Xoá cứng ví của khoản hỏng để mô phỏng ví đã biến mất
+        jdbcTemplate.update("DELETE FROM transactions WHERE wallet_id = ?", UUID.fromString(brokenWalletId));
+        jdbcTemplate.update("ALTER TABLE recurring_transactions DROP CONSTRAINT fk_rec_wallet");
+        jdbcTemplate.update("DELETE FROM wallets WHERE id = ?", UUID.fromString(brokenWalletId));
 
-        assertThatCode(() -> recTxnScheduleService.processDueSchedules()).doesNotThrowAnyException();
+        try {
+            assertThatCode(() -> recTxnScheduleService.processDueSchedules()).doesNotThrowAnyException();
 
-        // Buổi lành chạy thành công
-        String healthyStatus = jdbcTemplate.queryForObject(
-                "SELECT status FROM recurring_transaction_schedules WHERE id = ?",
-                String.class, healthyScheduleId);
-        assertThat(healthyStatus).isEqualTo("SUCCESS");
-        assertThat(walletBalance(healthyWalletId)).isEqualTo(30_000_000L - 4_500_000L);
+            // Buổi lành chạy thành công
+            String healthyStatus = jdbcTemplate.queryForObject(
+                    "SELECT status FROM recurring_transaction_schedules WHERE id = ?",
+                    String.class, healthyScheduleId);
+            assertThat(healthyStatus).isEqualTo("SUCCESS");
+            assertThat(walletBalance(healthyWalletId)).isEqualTo(30_000_000L - 4_500_000L);
 
-        // Buổi hỏng bị đánh dấu FAILED
-        String brokenStatus = jdbcTemplate.queryForObject(
-                "SELECT status FROM recurring_transaction_schedules WHERE id = ?",
-                String.class, brokenScheduleId);
-        assertThat(brokenStatus).isEqualTo("FAILED");
+            // Buổi hỏng bị đánh dấu FAILED
+            String brokenStatus = jdbcTemplate.queryForObject(
+                    "SELECT status FROM recurring_transaction_schedules WHERE id = ?",
+                    String.class, brokenScheduleId);
+            assertThat(brokenStatus).isEqualTo("FAILED");
+        } finally {
+            // Khôi phục lại constraint để không ảnh hưởng test khác
+            jdbcTemplate.update("DELETE FROM recurring_transactions WHERE id = ?", UUID.fromString(brokenId));
+            jdbcTemplate.update("ALTER TABLE recurring_transactions ADD CONSTRAINT fk_rec_wallet FOREIGN KEY (wallet_id) REFERENCES wallets (id)");
+        }
     }
 
     /**

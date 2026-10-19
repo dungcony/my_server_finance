@@ -5,6 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tài chính Cá nhân - Finance AI</title>
     <link rel="stylesheet" href="../assets/css/base.css">
+    <style>
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .quick-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 600;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .quick-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+            text-decoration: none;
+        }
+        .quick-icon {
+            font-size: 20px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: #f1f5f9;
+        }
+    </style>
 </head>
 <body data-area="user" data-active="dashboard" data-title="Tổng quan Tài chính Cá nhân">
 <main id="page">
@@ -29,6 +68,52 @@
             <div class="value" id="sUnread">-</div>
             <div class="sub"><a href="./notifications.html">Xem thông báo →</a></div>
         </div>
+    </div>
+
+    <!-- Truy cập nhanh các phân hệ -->
+    <div class="quick-actions">
+        <a href="./transactions.html" class="quick-btn">
+            <span class="quick-icon">💸</span>
+            <div>
+                <div>Sổ giao dịch</div>
+                <small class="muted" style="font-weight:400;font-size:11px">Ghi thu / chi</small>
+            </div>
+        </a>
+        <a href="./wallets.html" class="quick-btn">
+            <span class="quick-icon">👛</span>
+            <div>
+                <div>Ví cá nhân</div>
+                <small class="muted" style="font-weight:400;font-size:11px">Quản lý các ví</small>
+            </div>
+        </a>
+        <a href="./budgets.html" class="quick-btn">
+            <span class="quick-icon">📊</span>
+            <div>
+                <div>Ngân sách</div>
+                <small class="muted" style="font-weight:400;font-size:11px">Kiểm soát chi</small>
+            </div>
+        </a>
+        <a href="./goals.html" class="quick-btn">
+            <span class="quick-icon">🎯</span>
+            <div>
+                <div>Mục tiêu</div>
+                <small class="muted" style="font-weight:400;font-size:11px">Kế hoạch tiết kiệm</small>
+            </div>
+        </a>
+        <a href="./debts.html" class="quick-btn">
+            <span class="quick-icon">📝</span>
+            <div>
+                <div>Sổ nợ & Vay</div>
+                <small class="muted" style="font-weight:400;font-size:11px">Cho vay & đi vay</small>
+            </div>
+        </a>
+        <a href="./reports.html" class="quick-btn">
+            <span class="quick-icon">📈</span>
+            <div>
+                <div>Báo cáo</div>
+                <small class="muted" style="font-weight:400;font-size:11px">Phân tích thu chi</small>
+            </div>
+        </a>
     </div>
 
     <!-- Banner dẫn tới Không gian quản lý nhóm & quỹ -->

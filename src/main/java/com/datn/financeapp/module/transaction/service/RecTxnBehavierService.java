@@ -1,8 +1,11 @@
 package com.datn.financeapp.module.transaction.service;
 
 import com.datn.financeapp.module.transaction.dto.request.RecCreateReq;
+import com.datn.financeapp.module.transaction.dto.request.RecTxnFilterReq;
 import com.datn.financeapp.module.transaction.dto.request.RecUpdateReq;
-import com.datn.financeapp.module.transaction.dto.response.RecDetailRes;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnRes;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnListRes;
+import org.springframework.data.domain.Pageable;
 
 import java.util.UUID;
 
@@ -15,7 +18,15 @@ public interface RecTxnBehavierService {
      * @param isAdmin true nếu admin gọi, false nếu user gọi
      * @return Chi tiết giao dịch định kỳ
      */
-    RecDetailRes get(UUID id, boolean isAdmin);
+    RecTxnRes get(UUID id, boolean isAdmin);
+
+    /**
+     * Lấy toàn bộ thông tin một giao dịch định kỳ.
+     *
+     * @param isAdmin true nếu admin gọi, false nếu user gọi
+     * @return Chi tiết giao dịch định kỳ
+     */
+    RecTxnListRes gets(RecTxnFilterReq filter, boolean isAdmin, Pageable pageable);
 
     /**
      * Tạo mới một giao dịch định kỳ.
@@ -24,7 +35,7 @@ public interface RecTxnBehavierService {
      * @param isAdmin true nếu admin tạo, false nếu user tạo
      * @return Thông tin giao dịch định kỳ vừa tạo
      */
-    RecDetailRes create(RecCreateReq req, boolean isAdmin);
+    RecTxnRes create(RecCreateReq req, boolean isAdmin);
 
     /**
      * Cập nhật thiết lập giao dịch định kỳ.
@@ -34,7 +45,7 @@ public interface RecTxnBehavierService {
      * @param isAdmin true nếu admin cập nhật, false nếu user cập nhật
      * @return Thông tin sau khi cập nhật
      */
-    RecDetailRes update(UUID id, RecUpdateReq req, boolean isAdmin);
+    RecTxnRes update(UUID id, RecUpdateReq req, boolean isAdmin);
 
     /**
      * Bật giao dịch định kỳ.

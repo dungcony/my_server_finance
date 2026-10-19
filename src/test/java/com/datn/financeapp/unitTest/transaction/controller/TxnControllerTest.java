@@ -4,7 +4,7 @@ import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.module.transaction.controller.TxnController;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.TxnUpdateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -110,7 +110,7 @@ class TxnControllerTest {
                 "Phở"
         );
 
-        TxnDetailResponse detail = new TxnDetailResponse(
+        TxnDetailRes detail = new TxnDetailRes(
                 txnId,
                 null,
                 null,
@@ -138,7 +138,7 @@ class TxnControllerTest {
     void get_Valid_ReturnsOk() throws Exception {
         UUID txnId = UUID.randomUUID();
         Instant now = Instant.now();
-        TxnDetailResponse detail = new TxnDetailResponse(
+        TxnDetailRes detail = new TxnDetailRes(
                 txnId,
                 null,
                 null,

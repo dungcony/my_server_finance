@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 01. Danh sách thông báo
   type: http
   seq: 1
@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/notifications"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
   params:
     - name: is_read
       value: ""
@@ -22,5 +22,9 @@ http:
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Lấy danh sách thông báo trong ứng dụng (cảnh báo ngân sách, nhắc nợ).

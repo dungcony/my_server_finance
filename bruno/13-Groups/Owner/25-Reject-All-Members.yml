@@ -1,0 +1,16 @@
+info:
+  name: "25. Từ chối tất cả thành viên chờ"
+  type: http
+  seq: 25
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/rejects"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm: Từ chối toàn bộ thành viên PENDING."

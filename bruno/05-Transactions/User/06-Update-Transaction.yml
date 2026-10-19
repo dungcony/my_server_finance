@@ -1,10 +1,10 @@
-﻿info:
+info:
   name: 06. Cập nhật giao dịch
   type: http
   seq: 6
 
 http:
-  method: PUT
+  method: PATCH
   url: "{{baseUrl}}/transactions/{{transactionId}}"
   headers:
     - name: Authorization
@@ -15,17 +15,16 @@ http:
     type: json
     data: |-
       {
-        "type": "expense",
+        "type": "EXPENSE",
         "amount": 55000,
         "wallet_id": "{{walletId}}",
-        "category_id": "{{categoryId}}",
-        "date": "2026-09-11",
+        "category_code": "{{categoryCode}}",
+        "occured_at": "2026-09-11T00:00:00Z",
         "display_name": "Cà phê sáng size L",
-        "note": "Highlands Coffee kèm bánh ngọt",
-        "counts_in_report": true
+        "note": "Highlands Coffee kèm bánh ngọt"
       }
 
 settings:
   encodeUrl: true
 
-docs: Cập nhật thông tin giao dịch và hoàn/trừ chênh lệch số dư ví tương ứng.
+docs: Cập nhật một phần giao dịch (chỉ gửi trường cần đổi) và hoàn/trừ chênh lệch số dư ví tương ứng. Lưu ý trường thời gian của API này tên là occured_at (thiếu chữ r).

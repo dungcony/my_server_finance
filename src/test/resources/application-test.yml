@@ -46,3 +46,19 @@ cloudinary:
   api-secret: gysEFTIu0GIg-mNlrudzPmtLMqY
   folder: ${CLOUDINARY_FOLDER:dungcony}
   max-file-size-bytes: ${CLOUDINARY_MAX_FILE_SIZE_BYTES:10485760}
+
+# payOS và premium: giá trị giả để context test khởi động được (các biến này bắt buộc ở môi trường thật)
+payos:
+  enabled: true
+  client-id: test-client-id
+  api-key: test-api-key
+  checksum-key: test-checksum-key
+  return-url: http://localhost:8080/public/payments/payos/return
+  cancel-url: http://localhost:8080/public/payments/payos/cancel
+  expired-minutes: 15
+
+premium:
+  prices:
+    one-month: 49000
+    six-months: 249000
+    twelve-months: 449000

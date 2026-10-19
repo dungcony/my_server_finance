@@ -15,16 +15,23 @@ http:
     type: json
     data: |-
       {
+        "txn_id": "{{groupTxnId}}",
         "amount": 300000,
-        "date": "2026-03-20",
+        "type": "EXPENSE",
         "money_source": "FUND",
-        "category_id": "{{categoryId}}",
-        "user_id": "{{userId}}",
+        "occurred_at": "2026-03-20T12:00:00Z",
+        "category_code": "{{categoryCode}}",
+        "transactor_id": "{{userId}}",
         "note": "Ăn tối hải sản (đã chỉnh sửa)",
-        "participants": []
+        "participants": [
+          {
+            "user_id": "{{userId}}",
+            "share_amount": 300000
+          }
+        ]
       }
 
 settings:
   encodeUrl: true
 
-docs: Người ghi hoặc Chủ nhóm sửa giao dịch. Nếu thành viên thường sửa khoản đã duyệt, khoản sẽ quay lại PENDING.
+docs: Người ghi hoặc Chủ nhóm sửa giao dịch. Có thể gửi thêm status (PENDING | CONFIRMED | REJECTED). Nếu thành viên thường sửa khoản đã duyệt, khoản sẽ quay lại PENDING.

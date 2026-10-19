@@ -1,0 +1,16 @@
+info:
+  name: 05. Tạm dừng lịch định kỳ
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/recurring/{{recurringId}}/disable"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Tạm dừng việc tự động sinh giao dịch của lịch.

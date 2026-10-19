@@ -1,0 +1,23 @@
+info:
+  name: "03. Xóa mục tiêu"
+  type: http
+  seq: 3
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/goals/admin/{{goalId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+  params:
+    - name: revert_transactions
+      value: "false"
+      type: query
+    - name: delete_wallet
+      value: "false"
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (GOAL_DELETE): Xóa mục tiêu bất kỳ. revert_transactions: hoàn các giao dịch đóng góp, delete_wallet: xóa luôn ví mục tiêu."

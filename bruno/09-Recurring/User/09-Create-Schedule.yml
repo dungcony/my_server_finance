@@ -1,0 +1,31 @@
+info:
+  name: 09. Thêm buổi lịch
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: "{{baseUrl}}/recurring/{{recurringId}}/schedules"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "run_date": "2026-12-15",
+        "amount": 3500000
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("scheduleId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Thêm một buổi lịch phát sinh thủ công. Tự lưu scheduleId.

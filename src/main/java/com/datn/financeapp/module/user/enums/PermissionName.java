@@ -1,22 +1,13 @@
 package com.datn.financeapp.module.user.enums;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
-import jakarta.persistence.AttributeConverter;
-import jakarta.persistence.Converter;
 import lombok.Getter;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Value = "{resource}:{action}", sinh tự động từ {@link Resource}/{@link Action} —
- * không gõ tay chuỗi để tránh lệch với dữ liệu seed trong DB (đã từng xảy ra).
- * Thêm quyền mới cho resource đã có: chỉ thêm 1 dòng enum, không đụng chỗ khác.
+ * Danh sách quyền hạn trong hệ thống.
+ * Tên enum được lưu trực tiếp vào database dưới dạng chuỗi viết hoa (vd: USERS_READ).
  */
 @Getter
 public enum PermissionName {
@@ -55,6 +46,7 @@ public enum PermissionName {
     DEBT_DELETE(Resource.DEBT, Action.DELETE, "Xóa khoản nợ và hủy thanh toán nợ"),
     REPORT_READ(Resource.REPORT, Action.READ, "Xem danh sách và chi tiết tiến trình xuất báo cáo toàn hệ thống"),
     REPORT_DELETE(Resource.REPORT, Action.DELETE, "Hủy hoặc xóa tiến trình xuất báo cáo"),
+    PAYMENT_READ(Resource.PAYMENT, Action.READ, "Xem lịch sử thanh toán toàn hệ thống"),
     ;
 
     private final Resource resource;
@@ -65,26 +57,6 @@ public enum PermissionName {
         this.resource = resource;
         this.action = action;
         this.description = description;
-    }
-
-    @JsonValue
-    public String getValue() {
-        return resource.getKey() + ":" + action.getKey();
-    }
-
-    private static final Map<String, PermissionName> VALUE_MAP =
-            Stream.of(values()).collect(Collectors.toMap(PermissionName::getValue, Function.identity()));
-
-    @JsonCreator
-    public static PermissionName fromValue(String value) {
-        if (value == null || value.isBlank()) return null;
-        PermissionName result = VALUE_MAP.get(value.trim().toLowerCase(Locale.ROOT));
-        if (result != null) return result;
-        try {
-            return PermissionName.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unknown PermissionName: " + value);
-        }
     }
 
     /**
@@ -111,6 +83,7 @@ public enum PermissionName {
         BUDGET("budgets"),
         DEBT("debts"),
         REPORT("reports"),
+        PAYMENT("payment"),
         ;
 
         private final String key;
@@ -131,23 +104,6 @@ public enum PermissionName {
 
         Action(String key) {
             this.key = key;
-        }
-    }
-
-    /**
-     * JPA converter lưu {@code value} ("users:read") vào cột varchar, không lưu tên enum ("USERS_READ").
-     */
-    @Converter(autoApply = true)
-    public static class PermissionNameConverter implements AttributeConverter<PermissionName, String> {
-
-        @Override
-        public String convertToDatabaseColumn(PermissionName attribute) {
-            return attribute != null ? attribute.getValue() : null;
-        }
-
-        @Override
-        public PermissionName convertToEntityAttribute(String dbData) {
-            return fromValue(dbData);
         }
     }
 }

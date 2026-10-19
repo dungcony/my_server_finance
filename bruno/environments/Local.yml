@@ -2,125 +2,23 @@ name: Local
 variables:
   - name: baseUrl
     value: http://localhost:8080/v1
-    enabled: true
-    secret: false
-    type: text
+    description: ""
   - name: email
-    value: user@example.com
-    enabled: true
-    secret: false
-    type: text
+    value: dung090804@gmail.com
+    description: ""
   - name: accessToken
-    value: ""
-    enabled: true
-    secret: false
-    type: text
+    value: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzM2VmMDU4Mi1jMjE3LTQwM2EtYTViMS02ZGQyYmRiMGJmMzMiLCJwbGFuIjoiRlJFRSIsImF1dGhvcml0aWVzIjpbIlJPTEVfVVNFUiJdLCJyb2xlc19sZXZlbF90b3AiOjEwLCJpYXQiOjE3OTI1MzM5OTEsImV4cCI6MTc5MjU2OTk5MX0.LTd1QZNS7VmXznIYJd7m3HmP-hEEQGEsUKsp-1rBx10
+    description: ""
   - name: refreshToken
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: adminEmail
-    value: admin@financeapp.com
-    enabled: true
-    secret: false
-    type: text
-  - name: adminPassword
-    value: Admin@123
-    enabled: true
-    secret: false
-    type: text
-  - name: adminAccessToken
-    value: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzZjQzYmNlOC0xN2I5LTRhYjMtYmJmNy1lYjg2NDUxZDBmMTkiLCJwbGFuIjoiUFJFTUlVTSIsImF1dGhvcml0aWVzIjpbImFkbWluOmNhdGVnb3JpZXM6bWFuYWdlIiwiYWRtaW46c3lzdGVtOnZpZXdfc3RhdHMiLCJhZG1pbjp1c2VyczptYW5hZ2UiLCJhZG1pbjp1c2VyczpyZWFkIiwiUk9MRV9BRE1JTiIsIlJPTEVfVVNFUiJdLCJpYXQiOjE3ODkxOTc3NzMsImV4cCI6MTc4OTIwMTM3M30.oZeqbzSSN0Qw6Caep0Rpon40wcUTrOd3JXwPsOM29Qg
-    enabled: true
-    secret: false
-    type: text
-  - name: adminRefreshToken
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: walletId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: destinationWalletId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: categoryId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: iconId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: transactionId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: budgetId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: debtId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
+    value: WSVpihnqwHfvFMSrIJTi3mSl7Qn2jQPHyEGkedHbUwA
+    description: ""
+  - name: categoryCode
+    value: an_uong
+    description: ""
+  - name: iconCode
+    value: coffee
+    description: ""
   - name: paymentId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: recurringId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: goalId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: contributionId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: notificationId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: exportJobId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: userId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: groupId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: draftId
-    value: ""
-    enabled: true
-    secret: false
-    type: text
-  - name: memberUserId
     value: ""
     description: ""
   - name: groupTxnId
@@ -128,4 +26,34 @@ variables:
     description: ""
   - name: newOwnerId
     value: ""
+    description: ""
+  - name: password
+    value: "15042004"
+    description: ""
+  - name: admin
+    value: admin
+    description: ""
+  - name: admin_access
+    value: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZmMyYjhhMy05YTNmLTQ3OTYtOWFmOC05ZTJkMGI5ZjYyNjUiLCJwbGFuIjoiUFJFTUlVTSIsImF1dGhvcml0aWVzIjpbIlJPTEVfVVNFUiIsIlJPTEVfQURNSU4iLCJXQUxMRVRfREVMRVRFIiwiUk9MRV9QRVJNSVNTSU9OX0RFTEVURSIsIkRFQlRfREVMRVRFIiwiVFhOX0RFTEVURSIsIklDT05TX1VQREFURSIsIkJVREdFVF9SRUFEIiwiVVNFUl9ST0xFX1JFQUQiLCJXQUxMRVRfVVBEQVRFIiwiQlVER0VUX0RFTEVURSIsIlJFUE9SVF9SRUFEIiwiQ0FURUdPUklFU19VUERBVEUiLCJST0xFU19VUERBVEUiLCJSRUNVUlJJTkdfVFhOX0RFTEVURSIsIlVTRVJTX1VQREFURSIsIlJPTEVfUEVSTUlTU0lPTl9VUERBVEUiLCJVU0VSX1JPTEVfVVBEQVRFIiwiQ0FURUdPUklFU19ERUxFVEUiLCJUWE5fVVBEQVRFIiwiR09BTF9VUERBVEUiLCJSRUNVUlJJTkdfVFhOX1JFQUQiLCJVU0VSX1JPTEVfREVMRVRFIiwiUkVQT1JUX0RFTEVURSIsIkRFQlRfVVBEQVRFIiwiUEFZTUVOVF9SRUFEIiwiVFhOX1JFQUQiLCJVU0VSU19SRUFEIiwiUk9MRVNfUkVBRCIsIkdPQUxfUkVBRCIsIkRFQlRfUkVBRCIsIldBTExFVF9SRUFEIiwiUk9MRV9QRVJNSVNTSU9OX1JFQUQiLCJVU0VSU19ERUxFVEUiLCJJQ09OU19ERUxFVEUiLCJHUk9VUF9SRUFEIiwiUk9MRVNfREVMRVRFIiwiR09BTF9ERUxFVEUiXSwicm9sZXNfbGV2ZWxfdG9wIjoxLCJpYXQiOjE3OTI1MzI4NTMsImV4cCI6MTc5MjU2ODg1M30.t_bamsggXGQ5e3BBrL43KhARG2KUa2QvfJhrFtgMjy0
+    description: ""
+  - name: admin_refresh
+    value: R6bZYfx4Fup4HVBVFiDRZwrlPkCci5j-rSPOdZ6qpqg
+    description: ""
+  - name: userId
+    value: aafd4a93-3083-4012-8a28-cd560264c7f2
+    description: ""
+  - name: walletId
+    value: c8d0b9b7-25a5-4c8b-abf0-954f178e1424
+    description: ""
+  - name: category
+    value: an_uong
+    description: ""
+  - name: orderCode
+    value: ""
+    description: ""
+  - name: adminRefreshToken
+    value: ""
+    description: ""
+  - name: recId
+    value: 708b6ed5-d760-41d1-9b6e-d0d54bf5f16f
     description: ""

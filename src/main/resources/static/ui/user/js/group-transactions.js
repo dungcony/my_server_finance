@@ -30,7 +30,7 @@ async function loadCategories() {
     return categories;
 }
 
-const categoryOption = (c) => `${'  '.repeat(c.level || 0)}${c.name}`;
+const categoryOption = (c) => `${'  '.repeat(c.level || 0)}${c.name}`;
 
 const categoryName = (code) => {
     const c = (categories || []).find(x => x.code === code);
@@ -125,7 +125,7 @@ async function loadTxnList(page = 1) {
     selectedTxn = new Set();
     updateBulkBar();
     const mode = $('lMode').value;
-    const query = { page, size: TXN_PAGE_SIZE };
+    const query = { page, size: TXN_PAGE_SIZE, page_size: TXN_PAGE_SIZE };
     let path = '/transactions';
     if (mode === 'pending') path = '/transactions/pending';
     else {
@@ -136,7 +136,11 @@ async function loadTxnList(page = 1) {
     }
     const res = await api(G.path(path), { query });
     const data = dataOf(res) || {};
-    const items = data.items || [];
+    const rawItems = data.items || data.content || data.transactions || [];
+    const items = rawItems.map(t => {
+        t.id = t.id || t.txn_id || t.txnId;
+        return t;
+    });
     const bulk = mode === 'pending' && G.can('reviewer');
     $('chkAllTxn').parentElement.classList.toggle('hidden', !bulk);
 
@@ -149,12 +153,12 @@ async function loadTxnList(page = 1) {
             <td>${badge(t.status)}</td>
             <td>${esc(G.name(t.transactor_id))}</td>
             <td>${esc(t.note || '')}</td>
-            <td class="nowrap">${fmtDate(t.occurred_at)}</td>
+            <td class="nowrap">${fmtDate(t.occurred_at || t.created_at)}</td>
             <td class="nowrap">${rowActions(t)}</td>
         </tr>`).join(''), 9, 'Không có giao dịch nào');
     renderPager($('txnPager'), data.meta, loadTxnList);
 
-    $('txnBody').querySelectorAll('[data-act]').forEach(b => b.onclick = () => txnAction(b.dataset.act, items.find(t => t.id === b.dataset.id)));
+    $('txnBody').querySelectorAll('[data-act]').forEach(b => b.onclick = () => txnAction(b.dataset.act, items.find(t => String(t.id) === String(b.dataset.id))));
     $('txnBody').querySelectorAll('.row-check').forEach(c => c.onchange = () => {
         c.checked ? selectedTxn.add(c.dataset.id) : selectedTxn.delete(c.dataset.id);
         updateBulkBar();
@@ -168,8 +172,8 @@ function rowActions(t) {
     const reviewer = G.can('reviewer');
     const a = [`<button class="btn btn-secondary btn-sm" data-act="detail" data-id="${t.id}">Chi tiết</button>`];
     if (reviewer && t.status === 'PENDING') {
-        a.push(`<button class="btn btn-success btn-sm" data-act="confirm" data-id="${t.id}">Duyệt</button>`,
-            `<button class="btn btn-danger btn-sm" data-act="reject" data-id="${t.id}">Từ chối</button>`);
+        a.push(`<button class="btn btn-success btn-sm" data-act="confirm" data-id="${t.id}">✓ Duyệt</button>`,
+            `<button class="btn btn-danger btn-sm" data-act="reject" data-id="${t.id}">✕ Từ chối</button>`);
     }
     const canEdit = !adjust && (reviewer || (mine && t.status !== 'CONFIRMED' && (t.type === 'EXPENSE' || t.type === 'CONTRIBUTION')));
     if (canEdit) a.push(`<button class="btn btn-secondary btn-sm" data-act="edit" data-id="${t.id}">Sửa</button>`);
@@ -184,10 +188,27 @@ function updateBulkBar() {
 }
 
 async function txnAction(act, t) {
+    if (!t) return;
     const done = (res, msg) => { if (toastResult(res, msg)) G.reload(); };
     if (act === 'detail') return showDetail(t.id);
-    if (act === 'confirm') return done(await api(G.path(`/transactions/${t.id}/confirm`), { method: 'POST' }), 'Đã duyệt giao dịch');
-    if (act === 'reject') return done(await api(G.path(`/transactions/${t.id}/reject`), { method: 'POST' }), 'Đã từ chối giao dịch');
+    if (act === 'confirm') {
+        const res = await api(G.path('/transactions/status'), {
+            method: 'POST',
+            body: { txn_id: t.id, txnId: t.id, status: 'CONFIRMED' }
+        });
+        return done(res, 'Đã duyệt giao dịch');
+    }
+    if (act === 'reject') {
+        const v = await formModal('Từ chối giao dịch', [
+            { name: 'reason', label: 'Lý do từ chối (tuỳ chọn)', type: 'textarea' }
+        ], 'Xác nhận từ chối');
+        if (!v) return;
+        const res = await api(G.path('/transactions/status'), {
+            method: 'POST',
+            body: { txn_id: t.id, txnId: t.id, status: 'REJECTED', reason: v.reason || null }
+        });
+        return done(res, 'Đã từ chối giao dịch');
+    }
     if (act === 'delete') {
         if (await confirmBox('Xoá giao dịch này?')) done(await api(G.path(`/transactions/${t.id}`), { method: 'DELETE' }), 'Đã xoá giao dịch');
         return;
@@ -205,7 +226,7 @@ async function showDetail(id) {
     const parts = dataOf(p) || [];
     openModal('Chi tiết giao dịch', `
         <div class="grid grid-2">
-            <div><span class="muted">Mã</span><br><code>${esc(t.id)}</code></div>
+            <div><span class="muted">Mã</span><br><code>${esc(t.id || t.txn_id)}</code></div>
             <div><span class="muted">Số tiền</span><br><b style="font-size:18px">${fmtMoney(t.amount)}</b></div>
             <div><span class="muted">Loại / Trạng thái</span><br>${badge(t.type)} ${badge(t.status)}</div>
             <div><span class="muted">Nguồn tiền / Danh mục</span><br>${badge(t.money_source, 'info')} ${esc(categoryName(t.category_code))}</div>
@@ -254,7 +275,10 @@ async function editTxn(t) {
 async function bulk(kind) {
     const ids = [...selectedTxn];
     if (!ids.length) return;
-    const res = await api(G.path(`/transactions/bulk-${kind}`), { method: 'POST', body: { transaction_ids: ids } });
+    const res = await api(G.path('/transactions/statuses'), {
+        method: 'POST',
+        body: { txn_ids: ids, txnIds: ids, status: kind === 'confirm' ? 'CONFIRMED' : 'REJECTED' }
+    });
     if (toastResult(res, kind === 'confirm' ? 'Đã duyệt hàng loạt' : 'Đã từ chối hàng loạt')) G.reload();
 }
 
@@ -269,9 +293,7 @@ $('chkAllTxn').onchange = (e) => {
 };
 ['lMode', 'lType', 'lSource', 'lStatus'].forEach(id => $(id).onchange = () => loadTxnList(1));
 $('btnReloadTxn').onclick = () => loadTxnList(txnPage);
-
 G.tabs.transactions = async () => {
     await prepareTxnForm();
-    $('txnFormCard').classList.toggle('hidden', G.archived && !G.showAll);
     loadTxnList(txnPage);
 };
