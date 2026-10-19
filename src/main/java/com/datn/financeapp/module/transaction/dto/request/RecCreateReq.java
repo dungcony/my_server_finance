@@ -4,7 +4,7 @@ import com.datn.financeapp.module.transaction.enums.FrequencyType;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.validation.constraints.*;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -17,8 +17,8 @@ import java.util.UUID;
  * @param categoryCode Mã danh mục giao dịch (tùy chọn)
  * @param frequency    Tần suất lặp ({@code daily}, {@code weekly}, {@code monthly}, {@code yearly})
  * @param interval     Khoảng cách lặp (mặc định: 1)
- * @param startAt      Thời gian bắt đầu áp dụng lịch định kỳ
- * @param endAt        Thời gian kết thúc lịch định kỳ (tùy chọn)
+ * @param startDate    Ngày bắt đầu áp dụng lịch định kỳ
+ * @param endDate      Ngày kết thúc lịch định kỳ (tùy chọn)
  * @param note         Ghi chú giao dịch
  */
 public record RecCreateReq(
@@ -38,12 +38,12 @@ public record RecCreateReq(
 
         String categoryCode,
 
-        @NotNull(message = "Thời gian bắt đầu không được để trống.")
-        @FutureOrPresent(message = "Thời gian bắt đầu không được ở quá khứ.")
-        Instant startAt,
+        @NotNull(message = "Ngày bắt đầu không được để trống.")
+        @FutureOrPresent(message = "Ngày bắt đầu không được ở quá khứ.")
+        LocalDate startDate,
 
-        @Future(message = "Thời gian kết thúc phải ở tương lai.")
-        Instant endAt,
+        @Future(message = "Ngày kết thúc phải ở tương lai.")
+        LocalDate endDate,
 
         @NotNull(message = "Đơn vị lặp không được để trống.")
         FrequencyType frequency,

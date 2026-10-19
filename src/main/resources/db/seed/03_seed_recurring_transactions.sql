@@ -29,8 +29,8 @@ INSERT INTO recurring_transactions (
     type,
     amount,
     note,
-    start_at,
-    end_at,
+    start_date,
+    end_date,
     frequency,
     repeat_interval,
     is_enabled,
@@ -47,7 +47,7 @@ SELECT
     tmpl.type,
     tmpl.amount,
     tmpl.note,
-    now() - interval '90 days',
+    CURRENT_DATE - INTERVAL '90 days',
     NULL, -- Lặp vô hạn
     tmpl.frequency,
     1,
@@ -76,7 +76,7 @@ INSERT INTO recurring_transaction_schedules (
     id,
     recurring_id,
     user_id,
-    run_at,
+    run_date,
     amount,
     status,
     is_deleted,
@@ -87,12 +87,12 @@ SELECT
     gen_random_uuid(),
     r.id,
     r.user_id,
-    r.start_at + (m || ' months')::INTERVAL,
+    (r.start_date + (m || ' months')::INTERVAL)::DATE,
     r.amount,
     'SUCCESS',
     false,
-    r.start_at + (m || ' months')::INTERVAL,
-    r.start_at + (m || ' months')::INTERVAL
+    now() - interval '90 days',
+    now() - interval '90 days'
 FROM recurring_transactions r
 CROSS JOIN generate_series(0, 2) AS m;
 
@@ -101,7 +101,7 @@ INSERT INTO recurring_transaction_schedules (
     id,
     recurring_id,
     user_id,
-    run_at,
+    run_date,
     amount,
     status,
     is_deleted,
@@ -112,7 +112,7 @@ SELECT
     gen_random_uuid(),
     r.id,
     r.user_id,
-    r.start_at + ((3 + fut) || ' months')::INTERVAL,
+    (r.start_date + ((3 + fut) || ' months')::INTERVAL)::DATE,
     r.amount,
     'PENDING',
     false,

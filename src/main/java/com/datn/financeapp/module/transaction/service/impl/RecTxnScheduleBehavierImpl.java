@@ -96,8 +96,8 @@ public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chỉ có thể chỉnh sửa buổi lịch đang chờ xử lý (PENDING).");
         }
 
-        if (req.runAt() != null) {
-            schedule.setRunAt(req.runAt());
+        if (req.runDate() != null) {
+            schedule.setRunDate(req.runDate());
         }
         if (req.amount() != null) {
             schedule.setAmount(req.amount());

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -58,7 +59,11 @@ public class RecScheduleProcessor {
             return;
         }
 
-        // Tạo giao dịch Transaction thực tế
+        // Tạo giao dịch Transaction thực tế tại 00:00:00 của ngày chạy theo giờ Việt Nam
+        Instant occurredAt = schedule.getRunDate()
+                .atStartOfDay(RecScheduleCalculator.ZONE_ID)
+                .toInstant();
+
         Transaction txn = Transaction.builder()
                 .userId(schedule.getUserId())
                 .walletId(rec.getWalletId())
@@ -67,7 +72,7 @@ public class RecScheduleProcessor {
                 .amount(schedule.getAmount())
                 .name(rec.getName())
                 .note(rec.getNote())
-                .occurredAt(schedule.getRunAt())
+                .occurredAt(occurredAt)
                 .build();
         txn.setId(UUID.randomUUID());
         transactionRepository.save(txn);
@@ -79,14 +84,14 @@ public class RecScheduleProcessor {
         // R4: Duy trì buffer gối đầu (tối đa MAX_BUFFER buổi PENDING)
         long pendingCount = scheduleRepository.countByRecTxnIdAndStatusAndIsDeletedFalse(rec.getId(), RecTxnScheduleStatus.PENDING);
         if (pendingCount < MAX_BUFFER) {
-            scheduleRepository.findTopByRecTxnIdAndIsDeletedFalseOrderByRunAtDesc(rec.getId())
+            scheduleRepository.findTopByRecTxnIdAndIsDeletedFalseOrderByRunDateDesc(rec.getId())
                     .ifPresent(latest -> {
-                        Instant nextRun = scheduleCalculator.nextOccurrence(latest.getRunAt(), rec.getFrequency(), rec.getInterval());
+                        LocalDate nextRun = scheduleCalculator.nextOccurrence(latest.getRunDate(), rec.getFrequency(), rec.getInterval());
 
-                        // Nếu lặp vô hạn HOẶC chưa vượt quá endAt thì sinh tiếp 1 buổi gối đầu
-                        if (rec.getEndAt() == null || !nextRun.isAfter(rec.getEndAt())) {
+                        // Nếu lặp vô hạn HOẶC chưa vượt quá endDate thì sinh tiếp 1 buổi gối đầu
+                        if (rec.getEndDate() == null || !nextRun.isAfter(rec.getEndDate())) {
                             RecTxnSchedule newSchedule = RecTxnSchedule.builder()
-                                    .runAt(nextRun)
+                                    .runDate(nextRun)
                                     .amount(rec.getAmount())
                                     .status(RecTxnScheduleStatus.PENDING)
                                     .userId(rec.getUserId())
@@ -96,7 +101,7 @@ public class RecScheduleProcessor {
                             newSchedule.setIsDeleted(false);
                             scheduleRepository.save(newSchedule);
                         } else if (pendingCount == 0) {
-                            // Nếu có endAt và không còn buổi nào nữa thì hoàn tất cấu hình định kỳ
+                            // Nếu có endDate và không còn buổi nào nữa thì hoàn tất cấu hình định kỳ
                             rec.setIsEnabled(false);
                             recTxnRepository.save(rec);
                         }

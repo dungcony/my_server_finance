@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -18,7 +18,7 @@ import java.util.UUID;
  * @param categoryCode Mã danh mục chi tiêu/thu nhập mới
  * @param frequency    tần suất lặp mới (DAILY, WEEKLY, MONTHLY, YEARLY)
  * @param interval     khoảng thời gian giữa các lần lặp
- * @param endAt        Thời gian kết thúc lặp mới
+ * @param endDate      Ngày kết thúc lặp mới
  * @param isEnabled    Bật/tắt trạng thái hoạt động
  * @param note         ghi chú cập nhật
  */
@@ -36,8 +36,8 @@ public record RecUpdateReq(
         @Positive(message = "Khoảng cách lặp phải lớn hơn 0.")
         Integer interval,
 
-        @Future(message = "Thời gian kết thúc phải ở tương lai.")
-        Instant endAt,
+        @Future(message = "Ngày kết thúc phải ở tương lai.")
+        LocalDate endDate,
 
         Boolean isEnabled,
 

@@ -26,7 +26,7 @@ CREATE INDEX idx_wallets_user ON wallets (user_id, sort_order) WHERE NOT is_dele
 
 -- transactions: giao dịch thu, chi, cho vay của cá nhân --
 -- số dư ví do trigger trg_transactions_wallet_balance cập nhật theo bảng này
-CREATE TABLE transactions (
+CREATE TABLE transactions (\
     id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID         NOT NULL,
     wallet_id   UUID         NOT NULL,
@@ -58,13 +58,13 @@ CREATE TABLE recurring_transactions (
     id              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID         NOT NULL,
     wallet_id       UUID         NOT NULL,
-    category_code     VARCHAR(50),
+    category_code   VARCHAR(50),
     name            VARCHAR(100) NOT NULL,
     type            VARCHAR(10)  NOT NULL,
     amount          BIGINT       NOT NULL,
     note            TEXT,
-    start_at        TIMESTAMPTZ  NOT NULL,
-    end_at          TIMESTAMPTZ,
+    start_date      DATE         NOT NULL,
+    end_date        DATE,
     frequency       VARCHAR(10)  NOT NULL,
     repeat_interval INTEGER      NOT NULL DEFAULT 1,
     is_enabled      BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -77,12 +77,12 @@ CREATE TABLE recurring_transactions (
     CONSTRAINT fk_rec_category  FOREIGN KEY (category_code) REFERENCES categories (code) ON DELETE RESTRICT,
     CONSTRAINT ck_rec_type      CHECK (type IN ('EXPENSE', 'INCOME', 'LOAN')),
     CONSTRAINT ck_rec_amount    CHECK (amount > 0),
-    CONSTRAINT ck_rec_frequency CHECK (frequency IN ('HOUR', 'DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR')),
+    CONSTRAINT ck_rec_frequency CHECK (frequency IN ('DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR')),
     CONSTRAINT ck_rec_interval  CHECK (repeat_interval >= 1),
-    CONSTRAINT ck_rec_end_at    CHECK (end_at IS NULL OR end_at >= start_at)
+    CONSTRAINT ck_rec_end_date  CHECK (end_date IS NULL OR end_date >= start_date)
 );
 
-COMMENT ON COLUMN recurring_transactions.end_at IS 'NULL = lặp vô hạn';
+COMMENT ON COLUMN recurring_transactions.end_date IS 'NULL = lặp vô hạn';
 
 CREATE INDEX idx_rec_user   ON recurring_transactions (user_id) WHERE NOT is_deleted;
 CREATE INDEX idx_rec_wallet ON recurring_transactions (wallet_id) WHERE NOT is_deleted;
@@ -92,7 +92,7 @@ CREATE TABLE recurring_transaction_schedules (
     id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     recurring_id UUID        NOT NULL,
     user_id      UUID        NOT NULL,
-    run_at       TIMESTAMPTZ NOT NULL,
+    run_date     DATE        NOT NULL,
     amount       BIGINT      NOT NULL,
     status       VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     is_deleted   BOOLEAN     NOT NULL DEFAULT FALSE,
@@ -105,10 +105,10 @@ CREATE TABLE recurring_transaction_schedules (
     CONSTRAINT ck_rec_sched_amount CHECK (amount > 0)
 );
 
-CREATE INDEX idx_rec_sched_rec_id      ON recurring_transaction_schedules (recurring_id);
-CREATE INDEX idx_rec_sched_user_run_at ON recurring_transaction_schedules (user_id, run_at);
--- scheduler quét các buổi PENDING đã tới giờ (RecTxnScheduleRepository.findByStatusAndRunAtLessThanEqualAndIsDeletedFalse)
-CREATE INDEX idx_rec_sched_due         ON recurring_transaction_schedules (run_at) WHERE status = 'PENDING' AND NOT is_deleted;
+CREATE INDEX idx_rec_sched_rec_id        ON recurring_transaction_schedules (recurring_id);
+CREATE INDEX idx_rec_sched_user_run_date ON recurring_transaction_schedules (user_id, run_date);
+-- scheduler quét các buổi PENDING đã tới ngày (RecTxnScheduleRepository.findByStatusAndRunDateLessThanEqualAndIsDeletedFalse)
+CREATE INDEX idx_rec_sched_due           ON recurring_transaction_schedules (run_date) WHERE status = 'PENDING' AND NOT is_deleted;
 
 -- reconcil_history: ví bị lệch số dư mà job đối chiếu đã sửa (do WalletRepository.reconcileAll ghi) --
 CREATE TABLE reconcil_history (

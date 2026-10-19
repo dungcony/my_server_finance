@@ -10,7 +10,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -58,13 +58,13 @@ public class RecTxn extends AssignedIdEntity {
     @Column(name = "note")
     private String note;
 
-    // thời gian bắt đầu
-    @Column(name = "start_at", nullable = false)
-    private Instant startAt;
+    // ngày bắt đầu áp dụng cấu hình định kỳ
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
 
-    // NULL = lặp vô hạn.
-    @Column(name = "end_at")
-    private Instant endAt;
+    // ngày kết thúc (NULL = lặp vô hạn)
+    @Column(name = "end_date")
+    private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "frequency", nullable = false)

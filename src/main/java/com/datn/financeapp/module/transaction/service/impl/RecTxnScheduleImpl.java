@@ -22,7 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -66,7 +66,7 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
     @EventListener
     public void generateInitialSchedules(RecTxnCreateEvent event) {
         RecTxn recTxn = event.recTxn();
-        scheduleRepository.saveAll(buildSchedules(recTxn, recTxn.getStartAt()));
+        scheduleRepository.saveAll(buildSchedules(recTxn, recTxn.getStartDate()));
     }
 
     /**
@@ -85,10 +85,10 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
 
         scheduleRepository.deleteUnprocessed(recTxn.getId());
 
-        // mốc là buổi đã chạy gần nhất, chưa chạy buổi nào thì bắt đầu lại từ startAt
-        Instant from = scheduleRepository.findTopByRecTxnIdAndIsDeletedFalseOrderByRunAtDesc(recTxn.getId())
-                .map(latest -> scheduleCalculator.nextOccurrence(latest.getRunAt(), recTxn.getFrequency(), recTxn.getInterval()))
-                .orElse(recTxn.getStartAt());
+        // mốc là buổi đã chạy gần nhất, chưa chạy buổi nào thì bắt đầu lại từ startDate
+        LocalDate from = scheduleRepository.findTopByRecTxnIdAndIsDeletedFalseOrderByRunDateDesc(recTxn.getId())
+                .map(latest -> scheduleCalculator.nextOccurrence(latest.getRunDate(), recTxn.getFrequency(), recTxn.getInterval()))
+                .orElse(recTxn.getStartDate());
 
         scheduleRepository.saveAll(buildSchedules(recTxn, from));
     }
@@ -99,9 +99,9 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
      */
     @Override
     public void processDueSchedules() {
-        List<RecTxnSchedule> dueList = scheduleRepository.findByStatusAndRunAtLessThanEqualAndIsDeletedFalse(
+        List<RecTxnSchedule> dueList = scheduleRepository.findByStatusAndRunDateLessThanEqualAndIsDeletedFalse(
                 RecTxnScheduleStatus.PENDING,
-                Instant.now()
+                LocalDate.now(RecScheduleCalculator.ZONE_ID)
         );
 
         for (RecTxnSchedule schedule : dueList) {
@@ -121,19 +121,19 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
     /**
      * R4: Dựng danh sách buổi PENDING tối đa MAX_BUFFER (12) buổi đệm.
      */
-    private List<RecTxnSchedule> buildSchedules(RecTxn recTxn, Instant from) {
+    private List<RecTxnSchedule> buildSchedules(RecTxn recTxn, LocalDate from) {
         List<RecTxnSchedule> schedules = new ArrayList<>();
-        Instant current = from;
+        LocalDate current = from;
         int count = 0;
 
         while (count < MAX_BUFFER) {
             // điều kiện dừng nếu có ngày kết thúc cụ thể
-            if (recTxn.getEndAt() != null && current.isAfter(recTxn.getEndAt())) {
+            if (recTxn.getEndDate() != null && current.isAfter(recTxn.getEndDate())) {
                 break;
             }
 
             RecTxnSchedule schedule = RecTxnSchedule.builder()
-                    .runAt(current)
+                    .runDate(current)
                     .amount(recTxn.getAmount())
                     .status(RecTxnScheduleStatus.PENDING)
                     .userId(recTxn.getUserId())

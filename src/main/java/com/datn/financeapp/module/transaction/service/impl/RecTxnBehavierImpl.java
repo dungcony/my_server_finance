@@ -113,7 +113,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
             rec.setFrequency(req.frequency());
         }
 
-        if (req.endAt() != null) rec.setEndAt(req.endAt());
+        if (req.endDate() != null) rec.setEndDate(req.endDate());
         if (req.displayName() != null) rec.setName(req.displayName());
         if (req.amount() != null) rec.setAmount(req.amount());
         if (req.note() != null) rec.setNote(req.note());
@@ -189,6 +189,6 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
     private boolean isScheduleChanged(RecTxn rec, RecUpdateReq req) {
         return (req.frequency() != null && req.frequency() != rec.getFrequency())
                 || (req.interval() != null && !req.interval().equals(rec.getInterval()))
-                || (req.endAt() != null && !req.endAt().equals(rec.getEndAt()));
+                || (req.endDate() != null && !req.endDate().equals(rec.getEndDate()));
     }
 }

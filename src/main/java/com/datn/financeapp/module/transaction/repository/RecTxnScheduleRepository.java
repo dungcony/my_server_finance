@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,18 +45,18 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
      * Tìm các buổi lịch đến hạn chạy tự động phục vụ Scheduler engine.
      *
      * @param status trạng thái cần quét (thường là PENDING)
-     * @param now    mốc thời gian hiện tại
+     * @param today  mốc ngày hiện tại
      * @return danh sách các buổi lịch cần xử lý
      */
-    List<RecTxnSchedule> findByStatusAndRunAtLessThanEqualAndIsDeletedFalse(RecTxnScheduleStatus status, Instant now);
+    List<RecTxnSchedule> findByStatusAndRunDateLessThanEqualAndIsDeletedFalse(RecTxnScheduleStatus status, LocalDate today);
 
     /**
-     * Tìm buổi lịch có mốc thời gian chạy xa nhất trong tương lai của một giao dịch định kỳ.
+     * Tìm buổi lịch có mốc ngày chạy xa nhất trong tương lai của một giao dịch định kỳ.
      *
      * @param recId ID giao dịch định kỳ cha
      * @return {@link Optional} chứa buổi lịch xa nhất
      */
-    Optional<RecTxnSchedule> findTopByRecTxnIdAndIsDeletedFalseOrderByRunAtDesc(UUID recId);
+    Optional<RecTxnSchedule> findTopByRecTxnIdAndIsDeletedFalseOrderByRunDateDesc(UUID recId);
 
     /**
      * Đếm số lượng buổi lịch theo trạng thái của một giao dịch định kỳ.
@@ -81,7 +81,7 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
             WHERE s.recTxn.id = :recId
               AND (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.PENDING
                    OR (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.SKIPPED
-                       AND s.runAt > CURRENT_TIMESTAMP))
+                       AND s.runDate > CURRENT_DATE))
             """)
     int deleteUnprocessed(@Param("recId") UUID recId);
 
@@ -99,7 +99,7 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
             WHERE s.recTxn.id = :recId
               AND (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.PENDING
                    OR (s.status = com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus.SKIPPED
-                       AND s.runAt > CURRENT_TIMESTAMP))
+                       AND s.runDate > CURRENT_DATE))
             """)
     int updateUnprocessedAmount(@Param("recId") UUID recId, @Param("amount") Long amount);
 }

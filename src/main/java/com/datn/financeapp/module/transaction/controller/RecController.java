@@ -71,7 +71,7 @@ public class RecController {
     @GetMapping("/{recId}/schedules")
     public ApiResponse<?> getSchedules(
             @PathVariable UUID recId,
-            @PageableDefault(size = 20, sort = "runAt", direction = Sort.Direction.ASC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "runDate", direction = Sort.Direction.ASC) Pageable pageable) {
         return ApiResponse.of(scheduleBehavierService.gets(recId, pageable, false));
     }
 

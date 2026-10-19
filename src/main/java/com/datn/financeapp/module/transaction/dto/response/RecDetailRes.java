@@ -6,7 +6,7 @@ import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
-import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -19,8 +19,8 @@ public record RecDetailRes(
         Long amount,
         WalletSumaryRes wallet,
         CateSumaryRes category,
-        Instant startDate,
-        Instant endDate,
+        LocalDate startDate,
+        LocalDate endDate,
         FrequencyType frequencyType,
         Integer interval,
         Boolean isEnabled,
