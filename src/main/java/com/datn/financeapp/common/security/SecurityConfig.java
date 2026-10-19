@@ -60,7 +60,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(
                                 "/", "/index.html", "/*.html",
-                                "/favicon.ico", "swagger-ui/**", "/v3/api-docs/**",
+                                "/favicon.ico", "/swagger-ui/**", "/v3/api-docs/**",
                                 "/static/**", "/ui/**",
                                 "/app", "/app/**",
                                 "/auth/register", "/auth/login", "/auth/refresh",

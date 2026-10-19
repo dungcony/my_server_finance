@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sổ nợ & Cho vay - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <style>
+        .due-card {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body data-area="user" data-active="debts" data-title="Sổ nợ & Cho vay">
+<main id="page">
+    <div class="grid grid-4" id="debtStats">
+        <div class="stat">
+            <div class="label">Cần thu (Cho vay)</div>
+            <div class="value pos" id="sReceivable">0 đ</div>
+            <div class="sub" id="sReceivableSub">0 người nợ</div>
+        </div>
+        <div class="stat">
+            <div class="label">Cần trả (Đi vay)</div>
+            <div class="value neg" id="sPayable">0 đ</div>
+            <div class="sub" id="sPayableSub">0 chủ nợ</div>
+        </div>
+        <div class="stat">
+            <div class="label">Cân đối nợ ròng</div>
+            <div class="value" id="sDiff">0 đ</div>
+            <div class="sub">cần thu - cần trả</div>
+        </div>
+        <div class="stat">
+            <div class="label">Khoản nợ quá hạn</div>
+            <div class="value" id="sOverdueCount">0</div>
+            <div class="sub" id="sOverdueTotal">0 đ</div>
+        </div>
+    </div>
+
+    <!-- Banner sắp đến hạn nếu có -->
+    <div id="dueSoonContainer" style="display:none"></div>
+
+    <div class="card mt">
+        <div class="card-title">
+            <span>Danh sách khoản nợ & cho vay <span class="muted" id="debtCountText"></span></span>
+            <div class="btn-row">
+                <select id="fType" style="width:auto">
+                    <option value="">Tất cả loại</option>
+                    <option value="lending">Cho vay (Người khác nợ tôi)</option>
+                    <option value="borrowing">Đi vay (Tôi nợ người khác)</option>
+                </select>
+                <select id="fStatus" style="width:auto">
+                    <option value="outstanding" selected>Chưa thanh toán hết</option>
+                    <option value="settled">Đã tất toán xong</option>
+                    <option value="">Tất cả trạng thái</option>
+                </select>
+                <select id="fOverdue" style="width:auto">
+                    <option value="">Tất cả hạn nợ</option>
+                    <option value="true">Chỉ khoản quá hạn</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" id="btnReloadDebts">🔄</button>
+                <button class="btn btn-sm" id="btnCreateDebt">+ Thêm khoản nợ / cho vay</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:110px">Phân loại</th>
+                        <th>Người liên quan</th>
+                        <th class="right">Số tiền gốc</th>
+                        <th class="right">Đã thanh toán</th>
+                        <th class="right">Còn lại</th>
+                        <th style="width:120px">Kỳ hạn nợ</th>
+                        <th class="center">Trạng thái</th>
+                        <th>Ví liên quan</th>
+                        <th class="center" style="width:170px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="debtTableBody">
+                    <tr><td colspan="9" class="center muted">Đang tải dữ liệu sổ nợ...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/debts.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 ﻿info:
-  name: 01. Danh sách danh mục
+  name: 01. Danh sách danh mục gốc
   type: http
   seq: 1
 
@@ -9,18 +9,14 @@ http:
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
-  params:
-    - name: type
-      value: "expense"
-      type: query
-    - name: as_tree
-      value: "true"
-      type: query
-    - name: roots_only
-      value: "false"
-      type: query
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data && res.body.data.length > 0) {
+      bru.setEnvVar("categoryCode", res.body.data[0].code);
+    }
 
 settings:
   encodeUrl: true
 
-docs: Lấy cây danh mục thu/chi hoặc danh sách phẳng.
+docs: Lấy danh sách các danh mục gốc (không có danh mục cha). Mọi người dùng đã xác thực đều có thể truy cập. Tự động lưu mã danh mục đầu tiên vào biến `categoryCode`.

@@ -4,6 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.TxnFilterRequest;
@@ -52,10 +53,13 @@ public class TxnBehavierImpl implements TxnBehavierService {
         if (userId == null)
             userId = SecurityContextUtil.currentUserId();
 
-        // kiểm tra danh mục là lá
-        var cate = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh mục gửi lên không hợp lệ"));
+        CateSumaryRes cate = null;
 
+        // kiểm tra danh mục là lá
+        if (req.categoryCode() != null) {
+            cate = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh mục gửi lên không hợp lệ"));
+        }
         // kiểm tra ví là của user
         var wallet = walletService.findSumaryByIdAndUser(req.walletId(), userId, false)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Ví gửi lên không hợp lệ"));

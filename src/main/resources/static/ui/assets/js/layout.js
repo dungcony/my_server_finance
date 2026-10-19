@@ -4,10 +4,15 @@
     const NAV = {
         user: [
             ['dashboard', '🏠', 'Tổng quan cá nhân'],
+            ['transactions', '💸', 'Sổ giao dịch'],
             ['wallets', '👛', 'Ví cá nhân'],
+            ['budgets', '📊', 'Ngân sách'],
+            ['goals', '🎯', 'Mục tiêu tích lũy'],
+            ['debts', '📝', 'Sổ nợ & Cho vay'],
             ['categories', '🗂️', 'Danh mục'],
+            ['reports', '📈', 'Báo cáo'],
             ['notifications', '🔔', 'Thông báo'],
-            ['profile', '🙍', 'Tài khoản']
+            ['profile', '🙎', 'Tài khoản']
         ],
         manager: [
             ['dashboard', '📊', 'Tổng quan quản lý'],
@@ -71,8 +76,8 @@
                     <div style="font-size:12px;color:var(--text-muted)">🛡️ Dành riêng cho Quản trị viên</div>
                 ` : `
                     <div style="font-size:11px;color:#94a3b8;margin-bottom:6px">CHUYỂN KHÔNG GIAN LÀM VIỆC</div>
-                    ${area !== 'user' ? `<div><a href="${UI_ROOT}user/dashboard.html">👤 Trang Cá nhân</a></div>` : ''}
-                    ${area !== 'manager' ? `<div><a href="${UI_ROOT}manager/dashboard.html">👥 Trang Quản lý nhóm</a></div>` : ''}
+                    ${area !== 'user' ? `<div><a href="${UI_ROOT}user/dashboard.html">👤 Trang Cá nhân</a></div>` : ''}\
+                    ${area !== 'manager' ? `<div><a href="${UI_ROOT}manager/dashboard.html">👥 Trang Quản lý nhóm</a></div>` : ''}\
                     ${isAdmin ? `<div><a href="${UI_ROOT}admin/dashboard.html">🛡️ Trang Quản trị</a></div>` : ''}
                 `}
             </div>

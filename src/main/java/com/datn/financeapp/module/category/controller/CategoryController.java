@@ -25,7 +25,7 @@ import java.util.List;
 
 /**
  * Controller xử lý các yêu cầu HTTP liên quan đến cây danh mục thu chi. Đọc mở cho mọi người dùng
- * đã đăng nhập; ghi (tạo, sửa, xóa) chỉ dành cho người có quyền {@code categories:manage}.
+ * đã đăng nhập; ghi (tạo, sửa) yêu cầu quyền {@code categories:update}, xóa yêu cầu quyền {@code categories:delete}.
  *
  * @see CategoryService
  */
@@ -34,7 +34,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryController {
 
-    private static final String MANAGE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_MANAGE.getValue())";
+    private static final String MANAGE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_UPDATE.getValue())";
 
     private final CategoryBehavierService categoryBehavierService;
 
@@ -63,7 +63,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{code}")
-    @PreAuthorize(MANAGE)
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_DELETE.getValue())")
     public ApiResponse<Void> delete(@PathVariable String code) {
         categoryBehavierService.delete(code);
         return ApiResponse.of(null);

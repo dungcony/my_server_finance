@@ -1,0 +1,29 @@
+info:
+  name: 01. Danh sách biểu tượng
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/icons"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: page
+      value: "0"
+      type: query
+    - name: size
+      value: "20"
+      type: query
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data && res.body.data.content && res.body.data.content.length > 0) {
+      bru.setEnvVar("iconCode", res.body.data.content[0].code);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Lấy danh sách biểu tượng (icons) hệ thống theo phân trang (Slice). Mọi người dùng đã xác thực đều có thể truy cập.

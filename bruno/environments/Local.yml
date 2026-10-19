@@ -55,8 +55,18 @@ variables:
     enabled: true
     secret: false
     type: text
+  - name: categoryCode
+    value: "an_uong"
+    enabled: true
+    secret: false
+    type: text
   - name: iconId
     value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: iconCode
+    value: "coffee"
     enabled: true
     secret: false
     type: text
