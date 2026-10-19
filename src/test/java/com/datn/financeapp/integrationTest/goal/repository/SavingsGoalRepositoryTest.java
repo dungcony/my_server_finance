@@ -22,7 +22,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(TestRedisConfig.class)
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class SavingsGoalRepositoryTest {
 
     @Container
@@ -65,8 +65,6 @@ class SavingsGoalRepositoryTest {
                 .lastName("Owner")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
                 .build());
         userId = user.getId();
 
@@ -78,8 +76,6 @@ class SavingsGoalRepositoryTest {
                 .lastName("User")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
                 .build());
         otherUserId = otherUser.getId();
     }
@@ -93,7 +89,6 @@ class SavingsGoalRepositoryTest {
                 .savedAmount(0L)
                 .targetDate(LocalDate.now().plusMonths(6))
                 .status(status)
-                .createdAt(Instant.now())
                 .build();
         return savingsGoalRepository.saveAndFlush(goal);
     }

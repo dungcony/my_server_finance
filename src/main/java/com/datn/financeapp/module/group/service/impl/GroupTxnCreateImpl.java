@@ -19,6 +19,7 @@ import com.datn.financeapp.module.group.repository.GroupTxnRepository;
 import com.datn.financeapp.module.group.service.GroupTxnCreateService;
 import com.datn.financeapp.module.group.service.MemberBalanceService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -64,6 +66,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
 
         switch (type) {
             case CONTRIBUTION -> {
+
                 if (req.transactorId() == null)
                     throw new BusinessException(ErrorCode.GROUP_TXN_TRANSACTOR_REQUIRED);
 
@@ -71,6 +74,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
                     throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
 
                 contribute(req, transaction);
+                log.info("tạo giao dịch contribute");
             }
             case EXPENSE -> {
 
@@ -115,6 +119,8 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         groupTxnRepository.save(transaction);
 
         if (status.equals(GroupTxnStatus.CONFIRMED)) {
+
+            log.info("tính chênh lệch");
             // Tính chênh lệch vào bảng tổng
             memberBalanceService.applyDelta(groupId, new MemberBalances(), BalanceCalculator.effectOf(transaction));
             long newDelta = GroupTxnHelper.calculateDelta(transaction);

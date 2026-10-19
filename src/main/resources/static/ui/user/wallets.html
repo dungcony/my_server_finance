@@ -3,33 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ví - Finance AI</title>
+    <title>Ví cá nhân - Finance AI</title>
     <link rel="stylesheet" href="../assets/css/base.css">
 </head>
-<body data-area="user" data-active="wallets" data-title="Ví">
+<body data-area="user" data-active="wallets" data-title="Ví Cá nhân">
 <main id="page">
     <div class="grid grid-3" id="summaryCards"></div>
 
     <div class="card mt">
         <div class="card-title">
-            <span>Danh sách ví <span class="muted" id="count"></span></span>
+            <span>Danh sách ví cá nhân <span class="muted" id="count"></span></span>
             <div class="btn-row">
+                <input type="text" id="fSearch" placeholder="Tìm tên ví..." style="width:160px">
                 <select id="fType" style="width:auto">
-                    <option value="">Mọi loại</option>
-                    <option value="cash">Tiền mặt</option>
-                    <option value="bank">Ngân hàng</option>
-                    <option value="e_wallet">Ví điện tử</option>
-                    <option value="credit_card">Thẻ tín dụng</option>
+                    <option value="">Tất cả loại ví</option>
+                    <option value="CASH">Tiền mặt</option>
+                    <option value="BANK">Ngân hàng</option>
+                    <option value="E_WALLET">Ví điện tử</option>
+                    <option value="LOAN">Khoản vay</option>
+                    <option value="SAVINGS">Tiết kiệm</option>
                 </select>
-                <label class="check" style="margin:0"><input type="checkbox" id="fOnlyTotal"> Chỉ ví tính vào tổng</label>
-                <label class="check" style="margin:0"><input type="checkbox" id="fShared" checked> Gồm ví chung</label>
-                <button class="btn btn-secondary" id="btnReload">↻</button>
-                <button class="btn" id="btnCreate">+ Tạo ví</button>
+                <button class="btn btn-secondary" id="btnReload">🔄</button>
+                <button class="btn" id="btnCreate">+ Tạo ví mới</button>
             </div>
         </div>
         <div class="table-wrap">
             <table class="table">
-                <thead><tr><th>Tên</th><th>Loại</th><th class="right">Số dư</th><th>Tính vào tổng</th><th>Nhóm</th><th></th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Tên ví</th>
+                        <th>Loại ví</th>
+                        <th class="right">Số dư</th>
+                        <th>Mặc định</th>
+                        <th>Ngày tạo</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
                 <tbody id="walletBody"></tbody>
             </table>
         </div>

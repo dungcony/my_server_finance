@@ -1,12 +1,14 @@
 package com.datn.financeapp.module.notification.events.listener;
 
-import com.datn.financeapp.module.group.enums.*;
+import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.events.GroupTxnConfirmedEvent;
 import com.datn.financeapp.module.group.events.GroupTxnPendingEvent;
 import com.datn.financeapp.module.notification.enums.ActionNoti;
 import com.datn.financeapp.module.notification.enums.NotiType;
 import com.datn.financeapp.module.notification.service.NotificationService;
 import com.datn.financeapp.module.transaction.enums.TxnType;
+import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
+import com.datn.financeapp.module.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -16,7 +18,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.text.NumberFormat;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Gửi thông báo cho giao dịch nhóm, chạy {@code @Async} sau khi transaction của giao dịch commit nên
@@ -31,63 +37,129 @@ public class GroupTxnListener {
     private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final NotificationService notificationService;
+    private final UserService userService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onConfirmed(GroupTxnConfirmedEvent event) {
         try {
-            // danh mục, chiều tiền, ngày và tên khoản giống nhau cho mọi người nhận, chỉ khác số tiền
-            Map<String, Object> shared = new HashMap<>();
-            shared.put("action", ActionNoti.RECORD);
-            shared.put("group_id", event.groupId().toString());
-            shared.put("txn_type", txnTye(event.type()).name());
-            shared.put("amount", event.amount());
-            if (event.categoryCode() != null) shared.put("category_code", event.categoryCode());
-            shared.put("date", event.occurredAt().atZone(VIETNAM_ZONE).toLocalDate().toString());
-            shared.put("note", event.note());
-
-            notificationService.createNotification(
-                    event.transactorId(),
-                    NotiType.GROUP_TXN_RECORD_REQUEST,
-                    "Ghi vào sổ cá nhân?",
-                    "Giao dịch " + describe(event.type()) + " với số tiền " + formatAmount(event.amount()) + "vnđ đã được xác nhận. Bạn có muốn ghi vào sổ cá nhân không?",
-                    event.groupTxnId(), shared);
-
-            log.info("gửi thông báo confim giao dịch thành công");
-
+            switch (event.type()) {
+                case EXPENSE -> {
+                    // Chi tiêu bằng tiền quỹ không phải tiền túi cá nhân -> không gửi thông báo ghi sổ
+                    if (event.transactorId() == null) {
+                        return;
+                    }
+                    sendRecordNotification(
+                            event.transactorId(),
+                            event,
+                            event.amount(),
+                            TxnType.EXPENSE,
+                            event.categoryCode()
+                    );
+                }
+                case CONTRIBUTION -> {
+                    if (event.transactorId() != null) {
+                        String categoryCode = event.categoryCode() != null ? event.categoryCode() : "gop_quy_nhom";
+                        sendRecordNotification(
+                                event.transactorId(),
+                                event,
+                                event.amount(),
+                                TxnType.EXPENSE,
+                                categoryCode
+                        );
+                    }
+                }
+                case REFUND -> {
+                    // Hoàn tiền: gửi thông báo ghi sổ thu nhập cho từng người được nhận tiền
+                    if (event.participantShares() != null) {
+                        for (Map.Entry<UUID, Long> entry : event.participantShares().entrySet()) {
+                            UUID receiverId = entry.getKey();
+                            long shareAmount = entry.getValue();
+                            sendRecordNotification(
+                                    receiverId,
+                                    event,
+                                    shareAmount,
+                                    TxnType.INCOME,
+                                    "nhan_hoan_tien_nhom"
+                            );
+                        }
+                    }
+                }
+                case ADJUSTMENT_UP, ADJUSTMENT_DOWN -> {
+                    // Kiểm kê quỹ -> không gửi thông báo ghi sổ cá nhân
+                }
+            }
         } catch (RuntimeException ex) {
             log.error("Gửi thông báo ghi sổ cá nhân cho giao dịch nhóm {} thất bại", event.groupTxnId(), ex);
         }
     }
 
+    private void sendRecordNotification(UUID userId, GroupTxnConfirmedEvent event, long amount, TxnType txnType, String categoryCode) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("action", ActionNoti.RECORD);
+        data.put("group_id", event.groupId().toString());
+        data.put("txn_type", txnType.name());
+        data.put("amount", amount);
+        if (categoryCode != null) {
+            data.put("category_code", categoryCode);
+        }
+        data.put("date", event.occurredAt().atZone(VIETNAM_ZONE).toLocalDate().toString());
+        if (event.note() != null) {
+            data.put("note", event.note());
+        }
+
+        notificationService.createNotification(
+                userId,
+                NotiType.GROUP_TXN_RECORD_REQUEST,
+                "Ghi vào sổ cá nhân?",
+                "Giao dịch " + describe(event.type()) + " với số tiền " + formatAmount(amount) + "vnđ đã được xác nhận. Bạn có muốn ghi vào sổ cá nhân không?",
+                event.groupTxnId(),
+                data
+        );
+        log.info("Gửi thông báo ghi sổ cá nhân thành công cho user {} giao dịch nhóm {}", userId, event.groupTxnId());
+    }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPending(GroupTxnPendingEvent event) {
         try {
-            String content = "Có giao dịch " + describe(event.type()) + " mới được tạo bởi " + event.createdBy() + " đang chờ bạn duyệt.";
+            String creatorName = resolveUserName(event.createdBy());
+            String content = "Có giao dịch " + describe(event.type()) + " mới được tạo bởi " + creatorName + " đang chờ bạn duyệt.";
             Map<String, Object> data = Map.of(
                     "action", ActionNoti.NOTIFY,
                     "group_id", event.groupId().toString(),
-                    "group_txn_id", event.groupTxnId()
+                    "group_txn_id", event.groupTxnId().toString()
             );
 
             notificationService.createNotification(
                     event.fundKeeperId(),
-                    NotiType.GROUP_TXN_RECORD_REQUEST,
-                    "Ghi vào sổ cá nhân?",
+                    NotiType.GROUP_TXN_REVIEW_REQUEST,
+                    "Giao dịch nhóm chờ duyệt",
                     content,
                     event.groupTxnId(),
                     data);
 
+            log.info("Gửi thông báo chờ duyệt giao dịch nhóm {} thành công cho thủ quỹ {}", event.groupTxnId(), event.fundKeeperId());
         } catch (RuntimeException ex) {
             log.error("Gửi thông báo chờ duyệt cho giao dịch nhóm {} thất bại", event.groupTxnId(), ex);
         }
     }
 
-    // -------------------------------------PRIVATE----------------------------------//
-
-    // hoàn tiền là tiền vào ví, các loại còn lại là tiền ra khỏi ví
-    private TxnType txnTye(GroupTxnType type) {
-        return type == GroupTxnType.REFUND ? TxnType.INCOME : TxnType.EXPENSE;
+    private String resolveUserName(UUID userId) {
+        if (userId == null) {
+            return "Thành viên nhóm";
+        }
+        try {
+            Map<UUID, UserNameDisplayRes> names = userService.getNames(List.of(userId));
+            UserNameDisplayRes nameRes = names.get(userId);
+            if (nameRes != null && nameRes.fullName() != null && !nameRes.fullName().isBlank()) {
+                return nameRes.fullName();
+            }
+        } catch (Exception e) {
+            log.warn("Không lấy được tên người dùng {}", userId, e);
+        }
+        return "Thành viên nhóm";
     }
+
+    // -------------------------------------PRIVATE----------------------------------//
 
     private String describe(GroupTxnType type) {
         return switch (type) {

@@ -8,42 +8,41 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 /**
- * Tiến độ chi tiêu của một ngân sách, tính từ hạn mức và số đã chi. Chỗ DUY NHẤT định nghĩa ngưỡng
- * cảnh báo: từ 80% là {@link BudgetStatus#NEAR_LIMIT}, từ 100% là {@link BudgetStatus#OVER_LIMIT}.
- *
- * @param remaining     còn lại (hạn mức − đã chi), âm khi vượt
- * @param ratio         tỉ lệ đã chi trên hạn mức, 4 chữ số thập phân
- * @param status        trạng thái theo tỉ lệ
- * @param daysRemaining số ngày còn lại tới hết kỳ, không âm
+ * Tiện ích tính toán tiến độ chi tiêu, tỉ lệ phần trăm và trạng thái cảnh báo của ngân sách.
  */
-public record BudgetProgress(long remaining, BigDecimal ratio, BudgetStatus status, int daysRemaining) {
+public record BudgetProgress(
+        long limit,
+        long spent,
+        long remaining,
+        BigDecimal ratio,
+        BudgetStatus status,
+        int daysRemaining
+) {
 
-    private static final BigDecimal NEAR_LIMIT_RATIO = new BigDecimal("0.8");
-    private static final int RATIO_SCALE = 4;
+    private static final BigDecimal NEAR_LIMIT_THRESHOLD = new BigDecimal("0.8");
+    private static final BigDecimal OVER_LIMIT_THRESHOLD = BigDecimal.ONE;
 
-    /**
-     * Tính tiến độ. Hạn mức 0 thì tỉ lệ là 0 để khỏi chia cho 0.
-     *
-     * @param limit   hạn mức
-     * @param spent   số đã chi
-     * @param endDate ngày cuối kỳ
-     * @param today   hôm nay
-     */
     public static BudgetProgress of(long limit, long spent, LocalDate endDate, LocalDate today) {
-        BigDecimal ratio = limit == 0
+        long remaining = limit - spent;
+        BigDecimal ratio = limit <= 0
                 ? BigDecimal.ZERO
-                : BigDecimal.valueOf(spent).divide(BigDecimal.valueOf(limit), RATIO_SCALE, RoundingMode.HALF_UP);
-        int daysRemaining = (int) Math.max(ChronoUnit.DAYS.between(today, endDate), 0);
-        return new BudgetProgress(limit - spent, ratio, statusOf(ratio), daysRemaining);
-    }
+                : BigDecimal.valueOf(spent)
+                .divide(BigDecimal.valueOf(limit), 4, RoundingMode.HALF_UP);
 
-    private static BudgetStatus statusOf(BigDecimal ratio) {
-        if (ratio.compareTo(BigDecimal.ONE) >= 0) {
-            return BudgetStatus.OVER_LIMIT;
+        BudgetStatus status;
+        if (ratio.compareTo(OVER_LIMIT_THRESHOLD) >= 0) {
+            status = BudgetStatus.OVER_LIMIT;
+        } else if (ratio.compareTo(NEAR_LIMIT_THRESHOLD) >= 0) {
+            status = BudgetStatus.NEAR_LIMIT;
+        } else {
+            status = BudgetStatus.NORMAL;
         }
-        if (ratio.compareTo(NEAR_LIMIT_RATIO) >= 0) {
-            return BudgetStatus.NEAR_LIMIT;
+
+        int daysRemaining = 0;
+        if (endDate != null && today != null && !today.isAfter(endDate)) {
+            daysRemaining = (int) ChronoUnit.DAYS.between(today, endDate);
         }
-        return BudgetStatus.NORMAL;
+
+        return new BudgetProgress(limit, spent, remaining, ratio, status, daysRemaining);
     }
 }

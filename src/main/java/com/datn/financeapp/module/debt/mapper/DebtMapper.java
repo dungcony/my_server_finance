@@ -6,15 +6,21 @@ import com.datn.financeapp.module.debt.dto.response.DebtDetailResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtListItemResponse;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.entity.DebtPayment;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import org.mapstruct.Mapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Mapper chuyển đổi giữa entity Debt, DebtPayment và các DTO response.
+ */
 @Mapper(componentModel = "spring")
 public interface DebtMapper {
 
@@ -97,17 +103,20 @@ public interface DebtMapper {
                 payment.getTransactionId());
     }
 
-    default DebtDetailResponse.OriginTransaction toOriginTransaction(TransactionRefResponse originRef) {
-        if (originRef == null) {
+    default DebtDetailResponse.OriginTransaction toOriginTransaction(TxnDetailResponse originTxn) {
+        if (originTxn == null) {
             return null;
         }
-        return new DebtDetailResponse.OriginTransaction(originRef.id(), originRef.amount(), originRef.date());
+        LocalDate date = originTxn.occurredAt() != null
+                ? LocalDate.ofInstant(originTxn.occurredAt(), ZoneId.of("Asia/Ho_Chi_Minh"))
+                : null;
+        return new DebtDetailResponse.OriginTransaction(originTxn.id(), originTxn.amount(), date);
     }
 
     default DebtDetailResponse toDetailResponse(
             DebtListItemResponse listItem,
             List<DebtDetailResponse.PaymentHistoryItem> history,
-            TransactionRefResponse originRef) {
-        return new DebtDetailResponse(listItem, history, toOriginTransaction(originRef));
+            TxnDetailResponse originTxn) {
+        return new DebtDetailResponse(listItem, history, toOriginTransaction(originTxn));
     }
 }

@@ -1,50 +1,58 @@
 package com.datn.financeapp.module.goal.service.impl;
 
-import com.datn.financeapp.module.goal.service.GoalService;
-
-import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.goal.dto.request.CreateContributionRequest;
-import com.datn.financeapp.module.goal.dto.response.CreateContributionResponse;
 import com.datn.financeapp.module.goal.dto.request.CreateGoalRequest;
+import com.datn.financeapp.module.goal.dto.request.GoalFilterRequest;
+import com.datn.financeapp.module.goal.dto.request.UpdateGoalRequest;
+import com.datn.financeapp.module.goal.dto.response.CreateContributionResponse;
 import com.datn.financeapp.module.goal.dto.response.CreateGoalResponse;
 import com.datn.financeapp.module.goal.dto.response.GoalDetailResponse;
 import com.datn.financeapp.module.goal.dto.response.GoalListItemResponse;
-import com.datn.financeapp.module.goal.dto.request.UpdateGoalRequest;
 import com.datn.financeapp.module.goal.entity.GoalContribution;
 import com.datn.financeapp.module.goal.entity.SavingsGoal;
+import com.datn.financeapp.module.goal.event.GoalCompletedEvent;
 import com.datn.financeapp.module.goal.mapper.GoalMapper;
 import com.datn.financeapp.module.goal.repository.GoalContributionRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
+import com.datn.financeapp.module.goal.service.GoalService;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
+import com.datn.financeapp.module.icon.entity.Icon;
+import com.datn.financeapp.module.icon.mapper.IconMapper;
+import com.datn.financeapp.module.icon.repository.IconRepository;
+import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
+import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
+import com.datn.financeapp.module.wallet.dto.response.WalletRes;
+import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
+import com.datn.financeapp.module.wallet.entity.Wallet;
+import com.datn.financeapp.module.wallet.enums.WalletType;
+import com.datn.financeapp.module.wallet.repository.WalletRepository;
+import com.datn.financeapp.module.wallet.service.WalletBehavierService;
 import com.datn.financeapp.module.wallet.service.WalletService;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
+
 /**
- * Triển khai nghiệp vụ quản lý mục tiêu tiết kiệm và đợt nộp/rút tiền (GOAL-01..04).
- * <p>
- * <b>Nguyên tắc cốt lõi:</b>
- * Các giao dịch nộp/rút tiền đi qua {@link TransactionWriter}; số tiền tiết kiệm ({@code saved_amount})
- * và trạng thái hoàn thành ({@code status}) được đồng bộ qua trigger DB {@code trg_goal_contributions_sync}.
- * </p>
- *
- * @see GoalService
- * @see SavingsGoalRepository
- * @see GoalContributionRepository
+ * Triển khai nghiệp vụ {@link GoalService}.
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GoalServiceImpl implements GoalService {
 
     private static final String STATUS_IN_PROGRESS = "in_progress";
@@ -53,341 +61,345 @@ public class GoalServiceImpl implements GoalService {
 
     private final SavingsGoalRepository savingsGoalRepository;
     private final GoalContributionRepository goalContributionRepository;
+    private final WalletRepository walletRepository;
     private final WalletService walletService;
-    private final CategoryService categoryService;
-    private final TransactionWriter transactionWriter;
+    private final WalletBehavierService walletBehavierService;
     private final TxnBehavierService txnBehavierService;
+    private final IconRepository iconRepository;
+    private final IconMapper iconMapper;
     private final GoalMapper goalMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // ---------------------------------------------------------------------
-    // Ghi
+    // Nghiệp vụ Người dùng (User)
     // ---------------------------------------------------------------------
 
-    /**
-     * GOAL-01, api/09 mục B2.
-     *
-     * <p><b>Cách xử lý {@code initial_amount} — điểm dễ hiểu sai nhất của endpoint này.</b> Đặc
-     * tả nói {@code initial_amount} "không sinh giao dịch — đó là số tiền người dùng đã tích được
-     * từ trước, chỉ ghi nhận điểm xuất phát". Nhưng schema V4 KHÔNG có cột
-     * {@code savings_goals.initial_amount}: nó là trường REQUEST, không phải trường lưu trữ.
-     *
-     * <p>Nếu bỏ qua hẳn thì {@code saved_amount} sẽ mãi là 0 (trigger chỉ tính {@code SUM()} trên
-     * {@code goal_contributions}) và tiến độ ban đầu người dùng nhập mất sạch. Nếu ghi thẳng vào
-     * {@code saved_amount} thì vi phạm ranh giới trigger — và lần chèn contribution kế tiếp trigger
-     * sẽ {@code SUM()} lại từ đầu, thổi bay con số đó.
-     *
-     * <p>Lối thoát duy nhất đúng cả hai phía: tạo NGAY một {@link GoalContribution} với
-     * {@code transactionId = null} — tức chế độ "chỉ ghi nhận tiến độ", đúng ngữ nghĩa "tiền đã có
-     * sẵn từ trước". KHÔNG giao dịch nào được sinh ra (đúng đặc tả), mà trigger vẫn cộng đúng vào
-     * {@code saved_amount}.
-     */
+    @Override
     @Transactional
     public CreateGoalResponse create(UUID userId, CreateGoalRequest req) {
-        if (req.targetAmount() == null || req.targetAmount() <= 0) {
-            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
-        }
-        if (req.targetDate() != null && !req.targetDate().isAfter(LocalDate.now())) {
-            throw new BusinessException(ErrorCode.GOAL_TARGET_DATE_INVALID);
-        }
-        if (req.initialAmount() != null && req.initialAmount() < 0) {
-            throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID, "Số tiền đã có sẵn không được âm.");
-        }
+        UUID walletId = null;
 
-        WalletSumaryRes wallet = null;
-        if (req.walletId() != null) {
-            wallet = walletService.findRefForUser(userId, req.walletId());
-            if (wallet == null) {
-                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
+        if (Boolean.TRUE.equals(req.manageWithWallet())) {
+            String iconCode = "wallet";
+            if (req.iconId() != null) {
+                iconCode = iconRepository.findByIdAndIsDeletedFalse(req.iconId())
+                        .map(Icon::getCode)
+                        .orElse("wallet");
             }
+            WalletCreateReq walletReq = new WalletCreateReq(
+                    "[Tiết kiệm] " + req.name(),
+                    WalletType.SAVINGS,
+                    0L,
+                    userId,
+                    iconCode,
+                    "#4CAF50"
+            );
+            WalletRes createdWallet = walletBehavierService.create(walletReq, false);
+            walletId = createdWallet.id();
+        } else if (req.walletId() != null) {
+            WalletSumaryRes existing = walletService.findSumaryByIdAndUser(req.walletId(), userId, false)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_NOT_FOUND, "Không tìm thấy ví liên kết."));
+            walletId = existing.id();
         }
 
-        UUID goalId = UUID.randomUUID();
         SavingsGoal goal = SavingsGoal.builder()
-                .id(goalId)
                 .userId(userId)
-                .walletId(wallet == null ? null : wallet.id())
+                .walletId(walletId)
                 .name(req.name())
                 .targetAmount(req.targetAmount())
-                // Giá trị KHỞI TẠO của bản ghi mới, không phải ghi đè cột do trigger sở hữu: chưa
-                // có bản ghi goal_contributions nào nên trigger chưa từng chạy cho mục tiêu này.
                 .savedAmount(0L)
                 .targetDate(req.targetDate())
                 .iconId(req.iconId())
                 .status(STATUS_IN_PROGRESS)
-                .createdAt(Instant.now())
                 .build();
-        savingsGoalRepository.saveAndFlush(goal);
+        goal = savingsGoalRepository.save(goal);
 
-        if (req.initialAmount() != null && req.initialAmount() > 0) {
-            goalContributionRepository.saveAndFlush(GoalContribution.builder()
-                    .id(UUID.randomUUID())
-                    .goalId(goalId)
-                    // NULL — đây chính là điểm khiến initial_amount KHÔNG sinh giao dịch nào.
-                    .transactionId(null)
-                    .amount(req.initialAmount())
-                    .contributedDate(LocalDate.now())
-                    .createdAt(Instant.now())
-                    .build());
-        }
-
-        return goalMapper.toCreateGoalResponse(toListItem(goal, wallet));
+        WalletSumaryRes wallet = loadWalletOrNull(userId, goal.getWalletId());
+        GoalListItemResponse item = toListItem(goal, wallet);
+        return goalMapper.toCreateGoalResponse(item);
     }
 
-    /**
-     * GOAL-03, api/09 mục B3 — hai chế độ nạp tiền theo D-49.
-     *
-     * <p><b>Chế độ đọc TƯỜNG MINH từ {@code req.createTransaction()}, KHÔNG suy đoán từ
-     * {@code goal.getWalletId() != null}.</b> Hai chuyện độc lập: một mục tiêu CÓ gắn ví vẫn được
-     * nạp kiểu "chỉ ghi nhận tiến độ" khi tiền thực tế nằm ngoài ứng dụng. Suy đoán sẽ tạo giao
-     * dịch ma và trừ oan ví người dùng.
-     */
+    @Override
     @Transactional
     public CreateContributionResponse addContribution(UUID userId, UUID goalId, CreateContributionRequest req) {
-        SavingsGoal goal = loadOwnedGoal(userId, goalId);
+        SavingsGoal goal = savingsGoalRepository.findByIdAndUserId(goalId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
 
-        if (STATUS_CANCELLED.equals(goal.getStatus())) {
-            throw new BusinessException(ErrorCode.GOAL_CANCELLED);
-        }
-        if (STATUS_COMPLETED.equals(goal.getStatus())) {
-            throw new BusinessException(ErrorCode.GOAL_ALREADY_COMPLETED);
-        }
-
-        boolean createTransaction = req.createTransaction() == null || req.createTransaction();
         UUID transactionId = null;
+        UUID targetTransactionId = null;
         CreateContributionResponse.TransactionSummary transactionSummary = null;
         CreateContributionResponse.NewBalance newBalance = null;
 
-        LocalDate contributedDate = req.contributedDate() != null ? req.contributedDate() : LocalDate.now();
-
-        if (createTransaction) {
-            if (goal.getWalletId() == null) {
-                throw new BusinessException(ErrorCode.GOAL_WALLET_REQUIRED);
-            }
+        if (Boolean.TRUE.equals(req.createTransaction())) {
             if (req.sourceWalletId() == null) {
-                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Thiếu ví nguồn để chuyển tiền.");
+                throw new BusinessException(ErrorCode.INVALID_SOURCE_WALLET, "Ví nguồn không được để trống khi yêu cầu tạo giao dịch.");
             }
-            WalletSumaryRes sourceWallet = walletService.findRefForUser(userId, req.sourceWalletId());
-            if (sourceWallet == null) {
-                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví nguồn.");
+            Wallet sourceWallet = walletRepository.findByIdAndUserIdAndIsDeleted(req.sourceWalletId(), userId, false)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_NOT_FOUND, "Không tìm thấy ví nguồn."));
+
+            if (sourceWallet.getType() == WalletType.SAVINGS) {
+                throw new BusinessException(ErrorCode.INVALID_SOURCE_WALLET, "Không thể dùng ví tiết kiệm làm ví nguồn để nạp tiền.");
+            }
+            if (sourceWallet.getBalance() < req.amount()) {
+                throw new BusinessException(ErrorCode.WALLET_BALANCE_INSUFFICIENT, "Số dư ví nguồn không đủ để nạp vào mục tiêu.");
             }
 
-            // LUÔN là transfer: tiền chỉ đổi chỗ giữa hai ví của cùng người dùng, không phải thu
-            // cũng không phải chi. Nhờ vậy tự động bị loại khỏi mọi báo cáo thu-chi qua điều kiện
-            // type != 'transfer' — đúng mong muốn của api/09 ("chuyển tiền vào tiết kiệm không
-            // phải là tiêu tiền"), nên KHÔNG cần đặt countsInReport = false.
-            // categoryId = null theo ck_txn_shape: giao dịch transfer không mang danh mục.
-            TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
-                    null,
-                    userId,
-                    sourceWallet.id(),
-                    goal.getWalletId(),
-                    null,
-                    "transfer",
+            Instant occurredAt = req.contributedDate() != null
+                    ? req.contributedDate().atStartOfDay(ZoneId.systemDefault()).toInstant()
+                    : Instant.now();
+
+            // Giao dịch 1: Trừ tiền ví nguồn (EXPENSE)
+            TxnDetailResponse srcTxn = txnBehavierService.create(userId, new TxnCreateReq(
+                    TxnType.EXPENSE,
                     req.amount(),
-                    contributedDate,
-                    req.note(),
-                    goal.getName(),
-                    "manual",
-                    true,
-                    null,
-                    null,
-                    null));
+                    sourceWallet.getId(),
+                    "tiet_kiem",
+                    occurredAt,
+                    "Nạp tiền mục tiêu: " + goal.getName(),
+                    "Nạp tiền vào mục tiêu tiết kiệm: " + goal.getName()
+            ));
+            transactionId = srcTxn.id();
+            transactionSummary = new CreateContributionResponse.TransactionSummary(srcTxn.id(), TxnType.EXPENSE.name(), req.amount());
+            newBalance = new CreateContributionResponse.NewBalance(sourceWallet.getId(), sourceWallet.getBalance() - req.amount());
 
-            transactionId = result.transactionId();
-            transactionSummary =
-                    new CreateContributionResponse.TransactionSummary(transactionId, "transfer", req.amount());
-            newBalance = new CreateContributionResponse.NewBalance(sourceWallet.id(), result.walletNewBalance());
+            // Giao dịch 2: Cộng tiền vào ví tiết kiệm liên kết (INCOME) nếu goal có ví
+            if (goal.getWalletId() != null) {
+                TxnDetailResponse tgtTxn = txnBehavierService.create(userId, new TxnCreateReq(
+                        TxnType.INCOME,
+                        req.amount(),
+                        goal.getWalletId(),
+                        "tiet_kiem",
+                        occurredAt,
+                        "Tích lũy từ ví: " + sourceWallet.getName(),
+                        "Khoản tiền tích lũy cho mục tiêu: " + goal.getName()
+                ));
+                targetTransactionId = tgtTxn.id();
+            }
         }
 
         GoalContribution contribution = GoalContribution.builder()
-                .id(UUID.randomUUID())
-                .goalId(goalId)
-                .transactionId(transactionId)
+                .goalId(goal.getId())
                 .amount(req.amount())
-                .contributedDate(contributedDate)
-                .createdAt(Instant.now())
+                .contributedDate(req.contributedDate() != null ? req.contributedDate() : java.time.LocalDate.now())
+                .transactionId(transactionId)
+                .targetTransactionId(targetTransactionId)
                 .build();
-        // saveAndFlush: đẩy INSERT xuống CSDL NGAY để trigger chạy trước khi ta đọc lại phía dưới.
-        goalContributionRepository.saveAndFlush(contribution);
+        contribution = goalContributionRepository.save(contribution);
 
-        // BẮT BUỘC đọc lại bằng query trả SCALAR — trigger vừa UPDATE bảng savings_goals ở tầng
-        // CSDL trong cùng transaction, nhưng instance goal phía trên vẫn mang saved_amount/status
-        // CŨ trong Hibernate identity map. Xem Javadoc SavingsGoalRepository.findSavedAmountNative.
-        long refreshedSavedAmount =
-                savingsGoalRepository.findSavedAmountNative(goalId).orElseThrow();
-        String refreshedStatus =
-                savingsGoalRepository.findStatusNative(goalId).orElseThrow();
+        long refreshedSavedAmount = savingsGoalRepository.findSavedAmountNative(goal.getId())
+                .orElse(goal.getSavedAmount() + req.amount());
+        String refreshedStatus = savingsGoalRepository.findStatusNative(goal.getId())
+                .orElse(refreshedSavedAmount >= goal.getTargetAmount() ? STATUS_COMPLETED : STATUS_IN_PROGRESS);
+
+        // Phát sự kiện hoàn thành mục tiêu tiết kiệm nếu trạng thái trước đó chưa completed mà hiện tại chuyển sang completed
+        if (!STATUS_COMPLETED.equalsIgnoreCase(goal.getStatus()) && STATUS_COMPLETED.equalsIgnoreCase(refreshedStatus)) {
+            applicationEventPublisher.publishEvent(new GoalCompletedEvent(
+                    userId,
+                    goal.getId(),
+                    goal.getName(),
+                    goal.getTargetAmount()
+            ));
+        }
+
+        BigDecimal progress = goalMapper.progressRatio(refreshedSavedAmount, goal.getTargetAmount());
 
         return goalMapper.toContributionResponse(
                 contribution,
                 refreshedSavedAmount,
-                goalMapper.progressRatio(refreshedSavedAmount, goal.getTargetAmount()),
+                progress,
                 refreshedStatus,
                 transactionSummary,
-                newBalance);
+                newBalance
+        );
     }
 
-    /**
-     * GOAL-04, api/09 mục B4 — THỨ TỰ NGƯỢC với sổ nợ (D-46), có lý do schema rõ ràng:
-     *
-     * <ol>
-     *   <li>Hoàn tác + xoá mềm giao dịch kèm theo (nếu có) qua {@link TxnBehavierService#delete}
-     *   <li>Xoá bản ghi {@code goal_contributions}, trigger tự trừ lại {@code saved_amount} và tự
-     *       MỞ LẠI {@code completed → in_progress}
-     * </ol>
-     *
-     * <p>Ở sổ nợ phải xoá bản ghi con TRƯỚC vì {@code debt_payments.transaction_id} là
-     * {@code ON DELETE RESTRICT} và vì {@code TransactionService.delete} chặn 409 các giao dịch
-     * còn gắn sổ nợ (D-32). Cả hai lý do đều KHÔNG áp dụng ở đây:
-     * {@code goal_contributions.transaction_id} là {@code ON DELETE SET NULL}, và kiểm tra D-32
-     * chỉ soi bảng {@code debt_payments} chứ không soi {@code goal_contributions}.
-     *
-     * <p>Ngược lại, làm theo thứ tự này còn tránh được một cái bẫy: nếu xoá contribution trước,
-     * {@code ON DELETE SET NULL} có thể đã xoá mất tham chiếu {@code transaction_id} cần dùng để
-     * hoàn tác.
-     */
+    @Override
     @Transactional
     public void cancelContribution(UUID userId, UUID goalId, UUID contributionId) {
-        loadOwnedGoal(userId, goalId);
+        savingsGoalRepository.findByIdAndUserId(goalId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
 
-        GoalContribution contribution = goalContributionRepository
-                .findByIdAndGoalId(contributionId, goalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lần nạp."));
+        GoalContribution contribution = goalContributionRepository.findByIdAndGoalIdAndIsDeletedFalse(contributionId, goalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lượt đóng góp."));
 
-        // Bước 1 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
         if (contribution.getTransactionId() != null) {
-            txnBehavierService.delete(userId, contribution.getTransactionId());
+            txnBehavierService.softDelete(contribution.getTransactionId(), false);
+        }
+        if (contribution.getTargetTransactionId() != null) {
+            txnBehavierService.softDelete(contribution.getTargetTransactionId(), false);
         }
 
-        // Bước 2 — flush ngay để trigger chạy và tính lại tiến độ trong cùng transaction.
-        goalContributionRepository.delete(contribution);
-        goalContributionRepository.flush();
+        contribution.setIsDeleted(true);
+        goalContributionRepository.save(contribution);
     }
 
-    /**
-     * GOAL-02, api/09 mục B5 — sửa được name/target_amount/target_date/icon_id/status.
-     *
-     * <p>{@code status} chỉ nhận {@code cancelled} (dừng theo dõi, giữ lịch sử) hoặc
-     * {@code in_progress} (mở lại mục tiêu đã huỷ). KHÔNG cho đặt tay {@code completed} — trạng
-     * thái đó phải do trigger suy ra từ {@code saved_amount >= target_amount}, đặt tay sẽ tạo ra
-     * mục tiêu "hoàn thành" mà tiền chưa đủ.
-     */
+    @Override
     @Transactional
     public GoalListItemResponse update(UUID userId, UUID goalId, UpdateGoalRequest req) {
-        SavingsGoal goal = loadOwnedGoal(userId, goalId);
+        SavingsGoal goal = savingsGoalRepository.findByIdAndUserId(goalId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
 
-        if (req.name() != null) {
+        if (req.name() != null && !req.name().isBlank()) {
             goal.setName(req.name());
         }
         if (req.targetAmount() != null) {
-            if (req.targetAmount() <= 0) {
-                throw new BusinessException(ErrorCode.TRANSACTION_AMOUNT_INVALID);
-            }
             goal.setTargetAmount(req.targetAmount());
         }
         if (req.targetDate() != null) {
-            if (!req.targetDate().isAfter(LocalDate.now())) {
-                throw new BusinessException(ErrorCode.GOAL_TARGET_DATE_INVALID);
-            }
             goal.setTargetDate(req.targetDate());
         }
         if (req.iconId() != null) {
             goal.setIconId(req.iconId());
         }
-        if (req.status() != null) {
-            if (!STATUS_CANCELLED.equals(req.status()) && !STATUS_IN_PROGRESS.equals(req.status())) {
-                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chỉ đặt được trạng thái huỷ hoặc đang thực hiện — hoàn thành do hệ thống tự xác định.");
-            }
+        if (req.status() != null && (STATUS_IN_PROGRESS.equals(req.status()) || STATUS_CANCELLED.equals(req.status()))) {
             goal.setStatus(req.status());
         }
-        savingsGoalRepository.saveAndFlush(goal);
 
-        // Đổi target_amount có thể làm mục tiêu vừa đủ/không còn đủ, nhưng trigger chỉ chạy khi
-        // bảng con thay đổi — nên đọc lại để phản ánh đúng giá trị hiện tại dưới CSDL, không tự suy.
-        return toListItem(goal, loadWalletOrNull(userId, goal.getWalletId()));
+        goal = savingsGoalRepository.save(goal);
+        WalletSumaryRes wallet = loadWalletOrNull(userId, goal.getWalletId());
+        return toListItem(goal, wallet);
     }
 
-    /**
-     * api/09 mục B5. {@code revertTransactions} mặc định {@code false}: tiền đã chuyển vào ví tiết
-     * kiệm thì vẫn nằm đó, chỉ là không theo dõi mục tiêu nữa.
-     *
-     * <p>Khi {@code true}, phải đọc danh sách lần nạp TRƯỚC khi xoá mục tiêu vì
-     * {@code ON DELETE CASCADE} sẽ cuốn theo chúng.
-     */
+    @Override
     @Transactional
-    public void delete(UUID userId, UUID goalId, boolean revertTransactions) {
-        SavingsGoal goal = loadOwnedGoal(userId, goalId);
-
-        List<UUID> transactionIds = goalContributionRepository.findByGoalId(goalId).stream()
-                .map(c -> c.getTransactionId())
-                .filter(Objects::nonNull)
-                .toList();
-
-        savingsGoalRepository.delete(goal);
-        savingsGoalRepository.flush();
-
-        if (revertTransactions) {
-            for (UUID transactionId : transactionIds) {
-                txnBehavierService.delete(userId, transactionId);
-            }
-        }
+    public void delete(UUID userId, UUID goalId, boolean revertTransactions, boolean deleteWallet) {
+        SavingsGoal goal = savingsGoalRepository.findByIdAndUserId(goalId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
+        deleteInternal(goal, revertTransactions, deleteWallet);
     }
 
-    // ---------------------------------------------------------------------
-    // Đọc
-    // ---------------------------------------------------------------------
-
-    // GOAL-02, api/09 mục B1.
+    @Override
     @Transactional(readOnly = true)
     public List<GoalListItemResponse> list(UUID userId, String status) {
         List<SavingsGoal> goals = savingsGoalRepository.findAllForUser(userId, status);
-        List<GoalListItemResponse> result = new ArrayList<>();
-        for (SavingsGoal goal : goals) {
-            result.add(toListItem(goal, loadWalletOrNull(userId, goal.getWalletId())));
+        if (goals.isEmpty()) {
+            return Collections.emptyList();
         }
-        return result;
+
+        Set<UUID> walletIds = goals.stream()
+                .map(SavingsGoal::getWalletId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, WalletSumaryRes> walletMap = walletIds.isEmpty() ? Collections.emptyMap() : walletService.findSummaryMapByIds(walletIds);
+
+        return goals.stream()
+                .map(g -> toListItem(g, g.getWalletId() != null ? walletMap.get(g.getWalletId()) : null))
+                .toList();
     }
 
-    // api/09 mục B1 — chi tiết kèm lịch sử nạp.
+    @Override
     @Transactional(readOnly = true)
     public GoalDetailResponse detail(UUID userId, UUID goalId) {
-        SavingsGoal goal = loadOwnedGoal(userId, goalId);
-        List<GoalDetailResponse.ContributionHistoryItem> history =
-                goalContributionRepository.findByGoalIdOrderByContributedDateDesc(goalId).stream()
+        SavingsGoal goal = savingsGoalRepository.findByIdAndUserId(goalId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
+        WalletSumaryRes wallet = loadWalletOrNull(userId, goal.getWalletId());
+        GoalListItemResponse item = toListItem(goal, wallet);
+        List<GoalDetailResponse.ContributionHistoryItem> contributions =
+                goalContributionRepository.findByGoalIdAndIsDeletedFalseOrderByContributedDateDesc(goalId).stream()
                         .map(goalMapper::toHistoryItem)
                         .toList();
-        return goalMapper.toDetailResponse(toListItem(goal, loadWalletOrNull(userId, goal.getWalletId())), history);
+        return goalMapper.toDetailResponse(item, contributions);
     }
 
     // ---------------------------------------------------------------------
-    // Helper
+    // Phân hệ Quản trị (Admin)
     // ---------------------------------------------------------------------
 
-    // Quyền nằm trong SQL; không có quyền thì 404, không phải 403 (T-04-12).
-    private SavingsGoal loadOwnedGoal(UUID userId, UUID goalId) {
-        return savingsGoalRepository
-                .findByIdAndUserId(goalId, userId)
+    @Override
+    @Transactional(readOnly = true)
+    public Page<GoalListItemResponse> adminList(GoalFilterRequest filter, Pageable pageable) {
+        UUID filterUserId = filter != null ? filter.userId() : null;
+        String filterStatus = filter != null ? filter.status() : null;
+        String filterName = filter != null ? filter.name() : null;
+
+        Page<SavingsGoal> page = savingsGoalRepository.findAllForAdmin(filterUserId, filterStatus, filterName, pageable);
+
+        Set<UUID> walletIds = page.getContent().stream()
+                .map(SavingsGoal::getWalletId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, WalletSumaryRes> walletMap = walletIds.isEmpty() ? Collections.emptyMap() : walletService.findSummaryMapByIds(walletIds);
+
+        return page.map(goal -> {
+            WalletSumaryRes wallet = goal.getWalletId() != null ? walletMap.get(goal.getWalletId()) : null;
+            return toListItem(goal, wallet);
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GoalDetailResponse adminDetail(UUID goalId) {
+        SavingsGoal goal = savingsGoalRepository.findByIdAndIsDeletedFalse(goalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
+        WalletSumaryRes wallet = loadWalletOrNull(goal.getUserId(), goal.getWalletId());
+        GoalListItemResponse item = toListItem(goal, wallet);
+        List<GoalDetailResponse.ContributionHistoryItem> contributions =
+                goalContributionRepository.findByGoalIdAndIsDeletedFalseOrderByContributedDateDesc(goalId).stream()
+                        .map(goalMapper::toHistoryItem)
+                        .toList();
+        return goalMapper.toDetailResponse(item, contributions);
+    }
+
+    @Override
+    @Transactional
+    public void adminDelete(UUID goalId, boolean revertTransactions, boolean deleteWallet) {
+        SavingsGoal goal = savingsGoalRepository.findByIdAndIsDeletedFalse(goalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mục tiêu."));
+        deleteInternal(goal, revertTransactions, deleteWallet);
+    }
+
+    // ---------------------------------------------------------------------
+    // PRIVATE MOTHOD
+    // ---------------------------------------------------------------------
+
+    private void deleteInternal(SavingsGoal goal, boolean revertTransactions, boolean deleteWallet) {
+        List<GoalContribution> contributions = goalContributionRepository.findByGoalIdAndIsDeletedFalse(goal.getId());
+        for (GoalContribution c : contributions) {
+            if (revertTransactions) {
+                if (c.getTransactionId() != null) {
+                    txnBehavierService.softDelete(c.getTransactionId(), false);
+                }
+                if (c.getTargetTransactionId() != null) {
+                    txnBehavierService.softDelete(c.getTargetTransactionId(), false);
+                }
+            }
+            c.setIsDeleted(true);
+            goalContributionRepository.save(c);
+        }
+
+        goal.setIsDeleted(true);
+        savingsGoalRepository.save(goal);
+
+        if (deleteWallet && goal.getWalletId() != null) {
+            try {
+                walletBehavierService.softDelete(goal.getWalletId(), false);
+            } catch (Exception e) {
+                log.warn("Không thể xóa ví liên kết {} khi xóa mục tiêu {}: {}", goal.getWalletId(), goal.getId(), e.getMessage());
+            }
+        }
     }
 
     private WalletSumaryRes loadWalletOrNull(UUID userId, UUID walletId) {
-        return walletService.findRefForUser(userId, walletId);
+        if (walletId == null) {
+            return null;
+        }
+        return walletService.findSumaryByIdAndUser(walletId, userId, false).orElse(null);
     }
 
-    /**
-     * Dựng response từ bản ghi mục tiêu.
-     *
-     * <p>{@code savedAmount} LUÔN đọc lại từ CSDL bằng query scalar thay vì lấy từ entity: entity
-     * có thể là instance cũ trong Hibernate identity map từ trước lúc trigger chạy.
-     */
     private GoalListItemResponse toListItem(SavingsGoal goal, WalletSumaryRes wallet) {
-        long savedAmount = savingsGoalRepository
-                .findSavedAmountNative(goal.getId())
-                .orElse(0L);
-        String status = savingsGoalRepository.findStatusNative(goal.getId()).orElse(goal.getStatus());
-        IconRefResponse iconRef = goal.getIconId() != null ? categoryService.findIconRef(goal.getIconId()) : null;
-        int contributionCount = goalContributionRepository.countByGoalId(goal.getId());
+        long savedAmount = savingsGoalRepository.findSavedAmountNative(goal.getId())
+                .orElse(goal.getSavedAmount() != null ? goal.getSavedAmount() : 0L);
+        String status = savingsGoalRepository.findStatusNative(goal.getId())
+                .orElse(goal.getStatus() != null ? goal.getStatus() : STATUS_IN_PROGRESS);
 
+        IconRes iconRef = null;
+        if (goal.getIconId() != null) {
+            iconRef = iconRepository.findByIdAndIsDeletedFalse(goal.getIconId())
+                    .map(iconMapper::toIconResponse)
+                    .orElse(null);
+        }
+
+        int contributionCount = goalContributionRepository.countByGoalIdAndIsDeletedFalse(goal.getId());
         return goalMapper.toListItem(goal, wallet, savedAmount, status, iconRef, contributionCount);
     }
 }

@@ -1,17 +1,33 @@
 package com.datn.financeapp.integrationTest.debt.controller;
 
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,17 +47,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.IOException;
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
  * Test tích hợp vòng đời khoản nợ (DEBT-01, DEBT-05, DEBT-06) — tạo khoản nợ sinh giao dịch thật,
  * write-off không sinh giao dịch, xoá khoản nợ hoàn tác TOÀN BỘ giao dịch liên quan.
@@ -54,7 +59,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
-@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class DebtLifecycleIntegrationTest {
 
     @Container
@@ -73,7 +77,7 @@ class DebtLifecycleIntegrationTest {
         RateLimitFilter rateLimitFilter() {
             return new RateLimitFilter(null) {
                 @Override
-                protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+                protected void doFilterInternal(@NonNull HttpServletRequest req, @NonNull HttpServletResponse res, @NonNull FilterChain chain)
                         throws ServletException, IOException {
                     chain.doFilter(req, res);
                 }
@@ -155,7 +159,7 @@ class DebtLifecycleIntegrationTest {
         return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
     }
 
-    private Map<?, ?> addPayment(String token, String debtId, Map<String, Object> body) throws Exception {
+    private void addPayment(String token, String debtId, Map<String, Object> body) throws Exception {
         String response = mockMvc.perform(post("/debts/" + debtId + "/payments")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -164,12 +168,11 @@ class DebtLifecycleIntegrationTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
+        objectMapper.readValue(response, Map.class).get("data");
     }
 
     private long walletBalance(String walletId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT current_balance FROM wallets WHERE id = ?", Long.class, UUID.fromString(walletId));
+        return jdbcTemplate.queryForObject("SELECT current_balance FROM wallets WHERE id = ?", Long.class, UUID.fromString(walletId));
     }
 
     private Map<String, Object> lendingDebtBody(String walletId, long amount) {

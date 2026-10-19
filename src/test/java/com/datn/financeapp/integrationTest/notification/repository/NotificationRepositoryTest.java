@@ -1,5 +1,10 @@
 package com.datn.financeapp.integrationTest.notification.repository;
 
+import com.datn.financeapp.module.notification.repository.*;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.notification.entity.Notification;
 import com.datn.financeapp.module.notification.enums.NotiType;
@@ -8,6 +13,13 @@ import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.repository.UserRepository;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,14 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Transactional
 @Testcontainers
@@ -73,9 +77,7 @@ class NotificationRepositoryTest {
                 .lastName("Owner")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
-                .build());
+                                                .build());
         userId = user.getId();
 
         User otherUser = userRepository.saveAndFlush(User.builder()
@@ -86,9 +88,7 @@ class NotificationRepositoryTest {
                 .lastName("User")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
-                .build());
+                                                .build());
         otherUserId = otherUser.getId();
     }
 
@@ -100,8 +100,7 @@ class NotificationRepositoryTest {
                 .title(title)
                 .content(content)
                 .isRead(read)
-                .createdAt(Instant.now())
-                .build();
+                                .build();
         return notificationRepository.saveAndFlush(notif);
     }
 
@@ -128,7 +127,7 @@ class NotificationRepositoryTest {
         long unreadCount = notificationRepository.countForUser(userId, false);
         assertThat(unreadCount).isEqualTo(2);
 
-        List<Notification> unreadList = notificationRepository.findAllForUser(userId, false, 10, 0);
+        List<Notification> unreadList = notificationRepository.findAllByUserIdAndIsRead(userId, false, org.springframework.data.domain.PageRequest.of(0, 10)).getContent();
         assertThat(unreadList).hasSize(2);
     }
 
@@ -174,8 +173,7 @@ class NotificationRepositoryTest {
                 .referenceId(UUID.randomUUID())
                 .data(Map.of("action", "CONFIRM_TRANSACTION", "group_id", groupId.toString()))
                 .isRead(false)
-                .createdAt(Instant.now())
-                .build());
+                                .build());
         Notification withoutData = createNotification(userId, NotiType.BUDGET_ALERT, "Msg", "No data", false);
 
         entityManager.clear();

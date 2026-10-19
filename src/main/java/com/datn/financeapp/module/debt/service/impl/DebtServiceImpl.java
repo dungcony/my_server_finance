@@ -1,54 +1,49 @@
 package com.datn.financeapp.module.debt.service.impl;
 
-import com.datn.financeapp.module.debt.service.DebtService;
-
-import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.module.debt.dto.request.CreateDebtRequest;
-import com.datn.financeapp.module.debt.dto.response.CreateDebtResponse;
 import com.datn.financeapp.module.debt.dto.request.CreatePaymentRequest;
-import com.datn.financeapp.module.debt.dto.response.CreatePaymentResponse;
-import com.datn.financeapp.module.debt.dto.response.DebtDetailResponse;
-import com.datn.financeapp.module.debt.dto.response.DebtListItemResponse;
-import com.datn.financeapp.module.debt.dto.response.DebtSummaryResponse;
 import com.datn.financeapp.module.debt.dto.request.UpdateDebtRequest;
 import com.datn.financeapp.module.debt.dto.request.WriteOffRequest;
+import com.datn.financeapp.module.debt.dto.response.*;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.entity.DebtPayment;
 import com.datn.financeapp.module.debt.mapper.DebtMapper;
 import com.datn.financeapp.module.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.module.debt.repository.DebtRepository;
+import com.datn.financeapp.module.debt.service.DebtService;
+import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
+import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
+import com.datn.financeapp.module.wallet.entity.Wallet;
+import com.datn.financeapp.module.wallet.repository.WalletRepository;
 import com.datn.financeapp.module.wallet.service.WalletService;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
+
 /**
- * Triển khai nghiệp vụ quản lý sổ nợ và đợt thanh toán (DEBT-01..07).
- * <p>
- * <b>Nguyên tắc cốt lõi:</b>
- * Mọi giao dịch phát sinh từ sổ nợ đi qua {@link TransactionWriter}; số tiền đã trả ({@code paid_amount})
- * và trạng thái ({@code status}) được đồng bộ tự động qua trigger DB {@code trg_debt_payments_sync}.
- * </p>
+ * Triển khai nghiệp vụ quản lý sổ nợ cá nhân và các đợt thanh toán (Debt & DebtPayment).
  *
- * @see DebtService
- * @see DebtRepository
- * @see DebtPaymentRepository
+ * <p><b>Nguyên tắc kiến trúc:</b>
+ * <ul>
+ *   <li><b>Đồng bộ dòng tiền:</b> Khi tạo nợ hoặc thanh toán nợ, tự động sinh Transaction tương ứng qua {@link TxnBehavierService}.</li>
+ *   <li><b>Trigger DB sở hữu:</b> Số tiền đã trả ({@code paid_amount}) và trạng thái ({@code status})
+ *       được tính toán và cập nhật tự động bằng database trigger {@code trg_debt_payments_sync}.</li>
+ *   <li><b>Toàn vẹn xóa:</b> Khi hủy lần trả nợ hoặc xóa khoản nợ, các giao dịch liên quan được xóa mềm
+ *       để hoàn tác số dư ví.</li>
+ * </ul>
  */
 @Service
 @RequiredArgsConstructor
@@ -56,35 +51,42 @@ import org.springframework.transaction.annotation.Transactional;
 public class DebtServiceImpl implements DebtService {
 
     private static final String TYPE_LENDING = "lending";
+    private static final String TYPE_BORROWING = "borrowing";
 
     private static final String STATUS_OUTSTANDING = "outstanding";
     private static final String STATUS_SETTLED = "settled";
     private static final String STATUS_WRITTEN_OFF = "written_off";
 
-    // api/08 mục 2 — due_soon lấy các khoản còn dưới 7 ngày là tới hạn hoặc đã quá hạn.
+    // Số ngày coi là "sắp đến hạn" để cảnh báo
     private static final int DUE_SOON_DAYS = 7;
+
+    // Mã danh mục hệ thống cố định
+    private static final String CAT_CHO_VAY = "cho_vay";
+    private static final String CAT_DI_VAY = "di_vay";
+    private static final String CAT_THU_NO = "thu_no";
+    private static final String CAT_TRA_NO = "tra_no";
 
     private final DebtRepository debtRepository;
     private final DebtPaymentRepository debtPaymentRepository;
-    private final CategoryService categoryService;
+    private final WalletRepository walletRepository;
     private final WalletService walletService;
-    private final TransactionWriter transactionWriter;
     private final TxnBehavierService txnBehavierService;
     private final DebtReminderWorker debtReminderWorker;
     private final DebtMapper debtMapper;
 
     // ---------------------------------------------------------------------
-    // Ghi
+    // Tạo và cập nhật nợ
     // ---------------------------------------------------------------------
 
     /**
-     * DEBT-01, api/08 mục 4. Trong MỘT transaction: sinh giao dịch gốc qua {@link TransactionWriter}
-     * rồi tạo bản ghi nợ trỏ vào giao dịch đó.
-     *
-     * <p>Thứ tự bắt buộc là giao dịch TRƯỚC, khoản nợ SAU — cột {@code origin_transaction_id} là
-     * NOT NULL có khoá ngoại ON DELETE RESTRICT, không thể chèn khoản nợ khi chưa có giao dịch để
-     * trỏ tới.
+     * Tạo mới một khoản nợ (Cho vay hoặc Đi vay).
+     * <ol>
+     *   <li>Kiểm tra tính hợp lệ của số tiền và ngày hẹn trả.</li>
+     *   <li>Tự động sinh giao dịch tài chính (Chi cho vay hoặc Thu đi vay) gắn với ví tiền.</li>
+     *   <li>Lưu bản ghi nợ liên kết với ID của giao dịch vừa tạo.</li>
+     * </ol>
      */
+    @Override
     @Transactional
     public CreateDebtResponse create(UUID userId, CreateDebtRequest req) {
         if (req.principalAmount() == null || req.principalAmount() <= 0) {
@@ -96,35 +98,27 @@ public class DebtServiceImpl implements DebtService {
             throw new BusinessException(ErrorCode.DEBT_DUE_DATE_INVALID);
         }
 
-        WalletSumaryRes wallet = walletService.findRefForUser(userId, req.walletId());
-        if (wallet == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
-        }
+        WalletSumaryRes wallet = walletService.findSumaryByIdAndUser(req.walletId(), userId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví hợp lệ."));
 
-        // lending = đưa tiền đi -> giao dịch CHI danh mục "Cho vay".
-        // borrowing = nhận tiền về -> giao dịch THU danh mục "Đi vay".
+        // lending = cho vay -> giao dịch CHI danh mục "cho_vay"
+        // borrowing = đi vay -> giao dịch THU danh mục "di_vay"
         boolean lending = TYPE_LENDING.equals(req.type());
-        String txnType = lending ? "expense" : "income";
-        UUID categoryId = systemCategoryId(lending ? "Cho vay" : "Đi vay", txnType);
+        TxnType txnType = lending ? TxnType.EXPENSE : TxnType.INCOME;
+        String categoryCode = lending ? CAT_CHO_VAY : CAT_DI_VAY;
 
-        TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
-                null,
-                userId,
-                wallet.id(),
-                null,
-                categoryId,
+        Instant occurredAt = issuedDate.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
+
+        // Tự động sinh giao dịch liên kết vào ví
+        TxnDetailResponse txnRes = txnBehavierService.create(userId, new TxnCreateReq(
                 txnType,
                 req.principalAmount(),
-                issuedDate,
-                req.note(),
+                wallet.id(),
+                categoryCode,
+                occurredAt,
                 req.counterpartyName(),
-                // ck_txn_source chỉ cho phép manual|text|ocr|auto|adjustment — KHÔNG có giá trị
-                // riêng cho sổ nợ. Giao dịch này vẫn là "manual" vì người dùng chủ động tạo qua form.
-                "manual",
-                true,
-                null,
-                null,
-                null));
+                req.note()
+        ));
 
         Debt debt = Debt.builder()
                 .id(UUID.randomUUID())
@@ -133,32 +127,37 @@ public class DebtServiceImpl implements DebtService {
                 .type(req.type())
                 .counterpartyName(req.counterpartyName())
                 .principalAmount(req.principalAmount())
-                // Đây là giá trị KHỞI TẠO của bản ghi mới, không phải ghi đè cột do trigger sở
-                // hữu: chưa có bản ghi debt_payments nào nên trigger chưa từng chạy cho khoản này.
                 .paidAmount(0L)
                 .issuedDate(issuedDate)
                 .dueDate(req.dueDate())
                 .note(req.note())
                 .status(STATUS_OUTSTANDING)
-                .originTransactionId(result.transactionId())
-                .createdAt(Instant.now())
+                .originTransactionId(txnRes.id())
                 .build();
         debtRepository.save(debt);
 
+        Long walletNewBalance = walletRepository.findById(wallet.id())
+                .map(Wallet::getBalance)
+                .orElse(0L);
+
         return debtMapper.toCreateResponse(
                 debtMapper.toListItem(debt, wallet, 0),
-                result.transactionId(),
-                txnType,
+                txnRes.id(),
+                txnType.name(),
                 req.principalAmount(),
                 wallet.id(),
-                result.walletNewBalance());
+                walletNewBalance);
     }
 
     /**
-     * DEBT-03, api/08 mục 5. Chặn D-47 chạy TRƯỚC khi chạm tới trigger, để trả lỗi 400 sạch sẽ với
-     * thông điệp gợi ý cách xử lý — thay vì để trigger RAISE EXCEPTION bắn lên thành lỗi CSDL thô.
-     * Trigger vẫn giữ vai trò lưới an toàn ở tầng dưới (hai tầng phòng thủ).
+     * Ghi nhận một lần thanh toán nợ (Trả nợ / Thu nợ).
+     * <ol>
+     *   <li>Kiểm tra trạng thái khoản nợ và số tiền trả không được vượt quá số dư nợ còn lại.</li>
+     *   <li>Sinh giao dịch tài chính (Thu nếu là thu nợ, Chi nếu là trả nợ) vào ví chỉ định.</li>
+     *   <li>Lưu bản ghi {@code debt_payments}. Trigger DB sẽ tự động cập nhật lại {@code paid_amount} và {@code status}.</li>
+     * </ol>
      */
+    @Override
     @Transactional
     public CreatePaymentResponse addPayment(UUID userId, UUID debtId, CreatePaymentRequest req) {
         Debt debt = loadOwnedDebt(userId, debtId);
@@ -174,108 +173,128 @@ public class DebtServiceImpl implements DebtService {
         if (req.amount() > remaining) {
             throw new BusinessException(ErrorCode.DEBT_PAYMENT_EXCEEDS_REMAINING, String.format(
                     Locale.GERMANY,
-                    "%s chỉ còn nợ %,d đ. Ghi trả %,d đ, phần dư ghi thành khoản thu riêng.",
+                    "%s chỉ còn nợ %,d đ. Ghi trả %,d đ, phần dư vui lòng ghi thành khoản riêng.",
                     debt.getCounterpartyName(), remaining, remaining));
         }
 
         UUID walletId = req.walletId() != null ? req.walletId() : debt.getWalletId();
-        WalletSumaryRes wallet = walletService.findRefForUser(userId, walletId);
-        if (wallet == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví.");
-        }
+        WalletSumaryRes wallet = walletService.findSumaryByIdAndUser(walletId, userId, false)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ví hợp lệ."));
 
-        // Khoản lending ĐƯỢC trả -> tiền về ví, giao dịch THU danh mục "Thu nợ".
-        // Khoản borrowing MÌNH trả -> tiền rời ví, giao dịch CHI danh mục "Trả nợ".
+        // Khoản lending ĐƯỢC trả -> tiền về ví, giao dịch THU danh mục "thu_no".
+        // Khoản borrowing MÌNH trả -> tiền rời ví, giao dịch CHI danh mục "tra_no".
         boolean lending = TYPE_LENDING.equals(debt.getType());
-        String txnType = lending ? "income" : "expense";
-        UUID categoryId = systemCategoryId(lending ? "Thu nợ" : "Trả nợ", txnType);
+        TxnType txnType = lending ? TxnType.INCOME : TxnType.EXPENSE;
+        String categoryCode = lending ? CAT_THU_NO : CAT_TRA_NO;
 
         LocalDate paidDate = req.paidDate() != null ? req.paidDate() : LocalDate.now();
+        Instant occurredAt = paidDate.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
 
-        TransactionWriter.WriteResult result = transactionWriter.write(new TransactionWriteCommand(
-                null,
-                userId,
-                wallet.id(),
-                null,
-                categoryId,
+        TxnDetailResponse txnRes = txnBehavierService.create(userId, new TxnCreateReq(
                 txnType,
                 req.amount(),
-                paidDate,
-                req.note(),
+                wallet.id(),
+                categoryCode,
+                occurredAt,
                 debt.getCounterpartyName(),
-                "manual",
-                true,
-                null,
-                null,
-                null));
+                req.note()
+        ));
 
         DebtPayment payment = DebtPayment.builder()
                 .id(UUID.randomUUID())
                 .debtId(debtId)
-                .transactionId(result.transactionId())
+                .transactionId(txnRes.id())
                 .amount(req.amount())
                 .paidDate(paidDate)
                 .note(req.note())
-                .createdAt(Instant.now())
                 .build();
         debtPaymentRepository.saveAndFlush(payment);
 
-        // BẮT BUỘC đọc lại: trigger vừa UPDATE bảng debts ở tầng CSDL trong cùng transaction,
-        // nhưng instance debt phía trên vẫn mang paid_amount/status CŨ trong Hibernate identity map.
-        // Đọc bằng query trả SCALAR — trả entity sẽ bị identity map trả lại instance cũ, xem
-        // Javadoc DebtRepository.findPaidAmountNative.
-        long refreshedPaidAmount = debtRepository.findPaidAmountNative(debtId).orElseThrow();
-        String refreshedStatus = debtRepository.findStatusNative(debtId).orElseThrow();
+        // Đọc lại giá trị mới nhất do trigger cập nhật (trả scalar để không dính cache)
+        long refreshedPaidAmount = debtRepository.findPaidAmountNative(debtId).orElse(debt.getPaidAmount() + req.amount());
+        String refreshedStatus = debtRepository.findStatusNative(debtId).orElse(STATUS_OUTSTANDING);
+
+        Long walletNewBalance = walletRepository.findById(wallet.id())
+                .map(Wallet::getBalance)
+                .orElse(0L);
 
         return debtMapper.toPaymentResponse(
                 payment,
                 refreshedPaidAmount,
                 debt.getPrincipalAmount() - refreshedPaidAmount,
                 refreshedStatus,
-                result.transactionId(),
-                txnType,
+                txnRes.id(),
+                txnType.name(),
                 req.amount(),
                 wallet.id(),
-                result.walletNewBalance());
+                walletNewBalance);
     }
 
     /**
-     * DEBT-04, api/08 mục 6 (D-46) — THỨ TỰ BẮT BUỘC, không đảo:
-     *
+     * Hủy một lần thanh toán nợ:
      * <ol>
-     *   <li>Xoá bản ghi trả nợ, trigger tự trừ lại paid_amount và tự MỞ LẠI settled -&gt; outstanding
-     *   <li>Xoá mềm giao dịch qua {@link TxnBehavierService#delete} để hoàn tác số dư ví đúng luồng
-     *       3 bước
+     *   <li>Xóa bản ghi thanh toán nợ trong {@code debt_payments} (Trigger tự trừ lại {@code paid_amount}).</li>
+     *   <li>Xóa mềm giao dịch tài chính tương ứng để hoàn tác số dư ví.</li>
      * </ol>
-     *
-     * <p>Xoá bản ghi trả nợ TRƯỚC còn có tác dụng phụ cần thiết: {@code TransactionService.delete}
-     * chặn 409 với giao dịch còn gắn sổ nợ (D-32). Vì bản ghi đã biến mất ở bước 1, kiểm tra đó
-     * trả false và xoá mềm chạy bình thường.
      */
+    @Override
     @Transactional
     public void cancelPayment(UUID userId, UUID debtId, UUID paymentId) {
         loadOwnedDebt(userId, debtId);
 
         DebtPayment payment = debtPaymentRepository
-                .findByIdAndDebtId(paymentId, debtId)
+                .findByIdAndDebtIdAndIsDeletedFalse(paymentId, debtId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lần trả nợ."));
 
         UUID transactionId = payment.getTransactionId();
 
-        // Bước 1 — flush ngay để trigger chạy trước khi ta đụng tới giao dịch.
+        // Bước 1: Xóa bản ghi thanh toán nợ
         debtPaymentRepository.delete(payment);
         debtPaymentRepository.flush();
 
-        // Bước 2 — hoàn tác ví qua đúng luồng 3 bước có sẵn, KHÔNG tự viết lại.
-        txnBehavierService.delete(userId, transactionId);
+        // Bước 2: Hoàn tác số dư ví qua việc xóa mềm giao dịch
+        txnBehavierService.softDelete(transactionId, false);
     }
 
     /**
-     * DEBT-05, api/08 mục 7. NGOẠI LỆ DUY NHẤT được ghi thẳng cột status — trigger cố ý giữ nguyên
-     * trạng thái written_off nên giá trị này không bị ghi đè về sau.
-     *
-     * <p>KHÔNG sinh giao dịch mới: tiền đã rời ví từ lúc cho vay, ghi thêm sẽ trừ hai lần.
+     * Xóa khoản nợ: Xóa bản ghi nợ và toàn bộ các giao dịch liên quan (gốc và các lần trả nợ).
      */
+    @Override
+    @Transactional
+    public void delete(UUID userId, UUID debtId) {
+        Debt debt = loadOwnedDebt(userId, debtId);
+
+        List<DebtPayment> payments = debtPaymentRepository.findByDebtIdAndIsDeletedFalse(debtId);
+        List<UUID> paymentTransactionIds =
+                payments.stream().map(DebtPayment::getTransactionId).toList();
+        UUID originTransactionId = debt.getOriginTransactionId();
+
+        // Xóa bản ghi nợ
+        debtRepository.delete(debt);
+        debtRepository.flush();
+
+        // Xóa mềm các giao dịch liên kết để hoàn tác số dư ví
+        for (UUID transactionId : paymentTransactionIds) {
+            try {
+                txnBehavierService.softDelete(transactionId, false);
+            } catch (Exception e) {
+                log.warn("Không thể xóa giao dịch trả nợ {}", transactionId, e);
+            }
+        }
+        if (originTransactionId != null) {
+            try {
+                txnBehavierService.softDelete(originTransactionId, false);
+            } catch (Exception e) {
+                log.warn("Không thể xóa giao dịch nợ gốc {}", originTransactionId, e);
+            }
+        }
+    }
+
+    /**
+     * Xóa nợ khó đòi (Write-off): Khoản nợ được đánh dấu là không đòi được nữa.
+     * Không hoàn tác tiền trong ví vì tiền đã thực sự rời khỏi ví từ trước.
+     */
+    @Override
     @Transactional
     public DebtListItemResponse writeOff(UUID userId, UUID debtId, WriteOffRequest req) {
         Debt debt = loadOwnedDebt(userId, debtId);
@@ -286,7 +305,6 @@ public class DebtServiceImpl implements DebtService {
 
         debt.setStatus(STATUS_WRITTEN_OFF);
         if (req != null && req.reason() != null && !req.reason().isBlank()) {
-            // Schema V4 không có cột riêng cho lý do — nối vào note để không mất thông tin.
             String note = debt.getNote() == null || debt.getNote().isBlank()
                     ? req.reason()
                     : debt.getNote() + "\n" + req.reason();
@@ -294,10 +312,14 @@ public class DebtServiceImpl implements DebtService {
         }
         debtRepository.save(debt);
 
-        return debtMapper.toListItem(debt, loadWalletOrNull(userId, debt.getWalletId()), countPayments(debtId));
+        WalletSumaryRes wallet = loadWalletOrNull(userId, debt.getWalletId());
+        return debtMapper.toListItem(debt, wallet, countPayments(debtId));
     }
 
-    // DEBT-02, api/08 mục 8 — chỉ ba trường counterparty_name, due_date, note sửa được.
+    /**
+     * Cập nhật thông tin khoản nợ (tên đối tác, hạn trả, ghi chú).
+     */
+    @Override
     @Transactional
     public DebtListItemResponse update(UUID userId, UUID debtId, UpdateDebtRequest req) {
         Debt debt = loadOwnedDebt(userId, debtId);
@@ -316,42 +338,18 @@ public class DebtServiceImpl implements DebtService {
         }
         debtRepository.save(debt);
 
-        return debtMapper.toListItem(debt, loadWalletOrNull(userId, debt.getWalletId()), countPayments(debtId));
+        WalletSumaryRes wallet = loadWalletOrNull(userId, debt.getWalletId());
+        return debtMapper.toListItem(debt, wallet, countPayments(debtId));
     }
+
+    // ---------------------------------------------------------------------
+    // Truy vấn dữ liệu
+    // ---------------------------------------------------------------------
 
     /**
-     * DEBT-06, api/08 mục 8 (D-48). Xoá CỨNG bản ghi nợ (schema V4 không có cột is_deleted), hoàn
-     * tác MỀM toàn bộ giao dịch liên quan — giao dịch gốc VÀ mọi giao dịch trả nợ.
-     *
-     * <p>Thứ tự quan trọng: đọc danh sách lần trả TRƯỚC khi xoá bản ghi nợ, vì ON DELETE CASCADE
-     * sẽ cuốn theo chúng. Xoá bản ghi nợ trước khi gọi {@code transactionService.delete} cũng là
-     * điều kiện để kiểm tra D-32 không chặn 409.
+     * Lấy danh sách các khoản nợ của người dùng theo bộ lọc (type, status, isOverdue).
      */
-    @Transactional
-    public void delete(UUID userId, UUID debtId) {
-        Debt debt = loadOwnedDebt(userId, debtId);
-
-        List<DebtPayment> payments = debtPaymentRepository.findByDebtId(debtId);
-        List<UUID> paymentTransactionIds =
-                payments.stream().map(p -> p.getTransactionId()).toList();
-        UUID originTransactionId = debt.getOriginTransactionId();
-
-        // Xoá CỨNG bản ghi nợ -> cascade dọn debt_payments. Flush ngay để không còn bản ghi nào
-        // trỏ tới giao dịch khi ta xoá mềm chúng phía dưới.
-        debtRepository.delete(debt);
-        debtRepository.flush();
-
-        for (UUID transactionId : paymentTransactionIds) {
-            txnBehavierService.delete(userId, transactionId);
-        }
-        txnBehavierService.delete(userId, originTransactionId);
-    }
-
-    // ---------------------------------------------------------------------
-    // Đọc
-    // ---------------------------------------------------------------------
-
-    // api/08 mục 1. isOverdue lọc ở Java vì là số dẫn xuất từ due_date so với hôm nay.
+    @Override
     @Transactional(readOnly = true)
     public List<DebtListItemResponse> list(UUID userId, String type, String status, Boolean isOverdue) {
         List<Debt> debts = debtRepository.findAllForUser(userId, type, status);
@@ -368,28 +366,39 @@ public class DebtServiceImpl implements DebtService {
         return result;
     }
 
-    // api/08 mục 3 — chi tiết kèm lịch sử trả và giao dịch gốc.
+    /**
+     * Lấy chi tiết một khoản nợ kèm lịch sử các đợt thanh toán và giao dịch gốc.
+     */
+    @Override
     @Transactional(readOnly = true)
     public DebtDetailResponse detail(UUID userId, UUID debtId) {
         Debt debt = loadOwnedDebt(userId, debtId);
 
-        List<DebtPayment> payments = debtPaymentRepository.findByDebtIdOrderByPaidDateDesc(debtId);
+        List<DebtPayment> payments = debtPaymentRepository.findByDebtIdAndIsDeletedFalseOrderByPaidDateDesc(debtId);
         List<DebtDetailResponse.PaymentHistoryItem> history = payments.stream()
                 .map(debtMapper::toHistoryItem)
                 .toList();
 
-        TransactionRefResponse originRef = txnBehavierService.findRefById(debt.getOriginTransactionId());
+        TxnDetailResponse originTxn = null;
+        if (debt.getOriginTransactionId() != null) {
+            try {
+                originTxn = txnBehavierService.get(debt.getOriginTransactionId(), false);
+            } catch (Exception e) {
+                log.warn("Không tìm thấy giao dịch gốc {}", debt.getOriginTransactionId());
+            }
+        }
 
+        WalletSumaryRes wallet = loadWalletOrNull(userId, debt.getWalletId());
         return debtMapper.toDetailResponse(
-                debtMapper.toListItem(debt, loadWalletOrNull(userId, debt.getWalletId()), payments.size()),
+                debtMapper.toListItem(debt, wallet, payments.size()),
                 history,
-                originRef);
+                originTxn);
     }
 
     /**
-     * api/08 mục 2. Chỉ tính trên khoản outstanding — khoản đã trả xong hoặc đã xoá nợ không còn là
-     * tiền sẽ về hay sẽ đi.
+     * Lấy báo cáo tổng quan sổ nợ (Tổng phải thu, Tổng phải trả, Quá hạn, Sắp đến hạn).
      */
+    @Override
     @Transactional(readOnly = true)
     public DebtSummaryResponse summary(UUID userId) {
         List<Debt> debts = debtRepository.findAllForUser(userId, null, STATUS_OUTSTANDING);
@@ -439,7 +448,7 @@ public class DebtServiceImpl implements DebtService {
             }
         }
 
-        dueSoon.sort((a, b) -> a.dueDate().compareTo(b.dueDate()));
+        dueSoon.sort(Comparator.comparing(DebtSummaryResponse.DueSoonItem::dueDate));
 
         return new DebtSummaryResponse(
                 new DebtSummaryResponse.Side(
@@ -455,15 +464,13 @@ public class DebtServiceImpl implements DebtService {
     }
 
     // ---------------------------------------------------------------------
-    // Tác vụ nền JOB-04 (D-57, api/08 mục 9)
+    // Tác vụ nền nhắc nợ
     // ---------------------------------------------------------------------
 
     /**
-     * Quét TOÀN HỆ THỐNG khoản nợ còn outstanding có due_date, ghi nhắc nợ đúng ba mốc: còn 7
-     * ngày, còn 1 ngày, quá hạn nhắc lại mỗi 7 ngày. Mỗi khoản xử lý ĐỘC LẬP trong transaction
-     * riêng của {@link DebtReminderWorker#evaluateAndNotify} (cùng tinh thần D-51/D-52/T-04-20) —
-     * một khoản lỗi không chặn khoản khác.
+     * Quét toàn hệ thống các khoản nợ đang mở có hạn trả để gửi thông báo nhắc nhở.
      */
+    @Override
     public void sendDueReminders() {
         List<Debt> debts = debtRepository.findAllOutstandingWithDueDate();
         for (Debt debt : debts) {
@@ -476,40 +483,31 @@ public class DebtServiceImpl implements DebtService {
     }
 
     // ---------------------------------------------------------------------
-    // Helper
+    // Các phương thức trợ giúp (Helper)
     // ---------------------------------------------------------------------
 
-    // Quyền nằm trong SQL; không có quyền thì 404, không phải 403 (T-04-09).
     private Debt loadOwnedDebt(UUID userId, UUID debtId) {
         return debtRepository
                 .findByIdAndUserId(debtId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy khoản nợ."));
     }
 
-    private UUID systemCategoryId(String name, String type) {
-        return categoryService.findSystemCategoryId(name, type);
-    }
-
     private WalletSumaryRes loadWalletOrNull(UUID userId, UUID walletId) {
-        return walletService.findRefForUser(userId, walletId);
+        if (walletId == null) {
+            return null;
+        }
+        return walletService.findSumaryByIdAndUser(walletId, userId, false).orElse(null);
     }
 
     private Map<UUID, WalletSumaryRes> loadWallets(UUID userId, List<Debt> debts) {
-        Map<UUID, WalletSumaryRes> wallets = new HashMap<>();
-        debts.stream()
-                .map(d -> d.getWalletId())
+        Set<UUID> ids = debts.stream()
+                .map(Debt::getWalletId)
                 .filter(Objects::nonNull)
-                .distinct()
-                .forEach(id -> {
-                    WalletSumaryRes ref = walletService.findRefForUser(userId, id);
-                    if (ref != null) {
-                        wallets.put(id, ref);
-                    }
-                });
-        return wallets;
+                .collect(Collectors.toSet());
+        return walletService.findSummaryMapByIds(ids);
     }
 
     private int countPayments(UUID debtId) {
-        return debtPaymentRepository.findByDebtId(debtId).size();
+        return debtPaymentRepository.findByDebtIdAndIsDeletedFalse(debtId).size();
     }
 }

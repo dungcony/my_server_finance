@@ -3,9 +3,10 @@
     Script chay kiem thu (Unit Test & Integration Test) cho Finance AI Server.
 .DESCRIPTION
     - Tu dong nhan dien thu muc backend.
-    - Ho tro chay nhanh Unit Test khong can bat Docker.
+    - Ho tro chay nhanh Unit Test (trong thu muc unitTest/) khong can bat Docker.
+    - Ho tro chay Integration Test (trong thu muc integrationTest/) voi Testcontainers.
     - Nhan dien Docker ca tren Windows lan trong WSL.
-    - Ho tro chay tung file test cu the.
+    - Ho tro chay tung file test cu the hoac theo module.
 .PARAMETER Unit
     Chi chay Unit Test (nhanh, khong can Docker).
 .PARAMETER All
@@ -13,17 +14,19 @@
 .PARAMETER Integration
     Chi chay Integration Test.
 .PARAMETER Name
-    Ten class test muon chay (vi du: JwtServiceTest).
+    Ten class test muon chay (vi du: JwtServiceTest hoac WalletServiceImplTest).
 .PARAMETER Module
-    Ten module muon chay test (vi du: user, budget, wallet).
+    Ten module muon chay test (vi du: user, budget, wallet, transaction).
 .PARAMETER Force
     Bo qua moi kiem tra Docker va chay thang lenh test.
 .EXAMPLE
     .\test.ps1
     .\test.ps1 -Unit
+    .\test.ps1 -Integration
     .\test.ps1 -All
-    .\test.ps1 -Name JwtServiceTest
-    .\test.ps1 -Module user
+    .\test.ps1 -Name WalletCrudIntegrationTest
+    .\test.ps1 -Module wallet
+    .\test.ps1 -Module wallet -Unit
 #>
 
 param (
@@ -67,6 +70,9 @@ else
 }
 
 Set-Location $ServerDir
+
+$UnitTestBaseDir = Join-Path $ServerDir "src\test\java\com\datn\financeapp\unitTest"
+$IntegrationTestBaseDir = Join-Path $ServerDir "src\test\java\com\datn\financeapp\integrationTest"
 
 Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host "       FINANCE AI SERVER - TEST RUNNER                " -ForegroundColor Cyan
@@ -141,6 +147,21 @@ function Check-DockerStatus
     return @{ Found = $false; Type = "NONE" }
 }
 
+# Lay danh sach module tu ca unitTest va integrationTest
+function Get-AvailableModules
+{
+    $moduleNames = @()
+    if (Test-Path $UnitTestBaseDir)
+    {
+        $moduleNames += (Get-ChildItem -Path $UnitTestBaseDir -Directory | Select-Object -ExpandProperty Name)
+    }
+    if (Test-Path $IntegrationTestBaseDir)
+    {
+        $moduleNames += (Get-ChildItem -Path $IntegrationTestBaseDir -Directory | Select-Object -ExpandProperty Name)
+    }
+    return ($moduleNames | Select-Object -Unique | Sort-Object)
+}
+
 # Chon module tuong tac qua danh sach danh so
 function Select-ModuleInteractive
 {
@@ -149,17 +170,10 @@ function Select-ModuleInteractive
         [bool]$AllowManualInput = $false
     )
 
-    $modulesDir = Join-Path $ServerDir "src\test\java\com\datn\financeapp\module"
-    if (-not (Test-Path $modulesDir))
-    {
-        Write-Host "[ERROR] Khong tim thay thu muc: $modulesDir" -ForegroundColor Red
-        return $null
-    }
-
-    $modules = Get-ChildItem -Path $modulesDir -Directory | Sort-Object Name
+    $modules = Get-AvailableModules
     if ($modules.Count -eq 0)
     {
-        Write-Host "[CANH BAO] Khong tim thay module nao!" -ForegroundColor Yellow
+        Write-Host "[CANH BAO] Khong tim thay module nao trong unitTest hoac integrationTest!" -ForegroundColor Yellow
         return $null
     }
 
@@ -171,7 +185,7 @@ function Select-ModuleInteractive
     }
     for ($i = 0; $i -lt $modules.Count; $i++) {
         $idxStr = ($i + 1).ToString().PadLeft(2, ' ')
-        Write-Host "  $idxStr. $( $modules[$i].Name )" -ForegroundColor White
+        Write-Host "  $idxStr. $( $modules[$i] )" -ForegroundColor White
     }
     Write-Host ""
 
@@ -196,22 +210,22 @@ function Select-ModuleInteractive
             $selIndex = [int]$inputVal - 1
             if ($selIndex -ge 0 -and $selIndex -lt $modules.Count)
             {
-                return $modules[$selIndex].Name
+                return $modules[$selIndex]
             }
         }
 
         # Kiem tra neu nhap chuoi ten module truc tiep
-        $matched = $modules | Where-Object { $_.Name -ieq $inputVal }
+        $matched = $modules | Where-Object { $_ -ieq $inputVal }
         if ($matched)
         {
-            return $matched.Name
+            return $matched
         }
 
         Write-Host "[CANH BAO] Lua chon '$inputVal' khong hop le, vui long chon lai!" -ForegroundColor Yellow
     }
 }
 
-# Chon class test qua menu phan cap (Module -> Layer/Muc -> Test Class)
+# Chon class test qua menu phan cap (Module -> Unit/Integration -> Test Class)
 function Select-TestClassInteractive
 {
     $selectedModule = Select-ModuleInteractive -PromptTitle "Chon module chua test class" -AllowManualInput $true
@@ -225,66 +239,34 @@ function Select-TestClassInteractive
         return $customName.Trim()
     }
 
-    $modulePath = Join-Path $ServerDir "src\test\java\com\datn\financeapp\$selectedModule"
+    $candidateDirs = @()
+    $unitModDir = Join-Path $UnitTestBaseDir $selectedModule
+    $intModDir = Join-Path $IntegrationTestBaseDir $selectedModule
+    if (Test-Path $unitModDir) { $candidateDirs += $unitModDir }
+    if (Test-Path $intModDir) { $candidateDirs += $intModDir }
 
-    # Quet cac thu muc con (layer nhu service, controller, repository...)
-    $layers = Get-ChildItem -Path $modulePath -Directory | Where-Object {
-        (Get-ChildItem -Path $_.FullName -Recurse -Filter "*Test.java" -File).Count -gt 0
-    } | Sort-Object Name
-
-    $searchTargetDir = $modulePath
-    if ($layers.Count -gt 0)
+    # Quet danh sach class test trong ca unitTest va integrationTest cua module
+    $testFiles = @()
+    foreach ($dir in $candidateDirs)
     {
-        Write-Host ""
-        Write-Host "Chon muc trong module '$selectedModule':" -ForegroundColor Yellow
-        Write-Host "   0. [Xem tat ca cac class trong module $selectedModule]" -ForegroundColor Gray
-        for ($i = 0; $i -lt $layers.Count; $i++) {
-            $idxStr = ($i + 1).ToString().PadLeft(2, ' ')
-            Write-Host "  $idxStr. $( $layers[$i].Name )" -ForegroundColor White
-        }
-        Write-Host ""
-
-        while ($true)
-        {
-            $layerInput = (Read-Host "Nhap lua chon muc (0-$( $layers.Count )) [Mac dinh: 0]").Trim()
-            if ([string]::IsNullOrWhiteSpace($layerInput) -or $layerInput -eq "0")
-            {
-                $searchTargetDir = $modulePath
-                break
-            }
-            if ($layerInput -match '^\d+$')
-            {
-                $layerIdx = [int]$layerInput - 1
-                if ($layerIdx -ge 0 -and $layerIdx -lt $layers.Count)
-                {
-                    $searchTargetDir = $layers[$layerIdx].FullName
-                    break
-                }
-            }
-            $matchedLayer = $layers | Where-Object { $_.Name -ieq $layerInput }
-            if ($matchedLayer)
-            {
-                $searchTargetDir = $matchedLayer.FullName
-                break
-            }
-            Write-Host "[CANH BAO] Lua chon muc khong hop le, vui long nhap lai!" -ForegroundColor Yellow
-        }
+        $testFiles += Get-ChildItem -Path $dir -Recurse -Filter "*Test.java" -File
     }
+    $testFiles = $testFiles | Sort-Object Name
 
-    # Quet danh sach class test trong thu muc da chon
-    $testFiles = Get-ChildItem -Path $searchTargetDir -Recurse -Filter "*Test.java" -File | Sort-Object Name
     if ($testFiles.Count -eq 0)
     {
-        Write-Host "[CANH BAO] Khong tim thay class test nao trong: $searchTargetDir" -ForegroundColor Yellow
+        Write-Host "[CANH BAO] Khong tim thay class test nao trong module '$selectedModule'!" -ForegroundColor Yellow
         return $null
     }
 
     Write-Host ""
-    Write-Host "Danh sach class test:" -ForegroundColor Yellow
+    Write-Host "Danh sach class test trong module '$selectedModule':" -ForegroundColor Yellow
     for ($i = 0; $i -lt $testFiles.Count; $i++) {
         $idxStr = ($i + 1).ToString().PadLeft(2, ' ')
         $className = [System.IO.Path]::GetFileNameWithoutExtension($testFiles[$i].Name)
-        Write-Host "  $idxStr. $className" -ForegroundColor White
+        $isUnit = $testFiles[$i].FullName.Contains("unitTest")
+        $typeTag = if ($isUnit) { "[Unit]" } else { "[Integration]" }
+        Write-Host "  $idxStr. $typeTag $className" -ForegroundColor White
     }
     Write-Host ""
 
@@ -311,7 +293,7 @@ function Select-TestClassInteractive
         }
         if ($matchedFile)
         {
-            return [System.IO.Path]::GetFileNameWithoutExtension($matchedFile.Name)
+            return [System.IO.Path]::GetFileNameWithoutExtension($matchedFile[0].Name)
         }
 
         Write-Host "[CANH BAO] Lua chon class '$classInput' khong hop le, vui long chon lai!" -ForegroundColor Yellow
@@ -325,13 +307,24 @@ $targetModule = ""
 
 if ($Name)
 {
-    $targetTestPattern = $Name
+    $targetTestPattern = $Name.Trim()
     $testMode = "CUSTOM"
 }
 elseif ($Module)
 {
     $targetModule = $Module.Trim()
-    $targetTestPattern = "com/datn/financeapp/$targetModule/**"
+    if ($Unit)
+    {
+        $targetTestPattern = "com/datn/financeapp/unitTest/$targetModule/**"
+    }
+    elseif ($Integration)
+    {
+        $targetTestPattern = "com/datn/financeapp/integrationTest/$targetModule/**"
+    }
+    else
+    {
+        $targetTestPattern = "com/datn/financeapp/unitTest/$targetModule/**,com/datn/financeapp/integrationTest/$targetModule/**"
+    }
     $testMode = "MODULE"
 }
 elseif ($Unit)
@@ -352,13 +345,13 @@ else
     Write-Host "Chon che do kiem thu:" -ForegroundColor Yellow
     Write-Host "  1. Chi chay Unit Test (Nhanh, KHONG can Docker) - Mac dinh" -ForegroundColor White
     Write-Host "  2. Chay toan bo Test Suite" -ForegroundColor White
-    Write-Host "  3. Chi chay Integration Test" -ForegroundColor White
+    Write-Host "  3. Chi chay Integration Test (Can Docker/PostgreSQL)" -ForegroundColor White
     Write-Host "  4. Chay mot Test class cu the theo ten" -ForegroundColor White
-    Write-Host "  5. Chay test theo module" -ForegroundColor White
+    Write-Host "  5. Chay test theo module (user, wallet, transaction, ...)" -ForegroundColor White
     Write-Host ""
     $choice = Read-Host "Nhap lua chon (1/2/3/4/5) [Mac dinh: 1]"
 
-    switch ( $choice.Trim())
+    switch ($choice.Trim())
     {
         "2" {
             $testMode = "ALL"
@@ -369,7 +362,7 @@ else
         "4" {
             $testMode = "CUSTOM"
             $targetTestPattern = Select-TestClassInteractive
-            if ( [string]::IsNullOrWhiteSpace($targetTestPattern))
+            if ([string]::IsNullOrWhiteSpace($targetTestPattern))
             {
                 Write-Host "[ERROR] Chua chon class test!" -ForegroundColor Red
                 exit 1
@@ -378,12 +371,29 @@ else
         "5" {
             $testMode = "MODULE"
             $targetModule = Select-ModuleInteractive -PromptTitle "Chon module muon chay test"
-            if ( [string]::IsNullOrWhiteSpace($targetModule))
+            if ([string]::IsNullOrWhiteSpace($targetModule))
             {
                 Write-Host "[ERROR] Chua chon module!" -ForegroundColor Red
                 exit 1
             }
-            $targetTestPattern = "com/datn/financeapp/module/$targetModule/**"
+            Write-Host ""
+            Write-Host "Chon pham vi kiem thu cho module '$targetModule':" -ForegroundColor Yellow
+            Write-Host "  1. Ca Unit Test va Integration Test [Mac dinh]" -ForegroundColor White
+            Write-Host "  2. Chi Unit Test (Nhanh, khong Docker)" -ForegroundColor White
+            Write-Host "  3. Chi Integration Test" -ForegroundColor White
+            $scopeChoice = (Read-Host "Nhap lua chon (1/2/3) [Mac dinh: 1]").Trim()
+            switch ($scopeChoice)
+            {
+                "2" {
+                    $targetTestPattern = "com/datn/financeapp/unitTest/$targetModule/**"
+                }
+                "3" {
+                    $targetTestPattern = "com/datn/financeapp/integrationTest/$targetModule/**"
+                }
+                default {
+                    $targetTestPattern = "com/datn/financeapp/unitTest/$targetModule/**,com/datn/financeapp/integrationTest/$targetModule/**"
+                }
+            }
         }
         default {
             $testMode = "UNIT"
@@ -392,10 +402,24 @@ else
 }
 
 # Kiem tra Docker neu can chay Integration Test
-if ($testMode -in @("ALL", "INTEGRATION", "CUSTOM", "MODULE") -and -not $Force)
+$needsDocker = $false
+if ($testMode -eq "INTEGRATION" -or $testMode -eq "ALL")
+{
+    $needsDocker = $true
+}
+elseif ($testMode -eq "MODULE" -and $targetTestPattern -like "*integrationTest*")
+{
+    $needsDocker = $true
+}
+elseif ($testMode -eq "CUSTOM" -and $targetTestPattern -like "*IntegrationTest*")
+{
+    $needsDocker = $true
+}
+
+if ($needsDocker -and -not $Force)
 {
     Write-Host ""
-    Write-Host "[Dang kiem tra Docker...]" -ForegroundColor Gray
+    Write-Host "[Dang kiem tra Docker cho Integration Test...]" -ForegroundColor Gray
     $dockerInfo = Check-DockerStatus
     if ($dockerInfo.Found)
     {
@@ -429,7 +453,7 @@ if ($testMode -in @("ALL", "INTEGRATION", "CUSTOM", "MODULE") -and -not $Force)
     else
     {
         Write-Host "[CANH BAO] Khong phat hien Docker dang chay tren Windows hoac WSL!" -ForegroundColor Yellow
-        Write-Host "Integration Test su dung Testcontainers nen can Docker de khoi tao DB test." -ForegroundColor Yellow
+        Write-Host "Integration Test su dung Testcontainers nen can Docker de khoi tao PostgreSQL container." -ForegroundColor Yellow
     }
 }
 
@@ -439,13 +463,13 @@ switch ($testMode)
 {
     "UNIT" {
         Write-Host ""
-        Write-Host "-> Dang chay: UNIT TESTS (bo qua Integration Tests)" -ForegroundColor Cyan
-        $surefirePattern = "*Test,!*IntegrationTest"
+        Write-Host "-> Dang chay: UNIT TESTS (chi quet thu muc unitTest/)" -ForegroundColor Cyan
+        $surefirePattern = "com/datn/financeapp/unitTest/**"
     }
     "INTEGRATION" {
         Write-Host ""
-        Write-Host "-> Dang chay: INTEGRATION TESTS" -ForegroundColor Cyan
-        $surefirePattern = "*IntegrationTest"
+        Write-Host "-> Dang chay: INTEGRATION TESTS (chi quet thu muc integrationTest/)" -ForegroundColor Cyan
+        $surefirePattern = "com/datn/financeapp/integrationTest/**"
     }
     "CUSTOM" {
         Write-Host ""
@@ -454,12 +478,12 @@ switch ($testMode)
     }
     "MODULE" {
         Write-Host ""
-        Write-Host "-> Dang chay test module: $targetModule" -ForegroundColor Cyan
+        Write-Host "-> Dang chay test module: $targetModule ($targetTestPattern)" -ForegroundColor Cyan
         $surefirePattern = $targetTestPattern
     }
     "ALL" {
         Write-Host ""
-        Write-Host "-> Dang chay: TOAN BO CAC TEST" -ForegroundColor Cyan
+        Write-Host "-> Dang chay: TOAN BO CAC TEST (Unit & Integration)" -ForegroundColor Cyan
         $surefirePattern = ""
     }
 }
@@ -472,7 +496,7 @@ if ($surefirePattern)
 }
 else
 {
-    Write-Host "Lệnh thuc thi: mvn test" -ForegroundColor Gray
+    Write-Host "Lenh thuc thi: mvn test" -ForegroundColor Gray
     & mvn test
 }
 

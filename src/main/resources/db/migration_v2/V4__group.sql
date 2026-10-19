@@ -94,9 +94,9 @@ CREATE TABLE group_transactions (
     CONSTRAINT fk_gt_reviewer   FOREIGN KEY (reviewed_by)   REFERENCES users      (id) ON DELETE RESTRICT,
 
     CONSTRAINT ck_gt_amount       CHECK (amount > 0 AND amount <= 999999999999),
-    CONSTRAINT ck_gt_type         CHECK (type IN ('EXPENSE', 'CONTRIBUTION', 'REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')),\
-    CONSTRAINT ck_gt_money_source CHECK (money_source IN ('FUND', 'PERSONAL')),\
-    CONSTRAINT ck_gt_status       CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED')),\
+    CONSTRAINT ck_gt_type         CHECK (type IN ('EXPENSE', 'CONTRIBUTION', 'REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')),
+    CONSTRAINT ck_gt_money_source CHECK (money_source IN ('FUND', 'PERSONAL')),
+    CONSTRAINT ck_gt_status       CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED')),
     CONSTRAINT ck_gt_review       CHECK (
         (status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL)
      OR (status IN ('CONFIRMED', 'REJECTED') AND reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)

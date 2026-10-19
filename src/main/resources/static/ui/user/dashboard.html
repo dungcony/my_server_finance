@@ -3,26 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tổng quan - Finance AI</title>
+    <title>Tài chính Cá nhân - Finance AI</title>
     <link rel="stylesheet" href="../assets/css/base.css">
 </head>
-<body data-area="user" data-active="dashboard" data-title="Tổng quan">
+<body data-area="user" data-active="dashboard" data-title="Tổng quan Tài chính Cá nhân">
 <main id="page">
     <div class="grid grid-4">
-        <div class="stat"><div class="label">Tổng tiền ví cá nhân</div><div class="value" id="sPersonal">-</div><div class="sub" id="sPersonalSub"></div></div>
-        <div class="stat"><div class="label">Tổng tiền ví chung</div><div class="value" id="sShared">-</div><div class="sub" id="sSharedSub"></div></div>
-        <div class="stat"><div class="label">Nhóm đang tham gia</div><div class="value" id="sGroups">-</div><div class="sub" id="sGroupsSub"></div></div>
-        <div class="stat"><div class="label">Thông báo chưa đọc</div><div class="value" id="sUnread">-</div><div class="sub"><a href="./notifications.html">Xem thông báo</a></div></div>
+        <div class="stat">
+            <div class="label">Tổng tiền ví cá nhân</div>
+            <div class="value pos" id="sPersonal">-</div>
+            <div class="sub" id="sPersonalSub"></div>
+        </div>
+        <div class="stat">
+            <div class="label">Tổng tiền ví chung</div>
+            <div class="value" id="sShared">-</div>
+            <div class="sub" id="sSharedSub"></div>
+        </div>
+        <div class="stat">
+            <div class="label">Nhóm đang tham gia</div>
+            <div class="value" id="sGroups">-</div>
+            <div class="sub" id="sGroupsSub"></div>
+        </div>
+        <div class="stat">
+            <div class="label">Thông báo chưa đọc</div>
+            <div class="value" id="sUnread">-</div>
+            <div class="sub"><a href="./notifications.html">Xem thông báo →</a></div>
+        </div>
+    </div>
+
+    <!-- Banner dẫn tới Không gian quản lý nhóm & quỹ -->
+    <div class="card mt" style="background:linear-gradient(135deg, #ecfdf5, #f0fdf4);border-color:#a7f3d0">
+        <div class="card-title">
+            <span style="color:#065f46">👥 Không gian Quản lý Nhóm & Quỹ chung</span>
+            <a href="../manager/dashboard.html" class="btn btn-sm" style="background:#059669">Vào Trang Quản lý nhóm →</a>
+        </div>
+        <p style="margin:0;color:#047857;font-size:13px">
+            Bạn đang tham gia các nhóm chung quỹ? Truy cập trang quản trị riêng để xem dòng tiền, thu chi, đối soát két quỹ và phân quyền Chủ nhóm/Thủ quỹ/Thành viên.
+        </p>
     </div>
 
     <div class="grid grid-2 mt">
         <div class="card">
-            <div class="card-title"><span>Nhóm của tôi</span><a href="./groups.html">Tất cả →</a></div>
-            <div class="table-wrap"><table class="table"><thead><tr><th>Tên</th><th>Vai trò</th><th>Số dư quỹ</th></tr></thead><tbody id="groupBody"></tbody></table></div>
+            <div class="card-title">
+                <span>Nhóm quỹ của tôi</span>
+                <a href="../manager/groups.html">Quản lý tất cả nhóm →</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tên nhóm</th>
+                            <th>Vai trò</th>
+                            <th class="right">Số dư quỹ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groupBody"></tbody>
+                </table>
+            </div>
         </div>
         <div class="card">
-            <div class="card-title"><span>Ví theo loại</span><a href="./wallets.html">Quản lý ví →</a></div>
-            <div class="table-wrap"><table class="table"><thead><tr><th>Loại</th><th>Số ví</th><th class="right">Tổng</th></tr></thead><tbody id="typeBody"></tbody></table></div>
+            <div class="card-title">
+                <span>Ví cá nhân theo loại</span>
+                <a href="./wallets.html">Quản lý ví →</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Loại ví</th>
+                            <th>Số ví</th>
+                            <th class="right">Tổng số dư</th>
+                        </tr>
+                    </thead>
+                    <tbody id="typeBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </main>

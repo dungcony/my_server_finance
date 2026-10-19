@@ -1,17 +1,33 @@
 package com.datn.financeapp.integrationTest.debt.controller;
 
+import com.datn.financeapp.module.debt.controller.*;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +46,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Test tích hợp trả nợ và huỷ trả nợ (DEBT-03, DEBT-04, D-46, D-47) — trọng tâm là RANH GIỚI

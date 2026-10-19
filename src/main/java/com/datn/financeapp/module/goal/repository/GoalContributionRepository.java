@@ -10,19 +10,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * Repository JPA cho {@link GoalContribution}.
- *
- * <p>Không cần điều kiện quyền trong các query ở đây: mọi lối vào đều đi qua
- * {@code GoalService.loadOwnedGoal} kiểm tra quyền trên bảng cha trước, và {@code goalId} luôn là
- * tham số bắt buộc nên không thể với sang bản ghi của mục tiêu khác.
  */
 public interface GoalContributionRepository extends JpaRepository<GoalContribution, UUID> {
 
-    List<GoalContribution> findByGoalIdOrderByContributedDateDesc(UUID goalId);
+    List<GoalContribution> findByGoalIdAndIsDeletedFalseOrderByContributedDateDesc(UUID goalId);
 
-    Optional<GoalContribution> findByIdAndGoalId(UUID id, UUID goalId);
+    Optional<GoalContribution> findByIdAndGoalIdAndIsDeletedFalse(UUID id, UUID goalId);
 
-    // Dùng khi xoá mục tiêu — phải lấy danh sách TRƯỚC khi ON DELETE CASCADE cuốn đi.
-    List<GoalContribution> findByGoalId(UUID goalId);
+    List<GoalContribution> findByGoalIdAndIsDeletedFalse(UUID goalId);
 
-    int countByGoalId(UUID goalId);
+    int countByGoalIdAndIsDeletedFalse(UUID goalId);
 }

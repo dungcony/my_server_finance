@@ -6,6 +6,8 @@ import com.datn.financeapp.module.goal.dto.response.GoalDetailResponse;
 import com.datn.financeapp.module.goal.dto.response.GoalListItemResponse;
 import com.datn.financeapp.module.goal.entity.GoalContribution;
 import com.datn.financeapp.module.goal.entity.SavingsGoal;
+import com.datn.financeapp.module.icon.dto.response.IconRes;
+import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import org.mapstruct.Mapper;
 
 import java.math.BigDecimal;
@@ -22,7 +24,7 @@ public interface GoalMapper {
             WalletSumaryRes wallet,
             long savedAmount,
             String status,
-            IconRefResponse iconRef,
+            IconRes iconRef,
             int contributionCount) {
         if (goal == null) {
             return null;

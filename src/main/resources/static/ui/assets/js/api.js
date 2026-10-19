@@ -1,6 +1,13 @@
-// Lớp gọi API và quản lý phiên dùng chung cho mọi trang trong /ui.
-// Context path được suy ra từ URL trang (phần đứng trước /ui/), nên đổi API_PATH không phải sửa lại.
-const API_BASE = location.pathname.split('/ui/')[0];
+// Lớp gọi API và quản lý phiên dùng chung cho mọi trang trong /ui và /app.
+// Context path được suy ra từ URL trang (phần đứng trước /ui/ hoặc /app/), nên đổi API_PATH không phải sửa lại.
+let API_BASE = '';
+if (location.pathname.includes('/ui/')) {
+    API_BASE = location.pathname.split('/ui/')[0];
+} else if (location.pathname.includes('/app/')) {
+    API_BASE = location.pathname.split('/app/')[0];
+} else if (location.pathname.startsWith('/v1')) {
+    API_BASE = '/v1';
+}
 const UI_ROOT = API_BASE + '/ui/';
 
 const KEY_ACCESS = 'finance_ai_access_token';

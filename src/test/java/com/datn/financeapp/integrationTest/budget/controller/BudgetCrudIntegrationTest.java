@@ -1,16 +1,33 @@
 package com.datn.financeapp.integrationTest.budget.controller;
 
+import com.datn.financeapp.module.budget.controller.*;
+
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,19 +48,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
- * CRUD ngân sách. Ba luồng rủi ro: chặn trùng kỳ, chặn sửa danh mục/kỳ, và xoá mềm là tắt
- * {@code is_active} chứ không xoá bản ghi. Danh mục lấy từ dữ liệu seed, không tạo qua API.
+ * CRUD ngân sách. Ba luồng rủi ro: chặn trùng kỳ, chặn sửa danh mục/kỳ, và xoá mềm.
+ * Danh mục lấy từ dữ liệu seed.
  */
 @Testcontainers
 @SpringBootTest
@@ -100,7 +107,6 @@ class BudgetCrudIntegrationTest {
 
     @BeforeEach
     void cleanTables() {
-        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
         otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM budgets");
         jdbcTemplate.update("DELETE FROM transactions");
@@ -116,16 +122,16 @@ class BudgetCrudIntegrationTest {
     }
 
     // Hai danh mục gốc khác nhau lấy từ dữ liệu seed.
-    private List<String> seededCategoryIds() {
+    private List<String> seededCategoryCodes() {
         return jdbcTemplate.queryForList(
-                "SELECT id FROM categories WHERE parent_id IS NULL AND deleted = FALSE ORDER BY name LIMIT 2",
+                "SELECT code FROM categories WHERE is_deleted = FALSE ORDER BY code LIMIT 2",
                 String.class);
     }
 
-    private String createBudget(String token, String categoryId, long limitAmount, String periodType)
+    private String createBudget(String token, String categoryCode, long limitAmount, String periodType)
             throws Exception {
         Map<String, Object> body = new HashMap<>();
-        body.put("category_id", categoryId);
+        body.put("category_code", categoryCode);
         body.put("limit_amount", limitAmount);
         body.put("period_type", periodType);
         String response = mockMvc.perform(post("/budgets")
@@ -142,16 +148,15 @@ class BudgetCrudIntegrationTest {
 
     // ------------------------------------------------------------------ tests
 
-    // Service kiểm tra trùng kỳ trước khi ghi; ràng buộc ex_bud_no_overlap ở CSDL là lớp chặn cuối nếu hai request đua nhau.
     @Test
     void createBudget_duplicatePeriod_returns409() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.trung@example.com");
-        String categoryId = seededCategoryIds().get(0);
+        String categoryCode = seededCategoryCodes().get(0);
 
-        createBudget(token, categoryId, 3_000_000, "month");
+        createBudget(token, categoryCode, 3_000_000, "month");
 
         Map<String, Object> duplicate = new HashMap<>();
-        duplicate.put("category_id", categoryId);
+        duplicate.put("category_code", categoryCode);
         duplicate.put("limit_amount", 5_000_000);
         duplicate.put("period_type", "month");
 
@@ -163,22 +168,20 @@ class BudgetCrudIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("BUDGET_ALREADY_EXISTS"));
     }
 
-    // Đổi danh mục thực chất là một ngân sách khác, phải xoá và tạo lại.
     @Test
     void updateBudget_changeCategoryId_returns400CategoryNotEditable() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.doi.danh.muc@example.com");
-        String categoryId = seededCategoryIds().get(0);
-        String otherCategoryId = seededCategoryIds().get(1);
-        String budgetId = createBudget(token, categoryId, 3_000_000, "month");
+        String categoryCode = seededCategoryCodes().get(0);
+        String otherCategoryCode = seededCategoryCodes().get(1);
+        String budgetId = createBudget(token, categoryCode, 3_000_000, "month");
 
         mockMvc.perform(patch("/budgets/" + budgetId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("category_id", otherCategoryId))))
+                        .content(objectMapper.writeValueAsString(Map.of("category_code", otherCategoryCode))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("BUDGET_CATEGORY_NOT_EDITABLE"));
 
-        // Đổi period_type cũng bị chặn bằng đúng mã lỗi đó.
         mockMvc.perform(patch("/budgets/" + budgetId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -187,15 +190,11 @@ class BudgetCrudIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("BUDGET_CATEGORY_NOT_EDITABLE"));
     }
 
-    /**
-     * Bảng {@code budgets} không có cột {@code is_deleted}: xoá mềm nghĩa là tắt {@code is_active},
-     * bản ghi phải CÒN NGUYÊN trong CSDL để giữ lịch sử.
-     */
     @Test
     void deleteBudget_setsIsActiveFalse_notPhysicalDelete() throws Exception {
         String token = registerAndGetAccessToken("ngan.sach.xoa.mem@example.com");
-        String categoryId = seededCategoryIds().get(0);
-        String budgetId = createBudget(token, categoryId, 2_000_000, "month");
+        String categoryCode = seededCategoryCodes().get(0);
+        String budgetId = createBudget(token, categoryCode, 2_000_000, "month");
 
         mockMvc.perform(delete("/budgets/" + budgetId).header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
@@ -208,12 +207,10 @@ class BudgetCrudIntegrationTest {
                 "SELECT is_active FROM budgets WHERE id = ?", Boolean.class, UUID.fromString(budgetId));
         Assertions.assertEquals(Boolean.FALSE, isActive, "Xoá mềm phải tắt is_active");
 
-        // Đã tắt thì biến mất khỏi danh sách đang hiệu lực...
         mockMvc.perform(get("/budgets").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
 
-        // ...và thôi chiếm chỗ trong ex_bud_no_overlap, nên tạo lại cùng danh mục/kỳ phải được.
-        createBudget(token, categoryId, 2_500_000, "month");
+        createBudget(token, categoryCode, 2_500_000, "month");
     }
 }

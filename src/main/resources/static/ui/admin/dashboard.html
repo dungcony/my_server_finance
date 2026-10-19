@@ -3,32 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tổng quan quản trị - Finance AI</title>
+    <title>Tổng quan Quản trị Hệ thống - Finance AI Admin</title>
     <link rel="stylesheet" href="../assets/css/base.css">
 </head>
-<body data-area="admin" data-active="dashboard" data-title="Tổng quan quản trị">
+<body data-area="admin" data-active="dashboard" data-title="Tổng quan Quản trị Hệ thống">
 <main id="page">
     <div class="grid grid-4">
-        <div class="stat"><div class="label">Tổng người dùng</div><div class="value" id="sUsers">-</div></div>
-        <div class="stat"><div class="label">Đang hoạt động</div><div class="value pos" id="sActive">-</div></div>
-        <div class="stat"><div class="label">Bị khoá</div><div class="value neg" id="sBlocked">-</div></div>
-        <div class="stat"><div class="label">Quản trị viên</div><div class="value" id="sAdmins">-</div></div>
+        <div class="stat">
+            <div class="label">Tổng người dùng hệ thống</div>
+            <div class="value" id="sUsers">-</div>
+            <div class="sub">tài khoản đăng ký</div>
+        </div>
+        <div class="stat">
+            <div class="label">Đang hoạt động (ACTIVE)</div>
+            <div class="value pos" id="sActive">-</div>
+            <div class="sub">trạng thái bình thường</div>
+        </div>
+        <div class="stat">
+            <div class="label">Tài khoản bị khoá (BLOCKED)</div>
+            <div class="value neg" id="sBlocked">-</div>
+            <div class="sub">vi phạm hoặc bị khóa</div>
+        </div>
+        <div class="stat">
+            <div class="label">Quản trị viên (ADMIN)</div>
+            <div class="value" id="sAdmins" style="color:var(--primary)">-</div>
+            <div class="sub">nắm quyền quản trị</div>
+        </div>
+    </div>
+
+    <!-- Tác vụ quản trị nhanh -->
+    <div class="card mt" style="background:linear-gradient(135deg, #f5f3ff, #faf5ff);border-color:#ddd6fe">
+        <div class="card-title">
+            <span style="color:#4c1d95">🛡️ Bảng điều khiển Quản trị viên Toàn quyền</span>
+            <div class="btn-row">
+                <a href="./users.html" class="btn btn-sm">Quản lý Người dùng</a>
+                <a href="./roles.html" class="btn btn-secondary btn-sm">Phân quyền Vai trò</a>
+                <a href="./groups.html" class="btn btn-secondary btn-sm">Giám sát Nhóm</a>
+                <a href="./logs.html" class="btn btn-secondary btn-sm">Xem Log Realtime</a>
+            </div>
+        </div>
+        <p style="margin:0;color:#5b21b6;font-size:13px">
+            Bạn đang ở Portal Quản trị. Có thể xem toàn bộ danh sách người dùng, mở/khóa tài khoản, gán quyền hạn, và giám sát các nhóm & giao dịch trong toàn hệ thống.
+        </p>
     </div>
 
     <div class="grid grid-2 mt">
         <div class="card">
-            <div class="card-title"><span>Người dùng mới nhất</span><a href="./users.html">Quản lý →</a></div>
-            <div class="table-wrap"><table class="table"><thead><tr><th>Email</th><th>Trạng thái</th><th>Vai trò</th></tr></thead><tbody id="userBody"></tbody></table></div>
+            <div class="card-title">
+                <span>Người dùng mới nhất</span>
+                <a href="./users.html">Quản lý tất cả →</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Trạng thái</th>
+                            <th>Vai trò</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userBody"></tbody>
+                </table>
+            </div>
         </div>
         <div class="card">
-            <div class="card-title"><span>Vai trò hệ thống</span><a href="./roles.html">Chi tiết →</a></div>
-            <div class="table-wrap"><table class="table"><thead><tr><th>Vai trò</th><th>Cấp</th><th>Số quyền</th></tr></thead><tbody id="roleBody"></tbody></table></div>
+            <div class="card-title">
+                <span>Vai trò hệ thống</span>
+                <a href="./roles.html">Chi tiết quyền hạn →</a>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Vai trò</th>
+                            <th>Cấp độ</th>
+                            <th>Số quyền hạn</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roleBody"></tbody>
+                </table>
+            </div>
         </div>
-    </div>
-
-    <div class="notice warning mt">
-        Backend chưa có API thống kê nhóm / giao dịch nhóm cho admin (quyền <code>group:read</code> đã khai báo nhưng chưa có endpoint) —
-        xem <a href="./groups.html">Nhóm</a> và <a href="./group-transactions.html">Giao dịch nhóm</a>.
     </div>
 </main>
 

@@ -5,9 +5,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.config.PageableHandlerMethodArgumentResolverCustomizer;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class WebConfig {
+public class WebConfig implements WebMvcConfigurer {
 
     // tên tham số trang trên URL: ?page=1
     private static final String PAGE_PARAM = "page";
@@ -33,5 +35,29 @@ public class WebConfig {
             // dùng khi client không gửi page/page_size/sort: trang đầu, DEFAULT_PAGE_SIZE dòng, sort mặc định
             resolver.setFallbackPageable(PageRequest.of(0, DEFAULT_PAGE_SIZE, DEFAULT_SORT));
         };
+    }
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        // Đường dẫn thân thiện /app để dễ tương tác theo yêu cầu:
+        // /app -> /ui/user/dashboard.html
+        registry.addRedirectViewController("/app", "/ui/user/dashboard.html");
+        registry.addRedirectViewController("/app/", "/ui/user/dashboard.html");
+        registry.addRedirectViewController("/app/user", "/ui/user/dashboard.html");
+        registry.addRedirectViewController("/app/user/", "/ui/user/dashboard.html");
+
+        // /app/admin -> /ui/admin/dashboard.html
+        registry.addRedirectViewController("/app/admin", "/ui/admin/dashboard.html");
+        registry.addRedirectViewController("/app/admin/", "/ui/admin/dashboard.html");
+
+        // /app/manager hoặc /app/groups -> /ui/manager/dashboard.html hoặc /ui/manager/groups.html
+        registry.addRedirectViewController("/app/manager", "/ui/manager/dashboard.html");
+        registry.addRedirectViewController("/app/manager/", "/ui/manager/dashboard.html");
+        registry.addRedirectViewController("/app/groups", "/ui/manager/groups.html");
+        registry.addRedirectViewController("/app/groups/", "/ui/manager/groups.html");
+
+        // /app/login -> /ui/login.html
+        registry.addRedirectViewController("/app/login", "/ui/login.html");
+        registry.addRedirectViewController("/app/login/", "/ui/login.html");
     }
 }

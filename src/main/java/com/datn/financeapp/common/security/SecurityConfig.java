@@ -62,6 +62,7 @@ public class SecurityConfig {
                                 "/", "/index.html", "/*.html",
                                 "/favicon.ico", "swagger-ui/**", "/v3/api-docs/**",
                                 "/static/**", "/ui/**",
+                                "/app", "/app/**",
                                 "/auth/register", "/auth/login", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/reset-password",
                                 "/auth/verify-email", "/auth/resend-verification",

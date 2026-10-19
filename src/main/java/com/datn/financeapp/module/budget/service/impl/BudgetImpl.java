@@ -7,88 +7,89 @@ import com.datn.financeapp.module.budget.dto.request.UpdateBudgetRequest;
 import com.datn.financeapp.module.budget.dto.response.BudgetRes;
 import com.datn.financeapp.module.budget.entity.Budget;
 import com.datn.financeapp.module.budget.enums.PeriodType;
+import com.datn.financeapp.module.budget.helper.BudgetCategoryHelper;
 import com.datn.financeapp.module.budget.helper.BudgetProgress;
 import com.datn.financeapp.module.budget.helper.BudgetSpentCalculator;
+import com.datn.financeapp.module.budget.helper.UserTimezoneHelper;
 import com.datn.financeapp.module.budget.mapper.BudgetMapper;
 import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.budget.service.BudgetService;
-import com.datn.financeapp.module.category.dto.response.CategoryRes;
-import com.datn.financeapp.module.category.service.CategoryService;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
+
 /**
- * Triển khai {@link BudgetService}: thêm, xem, sửa, xoá mềm ngân sách của chính người dùng.
- * <p>
- * Mọi truy vấn kèm {@code userId}; ngân sách của người khác hay không tồn tại đều trả {@code NOT_FOUND}
- * (quy tắc nghiệp vụ 7). {@link #create} dựng số đã chi ban đầu qua {@link BudgetSpentCalculator}.
- * </p>
+ * Triển khai {@link BudgetService}. Quản lý CRUD ngân sách, kiểm tra hợp lệ và tính toán ban đầu.
  */
 @Service
 @RequiredArgsConstructor
 public class BudgetImpl implements BudgetService {
 
     private final BudgetRepository budgetRepository;
-    private final CategoryService categoryService;
+    private final BudgetCategoryHelper categoryHelper;
     private final BudgetMapper budgetMapper;
     private final BudgetSpentCalculator spentCalculator;
+    private final UserTimezoneHelper timezoneHelper;
 
     @Override
     @Transactional(readOnly = true)
     public List<BudgetRes> list(UUID userId, Boolean isActive, PeriodType periodType) {
         List<Budget> budgets = budgetRepository.search(userId, isActive, periodType);
-        Map<UUID, CategoryRes> categories = categoryService.findAllByIds(
-                budgets.stream().map(Budget::getCategoryId).collect(Collectors.toSet()));
+        Set<String> categoryCodes = budgets.stream()
+                .map(Budget::getCategoryCode)
+                .collect(Collectors.toSet());
+        Map<String, CateSumaryRes> categories = categoryHelper.findSummaries(categoryCodes);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        LocalDate today = LocalDate.now(zone);
         return budgets.stream()
-                .map(budget -> toRes(budget, categories.get(budget.getCategoryId())))
+                .map(budget -> toRes(budget, categories.get(budget.getCategoryCode()), today))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public BudgetRes detail(UUID userId, UUID budgetId) {
-        return toRes(findOwned(userId, budgetId));
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        return toRes(findOwned(userId, budgetId), LocalDate.now(zone));
     }
 
     @Override
     @Transactional
     public BudgetRes create(UUID userId, CreateBudgetRequest req) {
-        CategoryRes category = categoryService.findActiveById(req.categoryId());
+        CateSumaryRes category = categoryHelper.findSummary(req.categoryCode())
+                .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh mục không tồn tại hoặc đã bị xóa."));
 
+        ZoneId userZone = timezoneHelper.getCurrentZone();
+        LocalDate today = LocalDate.now(userZone);
         LocalDate start = req.startDate() != null
                 ? req.startDate()
-                : req.periodType().startOfCurrent(LocalDate.now());
+                : req.periodType().startOfCurrent(today);
         LocalDate end = req.periodType().endOf(start);
 
-        if (budgetRepository.existsOverlapping(userId, req.categoryId(), start, end)) {
+        if (budgetRepository.existsOverlapping(userId, req.categoryCode(), start, end)) {
             throw new BusinessException(ErrorCode.BUDGET_ALREADY_EXISTS);
         }
 
         Budget budget = Budget.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
-                .categoryId(req.categoryId())
-                .spent(spentCalculator.spentInPeriod(userId, req.categoryId(), start, end))
+                .categoryCode(req.categoryCode())
+                .spent(spentCalculator.spentInPeriod(userId, req.categoryCode(), start, end, userZone))
                 .limitAmount(req.limitAmount())
                 .periodType(req.periodType())
                 .startDate(start)
                 .endDate(end)
                 .autoRenew(req.autoRenew() == null || req.autoRenew())
                 .isActive(true)
-                .createdAt(Instant.now())
                 .build();
         budgetRepository.save(budget);
-        return toRes(budget, category);
+        return toRes(budget, category, today);
     }
 
     @Override
@@ -106,49 +107,49 @@ public class BudgetImpl implements BudgetService {
         if (req.isActive() != null) {
             changeActive(budget, req.isActive());
         }
-        return toRes(budget);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        return toRes(budget, LocalDate.now(zone));
     }
 
     @Override
     @Transactional
     public void delete(UUID userId, UUID budgetId) {
-        findOwned(userId, budgetId).setIsActive(false);
+        Budget budget = findOwned(userId, budgetId);
+        budget.setIsActive(false);
+        budget.setIsDeleted(true);
     }
 
     private Budget findOwned(UUID userId, UUID budgetId) {
-        return budgetRepository.findByIdAndUserId(budgetId, userId)
+        return budgetRepository.findByIdAndUserIdAndIsDeletedFalse(budgetId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ngân sách."));
     }
 
-    // Đổi danh mục hay loại kỳ thực chất là một ngân sách khác: phải xoá rồi tạo lại
     private void rejectChangeOfCategoryOrPeriod(Budget budget, UpdateBudgetRequest req) {
-        boolean categoryChanged = req.categoryId() != null && !req.categoryId().equals(budget.getCategoryId());
+        boolean categoryChanged = req.categoryCode() != null && !req.categoryCode().equals(budget.getCategoryCode());
         boolean periodChanged = req.periodType() != null && req.periodType() != budget.getPeriodType();
         if (categoryChanged || periodChanged) {
             throw new BusinessException(ErrorCode.BUDGET_CATEGORY_NOT_EDITABLE);
         }
     }
 
-    // Bật lại một ngân sách đã tắt có thể làm trùng với ngân sách khác đang hiệu lực
     private void changeActive(Budget budget, boolean active) {
         boolean reactivating = active && !budget.getIsActive();
         if (reactivating && budgetRepository.existsOverlapExceptId(
-                budget.getUserId(), budget.getCategoryId(), budget.getStartDate(), budget.getEndDate(),
+                budget.getUserId(), budget.getCategoryCode(), budget.getStartDate(), budget.getEndDate(),
                 budget.getId())) {
             throw new BusinessException(ErrorCode.BUDGET_ALREADY_EXISTS);
         }
         budget.setIsActive(active);
     }
 
-    private BudgetRes toRes(Budget budget) {
-        CategoryRes category = categoryService.findAllByIds(Set.of(budget.getCategoryId()))
-                .get(budget.getCategoryId());
-        return toRes(budget, category);
+    private BudgetRes toRes(Budget budget, LocalDate today) {
+        CateSumaryRes category = categoryHelper.findSummary(budget.getCategoryCode()).orElse(null);
+        return toRes(budget, category, today);
     }
 
-    private BudgetRes toRes(Budget budget, CategoryRes category) {
+    private BudgetRes toRes(Budget budget, CateSumaryRes category, LocalDate today) {
         BudgetProgress progress = BudgetProgress.of(
-                budget.getLimitAmount(), budget.getSpent(), budget.getEndDate(), LocalDate.now());
+                budget.getLimitAmount(), budget.getSpent(), budget.getEndDate(), today);
         return budgetMapper.toRes(budget, progress, category);
     }
 }

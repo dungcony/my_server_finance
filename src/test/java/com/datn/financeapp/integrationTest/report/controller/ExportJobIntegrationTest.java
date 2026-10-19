@@ -45,9 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 5 test case cho REPORT-05/D-43/D-44 (api/06-BAO-CAO.md mục 7) — Task 3 plan 04-06: vòng đời
- * 202 -> processing -> completed, pdf/excel trả 501 sạch (không tạo rác {@code export_jobs}),
- * IDOR và hết hạn đều chặn đúng.
+ * Integration test cho tiến trình xuất báo cáo (/reports/export).
  */
 @Testcontainers
 @SpringBootTest
@@ -107,13 +105,11 @@ class ExportJobIntegrationTest {
 
     @BeforeEach
     void cleanTables() {
-        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
         otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM export_jobs");
         jdbcTemplate.update("DELETE FROM transactions");
         refreshTokenRepository.deleteAll();
         walletRepository.deleteAll();
-        jdbcTemplate.update("DELETE FROM categories WHERE user_id IS NOT NULL");
         userRepository.deleteAll();
     }
 
@@ -124,7 +120,12 @@ class ExportJobIntegrationTest {
     }
 
     private String createWallet(String token) throws Exception {
-        Map<String, Object> body = Map.of("name", "Ví Xuất Báo Cáo", "type", "cash", "initial_balance", 1_000_000);
+        Map<String, Object> body = Map.of(
+                "name", "Ví Xuất Báo Cáo",
+                "type", "CASH",
+                "balance", 1_000_000L,
+                "iconCode", "default_wallet",
+                "color", "#3d6b7d");
         String response = mockMvc.perform(post("/wallets")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,14 +138,10 @@ class ExportJobIntegrationTest {
         return (String) data.get("id");
     }
 
-    private UUID systemCategoryId(String type) {
-        return jdbcTemplate.queryForObject(
-                "SELECT id FROM categories WHERE user_id IS NULL AND type = ? LIMIT 1", UUID.class, type);
-    }
-
     private String createExportJob(String token, String format) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("format", format);
+        body.put("period", "month");
         String response = mockMvc.perform(post("/reports/export")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -154,7 +151,7 @@ class ExportJobIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        return (String) data.get("job_id");
+        return (String) data.get("id");
     }
 
     private String pollUntilCompleted(String token, String jobId) throws Exception {
@@ -189,7 +186,7 @@ class ExportJobIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.data.job_id").exists())
+                .andExpect(jsonPath("$.data.id").exists())
                 .andExpect(jsonPath("$.data.status").value("processing"));
     }
 
@@ -197,13 +194,14 @@ class ExportJobIntegrationTest {
     void pollExportJob_eventuallyCompletes() throws Exception {
         String token = registerAndGetAccessToken("xuat.bao.cao.poll@example.com");
         String walletId = createWallet(token);
-        UUID categoryId = systemCategoryId("expense");
 
         Map<String, Object> txn = new HashMap<>();
-        txn.put("type", "expense");
+        txn.put("type", "EXPENSE");
         txn.put("amount", 50_000);
-        txn.put("wallet_id", walletId);
-        txn.put("category_id", categoryId.toString());
+        txn.put("walletId", walletId);
+        txn.put("categoryCode", "an_sang");
+        txn.put("occurredAt", Instant.now().toString());
+        txn.put("displayName", "Ăn sáng");
         mockMvc.perform(post("/transactions")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)

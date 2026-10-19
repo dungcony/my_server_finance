@@ -1,9 +1,10 @@
 package com.datn.financeapp.module.report.service.impl;
 
-import com.datn.financeapp.module.report.service.ReportQueryService;
-
+import com.datn.financeapp.module.budget.helper.BudgetCategoryHelper;
+import com.datn.financeapp.module.budget.helper.UserTimezoneHelper;
 import com.datn.financeapp.module.budget.service.BudgetOverviewService;
-import com.datn.financeapp.module.category.service.CategoryService;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
+import com.datn.financeapp.module.icon.service.IconService;
 import com.datn.financeapp.module.report.dto.response.CategoryBreakdownResponse;
 import com.datn.financeapp.module.report.dto.response.CategoryGroupBreakdownResponse;
 import com.datn.financeapp.module.report.dto.response.DailyTrendResponse;
@@ -11,11 +12,17 @@ import com.datn.financeapp.module.report.dto.response.MonthlyTrendResponse;
 import com.datn.financeapp.module.report.dto.response.ReportHomeResponse;
 import com.datn.financeapp.module.report.dto.response.ReportSummaryResponse;
 import com.datn.financeapp.module.report.repository.ReportRepository;
+import com.datn.financeapp.module.report.service.ReportQueryService;
 import com.datn.financeapp.module.transaction.entity.Transaction;
+import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
+import com.datn.financeapp.module.wallet.entity.Wallet;
+import com.datn.financeapp.module.wallet.repository.WalletRepository;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -26,6 +33,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,9 +51,12 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
 
     private final ReportRepository reportRepository;
-    private final CategoryService categoryService;
+    private final BudgetCategoryHelper budgetCategoryHelper;
     private final WalletService walletService;
+    private final WalletRepository walletRepository;
     private final BudgetOverviewService budgetOverviewService;
+    private final UserTimezoneHelper timezoneHelper;
+    private final IconService iconService;
     private final JdbcTemplate jdbcTemplate;
 
     // ------------------------------------------------------------ 2. summary
@@ -56,9 +68,12 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     public ReportSummaryResponse summary(
             UUID userId, String period, LocalDate fromDate, LocalDate toDate, UUID walletId) {
         DateRange range = resolveRange(period, fromDate, toDate);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        Instant startInstant = timezoneHelper.toStartInstant(range.from(), zone);
+        Instant endInstant = timezoneHelper.toEndInstant(range.to(), zone);
 
         ReportRepository.SummaryProjection current =
-                reportRepository.summary(userId, range.from(), range.to(), walletId);
+                reportRepository.summary(userId, startInstant, endInstant, walletId);
         long totalIncome = orZero(current.getTotalIncome());
         long totalExpense = orZero(current.getTotalExpense());
         long transactionCount = orZero(current.getTransactionCount());
@@ -71,8 +86,11 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         long avgDailyExpense = days > 0 ? Math.round((double) totalExpense / days) : 0;
 
         DateRange previous = previousRange(range);
+        Instant prevStart = timezoneHelper.toStartInstant(previous.from(), zone);
+        Instant prevEnd = timezoneHelper.toEndInstant(previous.to(), zone);
+
         ReportRepository.SummaryProjection prev =
-                reportRepository.summary(userId, previous.from(), previous.to(), walletId);
+                reportRepository.summary(userId, prevStart, prevEnd, walletId);
         long previousExpense = orZero(prev.getTotalExpense());
         Long difference = previousExpense == 0 && totalExpense == 0 ? 0L : totalExpense - previousExpense;
         Double changeRatio = previousExpense == 0 ? null : (double) difference / previousExpense;
@@ -101,12 +119,12 @@ public class ReportQueryServiceImpl implements ReportQueryService {
 
     private Long currentBalanceForWallets(UUID userId, UUID walletId) {
         if (walletId != null) {
-            Long raw = walletService.findRawBalance(walletId);
-            return raw == null ? 0L : raw;
+            return walletRepository.findByIdAndUserIdAndIsDeleted(walletId, userId, false)
+                    .map(Wallet::getBalance)
+                    .orElse(0L);
         }
         Long total = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
-                        + "WHERE user_id = ? AND NOT is_deleted",
+                "SELECT COALESCE(SUM(balance), 0) FROM wallets WHERE user_id = ? AND NOT is_deleted",
                 Long.class,
                 userId);
         return total == null ? 0L : total;
@@ -121,10 +139,13 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     public CategoryGroupBreakdownResponse byCategoryGroup(
             UUID userId, String period, LocalDate fromDate, LocalDate toDate, String type, UUID walletId) {
         DateRange range = resolveRange(period, fromDate, toDate);
-        String txnType = type == null ? "expense" : type;
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        Instant startInstant = timezoneHelper.toStartInstant(range.from(), zone);
+        Instant endInstant = timezoneHelper.toEndInstant(range.to(), zone);
+        String txnType = (type == null || "expense".equalsIgnoreCase(type)) ? "EXPENSE" : "INCOME";
 
         List<ReportRepository.CategoryGroupAmountProjection> rows =
-                reportRepository.byCategoryGroup(userId, range.from(), range.to(), txnType, walletId);
+                reportRepository.byCategoryGroup(userId, startInstant, endInstant, txnType, walletId);
         long total = rows.stream().mapToLong(r -> orZero(r.getAmount())).sum();
 
         List<CategoryGroupBreakdownResponse.GroupItem> groups = new ArrayList<>();
@@ -132,7 +153,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
             long amount = orZero(row.getAmount());
             double ratio = total == 0 ? 0 : (double) amount / total;
             List<ReportRepository.CategoryAmountProjection> catRows = reportRepository.byCategoryInGroup(
-                    userId, range.from(), range.to(), txnType, row.getCategoryGroupId(), walletId);
+                    userId, startInstant, endInstant, txnType, row.getCode(), walletId);
             List<CategoryGroupBreakdownResponse.CategoryItem> categories = catRows.stream()
                     .map(c -> new CategoryGroupBreakdownResponse.CategoryItem(
                             c.getCategoryId(),
@@ -169,42 +190,36 @@ public class ReportQueryServiceImpl implements ReportQueryService {
             int limit,
             UUID walletId) {
         DateRange range = resolveRange(period, fromDate, toDate);
-        String txnType = type == null ? "expense" : type;
-        boolean parentLevel = level == null || "parent".equals(level);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        Instant startInstant = timezoneHelper.toStartInstant(range.from(), zone);
+        Instant endInstant = timezoneHelper.toEndInstant(range.to(), zone);
+        String txnType = (type == null || "expense".equalsIgnoreCase(type)) ? "EXPENSE" : "INCOME";
+        boolean parentLevel = level == null || "parent".equalsIgnoreCase(level);
 
         List<ReportRepository.CategoryParentAmountProjection> rows = parentLevel
-                ? reportRepository.byCategoryParentLevel(userId, range.from(), range.to(), txnType, limit, walletId)
-                : reportRepository.byCategoryChildLevel(userId, range.from(), range.to(), txnType, limit, walletId);
+                ? reportRepository.byCategoryParentLevel(userId, startInstant, endInstant, txnType, limit, walletId)
+                : reportRepository.byCategoryChildLevel(userId, startInstant, endInstant, txnType, limit, walletId);
 
         long total = rows.stream().mapToLong(r -> orZero(r.getAmount())).sum();
         long days = ChronoUnit.DAYS.between(range.from(), range.to()) + 1;
         long avgPerDay = days > 0 ? Math.round((double) total / days) : 0;
 
-        Map<UUID, IconRefResponse> iconCache = new HashMap<>();
         List<CategoryBreakdownResponse.Item> items = new ArrayList<>();
         for (ReportRepository.CategoryParentAmountProjection row : rows) {
             long amount = orZero(row.getAmount());
             long count = orZero(row.getTransactionCount());
-            IconRefResponse icon = row.getIconId() == null
-                    ? null
-                    : iconCache.computeIfAbsent(row.getIconId(), categoryService::findIconRef);
+            CategoryBreakdownResponse.IconRef icon = row.getIconCode() != null
+                    ? new CategoryBreakdownResponse.IconRef(row.getIconCode(), row.getIconPath())
+                    : null;
 
             List<CategoryBreakdownResponse.ChildDetail> childrenDetail = List.of();
             if (Boolean.TRUE.equals(row.getHasChildren()) && parentLevel) {
-                List<UUID> tree = categoryService.findCategoryTree(row.getCategoryId());
                 childrenDetail = reportRepository
-                        .childrenDetail(
-                                userId,
-                                range.from(),
-                                range.to(),
-                                txnType,
-                                row.getCategoryId(),
-                                tree.toArray(new UUID[0]),
-                                walletId)
+                        .childrenDetail(userId, startInstant, endInstant, txnType, row.getCode(), walletId)
                         .stream()
                         .map(c -> new CategoryBreakdownResponse.ChildDetail(
                                 c.getCategoryId(),
-                                c.getCategoryId() == null ? row.getName() : c.getName(),
+                                c.getName(),
                                 orZero(c.getAmount()),
                                 orZero(c.getTransactionCount())))
                         .toList();
@@ -213,7 +228,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
             items.add(new CategoryBreakdownResponse.Item(
                     row.getCategoryId(),
                     row.getName(),
-                    icon == null ? null : new CategoryBreakdownResponse.IconRef(icon.code(), icon.pathData()),
+                    icon,
                     row.getColor(),
                     amount,
                     total == 0 ? 0 : (double) amount / total,
@@ -239,25 +254,38 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         LocalDate effectiveEnd = monthEnd.isAfter(today) ? today : monthEnd;
         boolean isCurrentOrFutureMonth = !effectiveEnd.isBefore(start);
 
-        List<ReportRepository.DailyAmountProjection> rows = isCurrentOrFutureMonth
-                ? reportRepository.dailyExpense(userId, start, effectiveEnd, walletId)
-                : reportRepository.dailyExpense(userId, start, monthEnd, walletId);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        Instant startInstant = timezoneHelper.toStartInstant(start, zone);
+        Instant endInstant = timezoneHelper.toEndInstant(isCurrentOrFutureMonth ? effectiveEnd : monthEnd, zone);
+        String timeZoneStr = zone.getId();
+
+        List<ReportRepository.DailyAmountProjection> rows =
+                reportRepository.dailyExpense(userId, startInstant, endInstant, timeZoneStr, walletId);
+
+        Map<Integer, Long> spentByDay = new HashMap<>();
+        for (ReportRepository.DailyAmountProjection row : rows) {
+            if (row.getDate() != null) {
+                spentByDay.put(row.getDate().getDayOfMonth(), orZero(row.getAmount()));
+            }
+        }
 
         List<DailyTrendResponse.CurrentPoint> currentLine = new ArrayList<>();
         long cumulative = 0;
-        for (ReportRepository.DailyAmountProjection row : rows) {
-            long spentThatDay = orZero(row.getAmount());
+        int maxDay = isCurrentOrFutureMonth ? effectiveEnd.getDayOfMonth() : monthEnd.getDayOfMonth();
+        for (int d = 1; d <= maxDay; d++) {
+            long spentThatDay = spentByDay.getOrDefault(d, 0L);
             cumulative += spentThatDay;
-            currentLine.add(new DailyTrendResponse.CurrentPoint(
-                    row.getDate().getDayOfMonth(), spentThatDay, cumulative));
+            currentLine.add(new DailyTrendResponse.CurrentPoint(d, spentThatDay, cumulative));
         }
         long currentTotal = cumulative;
 
         List<Long> pastMonthTotals = new ArrayList<>();
         for (int i = 1; i <= 3; i++) {
             YearMonth past = target.minusMonths(i);
+            Instant pastStart = timezoneHelper.toStartInstant(past.atDay(1), zone);
+            Instant pastEnd = timezoneHelper.toEndInstant(past.atEndOfMonth(), zone);
             ReportRepository.SummaryProjection s =
-                    reportRepository.summary(userId, past.atDay(1), past.atEndOfMonth(), walletId);
+                    reportRepository.summary(userId, pastStart, pastEnd, walletId);
             pastMonthTotals.add(orZero(s.getTotalExpense()));
         }
         double avgTotal = pastMonthTotals.stream().mapToLong(val -> val != null ? val : 0L).average().orElse(0);
@@ -298,12 +326,18 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         int count = Math.min(Math.max(monthsCount, 1), 24);
         YearMonth end = YearMonth.now();
         YearMonth start = end.minusMonths(count - 1);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        Instant startInstant = timezoneHelper.toStartInstant(start.atDay(1), zone);
+        Instant endInstant = timezoneHelper.toEndInstant(end.atEndOfMonth(), zone);
+        String timeZoneStr = zone.getId();
 
         List<ReportRepository.MonthlyAmountProjection> rows =
-                reportRepository.monthlyTrend(userId, start.atDay(1), end.atEndOfMonth());
+                reportRepository.monthlyTrend(userId, startInstant, endInstant, timeZoneStr);
         Map<YearMonth, ReportRepository.MonthlyAmountProjection> byMonth = new HashMap<>();
         for (ReportRepository.MonthlyAmountProjection row : rows) {
-            byMonth.put(YearMonth.from(row.getMonth()), row);
+            if (row.getMonth() != null) {
+                byMonth.put(YearMonth.from(row.getMonth()), row);
+            }
         }
 
         List<MonthlyTrendResponse.MonthItem> months = new ArrayList<>();
@@ -340,23 +374,25 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     @Override
     public ReportHomeResponse home(UUID userId, String period, UUID walletId) {
         DateRange range = resolveRange(period, null, null);
+        ZoneId zone = timezoneHelper.getCurrentZone();
+        Instant startInstant = timezoneHelper.toStartInstant(range.from(), zone);
+        Instant endInstant = timezoneHelper.toEndInstant(range.to(), zone);
 
         Long personalTotal = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(current_balance), 0) FROM wallets "
-                        + "WHERE user_id = ? AND include_in_total AND NOT is_deleted",
+                "SELECT COALESCE(SUM(balance), 0) FROM wallets WHERE user_id = ? AND NOT is_deleted",
                 Long.class,
                 userId);
         Long sharedTotal = 0L;
 
-        List<WalletRawBalanceResponse> wallets = walletService.listWithRawBalance(userId, true);
+        List<Wallet> wallets = walletRepository.findAllByUserIdAndIsDeleted(
+                userId, false, PageRequest.of(0, 3, Sort.by(Sort.Direction.DESC, "balance"))).getContent();
         List<ReportHomeResponse.WalletItem> topWallets = wallets.stream()
-                .limit(3)
                 .map(w -> new ReportHomeResponse.WalletItem(
-                        w.id(), w.name(), w.currentBalance(), w.type()))
+                        w.getId(), w.getName(), w.getBalance(), w.getType() != null ? w.getType().name() : ""))
                 .toList();
 
         ReportRepository.SummaryProjection summaryRow =
-                reportRepository.summary(userId, range.from(), range.to(), walletId);
+                reportRepository.summary(userId, startInstant, endInstant, walletId);
         long totalIncome = orZero(summaryRow.getTotalIncome());
         long totalExpense = orZero(summaryRow.getTotalExpense());
 
@@ -390,39 +426,49 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 .toList();
 
         List<Transaction> recent = reportRepository
-                .eligibleTransactions(userId, range.from(), range.to(), walletId)
+                .eligibleTransactions(userId, startInstant, endInstant, walletId)
                 .stream()
                 .limit(10)
                 .toList();
         List<ReportHomeResponse.RecentTransactionItem> recentTransactions = new ArrayList<>();
         Map<UUID, WalletSumaryRes> walletCache = new HashMap<>();
-        Map<UUID, CategoryRefResponse> categoryCache = new HashMap<>();
+        Map<String, CateSumaryRes> categoryCache = new HashMap<>();
+
         for (Transaction t : recent) {
-            WalletSumaryRes wallet =
-                    walletCache.computeIfAbsent(t.getWalletId(), walletService::findRefById);
+            WalletSumaryRes wallet = walletCache.computeIfAbsent(
+                    t.getWalletId(),
+                    wId -> walletService.findSumaryByIdAndUser(wId, userId, true).orElse(null));
+
             ReportHomeResponse.CategoryRef categoryRef = null;
-            if (t.getCategoryId() != null) {
-                CategoryRefResponse category =
-                        categoryCache.computeIfAbsent(t.getCategoryId(), categoryService::findRefById);
+            if (t.getCategoryCode() != null && !t.getCategoryCode().isBlank()) {
+                CateSumaryRes category = categoryCache.computeIfAbsent(
+                        t.getCategoryCode(),
+                        code -> budgetCategoryHelper.findSummary(code).orElse(null));
                 if (category != null) {
-                    IconRefResponse icon = category.icon();
                     categoryRef = new ReportHomeResponse.CategoryRef(
                             category.name(),
-                            icon == null ? null : new ReportHomeResponse.IconRef(icon.code(), icon.pathData()),
+                            new ReportHomeResponse.IconRef(category.code(), category.icon()),
                             category.color());
                 }
             }
+
+            LocalDate txDate = t.getOccurredAt() != null
+                    ? timezoneHelper.toLocalDate(t.getOccurredAt(), zone)
+                    : null;
+            String displayName = t.getName() != null && !t.getName().isBlank()
+                    ? t.getName()
+                    : (categoryRef != null ? categoryRef.name() : "");
+
             recentTransactions.add(new ReportHomeResponse.RecentTransactionItem(
                     t.getId(),
-                    t.getType(),
+                    t.getType() != null ? t.getType().name() : "",
                     t.getAmount(),
-                    t.getDate(),
-                    t.getDisplayName(),
+                    txDate,
+                    displayName,
                     categoryRef,
                     wallet == null ? null : new ReportHomeResponse.WalletRef(wallet.name())));
         }
 
-        // Hình dạng riêng theo api/06 mục 1: đổi từ cảnh báo của budget sang mục "cần chú ý" của báo cáo
         List<ReportHomeResponse.BudgetAttentionItem> budgetsNeedingAttention =
                 budgetOverviewService.alerts(userId).stream()
                         .map(alert -> new ReportHomeResponse.BudgetAttentionItem(
@@ -447,48 +493,46 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         return value == null ? 0L : value;
     }
 
-    /**
-     * Suy ra khoảng ngày từ {@code period}/{@code from_date}/{@code to_date} — theo api/00 mục
-     * 7.2, {@code period} được ưu tiên khi cả hai cùng gửi.
-     */
     private DateRange resolveRange(String period, LocalDate fromDate, LocalDate toDate) {
-        if (period != null) {
-            LocalDate today = LocalDate.now();
-            return switch (period) {
-                case "week" -> {
-                    LocalDate start = today.minusDays(today.getDayOfWeek().getValue() - 1);
-                    yield new DateRange(start, start.plusDays(6), "Tuần này");
-                }
-                case "quarter" -> {
-                    int quarterMonth = ((today.getMonthValue() - 1) / 3) * 3 + 1;
-                    LocalDate start = LocalDate.of(today.getYear(), quarterMonth, 1);
-                    yield new DateRange(start, start.plusMonths(3).minusDays(1), "Quý này");
-                }
-                case "year" -> {
-                    LocalDate start = LocalDate.of(today.getYear(), 1, 1);
-                    yield new DateRange(start, LocalDate.of(today.getYear(), 12, 31), "Năm nay");
-                }
-                default -> {
-                    YearMonth ym = YearMonth.from(today);
-                    yield new DateRange(
-                            ym.atDay(1), ym.atEndOfMonth(), "Tháng " + ym.getMonthValue() + ", " + ym.getYear());
-                }
-            };
-        }
         if (fromDate != null && toDate != null) {
-            return new DateRange(fromDate, toDate, fromDate + " - " + toDate);
+            return new DateRange(
+                    fromDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                            + " - "
+                            + toDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    fromDate,
+                    toDate);
         }
-        YearMonth ym = YearMonth.now();
-        return new DateRange(ym.atDay(1), ym.atEndOfMonth(), "Tháng " + ym.getMonthValue() + ", " + ym.getYear());
+        String p = period == null ? "month" : period.toLowerCase();
+        LocalDate today = LocalDate.now();
+        return switch (p) {
+            case "week" -> {
+                LocalDate start = today.minusDays(today.getDayOfWeek().getValue() - 1);
+                yield new DateRange("Tuần này", start, start.plusDays(6));
+            }
+            case "quarter" -> {
+                int quarterMonth = ((today.getMonthValue() - 1) / 3) * 3 + 1;
+                LocalDate start = LocalDate.of(today.getYear(), quarterMonth, 1);
+                LocalDate end = start.plusMonths(3).minusDays(1);
+                yield new DateRange("Quý này", start, end);
+            }
+            case "year" -> new DateRange(
+                    "Năm nay",
+                    LocalDate.of(today.getYear(), 1, 1),
+                    LocalDate.of(today.getYear(), 12, 31));
+            default -> {
+                YearMonth ym = YearMonth.from(today);
+                yield new DateRange("Tháng này", ym.atDay(1), ym.atEndOfMonth());
+            }
+        };
     }
 
-    private DateRange previousRange(DateRange range) {
-        long days = ChronoUnit.DAYS.between(range.from(), range.to()) + 1;
-        LocalDate prevTo = range.from().minusDays(1);
+    private DateRange previousRange(DateRange current) {
+        long days = ChronoUnit.DAYS.between(current.from(), current.to()) + 1;
+        LocalDate prevTo = current.from().minusDays(1);
         LocalDate prevFrom = prevTo.minusDays(days - 1);
-        return new DateRange(prevFrom, prevTo, "Kỳ trước");
+        return new DateRange("Kỳ trước", prevFrom, prevTo);
     }
 
-    private record DateRange(LocalDate from, LocalDate to, String label) {
+    record DateRange(String label, LocalDate from, LocalDate to) {
     }
 }

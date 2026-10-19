@@ -19,11 +19,11 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public NotificationListResponse list(
+    public ApiResponse<NotificationListResponse> list(
             @RequestParam(name = "is_read", required = false) Boolean isRead,
             Pageable pageable) {
         UUID userId = SecurityContextUtil.currentUserId();
-        return notificationService.list(userId, isRead, pageable);
+        return ApiResponse.of(notificationService.list(userId, isRead, pageable));
     }
 
     @PatchMapping("/{id}/read")

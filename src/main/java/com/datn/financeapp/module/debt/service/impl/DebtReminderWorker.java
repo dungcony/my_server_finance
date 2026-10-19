@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Bean riêng chỉ để {@code evaluateAndNotify} đi qua đúng Spring AOP proxy cho
- * {@code @Transactional} khi được gọi từ vòng lặp {@link DebtService#sendDueReminders()} — gọi
+ * {@code @Transactional} khi được gọi từ vòng lặp  — gọi
  * trực tiếp method {@code @Transactional} khác trong CÙNG class ({@code this.xxx()}) là self-
  * invocation, bỏ qua proxy và làm mất transaction hoàn toàn (bài học
  * {@code IdempotencyTransactionHelper}, Phase 1).

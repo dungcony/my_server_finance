@@ -1,14 +1,24 @@
 package com.datn.financeapp.integrationTest.budget.repository;
 
+import com.datn.financeapp.module.budget.repository.*;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.budget.entity.Budget;
 import com.datn.financeapp.module.budget.enums.PeriodType;
 import com.datn.financeapp.module.budget.helper.BudgetSpent;
-import com.datn.financeapp.module.budget.repository.BudgetRepository;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.repository.UserRepository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,14 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Transactional
 @Testcontainers
@@ -61,18 +63,18 @@ class BudgetRepositoryTest {
 
     private UUID userId;
     private UUID otherUserId;
-    private UUID categoryId;
-    private UUID otherCategoryId;
+    private String categoryCode;
+    private String otherCategoryCode;
 
     @BeforeEach
     void setUp() {
         userId = saveUser("budget.user@example.com", "Budget", "Owner");
         otherUserId = saveUser("other.budget@example.com", "Other", "User");
 
-        List<UUID> categoryIds = jdbcTemplate.queryForList(
-                "SELECT id FROM categories WHERE deleted = FALSE ORDER BY name LIMIT 2", UUID.class);
-        categoryId = categoryIds.get(0);
-        otherCategoryId = categoryIds.get(1);
+        List<String> codes = jdbcTemplate.queryForList(
+                "SELECT code FROM categories WHERE is_deleted = FALSE ORDER BY code LIMIT 2", String.class);
+        categoryCode = codes.isEmpty() ? "food" : codes.get(0);
+        otherCategoryCode = codes.size() > 1 ? codes.get(1) : "shopping";
     }
 
     private UUID saveUser(String email, String firstName, String lastName) {
@@ -84,18 +86,20 @@ class BudgetRepositoryTest {
                         .lastName(lastName)
                         .plan(UserPlan.FREE)
                         .status(UserStatus.ACTIVE)
-                        .isDeleted(false)
-                        .createdAt(Instant.now())
                         .build())
                 .getId();
     }
 
-    private Budget saveBudget(UUID ownerId, UUID category, long limit, PeriodType period,
+    private LocalDate dateOf(int year, int month, int day) {
+        return LocalDate.of(year, month, day);
+    }
+
+    private Budget saveBudget(UUID ownerId, String category, long limit, PeriodType period,
                               LocalDate start, LocalDate end, boolean autoRenew, boolean active) {
         return budgetRepository.saveAndFlush(Budget.builder()
                 .id(UUID.randomUUID())
                 .userId(ownerId)
-                .categoryId(category)
+                .categoryCode(category)
                 .spent(0L)
                 .limitAmount(limit)
                 .periodType(period)
@@ -103,15 +107,14 @@ class BudgetRepositoryTest {
                 .endDate(end)
                 .autoRenew(autoRenew)
                 .isActive(active)
-                .createdAt(Instant.now())
                 .build());
     }
 
     @Test
     @DisplayName("findByIdAndUserId: chỉ trả ngân sách của chính chủ, người khác nhận rỗng (→ 404)")
     void findByIdAndUserId_enforcesOwnership() {
-        Budget b = saveBudget(userId, categoryId, 5_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
+        Budget b = saveBudget(userId, categoryCode, 5_000_000, PeriodType.MONTH,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 31), false, true);
 
         Optional<Budget> found = budgetRepository.findByIdAndUserId(b.getId(), userId);
         assertThat(found).isPresent();
@@ -123,12 +126,12 @@ class BudgetRepositoryTest {
     @Test
     @DisplayName("search: lọc theo hiệu lực và loại kỳ, sắp theo ngày bắt đầu mới nhất trước")
     void search_filtersAndSorts() {
-        Budget feb = saveBudget(userId, categoryId, 5_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28), false, true);
-        Budget jan = saveBudget(userId, categoryId, 10_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
-        saveBudget(userId, categoryId, 1_000_000, PeriodType.WEEK,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 7), false, false);
+        Budget feb = saveBudget(userId, categoryCode, 5_000_000, PeriodType.MONTH,
+                dateOf(2026, 2, 1), dateOf(2026, 2, 28), false, true);
+        Budget jan = saveBudget(userId, categoryCode, 10_000_000, PeriodType.MONTH,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 31), false, true);
+        saveBudget(userId, categoryCode, 1_000_000, PeriodType.WEEK,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 7), false, false);
 
         List<Budget> list = budgetRepository.search(userId, true, PeriodType.MONTH);
 
@@ -138,10 +141,10 @@ class BudgetRepositoryTest {
     @Test
     @DisplayName("search: không truyền bộ lọc thì lấy cả ngân sách đã tắt, và không lẫn của người khác")
     void search_noFilters_returnsOnlyOwn() {
-        Budget mine = saveBudget(userId, categoryId, 1_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, false);
-        saveBudget(otherUserId, categoryId, 1_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
+        Budget mine = saveBudget(userId, categoryCode, 1_000_000, PeriodType.MONTH,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 31), false, false);
+        saveBudget(otherUserId, categoryCode, 1_000_000, PeriodType.MONTH,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 31), false, true);
 
         List<Budget> list = budgetRepository.search(userId, null, null);
 
@@ -151,12 +154,12 @@ class BudgetRepositoryTest {
     @Test
     @DisplayName("findExpiredAutoRenewIds: chỉ lấy ngân sách đang hiệu lực, tự gia hạn và đã hết kỳ")
     void findExpiredAutoRenewIds_findsOnlyExpiredAutoRenew() {
-        Budget expired = saveBudget(userId, categoryId, 3_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), true, true);
-        saveBudget(userId, otherCategoryId, 3_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), false, true);
+        Budget expired = saveBudget(userId, categoryCode, 3_000_000, PeriodType.MONTH,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 31), true, true);
+        saveBudget(userId, otherCategoryCode, 3_000_000, PeriodType.MONTH,
+                dateOf(2026, 1, 1), dateOf(2026, 1, 31), false, true);
 
-        List<UUID> ids = budgetRepository.findExpiredAutoRenewIds(LocalDate.of(2026, 2, 15));
+        List<UUID> ids = budgetRepository.findExpiredAutoRenewIds(dateOf(2026, 2, 15));
 
         assertThat(ids).containsExactly(expired.getId());
     }
@@ -164,22 +167,22 @@ class BudgetRepositoryTest {
     @Test
     @DisplayName("existsOverlapping: phát hiện trùng danh mục trong kỳ chồng lấn, kỳ khác thì không")
     void existsOverlapping_detectsSameDates() {
-        LocalDate start = LocalDate.of(2026, 3, 1);
-        LocalDate end = LocalDate.of(2026, 3, 31);
-        Budget existing = saveBudget(userId, categoryId, 2_000_000, PeriodType.MONTH, start, end, false, true);
+        LocalDate start = dateOf(2026, 3, 1);
+        LocalDate end = dateOf(2026, 3, 31);
+        Budget existing = saveBudget(userId, categoryCode, 2_000_000, PeriodType.MONTH, start, end, false, true);
 
-        assertThat(budgetRepository.existsOverlapping(userId, categoryId, start, end)).isTrue();
+        assertThat(budgetRepository.existsOverlapping(userId, categoryCode, start, end)).isTrue();
         assertThat(budgetRepository.existsOverlapping(
-                userId, categoryId, LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30))).isFalse();
+                userId, categoryCode, dateOf(2026, 4, 1), dateOf(2026, 4, 30))).isFalse();
         assertThat(budgetRepository.existsOverlapExceptId(
-                userId, categoryId, start, end, existing.getId())).isFalse();
+                userId, categoryCode, start, end, existing.getId())).isFalse();
     }
 
     @Test
     @DisplayName("addSpent: cộng nguyên tử và không bao giờ xuống dưới 0")
     void addSpent_addsAtomicallyAndFloorsAtZero() {
-        Budget b = saveBudget(userId, categoryId, 3_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
+        Budget b = saveBudget(userId, categoryCode, 3_000_000, PeriodType.MONTH,
+                dateOf(2026, 3, 1), dateOf(2026, 3, 31), false, true);
 
         budgetRepository.addSpent(List.of(b.getId()), 400_000L);
         assertThat(budgetRepository.findSpentByIds(List.of(b.getId())).get(0).spent()).isEqualTo(400_000L);
@@ -189,20 +192,20 @@ class BudgetRepositoryTest {
     }
 
     @Test
-    @DisplayName("findActiveByCategoryIds: chỉ ngân sách của chính user, đang hiệu lực, có ngày nằm trong kỳ")
-    void findActiveByCategoryIds_filtersByUserActiveAndDate() {
-        Budget covering = saveBudget(userId, categoryId, 3_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
-        saveBudget(otherUserId, categoryId, 3_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
-        saveBudget(userId, otherCategoryId, 3_000_000, PeriodType.MONTH,
-                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), false, true);
+    @DisplayName("findActiveByCategoryCodes: chỉ ngân sách của chính user, đang hiệu lực, có ngày nằm trong kỳ")
+    void findActiveByCategoryCodes_filtersByUserActiveAndDate() {
+        Budget covering = saveBudget(userId, categoryCode, 3_000_000, PeriodType.MONTH,
+                dateOf(2026, 3, 1), dateOf(2026, 3, 31), false, true);
+        saveBudget(otherUserId, categoryCode, 3_000_000, PeriodType.MONTH,
+                dateOf(2026, 3, 1), dateOf(2026, 3, 31), false, true);
+        saveBudget(userId, otherCategoryCode, 3_000_000, PeriodType.MONTH,
+                dateOf(2026, 3, 1), dateOf(2026, 3, 31), false, true);
 
-        List<BudgetSpent> views = budgetRepository.findActiveByCategoryIds(
-                userId, List.of(categoryId), LocalDate.of(2026, 3, 15));
+        List<BudgetSpent> views = budgetRepository.findActiveByCategoryCodes(
+                userId, List.of(categoryCode), dateOf(2026, 3, 15));
 
         assertThat(views).extracting(BudgetSpent::id).containsExactly(covering.getId());
-        assertThat(budgetRepository.findActiveByCategoryIds(userId, List.of(categoryId), LocalDate.of(2026, 4, 1)))
+        assertThat(budgetRepository.findActiveByCategoryCodes(userId, List.of(categoryCode), dateOf(2026, 4, 1)))
                 .isEmpty();
     }
 }

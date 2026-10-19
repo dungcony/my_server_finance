@@ -45,11 +45,27 @@ public enum PermissionName {
     TXN_READ(Resource.TXN, Action.READ, ""),
     TXN_DELETE(Resource.TXN, Action.DELETE, ""),
     TXN_UPDATE(Resource.TXN, Action.UPDATE, ""),
+    GOAL_READ(Resource.GOAL, Action.READ, "Xem danh sách và chi tiết mục tiêu tiết kiệm"),
+    GOAL_UPDATE(Resource.GOAL, Action.UPDATE, "Cập nhật mục tiêu tiết kiệm"),
+    GOAL_DELETE(Resource.GOAL, Action.DELETE, "Xóa mục tiêu tiết kiệm"),
+    BUDGET_READ(Resource.BUDGET, Action.READ, "Xem danh sách và chi tiết ngân sách toàn hệ thống"),
+    BUDGET_DELETE(Resource.BUDGET, Action.DELETE, "Cưỡng chế xóa hoặc vô hiệu hóa ngân sách"),
+    DEBT_READ(Resource.DEBT, Action.READ, "Xem danh sách, chi tiết và tổng quan sổ nợ toàn hệ thống"),
+    DEBT_UPDATE(Resource.DEBT, Action.UPDATE, "Tạo nợ, trả nợ hộ, sửa nợ và xóa nợ khó đòi"),
+    DEBT_DELETE(Resource.DEBT, Action.DELETE, "Xóa khoản nợ và hủy thanh toán nợ"),
+    REPORT_READ(Resource.REPORT, Action.READ, "Xem danh sách và chi tiết tiến trình xuất báo cáo toàn hệ thống"),
+    REPORT_DELETE(Resource.REPORT, Action.DELETE, "Hủy hoặc xóa tiến trình xuất báo cáo"),
     ;
 
     private final Resource resource;
     private final Action action;
     private final String description;
+
+    PermissionName(Resource resource, Action action, String description) {
+        this.resource = resource;
+        this.action = action;
+        this.description = description;
+    }
 
     @JsonValue
     public String getValue() {
@@ -91,6 +107,10 @@ public enum PermissionName {
         RECURRING_TXN("recurring_txn"),
         WALLET("wallet"),
         TXN("transactions"),
+        GOAL("goal"),
+        BUDGET("budgets"),
+        DEBT("debts"),
+        REPORT("reports"),
         ;
 
         private final String key;
@@ -114,8 +134,12 @@ public enum PermissionName {
         }
     }
 
+    /**
+     * JPA converter lưu {@code value} ("users:read") vào cột varchar, không lưu tên enum ("USERS_READ").
+     */
     @Converter(autoApply = true)
     public static class PermissionNameConverter implements AttributeConverter<PermissionName, String> {
+
         @Override
         public String convertToDatabaseColumn(PermissionName attribute) {
             return attribute != null ? attribute.getValue() : null;
@@ -125,11 +149,5 @@ public enum PermissionName {
         public PermissionName convertToEntityAttribute(String dbData) {
             return fromValue(dbData);
         }
-    }
-
-    PermissionName(Resource resource, Action action, String description) {
-        this.resource = resource;
-        this.action = action;
-        this.description = description;
     }
 }

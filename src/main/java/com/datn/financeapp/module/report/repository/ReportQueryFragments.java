@@ -10,17 +10,11 @@ public final class ReportQueryFragments {
     }
 
     public static final String REPORT_ELIGIBLE =
-            "t.type <> 'transfer' AND t.counts_in_report = TRUE AND NOT t.is_deleted";
+            " NOT t.is_deleted AND t.type IN ('EXPENSE', 'INCOME') ";
 
     /**
      * Lọc theo một ví, bỏ qua khi {@code :walletId} là NULL ("Ví tổng").
-     *
-     * <p>Xét cả {@code destination_wallet_id} để tiền chuyển ĐẾN ví đang xem cũng thuộc về nó —
-     * dù {@link #REPORT_ELIGIBLE} đã loại {@code transfer} khỏi báo cáo nên nhánh đó hiện không
-     * bao giờ khớp. Giữ lại cho khớp {@code TransactionRepository#search}: hai nơi lọc ví theo
-     * hai luật khác nhau là kiểu lệch âm thầm rất khó truy.
      */
     public static final String WALLET_FILTER =
-            "(CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid)"
-                    + " OR t.destination_wallet_id = CAST(:walletId AS uuid))";
+            " (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid)) ";
 }

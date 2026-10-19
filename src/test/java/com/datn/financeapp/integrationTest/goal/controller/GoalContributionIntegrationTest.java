@@ -1,17 +1,32 @@
 package com.datn.financeapp.integrationTest.goal.controller;
 
+import com.datn.financeapp.module.goal.controller.*;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,17 +46,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
  * Test tích hợp mục tiêu tiết kiệm (GOAL-01..04) — trọng tâm là RANH GIỚI TRIGGER và HAI CHẾ ĐỘ
  * NẠP TIỀN, mục ưu tiên số 2 của D-58.
@@ -57,7 +61,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @org.springframework.context.annotation.Import({TestRedisConfig.class, TestAuthSupport.class})
-@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 class GoalContributionIntegrationTest {
 
     @Container

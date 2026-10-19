@@ -1,17 +1,29 @@
 package com.datn.financeapp.integrationTest.notification.controller;
 
+import com.datn.financeapp.module.notification.controller.*;
+
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.datn.financeapp.TestAuthSupport;
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
-import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.entity.User;
+import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.IOException;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +42,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.IOException;
-import java.util.UUID;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
- * api/11-THONG-BAO.md — GET /notifications và PATCH /notifications/{id}/read. Quyền D-27 kiểm
+ * api/11-THONG-BAO.md — GET /notifications và PATCH /notifications/{id}/read. Quy tắc D-27 kiểm
  * tra ngay trong SQL (T-04-01), 404 khi không có quyền (T-04-02, không phải 403). Chưa có
  * endpoint tạo thông báo ở Phase 4 plan này — chèn dữ liệu giả trực tiếp bằng {@link
  * JdbcTemplate} để kiểm GET/PATCH, theo đúng khuôn {@code WalletAccessControlIntegrationTest}.
@@ -145,8 +149,24 @@ class NotificationIntegrationTest {
         mockMvc.perform(get("/notifications").header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.pagination.total_items").value(2));
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.meta.total_items").value(2));
+    }
+
+    @Test
+    void getNotifications_withoutIsReadParam_returnsAllNotifications() throws Exception {
+        String token = registerAndGetAccessToken("nguoi.all.notif@example.com");
+        UUID userId = userIdOf("nguoi.all.notif@example.com");
+
+        insertNotification(userId, "BUDGET_ALERT", false);
+        insertNotification(userId, "DEBT_REMINDER", true);
+        insertNotification(userId, "RECURRING_GENERATED", false);
+
+        mockMvc.perform(get("/notifications").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items.length()").value(3))
+                .andExpect(jsonPath("$.data.meta.total_items").value(3));
     }
 
     @Test
@@ -197,8 +217,8 @@ class NotificationIntegrationTest {
                         .param("is_read", "false")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(2))
-                .andExpect(jsonPath("$.pagination.total_items").value(2));
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.meta.total_items").value(2));
     }
 
     @Test
@@ -219,8 +239,8 @@ class NotificationIntegrationTest {
 
         mockMvc.perform(get("/notifications").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].type").value("GROUP_TXN_RECORD_REQUEST"))
-                .andExpect(jsonPath("$.data[0].data.action").value("CONFIRM_TRANSACTION"))
-                .andExpect(jsonPath("$.data[0].data.group_id").value(groupId.toString()));
+                .andExpect(jsonPath("$.data.items[0].type").value("GROUP_TXN_RECORD_REQUEST"))
+                .andExpect(jsonPath("$.data.items[0].data.action").value("CONFIRM_TRANSACTION"))
+                .andExpect(jsonPath("$.data.items[0].data.group_id").value(groupId.toString()));
     }
 }

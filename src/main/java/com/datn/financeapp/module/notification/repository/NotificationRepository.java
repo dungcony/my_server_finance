@@ -21,6 +21,8 @@ import org.springframework.data.repository.query.Param;
  */
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
+    Page<Notification> findAllByUserId(UUID currentUser, Pageable pageable);
+
     Page<Notification> findAllByUserIdAndIsRead(UUID currentUser, Boolean isRead, Pageable pageable);
 
     @Query(

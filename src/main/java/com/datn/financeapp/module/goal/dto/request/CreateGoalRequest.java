@@ -11,12 +11,13 @@ import java.util.UUID;
 /**
  * Yêu cầu tạo mới mục tiêu tiết kiệm.
  *
- * @param name          Tên mục tiêu tiết kiệm (tối đa 100 ký tự)
- * @param targetAmount  Số tiền mục tiêu cần tiết kiệm (Đơn vị: VND)
- * @param targetDate    Ngày dự kiến hoàn thành mục tiêu (tùy chọn)
- * @param walletId      ID ví tiền áp dụng (tùy chọn)
- * @param iconId        ID biểu tượng đại diện (tùy chọn)
- * @param initialAmount Số tiền nộp ban đầu khi tạo mục tiêu (Đơn vị: VND; tùy chọn)
+ * @param name              Tên mục tiêu tiết kiệm (tối đa 100 ký tự)
+ * @param targetAmount      Số tiền mục tiêu cần tiết kiệm (Đơn vị: VND)
+ * @param targetDate        Ngày dự kiến hoàn thành mục tiêu (tùy chọn)
+ * @param walletId          ID ví tiền áp dụng (tùy chọn, nếu muốn gắn vào ví đã có)
+ * @param iconId            ID biểu tượng đại diện (tùy chọn)
+ * @param initialAmount     Số tiền nộp ban đầu khi tạo mục tiêu (Đơn vị: VND; tùy chọn)
+ * @param manageWithWallet  Tự động tạo một ví mới loại SAVINGS mang tên mục tiêu này (tùy chọn)
  */
 public record CreateGoalRequest(
         @NotBlank(message = "Tên mục tiêu không được để trống.")
@@ -30,5 +31,6 @@ public record CreateGoalRequest(
         LocalDate targetDate,
         UUID walletId,
         UUID iconId,
-        Long initialAmount) {
+        Long initialAmount,
+        Boolean manageWithWallet) {
 }

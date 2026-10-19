@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -73,4 +75,20 @@ public interface ExportJobRepository extends JpaRepository<ExportJob, UUID> {
             value = "SELECT * FROM export_jobs WHERE status = 'processing' AND created_at < :threshold",
             nativeQuery = true)
     List<ExportJob> findStuckProcessing(@Param("threshold") Instant threshold);
+
+    /**
+     * Tìm kiếm và phân trang tiến trình xuất báo cáo toàn hệ thống dành cho Admin.
+     */
+    @Query("""
+            SELECT e FROM ExportJob e
+            WHERE (:userId IS NULL OR e.userId = :userId)
+              AND (:status IS NULL OR e.status = :status)
+              AND (:format IS NULL OR e.format = :format)
+            ORDER BY e.createdAt DESC
+            """)
+    Page<ExportJob> searchByAdmin(
+            @Param("userId") UUID userId,
+            @Param("status") String status,
+            @Param("format") String format,
+            Pageable pageable);
 }

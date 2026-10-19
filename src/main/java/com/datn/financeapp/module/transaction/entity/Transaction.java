@@ -56,7 +56,7 @@ public class Transaction extends AssignedIdEntity {
     @Column(name = "note")
     private String note;
 
-    // ngày phát sinh giao dịch, KHÔNG có múi giờ, không convert.
+    // thời gian phát sinh giao dịch, KHÔNG có múi giờ, không convert.
     @Column(name = "occurred_at", nullable = false)
     private Instant occurredAt;
 }

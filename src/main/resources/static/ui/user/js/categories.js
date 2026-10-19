@@ -175,7 +175,7 @@ function setFormMode(mode, code) {
     const isEdit = mode === 'edit';
     $('formTitle').textContent = isEdit ? `✏️ Sửa Danh Mục: ${code}` : '➕ Tạo Danh Mục';
     const badge = $('formModeBadge');
-    badge.className = `api-badge ${isEdit ? 'patch' : 'post'}`;
+    badge.className = `api-badge ${isEdit ? 'patch' : 'post'}`
     badge.textContent = isEdit ? `PATCH /categories/${code}` : 'POST /categories';
     $('btnSubmit').textContent = isEdit ? 'Lưu thay đổi' : 'Tạo danh mục';
     $('fCode').disabled = isEdit;
@@ -278,24 +278,32 @@ async function deleteCategory() {
 
 async function loadIcons(quiet = false) {
     const params = new URLSearchParams();
-    if ($('iconGroup').value) params.set('icon_group', $('iconGroup').value);
-    if ($('iconSearch').value.trim()) params.set('search', $('iconSearch').value.trim());
-    const query = params.toString() ? `?${params}` : '';
+    params.set('size', '100'); // Lấy tối đa 100 biểu tượng
+    const search = $('iconSearch').value.trim().toLowerCase();
+    const query = `?${params.toString()}`;
 
-    const res = await callApi(`/icons${query}`, 'GET', null, { quiet: false });
+    const res = await callApi(`/icons${query}`, 'GET', null, { quiet });
     const container = $('iconGrid');
     if (!res.ok) {
         container.replaceChildren(h('div', 'muted', 'Không tải được kho biểu tượng (HTTP ' + res.status + ') — xem API console.'));
         return;
     }
 
-    const data = res.data?.data || { group: [], total: 0 };
-    $('iconTotal').textContent = `(${data.total} biểu tượng)`;
-    container.replaceChildren();
-    for (const group of data.group) {
-        container.appendChild(h('div', 'icon-group-title', `${group.group_name} (${group.items.length})`));
+    const data = res.data?.data;
+    // Backend trả về dạng Page/Slice: data.content hoặc mảng phẳng
+    let items = Array.isArray(data?.content) ? data.content : (Array.isArray(data) ? data : null);
+
+    if (items) {
+        if (search) {
+            items = items.filter(icon =>
+                (icon.code && icon.code.toLowerCase().includes(search)) ||
+                (icon.display_name && icon.display_name.toLowerCase().includes(search))
+            );
+        }
+        $('iconTotal').textContent = `(${items.length} biểu tượng)`;
+        container.replaceChildren();
         const list = h('div', 'icon-list');
-        for (const icon of group.items) {
+        for (const icon of items) {
             iconByCode.set(icon.code, icon.path_data);
             const button = h('button', 'icon-item');
             button.type = 'button';
@@ -309,6 +317,30 @@ async function loadIcons(quiet = false) {
             list.appendChild(button);
         }
         container.appendChild(list);
+    } else if (Array.isArray(data?.group)) {
+        // Hỗ trợ trường hợp nếu backend trả về theo nhóm
+        $('iconTotal').textContent = `(${data.total ?? 0} biểu tượng)`;
+        container.replaceChildren();
+        for (const group of data.group) {
+            container.appendChild(h('div', 'icon-group-title', `${group.group_name} (${group.items?.length || 0})`));
+            const list = h('div', 'icon-list');
+            for (const icon of group.items || []) {
+                iconByCode.set(icon.code, icon.path_data);
+                const button = h('button', 'icon-item');
+                button.type = 'button';
+                button.dataset.code = icon.code;
+                button.title = icon.code;
+                button.append(makeIcon(icon.path_data), h('span', '', icon.display_name));
+                button.onclick = () => {
+                    $('fIconCode').value = icon.code;
+                    updateIconPreview();
+                };
+                list.appendChild(button);
+            }
+            container.appendChild(list);
+        }
+    } else {
+        container.replaceChildren(h('div', 'muted', 'Chưa có biểu tượng nào.'));
     }
     updateIconPreview();
 }

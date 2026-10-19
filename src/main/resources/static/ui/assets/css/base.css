@@ -17,6 +17,25 @@
     --radius: 10px;
 }
 
+/* Khu vực Cá nhân */
+body[data-area="user"] {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-light: #eff6ff;
+    --sidebar-bg: #0f172a;
+    --sidebar-active: #1e293b;
+}
+
+/* Khu vực Quản lý Nhóm & Quỹ */
+body[data-area="manager"] {
+    --primary: #059669;
+    --primary-hover: #047857;
+    --primary-light: #ecfdf5;
+    --sidebar-bg: #064e3b;
+    --sidebar-active: #065f46;
+}
+
+/* Khu vực Quản trị Hệ thống */
 body[data-area="admin"] {
     --primary: #7c3aed;
     --primary-hover: #6d28d9;
@@ -49,7 +68,7 @@ code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 12p
 .shell { display: flex; min-height: 100vh; }
 
 .sidebar {
-    width: 230px;
+    width: 240px;
     background: var(--sidebar-bg);
     color: var(--sidebar-text);
     flex-shrink: 0;
@@ -66,11 +85,12 @@ code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 12p
     display: flex; align-items: center; gap: 10px;
     padding: 9px 12px; margin-bottom: 2px; border-radius: 8px;
     color: var(--sidebar-text); text-decoration: none;
+    font-weight: 500;
 }
 .sidebar nav a:hover { background: var(--sidebar-active); }
 .sidebar nav a.active { background: var(--primary); color: #fff; }
-.sidebar .nav-sep { font-size: 11px; text-transform: uppercase; color: #64748b; padding: 12px 12px 4px; }
-.sidebar .side-foot { padding: 12px 16px; border-top: 1px solid #1e293b; font-size: 12px; }
+.sidebar .nav-sep { font-size: 11px; text-transform: uppercase; color: #64748b; padding: 12px 12px 4px; font-weight: 600; }
+.sidebar .side-foot { padding: 12px 16px; border-top: 1px solid rgba(255, 255, 255, 0.1); font-size: 12px; }
 .sidebar .side-foot a { color: #93c5fd; }
 
 .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -78,13 +98,48 @@ code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 12p
 .topbar {
     background: var(--card-bg);
     border-bottom: 1px solid var(--border);
-    padding: 12px 24px;
+    padding: 10px 24px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     position: sticky; top: 0; z-index: 20;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
-.topbar h1 { font-size: 18px; margin: 0; }
-.topbar .right-box { display: flex; align-items: center; gap: 14px; }
-.bell { position: relative; text-decoration: none; font-size: 18px; }
+.topbar h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.topbar .left-box { display: flex; align-items: center; gap: 14px; }
+.topbar .right-box { display: flex; align-items: center; gap: 12px; }
+
+/* ===== Portal Switcher Pills ===== */
+.portal-nav {
+    display: inline-flex;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 3px;
+}
+.portal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+.portal-pill:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+}
+.portal-pill.active {
+    background: #fff;
+    color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.bell { position: relative; text-decoration: none; font-size: 18px; line-height: 1; }
 .bell .count {
     position: absolute; top: -6px; right: -10px;
     background: var(--danger); color: #fff; border-radius: 10px;
@@ -95,9 +150,10 @@ code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 12p
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--primary); color: #fff;
     display: flex; align-items: center; justify-content: center; font-weight: 700;
+    font-size: 13px;
 }
 
-main#page { padding: 24px 24px 360px; max-width: 1280px; width: 100%; }
+main#page { padding: 20px 24px 240px; max-width: 1320px; width: 100%; margin: 0 auto; }
 
 /* ===== Thành phần ===== */
 .card {
@@ -106,6 +162,7 @@ main#page { padding: 24px 24px 360px; max-width: 1280px; width: 100%; }
     border-radius: var(--radius);
     padding: 18px;
     margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
 }
 .card-title {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -114,15 +171,17 @@ main#page { padding: 24px 24px 360px; max-width: 1280px; width: 100%; }
 .grid { display: grid; gap: 14px; }
 .grid-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
 .grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.grid-4 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.grid-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 
 .stat {
     background: var(--card-bg); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
 }
-.stat .label { font-size: 12px; color: var(--text-muted); }
+.stat .label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
 .stat .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
-.stat .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.stat .sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
 
 .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 160px; margin-bottom: 12px; }
@@ -142,6 +201,7 @@ input[type=color] { height: 36px; padding: 2px; width: 70px; border: 1px solid v
     display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     padding: 8px 14px; border: 1px solid transparent; border-radius: 8px;
     background: var(--primary); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+    transition: background 0.15s ease;
 }
 .btn:hover { background: var(--primary-hover); text-decoration: none; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -151,8 +211,9 @@ input[type=color] { height: 36px; padding: 2px; width: 70px; border: 1px solid v
 .btn-success:hover { background: #15803d; }
 .btn-danger { background: var(--danger); }
 .btn-danger:hover { background: #b91c1c; }
-.btn-warning { background: var(--warning); }
-.btn-sm { padding: 3px 9px; font-size: 12px; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-warning:hover { background: #b45309; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 .badge {
@@ -164,6 +225,7 @@ input[type=color] { height: 36px; padding: 2px; width: 70px; border: 1px solid v
 .badge.danger { background: #fee2e2; color: #991b1b; }
 .badge.info { background: #dbeafe; color: #1e40af; }
 .badge.purple { background: #ede9fe; color: #5b21b6; }
+.badge.gold { background: #fef08a; color: #854d0e; }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
 table.table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
@@ -184,9 +246,10 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; backgroun
 .tab-pane { display: none; }
 .tab-pane.active { display: block; }
 
-.notice { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.notice { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
 .notice.warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
 .notice.danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.notice.success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 
 .pager { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
 
@@ -222,9 +285,164 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; backgroun
 #apiDock .ok { color: #4ade80; }
 #apiDock .bad { color: #f87171; }
 
+/* ===== Role Identification Banner ===== */
+.role-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+}
+.role-banner.owner {
+    background: linear-gradient(135deg, #fbf7ff, #f5f3ff);
+    border-color: #ddd6fe;
+    color: #4c1d95;
+}
+.role-banner.treasurer {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+.role-banner.member {
+    background: linear-gradient(135deg, #eff6ff, #f8fafc);
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+.role-banner .role-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+.role-banner .role-title {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.role-banner .role-desc {
+    font-size: 13px;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+.role-banner .role-powers {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.role-banner .role-powers span {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ===== Role Simulator Toolbar ===== */
+.role-sim-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.role-sim-btns {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.role-sim-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.role-sim-btn:hover {
+    background: #f1f5f9;
+}
+.role-sim-btn.active {
+    background: #0f172a;
+    color: #fff;
+    border-color: #0f172a;
+}
+.role-sim-btn.active.owner {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #fff;
+}
+.role-sim-btn.active.treasurer {
+    background: #059669;
+    border-color: #059669;
+    color: #fff;
+}
+.role-sim-btn.active.member {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+}
+
+/* ===== Demo Quick Login Box ===== */
+.demo-login-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+.demo-login-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.demo-btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+.demo-btn {
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-align: left;
+    transition: all 0.15s;
+}
+.demo-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
 /* ===== Trang đăng nhập / đăng ký ===== */
 .auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: linear-gradient(135deg, #eff6ff, #f5f3ff); }
-.auth-card { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 420px; box-shadow: 0 10px 40px rgba(30,41,59,.12); }
+.auth-card { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 440px; box-shadow: 0 10px 40px rgba(30,41,59,.12); }
 .auth-card h1 { margin: 0 0 4px; font-size: 22px; }
 .auth-card .sub { color: var(--text-muted); margin-bottom: 18px; }
 .auth-card .btn { width: 100%; }
@@ -234,4 +452,6 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; backgroun
 @media (max-width: 800px) {
     .sidebar { display: none; }
     main#page { padding: 14px; }
+    .topbar { flex-direction: column; align-items: flex-start; }
+    .portal-nav { width: 100%; justify-content: space-between; }
 }

@@ -10,13 +10,13 @@ import java.util.UUID;
  * Thông tin tóm tắt của giao dịch, chỉ dùng khi cần lấy nhiều để giảm tải RAM.
  * Muốn đủ chi tiết (ghi chú, hóa đơn, ví, danh mục) dùng {@link TxnDetailResponse}.
  *
- * @param id         ID giao dịch
- * @param type       loại giao dịch
- * @param amount     số tiền (luôn dương, chiều tiền suy từ {@code type})
- * @param occurredAt Thời gian phát sinh
- * @param name       tên hiển thị
- * @param walletId   ID ví phát sinh
- * @param categoryId ID danh mục
+ * @param id           ID giao dịch
+ * @param type         loại giao dịch
+ * @param amount       số tiền (luôn dương, chiều tiền suy từ {@code type})
+ * @param occurredAt   Thời gian phát sinh
+ * @param name         tên hiển thị
+ * @param walletId     ID ví phát sinh
+ * @param categoryCode mã danh mục
  */
 public record TxnSummaryRes(
         UUID id,
@@ -25,5 +25,5 @@ public record TxnSummaryRes(
         Instant occurredAt,
         String name,
         UUID walletId,
-        UUID categoryId) {
+        String categoryCode) {
 }

@@ -1,4 +1,6 @@
 package com.datn.financeapp.module.transaction.events;
 
-public record TxnDeleteEvent() {
+import com.datn.financeapp.module.transaction.entity.Transaction;
+
+public record TxnDeleteEvent(Transaction txn) {
 }

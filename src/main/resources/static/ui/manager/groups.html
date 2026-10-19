@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh sách Nhóm - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="manager" data-active="groups" data-title="Danh sách Nhóm & Quỹ">
+<main id="page">
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-title"><span>🔑 Vào nhóm bằng mã mời</span></div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="inviteCode">Mã mời nhóm (8 ký tự)</label>
+                    <input type="text" id="inviteCode" maxlength="16" placeholder="Ví dụ: SUPER100">
+                </div>
+            </div>
+            <button class="btn" id="btnJoin">Tham gia nhóm</button>
+            <div class="muted mt">
+                Nhóm bật "vào nhóm không cần duyệt" sẽ vào <code>ACTIVE</code> ngay, ngược lại ở <code>PENDING</code> chờ chủ nhóm phê duyệt.
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title"><span>➕ Tạo nhóm quỹ mới</span></div>
+            <p class="muted">
+                Bạn sẽ là <b>Chủ nhóm (Owner)</b> kiêm người giữ két ban đầu. Nhập danh sách User ID thành viên cùng tham gia.
+            </p>
+            <button class="btn btn-success" id="btnCreate">+ Tạo nhóm mới</button>
+        </div>
+    </div>
+
+    <div class="card mt">
+        <div class="card-title">
+            <span>Tất cả các nhóm tham gia</span>
+            <div class="btn-row">
+                <input type="text" id="searchName" placeholder="Tìm tên nhóm..." style="width:200px">
+                <select id="filterRole" style="width:auto">
+                    <option value="">Mọi vai trò</option>
+                    <option value="OWNER">👑 Tôi làm Chủ nhóm</option>
+                    <option value="TREASURER">💰 Tôi làm Thủ quỹ</option>
+                    <option value="MEMBER">👤 Tôi làm Thành viên</option>
+                </select>
+                <select id="filterStatus" style="width:auto">
+                    <option value="">Mọi trạng thái</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="ARCHIVED">ARCHIVED</option>
+                </select>
+                <button class="btn btn-secondary" id="btnReload">🔄</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tên nhóm</th>
+                        <th>Vai trò của bạn</th>
+                        <th>Trạng thái</th>
+                        <th>Mã mời</th>
+                        <th>Số TV</th>
+                        <th class="right">Số dư quỹ</th>
+                        <th class="right">Mục tiêu</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/groups.js"></script>
+</body>
+</html>

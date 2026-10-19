@@ -1,25 +1,32 @@
 package com.datn.financeapp.module.budget.enums;
 
-import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.annotation.JsonCreator;
 
 /**
- * Trạng thái chi tiêu của một ngân sách theo tỉ lệ đã chi trên hạn mức. Trên JSON là chuỗi chữ thường
- * ({@code normal}, {@code near_limit}, {@code over_limit}).
+ * Trạng thái chi tiêu của một ngân sách theo tỉ lệ đã chi trên hạn mức:
+ * NORMAL, NEAR_LIMIT, OVER_LIMIT.
  */
 public enum BudgetStatus {
-    NORMAL("normal"),
-    NEAR_LIMIT("near_limit"),
-    OVER_LIMIT("over_limit");
+    NORMAL,
+    NEAR_LIMIT,
+    OVER_LIMIT;
 
-    private final String code;
-
-    BudgetStatus(String code) {
-        this.code = code;
+    @JsonCreator
+    public static BudgetStatus fromString(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (BudgetStatus status : values()) {
+            if (status.name().equalsIgnoreCase(value.trim())
+                    || status.name().replace("_", "").equalsIgnoreCase(value.replace("_", "").trim())) {
+                return status;
+            }
+        }
+        return NORMAL;
     }
 
-    @JsonValue
     public String code() {
-        return code;
+        return name().toLowerCase();
     }
 
     /**

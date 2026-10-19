@@ -3,27 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Người dùng - Finance AI</title>
+    <title>Quản lý Người dùng - Finance AI Admin</title>
     <link rel="stylesheet" href="../assets/css/base.css">
 </head>
-<body data-area="admin" data-active="users" data-title="Quản lý người dùng">
+<body data-area="admin" data-active="users" data-title="Quản lý Người dùng">
 <main id="page">
     <div class="card">
         <div class="card-title">
-            <span>Danh sách người dùng <span class="muted" id="count"></span></span>
+            <span>Danh sách người dùng hệ thống <span class="muted" id="count"></span></span>
             <div class="btn-row">
-                <input type="text" id="search" placeholder="Tìm email / tên..." style="width:220px">
-                <select id="fStatus" style="width:auto"><option value="">Mọi trạng thái</option><option>ACTIVE</option><option>BLOCKED</option><option>PENDING</option></select>
-                <button class="btn btn-secondary" id="btnReload">↻</button>
+                <input type="text" id="search" placeholder="Tìm email / tên..." style="width:240px">
+                <select id="fStatus" style="width:auto">
+                    <option value="">Mọi trạng thái</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="BLOCKED">BLOCKED</option>
+                    <option value="PENDING">PENDING</option>
+                </select>
+                <button class="btn btn-secondary" id="btnReload">🔄</button>
             </div>
         </div>
         <div class="table-wrap">
             <table class="table">
-                <thead><tr><th>Email</th><th>Họ tên</th><th>Gói</th><th>Trạng thái</th><th>Vai trò</th><th></th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Email & ID</th>
+                        <th>Họ tên</th>
+                        <th>Gói dịch vụ</th>
+                        <th>Trạng thái</th>
+                        <th>Vai trò hệ thống</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
                 <tbody id="body"></tbody>
             </table>
         </div>
-        <div class="muted mt">Chỉ hiển thị người dùng có cấp vai trò thấp hơn hoặc bằng bạn. API chỉ có thao tác <b>khoá</b> (chưa có mở khoá).</div>
+        <div class="muted mt" style="font-size:12px">
+            💡 Bạn có thể xem chi tiết tài khoản, gán/gỡ vai trò (ROLE_ADMIN, ROLE_USER), khoá hoặc mở khoá tài khoản vi phạm.
+        </div>
     </div>
 </main>
 

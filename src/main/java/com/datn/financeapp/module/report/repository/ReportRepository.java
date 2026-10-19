@@ -2,6 +2,7 @@ package com.datn.financeapp.module.report.repository;
 
 import com.datn.financeapp.module.transaction.entity.Transaction;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -12,36 +13,31 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * Repository thực hiện các truy vấn SQL native cho báo cáo thống kê.
- * Cung cấp các phương thức truy vấn dữ liệu như {@link #summary(UUID, LocalDate, LocalDate, UUID)}, {@link #byCategoryGroup(UUID, LocalDate, LocalDate, String, UUID)},
- * {@link #byCategoryInGroup(UUID, LocalDate, LocalDate, String, UUID, UUID)}, {@link #byCategoryParentLevel(UUID, LocalDate, LocalDate, String, int, UUID)},
- * {@link #byCategoryChildLevel(UUID, LocalDate, LocalDate, String, int, UUID)}, {@link #dailyExpense(UUID, LocalDate, LocalDate, UUID)},
- * {@link #monthlyTrend(UUID, LocalDate, LocalDate)} và {@link #eligibleTransactions(UUID, LocalDate, LocalDate, UUID)}.
+ * Cung cấp các phương thức truy vấn dữ liệu như {@link #summary}, {@link #byCategoryGroup},
+ * {@link #byCategoryInGroup}, {@link #byCategoryParentLevel}, {@link #byCategoryChildLevel},
+ * {@link #childrenDetail}, {@link #dailyExpense}, {@link #monthlyTrend} và {@link #eligibleTransactions}.
  */
 public interface ReportRepository extends Repository<Transaction, UUID> {
 
     /**
      * Truy vấn tóm tắt tổng thu, tổng chi và số lượng giao dịch trong khoảng thời gian.
-     *
-     * @param userId   ID người dùng
-     * @param fromDate ngày bắt đầu
-     * @param toDate   ngày kết thúc
-     * @param walletId ID ví lọc dữ liệu (tùy chọn)
-     * @return projection {@link SummaryProjection} chứa thông tin tóm tắt
      */
     @Query(
-            value = "SELECT "
-                    + "COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income, "
-                    + "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount END), 0) AS total_expense, "
-                    + "COUNT(*) AS transaction_count "
-                    + "FROM transactions t "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "AND (CAST(:walletId AS uuid) IS NULL OR t.wallet_id = CAST(:walletId AS uuid) OR t.destination_wallet_id = CAST(:walletId AS uuid))",
+            value = """
+                    SELECT
+                      CAST(COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS BIGINT) AS total_income,
+                      CAST(COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS BIGINT) AS total_expense,
+                      CAST(COUNT(*) AS BIGINT) AS transaction_count
+                    FROM transactions t
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                      AND """ + ReportQueryFragments.WALLET_FILTER,
             nativeQuery = true)
     SummaryProjection summary(
             @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("walletId") UUID walletId);
 
     /**
@@ -56,33 +52,36 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     }
 
     /**
-     * Truy vấn tổng tiền thu/chi gom nhóm theo nhóm danh mục lớn.
-     *
-     * @param userId   ID người dùng
-     * @param fromDate ngày bắt đầu
-     * @param toDate   ngày kết thúc
-     * @param type     loại giao dịch
-     * @param walletId ID ví lọc dữ liệu
-     * @return danh sách các projection {@link CategoryGroupAmountProjection}
+     * Truy vấn tổng tiền thu/chi gom nhóm theo nhóm danh mục lớn (danh mục gốc level 0).
      */
     @Query(
-            value = "SELECT cg.id AS category_group_id, cg.name AS name, cg.color AS color, "
-                    + "SUM(t.amount) AS amount, COUNT(*) AS transaction_count "
-                    + "FROM transactions t "
-                    + "JOIN categories c ON c.id = t.category_id "
-                    + "JOIN categories root ON root.id = COALESCE(c.parent_category_id, c.id) "
-                    + "JOIN category_groups cg ON cg.id = root.category_group_id "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.type = :type "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "GROUP BY cg.id, cg.name, cg.color "
-                    + "ORDER BY amount DESC",
+            value = """
+                    SELECT
+                      root.id AS category_group_id,
+                      root.code AS code,
+                      root.name AS name,
+                      root.color AS color,
+                      root.icon_code AS icon_code,
+                      COALESCE(i.path_data, '') AS icon_path,
+                      CAST(SUM(t.amount) AS BIGINT) AS amount,
+                      CAST(COUNT(*) AS BIGINT) AS transaction_count
+                    FROM transactions t
+                    JOIN categories c ON c.code = t.category_code
+                    JOIN categories root ON root.code = split_part(c.path, '/', 1) AND root.level = 0 AND NOT root.is_deleted
+                    LEFT JOIN icons i ON i.code = root.icon_code
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.type = :type
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY root.id, root.code, root.name, root.color, root.icon_code, i.path_data
+                    ORDER BY amount DESC
+                    """,
             nativeQuery = true)
     List<CategoryGroupAmountProjection> byCategoryGroup(
             @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("type") String type,
             @Param("walletId") UUID walletId);
 
@@ -92,9 +91,15 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     interface CategoryGroupAmountProjection {
         UUID getCategoryGroupId();
 
+        String getCode();
+
         String getName();
 
         String getColor();
+
+        String getIconCode();
+
+        String getIconPath();
 
         Long getAmount();
 
@@ -102,35 +107,34 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     }
 
     /**
-     * Truy vấn thông tin danh mục bên trong một nhóm danh mục chỉ định.
-     *
-     * @param userId          ID người dùng
-     * @param fromDate        ngày bắt đầu
-     * @param toDate          ngày kết thúc
-     * @param type            loại giao dịch
-     * @param categoryGroupId ID nhóm danh mục
-     * @param walletId        ID ví lọc dữ liệu
-     * @return danh sách các projection {@link CategoryAmountProjection}
+     * Truy vấn thông tin danh mục con bên trong một nhóm danh mục chỉ định.
      */
     @Query(
-            value = "SELECT root.id AS category_id, root.name AS name, "
-                    + "SUM(t.amount) AS amount "
-                    + "FROM transactions t "
-                    + "JOIN categories c ON c.id = t.category_id "
-                    + "JOIN categories root ON root.id = COALESCE(c.parent_category_id, c.id) "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.type = :type AND root.category_group_id = :categoryGroupId "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "GROUP BY root.id, root.name "
-                    + "ORDER BY amount DESC",
+            value = """
+                    SELECT
+                      c.id AS category_id,
+                      c.code AS code,
+                      c.name AS name,
+                      CAST(SUM(t.amount) AS BIGINT) AS amount,
+                      CAST(COUNT(*) AS BIGINT) AS transaction_count
+                    FROM transactions t
+                    JOIN categories c ON c.code = t.category_code
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.type = :type
+                      AND split_part(c.path, '/', 1) = :rootCode
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY c.id, c.code, c.name
+                    ORDER BY amount DESC
+                    """,
             nativeQuery = true)
     List<CategoryAmountProjection> byCategoryInGroup(
             @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("type") String type,
-            @Param("categoryGroupId") UUID categoryGroupId,
+            @Param("rootCode") String rootCode,
             @Param("walletId") UUID walletId);
 
     /**
@@ -138,6 +142,8 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
      */
     interface CategoryAmountProjection {
         UUID getCategoryId();
+
+        String getCode();
 
         String getName();
 
@@ -148,35 +154,37 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
 
     /**
      * Truy vấn cơ cấu chi tiêu/thu nhập theo cấp danh mục cha (đã cộng gộp danh mục con).
-     *
-     * @param userId   ID người dùng
-     * @param fromDate ngày bắt đầu
-     * @param toDate   ngày kết thúc
-     * @param type     loại giao dịch
-     * @param limit    số lượng danh mục tối đa
-     * @param walletId ID ví lọc dữ liệu
-     * @return danh sách các projection {@link CategoryParentAmountProjection}
      */
     @Query(
-            value = "SELECT root.id AS category_id, root.name AS name, root.icon_id AS icon_id, "
-                    + "root.color AS color, SUM(t.amount) AS amount, COUNT(*) AS transaction_count, "
-                    + "EXISTS(SELECT 1 FROM categories ch WHERE ch.parent_category_id = root.id "
-                    + "AND NOT ch.is_deleted) AS has_children "
-                    + "FROM transactions t "
-                    + "JOIN categories c ON c.id = t.category_id "
-                    + "JOIN categories root ON root.id = COALESCE(c.parent_category_id, c.id) "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.type = :type "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "GROUP BY root.id, root.name, root.icon_id, root.color "
-                    + "ORDER BY amount DESC "
-                    + "LIMIT :limit",
+            value = """
+                    SELECT
+                      root.id AS category_id,
+                      root.code AS code,
+                      root.name AS name,
+                      root.icon_code AS icon_code,
+                      COALESCE(i.path_data, '') AS icon_path,
+                      root.color AS color,
+                      CAST(SUM(t.amount) AS BIGINT) AS amount,
+                      CAST(COUNT(*) AS BIGINT) AS transaction_count,
+                      NOT root.is_leaf AS has_children
+                    FROM transactions t
+                    JOIN categories c ON c.code = t.category_code
+                    JOIN categories root ON root.code = split_part(c.path, '/', 1) AND root.level = 0 AND NOT root.is_deleted
+                    LEFT JOIN icons i ON i.code = root.icon_code
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.type = :type
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY root.id, root.code, root.name, root.icon_code, i.path_data, root.color, root.is_leaf
+                    ORDER BY amount DESC
+                    LIMIT :limit
+                    """,
             nativeQuery = true)
     List<CategoryParentAmountProjection> byCategoryParentLevel(
             @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("type") String type,
             @Param("limit") int limit,
             @Param("walletId") UUID walletId);
@@ -187,9 +195,13 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     interface CategoryParentAmountProjection {
         UUID getCategoryId();
 
+        String getCode();
+
         String getName();
 
-        UUID getIconId();
+        String getIconCode();
+
+        String getIconPath();
 
         String getColor();
 
@@ -201,94 +213,95 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
     }
 
     /**
-     * Truy vấn chi tiết các danh mục con thuộc một danh mục cha.
-     *
-     * @param userId       ID người dùng
-     * @param fromDate     ngày bắt đầu
-     * @param toDate       ngày kết thúc
-     * @param type         loại giao dịch
-     * @param parentId     ID danh mục cha
-     * @param categoryTree mảng ID cây danh mục
-     * @param walletId     ID ví lọc dữ liệu
-     * @return danh sách các projection {@link CategoryAmountProjection}
+     * Truy vấn chi tiết các danh mục con thuộc một danh mục cha gốc.
      */
     @Query(
-            value = "SELECT c.id AS category_id, COALESCE(c.name, '') AS name, "
-                    + "SUM(t.amount) AS amount, COUNT(*) AS transaction_count "
-                    + "FROM transactions t "
-                    + "LEFT JOIN categories c ON c.id = t.category_id AND c.id <> :parentId "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.type = :type "
-                    + "AND t.category_id = ANY(CAST(:categoryTree AS uuid[])) "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "GROUP BY c.id, c.name "
-                    + "ORDER BY amount DESC",
+            value = """
+                    SELECT
+                      c.id AS category_id,
+                      c.code AS code,
+                      c.name AS name,
+                      CAST(SUM(t.amount) AS BIGINT) AS amount,
+                      CAST(COUNT(*) AS BIGINT) AS transaction_count
+                    FROM transactions t
+                    JOIN categories c ON c.code = t.category_code
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.type = :type
+                      AND split_part(c.path, '/', 1) = :parentCode
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY c.id, c.code, c.name
+                    ORDER BY amount DESC
+                    """,
             nativeQuery = true)
     List<CategoryAmountProjection> childrenDetail(
             @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("type") String type,
-            @Param("parentId") UUID parentId,
-            @Param("categoryTree") UUID[] categoryTree,
+            @Param("parentCode") String parentCode,
             @Param("walletId") UUID walletId);
 
     /**
      * Truy vấn cơ cấu chi tiêu/thu nhập theo từng danh mục cấp con (không cộng gộp).
-     *
-     * @param userId   ID người dùng
-     * @param fromDate ngày bắt đầu
-     * @param toDate   ngày kết thúc
-     * @param type     loại giao dịch
-     * @param limit    số lượng danh mục tối đa
-     * @param walletId ID ví lọc dữ liệu
-     * @return danh sách các projection {@link CategoryParentAmountProjection}
      */
     @Query(
-            value = "SELECT c.id AS category_id, c.name AS name, c.icon_id AS icon_id, "
-                    + "c.color AS color, SUM(t.amount) AS amount, COUNT(*) AS transaction_count, "
-                    + "FALSE AS has_children "
-                    + "FROM transactions t "
-                    + "JOIN categories c ON c.id = t.category_id "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.type = :type "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "GROUP BY c.id, c.name, c.icon_id, c.color "
-                    + "ORDER BY amount DESC "
-                    + "LIMIT :limit",
+            value = """
+                    SELECT
+                      c.id AS category_id,
+                      c.code AS code,
+                      c.name AS name,
+                      c.icon_code AS icon_code,
+                      COALESCE(i.path_data, '') AS icon_path,
+                      c.color AS color,
+                      CAST(SUM(t.amount) AS BIGINT) AS amount,
+                      CAST(COUNT(*) AS BIGINT) AS transaction_count,
+                      FALSE AS has_children
+                    FROM transactions t
+                    JOIN categories c ON c.code = t.category_code
+                    LEFT JOIN icons i ON i.code = c.icon_code
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.type = :type
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY c.id, c.code, c.name, c.icon_code, i.path_data, c.color
+                    ORDER BY amount DESC
+                    LIMIT :limit
+                    """,
             nativeQuery = true)
     List<CategoryParentAmountProjection> byCategoryChildLevel(
             @Param("userId") UUID userId,
-            @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("type") String type,
             @Param("limit") int limit,
             @Param("walletId") UUID walletId);
 
     /**
-     * Truy vấn tổng tiền chi tiêu theo từng ngày trong khoảng thời gian.
-     *
-     * @param userId    ID người dùng
-     * @param startDate ngày bắt đầu
-     * @param endDate   ngày kết thúc
-     * @param walletId  ID ví lọc dữ liệu
-     * @return danh sách các projection {@link DailyAmountProjection}
+     * Truy vấn tổng tiền chi tiêu theo từng ngày trong khoảng thời gian theo múi giờ.
      */
     @Query(
-            value = "SELECT t.date AS date, SUM(t.amount) AS amount "
-                    + "FROM transactions t "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.type = 'expense' AND t.date >= :startDate AND t.date <= :endDate "
-                    + "GROUP BY t.date "
-                    + "ORDER BY t.date",
+            value = """
+                    SELECT
+                      (t.occurred_at AT TIME ZONE :timeZone)::date AS date,
+                      CAST(SUM(t.amount) AS BIGINT) AS amount
+                    FROM transactions t
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.type = 'EXPENSE'
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY 1
+                    ORDER BY date
+                    """,
             nativeQuery = true)
     List<DailyAmountProjection> dailyExpense(
             @Param("userId") UUID userId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
+            @Param("timeZone") String timeZone,
             @Param("walletId") UUID walletId);
 
     /**
@@ -302,24 +315,26 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
 
     /**
      * Truy vấn xu hướng tổng thu và chi theo từng tháng.
-     *
-     * @param userId   ID người dùng
-     * @param fromDate ngày bắt đầu
-     * @param toDate   ngày kết thúc
-     * @return danh sách các projection {@link MonthlyAmountProjection}
      */
     @Query(
-            value = "SELECT date_trunc('month', t.date)::date AS month, "
-                    + "COALESCE(SUM(CASE WHEN t.type = 'income' THEN t.amount END), 0) AS total_income, "
-                    + "COALESCE(SUM(CASE WHEN t.type = 'expense' THEN t.amount END), 0) AS total_expense "
-                    + "FROM transactions t "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "GROUP BY month "
-                    + "ORDER BY month",
+            value = """
+                    SELECT
+                      date_trunc('month', t.occurred_at AT TIME ZONE :timeZone)::date AS month,
+                      CAST(COALESCE(SUM(CASE WHEN t.type = 'INCOME' THEN t.amount END), 0) AS BIGINT) AS total_income,
+                      CAST(COALESCE(SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount END), 0) AS BIGINT) AS total_expense
+                    FROM transactions t
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    GROUP BY 1
+                    ORDER BY month
+                    """,
             nativeQuery = true)
     List<MonthlyAmountProjection> monthlyTrend(
-            @Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+            @Param("userId") UUID userId,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
+            @Param("timeZone") String timeZone);
 
     /**
      * Projection tổng thu chi theo tháng.
@@ -334,21 +349,20 @@ public interface ReportRepository extends Repository<Transaction, UUID> {
 
     /**
      * Truy vấn các giao dịch đủ điều kiện báo cáo trong khoảng thời gian.
-     *
-     * @param userId   ID người dùng
-     * @param fromDate ngày bắt đầu
-     * @param toDate   ngày kết thúc
-     * @param walletId ID ví lọc dữ liệu
-     * @return danh sách các entity {@link Transaction}
      */
     @Query(
-            value = "SELECT t.* FROM transactions t "
-                    + "WHERE t.user_id = :userId AND " + ReportQueryFragments.REPORT_ELIGIBLE + " "
-                    + "AND " + ReportQueryFragments.WALLET_FILTER + " "
-                    + "AND t.date >= :fromDate AND t.date <= :toDate "
-                    + "ORDER BY t.date DESC, t.created_at DESC",
+            value = """
+                    SELECT t.* FROM transactions t
+                    WHERE t.user_id = :userId
+                      AND """ + ReportQueryFragments.REPORT_ELIGIBLE + """
+                      AND """ + ReportQueryFragments.WALLET_FILTER + """
+                      AND t.occurred_at >= :startInstant AND t.occurred_at <= :endInstant
+                    ORDER BY t.occurred_at DESC, t.created_at DESC
+                    """,
             nativeQuery = true)
     List<Transaction> eligibleTransactions(
-            @Param("userId") UUID userId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+            @Param("userId") UUID userId,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant,
             @Param("walletId") UUID walletId);
 }

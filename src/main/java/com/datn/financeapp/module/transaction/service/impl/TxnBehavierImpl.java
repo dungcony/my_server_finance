@@ -66,8 +66,8 @@ public class TxnBehavierImpl implements TxnBehavierService {
         txn.setUserId(userId);
         txnRepository.save(txn);
 
-        // sự kiện cập nhật số dư ví sẽ hoàn thiện ở module wallet sau
-        publisher.publishEvent(new TxnCreateEvent());
+        // phát sự kiện giao dịch được tạo
+        publisher.publishEvent(new TxnCreateEvent(txn));
 
         return txnMapper.toResponse(txn, cate, wallet);
     }
@@ -131,6 +131,19 @@ public class TxnBehavierImpl implements TxnBehavierService {
         if (!isAdmin && !txn.getUserId().equals(SecurityContextUtil.currentUserId()))
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch.");
 
+        // Sao lưu trạng thái cũ trước khi cập nhật
+        Transaction oldTxn = Transaction.builder()
+                .id(txn.getId())
+                .userId(txn.getUserId())
+                .walletId(txn.getWalletId())
+                .categoryCode(txn.getCategoryCode())
+                .type(txn.getType())
+                .amount(txn.getAmount())
+                .name(txn.getName())
+                .note(txn.getNote())
+                .occurredAt(txn.getOccurredAt())
+                .build();
+
         // Không cần thiết categoryId với mọi loại giao dịch
         if (req.occuredAt() != null) txn.setOccurredAt(req.occuredAt());
         if (req.type() != null) txn.setType(req.type());
@@ -155,8 +168,8 @@ public class TxnBehavierImpl implements TxnBehavierService {
 
         txnRepository.save(txn);
 
-        // sự kiện cập nhật số dư ví sẽ hoàn thiện ở module wallet sau
-        publisher.publishEvent(new TxnUpdateEvent());
+        // phát sự kiện cập nhật giao dịch
+        publisher.publishEvent(new TxnUpdateEvent(oldTxn, txn));
     }
 
     @Override
@@ -172,8 +185,8 @@ public class TxnBehavierImpl implements TxnBehavierService {
         txn.setIsDeleted(true);
         txnRepository.save(txn);
 
-        // sự kiện cập nhật số dư ví sẽ hoàn thiện ở module wallet sau
-        publisher.publishEvent(new TxnDeleteEvent());
+        // phát sự kiện xóa giao dịch
+        publisher.publishEvent(new TxnDeleteEvent(txn));
     }
 
 
@@ -183,4 +196,3 @@ public class TxnBehavierImpl implements TxnBehavierService {
     }
 
 }
-

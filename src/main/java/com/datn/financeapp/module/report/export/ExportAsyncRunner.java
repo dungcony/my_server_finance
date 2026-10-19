@@ -1,16 +1,20 @@
 package com.datn.financeapp.module.report.export;
 
-import com.datn.financeapp.module.category.service.CategoryService;
+import com.datn.financeapp.module.budget.helper.BudgetCategoryHelper;
+import com.datn.financeapp.module.budget.helper.UserTimezoneHelper;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.report.dto.request.ExportRequest;
 import com.datn.financeapp.module.report.export.CsvReportWriter.TransactionExportRow;
 import com.datn.financeapp.module.report.repository.ReportRepository;
 import com.datn.financeapp.module.transaction.entity.Transaction;
+import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import com.datn.financeapp.module.wallet.service.WalletService;
 
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
@@ -34,8 +38,9 @@ public class ExportAsyncRunner {
 
     private final ExportStatusWriter exportStatusWriter;
     private final ReportRepository reportRepository;
-    private final CategoryService categoryService;
+    private final BudgetCategoryHelper budgetCategoryHelper;
     private final WalletService walletService;
+    private final UserTimezoneHelper timezoneHelper;
 
     @Value("${app.export.storage-dir:${java.io.tmpdir}/finance-exports}")
     private String storageDir;
@@ -50,17 +55,18 @@ public class ExportAsyncRunner {
     @Async("exportTaskExecutor")
     public void runExport(UUID jobId, UUID userId, ExportRequest req) {
         try {
+            ZoneId zone = timezoneHelper.getCurrentZone();
             LocalDate[] range = resolveRange(req);
-            List<Transaction> transactions =
-                    // Xuất báo cáo luôn lấy MỌI ví — `wallet_id` không nằm trong tham số của
-                    // POST /reports/export (api/06 mục 9), và tệp xuất ra là bản đầy đủ để lưu
-                    // trữ chứ không phải một lát cắt đang xem trên màn hình.
-                    reportRepository.eligibleTransactions(userId, range[0], range[1], null);
+            Instant startInstant = timezoneHelper.toStartInstant(range[0], zone);
+            Instant endInstant = timezoneHelper.toEndInstant(range[1], zone);
 
-            Map<UUID, CategoryRefResponse> categoryCache = new HashMap<>();
+            List<Transaction> transactions =
+                    reportRepository.eligibleTransactions(userId, startInstant, endInstant, null);
+
+            Map<String, CateSumaryRes> categoryCache = new HashMap<>();
             Map<UUID, WalletSumaryRes> walletCache = new HashMap<>();
             List<TransactionExportRow> rows = transactions.stream()
-                    .map(t -> toRow(t, categoryCache, walletCache))
+                    .map(t -> toRow(t, userId, zone, categoryCache, walletCache))
                     .toList();
 
             Path path = CsvReportWriter.write(Path.of(storageDir), jobId, rows);
@@ -71,10 +77,6 @@ public class ExportAsyncRunner {
             try {
                 exportStatusWriter.markFailed(jobId, "Xuất báo cáo thất bại: " + ex.getMessage());
             } catch (Exception markEx) {
-                // Ghi trạng thái lỗi cũng hỏng (CSDL sập hẳn chẳng hạn) — bản ghi sẽ nằm lại ở
-                // processing. Job dọn ExportCleanupJob quét các bản ghi processing quá cũ để tự
-                // phục hồi, nên ở đây chỉ cần log, không nuốt im lặng và cũng không ném tiếp ra
-                // thread pool @Async (không ai bắt được, chỉ làm bẩn log với stack trace kép).
                 log.error("Không ghi được trạng thái thất bại cho job {}", jobId, markEx);
             }
         }
@@ -82,19 +84,38 @@ public class ExportAsyncRunner {
 
     private TransactionExportRow toRow(
             Transaction t,
-            Map<UUID, CategoryRefResponse> categoryCache,
+            UUID userId,
+            ZoneId zone,
+            Map<String, CateSumaryRes> categoryCache,
             Map<UUID, WalletSumaryRes> walletCache) {
         String categoryName = "";
-        if (t.getCategoryId() != null) {
-            CategoryRefResponse category =
-                    categoryCache.computeIfAbsent(t.getCategoryId(), categoryService::findRefById);
-            categoryName = category == null ? "" : category.name();
+        if (t.getCategoryCode() != null && !t.getCategoryCode().isBlank()) {
+            CateSumaryRes category = categoryCache.computeIfAbsent(
+                    t.getCategoryCode(),
+                    code -> budgetCategoryHelper.findSummary(code).orElse(null));
+            categoryName = category == null ? t.getCategoryCode() : category.name();
         }
-        WalletSumaryRes wallet =
-                walletCache.computeIfAbsent(t.getWalletId(), walletService::findRefById);
+
+        WalletSumaryRes wallet = walletCache.computeIfAbsent(
+                t.getWalletId(),
+                id -> walletService.findSumaryByIdAndUser(id, userId, true).orElse(null));
         String walletName = wallet == null ? "" : wallet.name();
+
+        String dateStr = t.getOccurredAt() != null
+                ? timezoneHelper.toLocalDate(t.getOccurredAt(), zone).toString()
+                : "";
+
+        String note = t.getNote() != null && !t.getNote().isBlank()
+                ? t.getNote()
+                : (t.getName() != null ? t.getName() : "");
+
         return new TransactionExportRow(
-                t.getDate().toString(), t.getType(), t.getAmount(), categoryName, walletName, t.getNote());
+                dateStr,
+                t.getType() != null ? t.getType().name() : "",
+                t.getAmount() != null ? t.getAmount() : 0L,
+                categoryName,
+                walletName,
+                note);
     }
 
     private LocalDate[] resolveRange(ExportRequest req) {

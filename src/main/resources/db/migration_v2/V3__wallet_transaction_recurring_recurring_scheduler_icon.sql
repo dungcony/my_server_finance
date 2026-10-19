@@ -26,7 +26,7 @@ CREATE INDEX idx_wallets_user ON wallets (user_id, sort_order) WHERE NOT is_dele
 
 -- transactions: giao dịch thu, chi, cho vay của cá nhân --
 -- số dư ví do trigger trg_transactions_wallet_balance cập nhật theo bảng này
-CREATE TABLE transactions (\
+CREATE TABLE transactions (
     id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id     UUID         NOT NULL,
     wallet_id   UUID         NOT NULL,

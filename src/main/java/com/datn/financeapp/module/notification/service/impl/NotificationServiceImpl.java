@@ -42,13 +42,14 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional(readOnly = true)
     public NotificationListResponse list(UUID userId, Boolean isRead, Pageable pageable) {
+        Page<Notification> notifications = (isRead == null)
+                ? notificationRepository.findAllByUserId(userId, pageable)
+                : notificationRepository.findAllByUserIdAndIsRead(userId, isRead, pageable);
 
-        Page<Notification> notifications = notificationRepository.findAllByUserIdAndIsRead(userId, isRead, pageable);
+        List<NotificationRes> items = notifications.stream().map(notificationMapper::toRes).toList();
+        PageMeta meta = PageMeta.from(notifications);
 
-        List<NotificationRes> data = notifications.stream().map(notificationMapper::toRes).toList();
-        PageMeta pagination = PageMeta.from(notifications);
-
-        return NotificationListResponse.of(data, pagination);
+        return NotificationListResponse.of(items, meta);
     }
 
     /**

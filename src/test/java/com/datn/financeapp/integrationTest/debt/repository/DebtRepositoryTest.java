@@ -1,18 +1,27 @@
 package com.datn.financeapp.integrationTest.debt.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.module.category.entity.Category;
-import com.datn.financeapp.module.category.repository.CategoryRepository;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.repository.DebtRepository;
 import com.datn.financeapp.module.transaction.entity.Transaction;
+import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.repository.TransactionRepository;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.module.wallet.entity.Wallet;
+import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,14 +36,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Transactional
 @Testcontainers
@@ -63,9 +64,6 @@ class DebtRepositoryTest {
     private WalletRepository walletRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
     private TransactionRepository transactionRepository;
 
     private UUID userId;
@@ -82,8 +80,6 @@ class DebtRepositoryTest {
                 .lastName("Owner")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
                 .build());
         userId = user.getId();
 
@@ -95,8 +91,6 @@ class DebtRepositoryTest {
                 .lastName("User")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
                 .build());
         otherUserId = otherUser.getId();
 
@@ -104,33 +98,23 @@ class DebtRepositoryTest {
                 .id(UUID.randomUUID())
                 .userId(userId)
                 .name("Debt Wallet")
-                .type("cash")
-                .initialBalance(10_000_000L)
-                .currentBalance(10_000_000L)
-                .includeInTotal(true)
-                .sortOrder(0)
-                .isDeleted(false)
-                .createdAt(Instant.now())
+                .type(WalletType.CASH)
+                .balance(10_000_000L)
+                .isDefault(false)
                 .build());
         walletId = wallet.getId();
     }
 
     private Debt createDebt(UUID ownerId, String type, long principal, LocalDate due, String status) {
-        Category cat = categoryRepository.findSystemCategoryByName("Cho vay", "expense").orElseThrow();
         Transaction txn = transactionRepository.saveAndFlush(Transaction.builder()
                 .id(UUID.randomUUID())
                 .userId(ownerId)
                 .walletId(walletId)
-                .categoryId(cat.getId())
-                .type("expense")
+                .categoryCode("cho_vay")
+                .type(TxnType.EXPENSE)
                 .amount(principal)
-                .date(LocalDate.now())
-                .displayName("Lending origin")
-                .source("manual")
-                .isDeleted(false)
-                .countsInReport(false)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .occurredAt(Instant.now())
+                .name("Lending origin")
                 .build());
 
         Debt debt = Debt.builder()
@@ -145,7 +129,6 @@ class DebtRepositoryTest {
                 .dueDate(due)
                 .status(status)
                 .originTransactionId(txn.getId())
-                .createdAt(Instant.now())
                 .build();
         return debtRepository.saveAndFlush(debt);
     }

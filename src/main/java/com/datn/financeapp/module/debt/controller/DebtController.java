@@ -4,51 +4,28 @@ import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.debt.dto.request.CreateDebtRequest;
-import com.datn.financeapp.module.debt.dto.response.CreateDebtResponse;
 import com.datn.financeapp.module.debt.dto.request.CreatePaymentRequest;
+import com.datn.financeapp.module.debt.dto.request.UpdateDebtRequest;
+import com.datn.financeapp.module.debt.dto.request.WriteOffRequest;
+import com.datn.financeapp.module.debt.dto.response.CreateDebtResponse;
 import com.datn.financeapp.module.debt.dto.response.CreatePaymentResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtDetailResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtListItemResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtSummaryResponse;
-import com.datn.financeapp.module.debt.dto.request.UpdateDebtRequest;
-import com.datn.financeapp.module.debt.dto.request.WriteOffRequest;
+import com.datn.financeapp.module.debt.service.DebtAdminService;
 import com.datn.financeapp.module.debt.service.DebtService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
-
 /**
  * Controller xử lý các yêu cầu HTTP quản lý sổ nợ, đợt thanh toán và xóa nợ.
- * <p>
- * <b>Các endpoint chính:</b>
- * <ul>
- *   <li>{@link #list(String, String, Boolean)}: {@code GET /debts} - Danh sách khoản nợ</li>
- *   <li>{@link #summary()}: {@code GET /debts/summary} - Báo cáo tổng quan sổ nợ</li>
- *   <li>{@link #detail(UUID)}: {@code GET /debts/{id}} - Chi tiết khoản nợ</li>
- *   <li>{@link #create(CreateDebtRequest)}: {@code POST /debts} - Tạo mới khoản nợ/cho vay</li>
- *   <li>{@link #update(UUID, UpdateDebtRequest)}: {@code PATCH /debts/{id}} - Cập nhật khoản nợ</li>
- *   <li>{@link #delete(UUID)}: {@code DELETE /debts/{id}} - Xóa khoản nợ</li>
- *   <li>{@link #addPayment(UUID, CreatePaymentRequest)}: {@code POST /debts/{id}/payments} - Ghi nhận thanh toán</li>
- *   <li>{@link #cancelPayment(UUID, UUID)}: {@code DELETE /debts/{id}/payments/{paymentId}} - Hủy thanh toán</li>
- *   <li>{@link #writeOff(UUID, WriteOffRequest)}: {@code POST /debts/{id}/write-off} - Xóa nợ xấu</li>
- * </ul>
- * </p>
- *
- * @see DebtService
+ * Bao gồm cả luồng người dùng thông thường và luồng dành cho Quản trị viên (Admin).
  */
 @RestController
 @RequestMapping("/debts")
@@ -56,6 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class DebtController {
 
     private final DebtService debtService;
+    private final DebtAdminService debtAdminService;
+
+    // =========================================================================
+    // Luồng người dùng thông thường (User Flow)
+    // =========================================================================
 
     @GetMapping
     public ApiResponse<List<DebtListItemResponse>> list(
@@ -121,5 +103,79 @@ public class DebtController {
             @PathVariable UUID id, @RequestBody(required = false) WriteOffRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(debtService.writeOff(userId, id, req));
+    }
+
+    // =========================================================================
+    // Luồng Quản trị viên (Admin Flow - DebtAdminService)
+    // =========================================================================
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_READ.getValue())")
+    @GetMapping("/admin")
+    public ApiResponse<List<DebtListItemResponse>> adminList(
+            @RequestParam(name = "user_id", required = false) UUID userId,
+            @RequestParam(name = "type", required = false) String type,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "is_overdue", required = false) Boolean isOverdue) {
+        return ApiResponse.of(debtAdminService.list(userId, type, status, isOverdue));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_READ.getValue())")
+    @GetMapping("/admin/summary")
+    public ApiResponse<DebtSummaryResponse> adminSummary(
+            @RequestParam(name = "user_id", required = false) UUID userId) {
+        return ApiResponse.of(debtAdminService.summary(userId));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_READ.getValue())")
+    @GetMapping("/admin/{id}")
+    public ApiResponse<DebtDetailResponse> adminDetail(@PathVariable UUID id) {
+        return ApiResponse.of(debtAdminService.detail(id));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_UPDATE.getValue())")
+    @PostMapping("/admin")
+    @Idempotent
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<CreateDebtResponse> adminCreate(
+            @RequestParam(name = "user_id") UUID userId,
+            @Valid @RequestBody CreateDebtRequest req) {
+        return ApiResponse.of(debtAdminService.createForUser(userId, req));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_UPDATE.getValue())")
+    @PatchMapping("/admin/{id}")
+    public ApiResponse<DebtListItemResponse> adminUpdate(
+            @PathVariable UUID id, @Valid @RequestBody UpdateDebtRequest req) {
+        return ApiResponse.of(debtAdminService.update(id, req));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_UPDATE.getValue())")
+    @PostMapping("/admin/{id}/payments")
+    @Idempotent
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<CreatePaymentResponse> adminAddPayment(
+            @PathVariable UUID id, @Valid @RequestBody CreatePaymentRequest req) {
+        return ApiResponse.of(debtAdminService.addPaymentForUser(id, req));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_UPDATE.getValue())")
+    @PostMapping("/admin/{id}/write-off")
+    public ApiResponse<DebtListItemResponse> adminWriteOff(
+            @PathVariable UUID id, @RequestBody(required = false) WriteOffRequest req) {
+        return ApiResponse.of(debtAdminService.writeOff(id, req));
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_DELETE.getValue())")
+    @DeleteMapping("/admin/{id}/payments/{paymentId}")
+    public ApiResponse<Void> adminCancelPayment(@PathVariable UUID id, @PathVariable UUID paymentId) {
+        debtAdminService.cancelPayment(id, paymentId);
+        return ApiResponse.of(null);
+    }
+
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_DELETE.getValue())")
+    @DeleteMapping("/admin/{id}")
+    public ApiResponse<Void> adminDelete(@PathVariable UUID id) {
+        debtAdminService.delete(id);
+        return ApiResponse.of(null);
     }
 }

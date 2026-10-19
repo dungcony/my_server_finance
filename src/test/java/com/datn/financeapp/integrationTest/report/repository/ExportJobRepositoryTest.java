@@ -1,5 +1,10 @@
 package com.datn.financeapp.integrationTest.report.repository;
 
+import com.datn.financeapp.module.report.repository.*;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.datn.financeapp.TestRedisConfig;
 import com.datn.financeapp.module.report.entity.ExportJob;
 import com.datn.financeapp.module.report.repository.ExportJobRepository;
@@ -7,6 +12,13 @@ import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.repository.UserRepository;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,14 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @Transactional
 @Testcontainers
@@ -72,8 +76,6 @@ class ExportJobRepositoryTest {
                 .lastName("Owner")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
                 .build());
         userId = user.getId();
 
@@ -85,8 +87,6 @@ class ExportJobRepositoryTest {
                 .lastName("User")
                 .plan(UserPlan.FREE)
                 .status(UserStatus.ACTIVE)
-                .isDeleted(false)
-                .createdAt(Instant.now())
                 .build());
         otherUserId = otherUser.getId();
     }

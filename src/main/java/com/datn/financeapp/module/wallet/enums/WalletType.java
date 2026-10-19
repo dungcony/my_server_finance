@@ -4,5 +4,6 @@ public enum WalletType {
     CASH,
     BANK,
     E_WALLET,
-
+    LOAN,
+    SAVINGS,
 }
