@@ -49,7 +49,7 @@ public class MemberServiceImpl implements MemberService {
             member.setJoinedAt(Instant.now());
 
         log.info("tạo thành viên {} trong nhóm {} với trạng thái {}", req.userId(), req.groupId(), status);
-        return Optional.of(memberMapper.toResponse(memberRepository.save(member)));
+        return Optional.of(memberMapper.toResponse(memberRepository.saveAndFlush(member)));
     }
 
     @Override

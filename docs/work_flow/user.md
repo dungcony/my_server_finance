@@ -95,7 +95,7 @@ POST /auth/reset-password
 | `UserDeletedEvent` | Người dùng tự xoá hoặc admin xoá tài khoản (xoá mềm) |
 | `UserLockedEvent` | Admin khoá tài khoản |
 
-## Lỗi đang mở (xem [review-06](../problem/review-06-user-auth-notification.md))
+## Lỗi đang mở (xem [review-06](../problem/review-06-user-auth.md))
 
 - U2: đăng ký email có chữ hoa bị lỗi (bảng `users` bắt email chữ thường, nhưng `register` chưa chuyển).
 - U3: `verify-email` không kiểm tài khoản bị khoá; `resend-verification` báo lỗi lộ trạng thái tài khoản.

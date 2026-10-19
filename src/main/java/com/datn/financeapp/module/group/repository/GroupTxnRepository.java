@@ -27,13 +27,9 @@ public interface GroupTxnRepository extends
     List<GroupTxn> findByIdInAndStatusAndDeletedAtIsNull(List<UUID> ids, GroupTxnStatus status);
 
     @EntityGraph(attributePaths = {"participants"})
-    Optional<GroupTxn> findByIdAndDeletedAtIsNull(UUID id);
-
     List<GroupTxn> findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(List<UUID> ids, UUID groupId, GroupTxnStatus status);
 
     long countByGroupIdAndStatusAndDeletedAtIsNull(UUID groupId, GroupTxnStatus status);
-
-    long countByGroupIdAndDeletedAtIsNull(UUID groupId);
 
     long countByGroupIdAndDeletedAtIsNullAndStatusNotIn(UUID groupId, Collection<GroupTxnStatus> statuses);
 
@@ -66,17 +62,4 @@ public interface GroupTxnRepository extends
     Long sumAmountByGroupIdAndType(
             UUID groupId,
             GroupTxnType type);
-
-    @Modifying
-    @Query("""
-            update GroupTxn t
-            set t.transactorId = :newTransactorId,
-                t.updatedAt = CURRENT_TIMESTAMP
-            where t.transactorId = :oldTransactorId
-            and t.id = :txnId
-            and t.status != GroupTxnStatus.REJECTED
-            and t.deletedAt IS NULL
-            """)
-    int updateStatusNotReject(UUID txnId, UUID oldTransactorId, UUID newTransactorId);
 }
-

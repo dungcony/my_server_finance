@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * @param type              loại giao dịch
  * @param amount            tổng số tiền giao dịch
  * @param transactorId      người bỏ tiền túi, null khi dùng tiền quỹ
- * @param categoryId        ID danh mục của giao dịch, null với góp quỹ, hoàn tiền, kiểm kê
+ * @param categoryCode      mã danh mục của giao dịch, null với góp quỹ, hoàn tiền, kiểm kê
  * @param occurredAt        thời điểm phát sinh giao dịch
  * @param note              ghi chú, có thể null
  * @param participantShares phần của từng người tham gia (userId → shareAmount); với hoàn tiền là phần mỗi người được nhận
@@ -34,7 +34,7 @@ public record GroupTxnConfirmedEvent(
         GroupTxnType type,
         long amount,
         UUID transactorId,
-        UUID categoryId,
+        String categoryCode,
         Instant occurredAt,
         String note,
         Map<UUID, Long> participantShares) {
@@ -55,7 +55,7 @@ public record GroupTxnConfirmedEvent(
                 txn.getType(),
                 txn.getAmount(),
                 txn.getTransactorId(),
-                txn.getCategoryId(),
+                txn.getCategoryCode(),
                 txn.getOccurredAt(),
                 txn.getNote(),
                 shares);

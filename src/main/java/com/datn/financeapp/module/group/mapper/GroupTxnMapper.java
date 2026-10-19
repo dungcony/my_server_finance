@@ -12,15 +12,12 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface GroupTxnMapper {
 
-    // categoryCode cần tra sang module danh mục nên TransactionHelper điền sau khi ánh xạ
-    @Mapping(target = "categoryCode", ignore = true)
     GroupTxnDetailRes toDetailResponse(GroupTxn txn);
 
     @Mapping(target = "categoryCode", source = "categoryCode")
     GroupTxnDetailRes toDetailResponse(GroupTxn txn, String categoryCode);
 
     @Mapping(target = "txnId", source = "txn.id")
-    @Mapping(target = "categoryCode", ignore = true)
     GroupTxnSumaryRes toSumaryResponse(GroupTxn txn);
 
     @Mapping(target = "userId", source = "participant.userId")

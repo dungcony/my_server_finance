@@ -54,6 +54,8 @@ Ba mục đánh số là bắt buộc, giữ đúng thứ tự. Các mục còn 
 - luôn hỏi trước có viết test hay không
 
 ## Câu hỏi còn mở
+
+## Bảng công việc
 ```
 
 ### Bối cảnh
@@ -102,6 +104,7 @@ Ba mục đánh số là bắt buộc, giữ đúng thứ tự. Các mục còn 
 
 ### Kiểm tra
 
+- Luôn hỏi trước khi chạy không được chạy test nếu k có yêu cầu
 - Lệnh chạy **chỉ test liên quan** theo `test-rule.md`, VD: `mvn test -Dtest=AbcServiceImplTest,AbcIntegrationTest`.
   Kiểm tra lớp test có tồn tại trước khi đưa vào lệnh.
 - Lệnh `grep` để chắc không còn sót tên cũ (khi đổi tên/bỏ khái niệm).
@@ -110,6 +113,11 @@ Ba mục đánh số là bắt buộc, giữ đúng thứ tự. Các mục còn 
 ### Câu hỏi còn mở
 
 - Còn câu hỏi thì plan chưa đủ để duyệt. Ưu tiên hỏi xong trước khi trình plan.
+
+### Bảng công việc
+
+- lúc đầu mọi thứ là chưa làm
+- khi chạy xong thì cái nào làm rồi ghi hoàn thành, lỗi ghi lỗi, bị user cho bỏ qua ghi bỏ qua
 
 ## Quy tắc viết
 

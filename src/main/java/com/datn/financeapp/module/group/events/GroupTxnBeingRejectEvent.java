@@ -15,7 +15,7 @@ import java.util.UUID;
  * @param moneySource
  * @param amount
  * @param transactorId
- * @param categoryId
+ * @param categoryCode
  * @param occurredAt
  * @param reson        Lý do từ chối
  */
@@ -26,7 +26,7 @@ public record GroupTxnBeingRejectEvent(
         MoneySource moneySource,
         long amount,
         UUID transactorId,
-        UUID categoryId,
+        String categoryCode,
         Instant occurredAt,
 
         String reson // lý do từ  chối
@@ -40,7 +40,7 @@ public record GroupTxnBeingRejectEvent(
                 txn.getMoneySource(),
                 txn.getAmount(),
                 txn.getTransactorId(),
-                txn.getCategoryId(),
+                txn.getCategoryCode(),
                 txn.getOccurredAt(),
                 reason);
     }

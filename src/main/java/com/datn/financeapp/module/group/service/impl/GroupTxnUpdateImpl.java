@@ -3,7 +3,7 @@ package com.datn.financeapp.module.group.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.module.category.helper.CateCache;
+import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.group.dto.request.transaction.*;
 import com.datn.financeapp.module.group.dto.response.transaction.GroupTxnDetailRes;
 import com.datn.financeapp.module.group.entity.GroupTxn;
@@ -36,10 +36,11 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
 
     private final GroupTxnRepository groupTxnRepository;
     private final GroupTxnMapper groupTransactionMapper;
+    private final GroupTxnHelper groupTxnHelper;
 
     private final MemberAuthCache memberAuthCache;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final CateCache cateCache;
+    private final CategoryService categoryService;
 
     private final MemberBalanceService balanceService;
 
@@ -49,19 +50,15 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
         GroupTxn txn = groupTxnRepository.findByIdAndGroupIdAndDeletedAtIsNull(req.txnId(), groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TRANSACTION_NOT_FOUND));
 
-        // bỏ qua giao dịch rejected
         if (txn.getStatus() == GroupTxnStatus.REJECTED)
             throw new BusinessException(ErrorCode.GROUP_TXN_IS_REJECT);
 
-        // Chỉ thủ quỹ được đều chỉnh
         MemberAuthInfo auth = memberAuthCache.get(groupId, operatorId)
                 .filter(MemberAuthInfo::inGroupActive)
-                .filter(m -> m.isEditGroupTransaction(txn))// bỏ qua nếu k có quyền chỉnh sửa
+                .filter(m -> m.isEditGroupTransaction(txn))
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
-
-        MemberBalances before = BalanceCalculator.effectOf(txn);   // chụp trước khi đổi
-        UUID oldTransactorId = txn.getTransactorId();
+        MemberBalances before = BalanceCalculator.effectOf(txn);
         long oldDelta = GroupTxnHelper.calculateDelta(txn);
 
         if (req.type() != null || req.moneySource() != null || req.transactorId() != null || req.categoryCode() != null || req.participants() != null)
@@ -72,15 +69,21 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
                 throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_REQUIRED);
             txn.setAmount(req.amount());
         }
-        if (req.participants() != null)
-            txn.setParticipants(GroupTxnHelper.getParticipants(req.participants()));
 
         if (req.transactorId() != null)
             txn.setTransactorId(req.transactorId());
 
-        if (req.categoryCode() != null) {
-            txn.setCategoryId(cateCache.findId(req.categoryCode())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND)));
+        if (req.participants() != null) {
+            groupTxnHelper.validParticipants(groupId, txn.getTransactorId(), req.participants(), txn.getAmount());
+            txn.setParticipants(GroupTxnHelper.getParticipants(req.participants()));
+        }
+
+        if (txn.getType() == GroupTxnType.CONTRIBUTION || txn.getType() == GroupTxnType.REFUND) {
+            txn.setCategoryCode(null);
+        } else if (req.categoryCode() != null) {
+            categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
+            txn.setCategoryCode(req.categoryCode());
         }
 
         if (req.note() != null)
@@ -90,48 +93,49 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
             txn.setOccurredAt(req.occurredAt());
 
         if (txn.getStatus() == GroupTxnStatus.CONFIRMED) {
-            // tính lại tiền
             balanceService.applyDelta(txn.getGroupId(), before, BalanceCalculator.effectOf(txn));
+            long fundDelta = GroupTxnHelper.calculateDelta(txn) - oldDelta;
+            if (fundDelta != 0)
+                applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(txn.getGroupId(), fundDelta));
         }
 
-        long fundDelta = GroupTxnHelper.calculateDelta(txn) - oldDelta;
-
-        if (fundDelta != 0)
-            applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(txn.getGroupId(), fundDelta)); // quỹ
-
-        return null;
+        return groupTransactionMapper.toDetailResponse(txn);
     }
 
     @Override
     public GroupTxnDetailRes status(UUID groupId, GroupTxnUpdateStatusReq req) {
+        if (req.status() != GroupTxnStatus.CONFIRMED && req.status() != GroupTxnStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+
         UUID operatorId = SecurityContextUtil.currentUserId();
         Instant now = Instant.now();
 
-        memberAuthCache.get(groupId, operatorId)
-                .filter(MemberAuthInfo::inGroupActive) //phải ở trong group đang active
-                .filter(a -> !a.isMember()) // và phải là owner hoặc thủ quỹ mới có quyền
+        MemberAuthInfo auth = memberAuthCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(a -> !a.isMember())
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
-        // chỉ cập nhật được trạng thái những giao dịch pending
-        GroupTxn transaction = groupTxnRepository.findByIdAndStatusAndDeletedAtIsNull(req.txnId(), GroupTxnStatus.PENDING)
+        GroupTxn transaction = groupTxnRepository.findByIdAndGroupIdAndDeletedAtIsNull(req.txnId(), groupId)
+                .filter(t -> t.getStatus() == GroupTxnStatus.PENDING)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_TXN_NOT_FOUD));
 
+        if ((transaction.getType() == GroupTxnType.ADJUSTMENT_UP || transaction.getType() == GroupTxnType.ADJUSTMENT_DOWN)
+                && !auth.isOwner()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
 
         transaction.setReviewedBy(operatorId);
         transaction.setReviewedAt(now);
         transaction.setStatus(req.status());
 
-        switch (req.status()) {
-            case CONFIRMED -> {
-                // tính chênh lệch vào bảng tổng
-                balanceService.applyDelta(groupId, new MemberBalances(), BalanceCalculator.effectOf(transaction));
-                // tính lại quỹ
-                applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, GroupTxnHelper.calculateDelta(transaction)));
+        if (req.status() == GroupTxnStatus.CONFIRMED) {
+            balanceService.applyDelta(groupId, new MemberBalances(), BalanceCalculator.effectOf(transaction));
+            applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, GroupTxnHelper.calculateDelta(transaction)));
 
-                // hỏi những người liên quan có muốn ghi vào sổ cá nhân không (gửi sau khi commit)
+            if (transaction.getType() != GroupTxnType.ADJUSTMENT_UP && transaction.getType() != GroupTxnType.ADJUSTMENT_DOWN) {
                 applicationEventPublisher.publishEvent(GroupTxnConfirmedEvent.of(transaction));
             }
-            case REJECTED -> transaction.setStatus(GroupTxnStatus.REJECTED);
         }
 
         return groupTransactionMapper.toDetailResponse(transaction);
@@ -139,44 +143,58 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
 
     @Override
     public int statuses(UUID groupId, BatchGroupTxnUpdateStatusReq req) {
+        if (req.status() != GroupTxnStatus.CONFIRMED && req.status() != GroupTxnStatus.REJECTED) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR);
+        }
+
         UUID operatorId = SecurityContextUtil.currentUserId();
         Instant now = Instant.now();
-        memberAuthCache.get(groupId, operatorId)
-                .filter(MemberAuthInfo::inGroupActive) //phải ở trong group đang active
-                .filter(a -> !a.isMember()) // và phải là owner hoặc thủ quỹ mới có quyền
+        MemberAuthInfo auth = memberAuthCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(a -> !a.isMember())
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
-        List<GroupTxn> txns = groupTxnRepository.findByIdInAndStatusAndDeletedAtIsNull(req.txnIds(), GroupTxnStatus.PENDING);
+        List<GroupTxn> txns = groupTxnRepository.findByIdInAndGroupIdAndDeletedAtIsNullAndStatus(req.txnIds(), groupId, GroupTxnStatus.PENDING);
 
         if (txns.size() != req.txnIds().size())
             throw new BusinessException(ErrorCode.GROUP_TXN_NOT_FOUD);
 
-
-        long totalDelta = 0L;
-        MemberBalances totalEffect = new MemberBalances();
-
-        for (var t : txns) {
-            t.setReviewedAt(now);
-            t.setStatus(req.status());
-            t.setReviewedBy(operatorId);
-
-            totalDelta += GroupTxnHelper.calculateDelta(t);
-            totalEffect = totalEffect.plus(BalanceCalculator.effectOf(t));
-
-            // hỏi những người liên quan có muốn ghi vào sổ cá nhân không (gửi sau khi commit)
-            applicationEventPublisher.publishEvent(GroupTxnConfirmedEvent.of(t));
+        boolean hasAdjustment = txns.stream().anyMatch(t -> t.getType() == GroupTxnType.ADJUSTMENT_UP || t.getType() == GroupTxnType.ADJUSTMENT_DOWN);
+        if (hasAdjustment && !auth.isOwner()) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        balanceService.applyDelta(groupId, new MemberBalances(), totalEffect);
+        if (req.status() == GroupTxnStatus.CONFIRMED) {
+            long totalDelta = 0L;
+            MemberBalances totalEffect = new MemberBalances();
 
-        // cập nhật số dư quỹ 1 lần duy nhất cho cả lô
-        applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, totalDelta));
+            for (var t : txns) {
+                t.setReviewedAt(now);
+                t.setStatus(GroupTxnStatus.CONFIRMED);
+                t.setReviewedBy(operatorId);
+
+                totalDelta += GroupTxnHelper.calculateDelta(t);
+                totalEffect = totalEffect.plus(BalanceCalculator.effectOf(t));
+
+                if (t.getType() != GroupTxnType.ADJUSTMENT_UP && t.getType() != GroupTxnType.ADJUSTMENT_DOWN) {
+                    applicationEventPublisher.publishEvent(GroupTxnConfirmedEvent.of(t));
+                }
+            }
+
+            balanceService.applyDelta(groupId, new MemberBalances(), totalEffect);
+            applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, totalDelta));
+        } else {
+            for (var t : txns) {
+                t.setReviewedAt(now);
+                t.setStatus(GroupTxnStatus.REJECTED);
+                t.setReviewedBy(operatorId);
+            }
+        }
 
         return txns.size();
     }
 
     //-------------------------------------- PRIVATE -----------------------------------------//
-
 
     private void validTypeAndMoneySources(GroupTxn txn,
                                           GroupTxnType newType, MoneySource newSource, UUID newTransactorId, String newCateCode, List<GroupTxnParticipantReq> newParticipants,
@@ -185,7 +203,6 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
         GroupTxnType type = newType != null ? newType : txn.getType();
         MoneySource source = newSource != null ? newSource : txn.getMoneySource();
 
-        // client gửi thì lấy của client; không gửi thì FUND/REFUND là null, còn lại giữ người cũ
         UUID transactorId = newTransactorId != null ? newTransactorId
                 : (source == MoneySource.FUND || type == GroupTxnType.REFUND) ? null : txn.getTransactorId();
 
@@ -193,7 +210,7 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
                 ? GroupTxnHelper.getParticipants(newParticipants) : txn.getParticipants();
 
         boolean hasCategory = (newCateCode != null && !newCateCode.isBlank())
-                || txn.getCategoryId() != null;
+                || (newType == null && txn.getCategoryCode() != null);
 
         switch (type) {
             case CONTRIBUTION -> {
@@ -223,19 +240,16 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
                     throw new BusinessException(ErrorCode.GROUP_TXN_TRANSACTOR_REQUIRED_NULL);
                 if (participants.isEmpty())
                     throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANT_REQUIRED);
-                // kiểm tra hạn mức hoàn ở đây
             }
             default -> throw new BusinessException(ErrorCode.GROUP_TXN_ADJUSTMENT_NOT_EDITABLE);
         }
 
-        // thành viên thường chỉ đứng tên chính mình khi dùng tiền túi
         if (auth.isMember() && transactorId != null && !operatorId.equals(transactorId))
             throw new BusinessException(ErrorCode.GROUP_TXN_EDIT_FORBIDDEN);
 
         txn.setType(type);
         txn.setMoneySource(source);
         txn.setTransactorId(transactorId);
-
     }
 
 }

@@ -25,7 +25,6 @@ import java.util.UUID;
 @Transactional
 public class GroupTxnDeleteImpl implements GroupTxnDeleteService {
 
-
     private final GroupTxnRepository groupTxnRepository;
 
     private final MemberAuthCache memberAuthCache;
@@ -45,18 +44,17 @@ public class GroupTxnDeleteImpl implements GroupTxnDeleteService {
                 .filter(m -> !m.isMember())
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
-        MemberBalances before = BalanceCalculator.effectOf(txn);
-
-        // hoàn tác số dư quỹ nếu giao dịch đã được xác nhận
+        // hoàn tác số dư quỹ và thành viên nếu giao dịch đã được xác nhận
         if (txn.getStatus() == GroupTxnStatus.CONFIRMED) {
+            MemberBalances before = BalanceCalculator.effectOf(txn);
             long delta = GroupTxnHelper.calculateDelta(txn.getType(), txn.getMoneySource(), txn.getAmount(), true);
             applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, delta));
+            balanceService.applyDelta(groupId, before, new MemberBalances());
         }
 
         // đánh dấu xóa mềm
         txn.setDeletedAt(Instant.now());
 
         groupTxnRepository.save(txn);
-        balanceService.applyDelta(groupId, before, new MemberBalances());
     }
 }

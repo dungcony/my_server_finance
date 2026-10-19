@@ -48,8 +48,8 @@ public class TxnSpecifial {
                 predicates.add(cb.equal(root.get("walletId"), filter.walletId()));
 
             // điều kiện lọc theo danh mục: nếu truyền danh mục cây thì lọc theo danh sách, ngược lại lấy trực tiếp categoryId
-            if (filter.categoryIds() != null)
-                predicates.add(filter.categoryIds().isEmpty() ? cb.disjunction() : root.get("categoryId").in(filter.categoryIds()));
+            if (filter.categoryCodes() != null)
+                predicates.add(filter.categoryCodes().isEmpty() ? cb.disjunction() : root.get("categoryCode").in(filter.categoryCodes()));
 
             // điều kiện tìm kiếm từ khóa trong tên hoặc ghi chú
             if (hasText(filter.search()))

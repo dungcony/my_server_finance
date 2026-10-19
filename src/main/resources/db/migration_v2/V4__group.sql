@@ -94,20 +94,20 @@ CREATE TABLE group_transactions (
     CONSTRAINT fk_gt_reviewer   FOREIGN KEY (reviewed_by)   REFERENCES users      (id) ON DELETE RESTRICT,
 
     CONSTRAINT ck_gt_amount       CHECK (amount > 0 AND amount <= 999999999999),
-    CONSTRAINT ck_gt_type         CHECK (type IN ('EXPENSE', 'CONTRIBUTION', 'REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')),
-    CONSTRAINT ck_gt_money_source CHECK (money_source IN ('FUND', 'PERSONAL')),
-    CONSTRAINT ck_gt_status       CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED')),
+    CONSTRAINT ck_gt_type         CHECK (type IN ('EXPENSE', 'CONTRIBUTION', 'REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN')),\
+    CONSTRAINT ck_gt_money_source CHECK (money_source IN ('FUND', 'PERSONAL')),\
+    CONSTRAINT ck_gt_status       CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED')),\
     CONSTRAINT ck_gt_review       CHECK (
         (status = 'PENDING' AND reviewed_by IS NULL AND reviewed_at IS NULL)
      OR (status IN ('CONFIRMED', 'REJECTED') AND reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)
     ),
     CONSTRAINT ck_gt_treasurer_confirmed CHECK (
-        type NOT IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') OR status = 'CONFIRMED'
+        type != 'REFUND' OR status = 'CONFIRMED'
     ),
     CONSTRAINT ck_gt_shape CHECK (
         (type = 'EXPENSE' AND category_code IS NOT NULL)
      OR (type = 'CONTRIBUTION' AND money_source = 'PERSONAL' AND category_code IS NULL)
-     OR (type IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') AND money_source = 'FUND' AND category_id IS NULL)
+     OR (type IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') AND money_source = 'FUND' AND category_code IS NULL)
     ),
     CONSTRAINT ck_gt_transactor CHECK (
         (money_source = 'PERSONAL' AND transactor_id IS NOT NULL)
@@ -133,7 +133,7 @@ CREATE TABLE group_transaction_participants (
 
 CREATE INDEX idx_gtp_user ON group_transaction_participants (user_id);
 
--- Bảng group_member_balances — Số dư tích luỹ của từng thành viên
+-- Bảng group_member_balances — Số dư tích lũy của từng thành viên
 CREATE TABLE group_member_balances (
     group_id     UUID   NOT NULL,
     user_id      UUID   NOT NULL,

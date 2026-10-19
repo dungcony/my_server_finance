@@ -3,7 +3,6 @@ package com.datn.financeapp.module.group.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
@@ -121,7 +120,9 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
             long newDelta = GroupTxnHelper.calculateDelta(transaction);
 
             applicationEventPublisher.publishEvent(new FundBalanceChangedEvent(groupId, newDelta));
-            applicationEventPublisher.publishEvent(GroupTxnConfirmedEvent.of(transaction));
+            if (transaction.getType() != GroupTxnType.ADJUSTMENT_UP && transaction.getType() != GroupTxnType.ADJUSTMENT_DOWN) {
+                applicationEventPublisher.publishEvent(GroupTxnConfirmedEvent.of(transaction));
+            }
 
         } else if (status.equals(GroupTxnStatus.PENDING)) {
             // báo chủ nhóm và thủ quỹ có giao dịch chờ duyệt (gửi sau khi commit)
@@ -164,12 +165,11 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         if (req.categoryCode() == null || req.categoryCode().isBlank())
             throw new BusinessException(ErrorCode.GROUP_TXN_CATEGORY_REQUIRED);
 
-        UUID categoryId = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
-                .map(CateSumaryRes::id)
+        categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
 
         txn.setParticipants(GroupTxnHelper.getParticipants(req.participants()));
-        txn.setCategoryId(categoryId);
+        txn.setCategoryCode(req.categoryCode());
     }
 
 

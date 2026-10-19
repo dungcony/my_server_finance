@@ -41,7 +41,7 @@ public class GroupTxnListener {
             shared.put("group_id", event.groupId().toString());
             shared.put("txn_type", txnTye(event.type()).name());
             shared.put("amount", event.amount());
-            shared.put("category_id", event.categoryId().toString());
+            if (event.categoryCode() != null) shared.put("category_code", event.categoryCode());
             shared.put("date", event.occurredAt().atZone(VIETNAM_ZONE).toLocalDate().toString());
             shared.put("note", event.note());
 

@@ -74,10 +74,11 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không được thêm 1 người 2 lần");
 
         authCache.get(groupId, operatorId)
-                .filter(MemberAuthInfo::inGroupNotDeleted) //phải ở trong group đang active
-                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+                .filter(MemberAuthInfo::inGroupActive)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_OWNER_REQUIRED));
 
-        //không cho thêm đã active hoặc pending
+        //khác không cho thêm đã active hoặc pending
         assertNoneInGroup(groupId, memberIds);
 
         // danh sách member được thêm luôn là member và activate
@@ -135,7 +136,7 @@ public class MemberBehavierServiceImpl implements MemberBehavierService {
                 MemberStatus.ACTIVE,
                 Instant.now());
 
-        // Nếu rowsUpdated == 0 tức là không có thành viên nào thỏa mãn (không tồn tạihoặc không ở PENDING)
+        // Nếu rowsUpdated == 0 tức là không có thành viên nào thỏa mãn (không tồn tại hoặc không ở PENDING)
         if (rowsUpdated == 0)
             throw new BusinessException(ErrorCode.GROUP_MEMBER_NOT_FOUND);
 

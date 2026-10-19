@@ -166,9 +166,11 @@ public class FundServiceImpl implements FundService {
     @Transactional
     public void onMemberLeave(MemberLeaveEvent event) {
         fundRepository.findByGroupIdForUpdate(event.groupId()).ifPresent(fund -> {
+            // Chỉ chạy khi người rời nhóm CHÍNH LÀ THỦ QUỸ (người giữ quỹ)
             if (fund.getKeepperId().equals(event.memberId())) {
                 fund.setKeepperId(event.ownerId());
                 fundRepository.save(fund);
+                authCache.evictMember(event.groupId(), event.ownerId());
             }
         });
     }
