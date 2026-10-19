@@ -2,7 +2,9 @@ package com.datn.financeapp.module.wallet.service;
 
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -19,4 +21,10 @@ public interface WalletService {
      */
     Optional<WalletSumaryRes> findSumaryByIdAndUser(UUID walletId, UUID userId, boolean includeDeleted);
 
+    /**
+     * lấy toàn bộ wallet theo id
+     *
+     * @param walletIds đầu vào là 1 set để nói rằng k đc trùng lặp
+     */
+    Map<UUID, WalletSumaryRes> findSummaryMapByIds(Set<UUID> walletIds);
 }
