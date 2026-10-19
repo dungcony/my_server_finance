@@ -116,27 +116,6 @@ class WalletCrudIntegrationTest {
         return authSupport.registerAndGetAccessToken(email);
     }
 
-    private String findDefaultWalletId(String token) throws Exception {
-        String response = mockMvc.perform(get("/wallets").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        List<?> wallets = (List<?>) data.get("content");
-        for (Object w : wallets) {
-            String id = (String) ((Map<?, ?>) w).get("id");
-            String detailResp = mockMvc.perform(get("/wallets/" + id).header("Authorization", "Bearer " + token))
-                    .andExpect(status().isOk())
-                    .andReturn().getResponse().getContentAsString();
-            Map<?, ?> detail = (Map<?, ?>) ((Map<?, ?>) objectMapper.readValue(detailResp, Map.class)).get("data");
-            if (Boolean.TRUE.equals(detail.get("is_default"))) {
-                return id;
-            }
-        }
-        throw new IllegalStateException("Default wallet not found");
-    }
-
     private String createWallet(String token, String name, String type, long balance) throws Exception {
         Map<String, Object> body = Map.of(
                 "name", name,
@@ -202,36 +181,12 @@ class WalletCrudIntegrationTest {
     }
 
     @Test
-    void register_newUser_hasExactlyOneDefaultCashWallet() throws Exception {
-        String token = registerAndGetAccessToken("vi.mac.dinh@example.com");
-
-        String defaultId = findDefaultWalletId(token);
-        mockMvc.perform(get("/wallets/" + defaultId).header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("Tiền mặt"))
-                .andExpect(jsonPath("$.data.type").value("CASH"))
-                .andExpect(jsonPath("$.data.is_default").value(true));
-    }
-
-    @Test
     void createWallet_additionalWallet_isNotDefault() throws Exception {
         String token = registerAndGetAccessToken("vi.them@example.com");
         String walletId = createWallet(token, "Ví Thêm", "BANK", 0);
 
         mockMvc.perform(get("/wallets/" + walletId).header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.is_default").value(false));
-    }
-
-    @Test
-    void deleteWallet_defaultWallet_returns409DefaultNotDeletable() throws Exception {
-        String token = registerAndGetAccessToken("xoa.mac.dinh@example.com");
-        createWallet(token, "Ví Phụ", "BANK", 0);
-        String defaultId = findDefaultWalletId(token);
-
-        mockMvc.perform(delete("/wallets/" + defaultId).header("Authorization", "Bearer " + token))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("WALLET_DEFAULT_NOT_DELETABLE"));
+                .andExpect(status().isOk());
     }
 
     @Test

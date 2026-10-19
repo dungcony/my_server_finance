@@ -101,6 +101,14 @@
                     <div class="sub" id="myNetSub">Cần nộp thêm / Được nhận lại</div>
                 </div>
             </div>
+            <!-- Dải thông tin công nợ toàn nhóm dành cho Chủ nhóm và Thủ quỹ -->
+            <div id="reviewerBalanceNotice" class="hidden" style="margin-top:12px;padding:10px 14px;background:#eef2ff;border-radius:8px;border:1px solid #c7d2fe;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                <div style="font-size:13px;color:#3730a3">
+                    <b>👑 Quản lý công nợ nhóm (Chủ nhóm / Thủ quỹ):</b>
+                    <span id="revBalanceStats" style="margin-left:8px">Đang tải số dư...</span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnGoToReport">📊 Xem bảng phân bổ đầy đủ</button>
+            </div>
         </div>
 
         <div class="card">
@@ -130,6 +138,9 @@
                             <th>User ID</th>
                             <th>Vai trò trong nhóm</th>
                             <th>Trạng thái</th>
+                            <th class="right">Phần cùng chịu</th>
+                            <th class="right">Số dư ròng (Net)</th>
+                            <th class="right">Cần nộp / Nhận</th>
                             <th>Ngày tham gia</th>
                             <th id="thMemberActions">Thao tác quản trị</th>
                         </tr>

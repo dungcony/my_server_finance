@@ -1,0 +1,26 @@
+info:
+  name: 22. Thêm thành viên
+  type: http
+  seq: 22
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/members"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "member_ids": [
+          "{{memberUserId}}"
+        ]
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm: Thêm trực tiếp thành viên vào nhóm theo danh sách member_ids."

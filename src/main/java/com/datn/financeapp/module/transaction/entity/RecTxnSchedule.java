@@ -18,7 +18,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Table(name = "recurring_transaction_schedules")
 public class RecTxnSchedule extends AssignedIdEntity {
-    
+
     @Id
     private UUID id;
 
@@ -38,8 +38,11 @@ public class RecTxnSchedule extends AssignedIdEntity {
     @Column(name = "user_id")
     private UUID userId;
 
+    @Column(name = "recurring_id", nullable = false)
+    private UUID recTxnId;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recurring_id", nullable = false)
+    @JoinColumn(name = "recurring_id", nullable = false, insertable = false, updatable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private RecTxn recTxn;
 

@@ -14,8 +14,7 @@ public interface CategoryService {
      *
      * @param code           mã
      * @param includeDeleted false -> chỉ chưa xoá, true -> cả 2
-     * @param isLeaf         true -> là lá
      */
-    Optional<CateSumaryRes> findByCodeAndIsDeletedAndIsLeaf(String code, boolean includeDeleted, boolean isLeaf);
+    Optional<CateSumaryRes> findByCodeAndIsDeletedAndIsLeaf(String code, boolean includeDeleted);
 
 }

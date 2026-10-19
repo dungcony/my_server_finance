@@ -115,7 +115,7 @@ class WalletBehavierImplTest {
     void create_Valid_Success() {
         WalletCreateReq req = new WalletCreateReq("Vi Moi", WalletType.CASH, 500_000L, currentUserId, "icon_wallet", "#112233");
         Wallet wallet = Wallet.builder().name("Vi Moi").iconCode("icon_wallet").build();
-        WalletRes expectedRes = new WalletRes(UUID.randomUUID(), "Vi Moi", WalletType.CASH, 500_000L, false, "path/data", "#112233", Instant.now());
+        WalletRes expectedRes = new WalletRes(UUID.randomUUID(), "Vi Moi", WalletType.CASH, 500_000L, "path/data", "#112233", Instant.now());
 
         when(walletMapper.toEntity(req)).thenReturn(wallet);
         when(iconService.findByCode("icon_wallet", false))
@@ -168,23 +168,10 @@ class WalletBehavierImplTest {
     }
 
     @Test
-    @DisplayName("softDelete: Chon xoa vi mac dinh -> nem WALLET_DEFAULT_NOT_DELETABLE")
-    void softDelete_DefaultWallet_ThrowsException() {
-        UUID walletId = UUID.randomUUID();
-        Wallet wallet = Wallet.builder().id(walletId).userId(currentUserId).isDefault(true).build();
-
-        when(walletRepository.findByIdAndIsDeletedFalse(walletId)).thenReturn(Optional.of(wallet));
-
-        assertThatThrownBy(() -> walletBehavier.softDelete(walletId, false))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.WALLET_DEFAULT_NOT_DELETABLE.getCode());
-    }
-
-    @Test
     @DisplayName("softDelete: Vi SAVINGS dang lien ket voi Goal chua hoan thanh -> nem WALLET_SAVINGS_LINKED_TO_GOAL")
     void softDelete_SavingsWithActiveGoal_ThrowsException() {
         UUID walletId = UUID.randomUUID();
-        Wallet wallet = Wallet.builder().id(walletId).userId(currentUserId).type(WalletType.SAVINGS).isDefault(false).build();
+        Wallet wallet = Wallet.builder().id(walletId).userId(currentUserId).type(WalletType.SAVINGS).build();
 
         when(walletRepository.findByIdAndIsDeletedFalse(walletId)).thenReturn(Optional.of(wallet));
         when(savingsGoalRepository.existsByWalletIdAndIsDeletedFalseAndStatus(walletId, "in_progress")).thenReturn(true);
@@ -198,7 +185,7 @@ class WalletBehavierImplTest {
     @DisplayName("softDelete: Xoa vi thanh cong danh dau isDeleted = true")
     void softDelete_Valid_Success() {
         UUID walletId = UUID.randomUUID();
-        Wallet wallet = Wallet.builder().id(walletId).userId(currentUserId).type(WalletType.CASH).isDefault(false).build();
+        Wallet wallet = Wallet.builder().id(walletId).userId(currentUserId).type(WalletType.CASH).build();
 
         when(walletRepository.findByIdAndIsDeletedFalse(walletId)).thenReturn(Optional.of(wallet));
 

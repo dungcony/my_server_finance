@@ -8,12 +8,12 @@ http:
   url: "{{baseUrl}}/reports/admin/export-jobs"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
   params:
     - name: page
-      value: "0"
+      value: "1"
       type: query
-    - name: size
+    - name: page_size
       value: "10"
       type: query
     - name: user_id

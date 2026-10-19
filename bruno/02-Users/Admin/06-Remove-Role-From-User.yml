@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/admin/user/role"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
   body:

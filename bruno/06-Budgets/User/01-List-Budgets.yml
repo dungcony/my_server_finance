@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 01. Danh sách ngân sách
   type: http
   seq: 1
@@ -8,16 +8,20 @@ http:
   url: "{{baseUrl}}/budgets"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
   params:
     - name: is_active
       value: "true"
       type: query
     - name: period
-      value: "month"
+      value: month
       type: query
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Lấy danh sách các hạn mức ngân sách đang theo dõi.

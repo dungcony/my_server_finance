@@ -94,7 +94,7 @@ class GroupTxnCreateImplTest {
     @DisplayName("EXPENSE từ quỹ nhóm tạo bởi Owner -> CONFIRMED, lưu và publish event")
     void createExpense_fromFundByOwner_confirmed() {
         when(memberAuthCache.get(groupId, ownerId)).thenReturn(Optional.of(ownerAuth()));
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("an_uong", false, true))
+        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("an_uong", false))
                 .thenReturn(Optional.of(new CateSumaryRes(UUID.randomUUID(), "Ăn uống", "an_uong", "icon", "#color")));
         when(groupTxnRepository.save(any(GroupTxn.class))).thenAnswer(inv -> inv.getArgument(0));
 

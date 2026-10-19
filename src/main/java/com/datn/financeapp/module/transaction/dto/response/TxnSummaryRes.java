@@ -3,12 +3,11 @@ package com.datn.financeapp.module.transaction.dto.response;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 /**
  * Thông tin tóm tắt của giao dịch, chỉ dùng khi cần lấy nhiều để giảm tải RAM.
- * Muốn đủ chi tiết (ghi chú, hóa đơn, ví, danh mục) dùng {@link TxnDetailResponse}.
+ * Muốn đủ chi tiết (ghi chú, hóa đơn, ví, danh mục) dùng {@link TxnDetailRes}.
  *
  * @param id           ID giao dịch
  * @param type         loại giao dịch

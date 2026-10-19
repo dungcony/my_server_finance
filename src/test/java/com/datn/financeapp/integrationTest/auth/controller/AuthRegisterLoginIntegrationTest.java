@@ -127,7 +127,7 @@ class AuthRegisterLoginIntegrationTest {
      * </ul>
      */
     @Test
-    void register_createsPendingAccountWithoutTokensAndWithDefaultWallet() throws Exception {
+    void register_createsPendingAccountWithoutTokens() throws Exception {
         Map<String, Object> body = Map.of(
                 "email", "minh.nguyen@example.com",
                 "password", "matkhau123",
@@ -154,9 +154,7 @@ class AuthRegisterLoginIntegrationTest {
                 .filter(w -> w.getUserId() != null && w.getUserId().toString().equals(userId))
                 .toList();
 
-        assertThat(wallets).hasSize(1);
-        assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
-        assertThat(wallets.get(0).getIsDefault()).isTrue();
+        assertThat(wallets).isEmpty();
     }
 
     @Test

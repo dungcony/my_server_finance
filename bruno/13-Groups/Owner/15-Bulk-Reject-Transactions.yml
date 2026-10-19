@@ -5,7 +5,7 @@ info:
 
 http:
   method: POST
-  url: "{{baseUrl}}/groups/{{groupId}}/transactions/bulk-reject"
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/statuses"
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
@@ -15,12 +15,13 @@ http:
     type: json
     data: |-
       {
-        "transaction_ids": [
+        "txn_ids": [
           "{{groupTxnId}}"
-        ]
+        ],
+        "status": "REJECTED"
       }
 
 settings:
   encodeUrl: true
 
-docs: "Dành cho Thủ quỹ / Owner: Từ chối cùng lúc nhiều khoản giao dịch PENDING."
+docs: "Dành cho Thủ quỹ / Owner: Từ chối cùng lúc nhiều khoản giao dịch PENDING (status = REJECTED)."

@@ -21,9 +21,9 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID>, JpaSpecif
 
     @Modifying
     @Query("""
-            insert into Wallet (id, userId, name, type, balance, iconCode, color, isDefault, isDeleted)
+            insert into Wallet (id, userId, name, type, balance, iconCode, color, isDeleted)
             select :#{#w.id}, :#{#w.userId}, :#{#w.name}, :#{#w.type}, :#{#w.balance},
-                   :#{#w.iconCode}, :#{#w.color}, :#{#w.isDefault}, false
+                   :#{#w.iconCode}, :#{#w.color}, false
             where not exists (
                 select 1 from Wallet x
                 where x.userId = :#{#w.userId}
@@ -48,7 +48,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID>, JpaSpecif
                                w.balance AS old_balance,
                                COALESCE(SUM(CASE
                                    WHEN t.type = 'INCOME' THEN t.amount
-                                   WHEN t.type IN ('EXPENSE', 'LOAN') THEN -t.amount
+                                   WHEN t.type = 'EXPENSE' THEN -t.amount
                                    ELSE 0 END), 0) AS total
                         FROM wallets w
                         LEFT JOIN transactions t ON t.wallet_id = w.id AND NOT t.is_deleted

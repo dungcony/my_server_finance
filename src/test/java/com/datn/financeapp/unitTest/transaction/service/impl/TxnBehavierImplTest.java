@@ -1,5 +1,6 @@
 package com.datn.financeapp.unitTest.transaction.service.impl;
 
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.service.impl.*;
 
 
@@ -10,7 +11,6 @@ import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.TxnUpdateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.events.TxnCreateEvent;
@@ -87,7 +87,7 @@ class TxnBehavierImplTest {
         TxnCreateReq req = new TxnCreateReq(
                 TxnType.EXPENSE, 50_000L, walletId, "parent_cat", Instant.now(), "Ăn trưa", null);
 
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("parent_cat", false, true))
+        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("parent_cat", false))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> txnBehavierService.create(currentUserId, req))
@@ -105,7 +105,7 @@ class TxnBehavierImplTest {
                 TxnType.EXPENSE, 50_000L, walletId, "ca_phe", Instant.now(), "Cà phê", null);
 
         CateSumaryRes cateSummary = new CateSumaryRes(UUID.randomUUID(), "Cà phê", "ca_phe", "M1 1", "#112233");
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false, true))
+        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false))
                 .thenReturn(Optional.of(cateSummary));
         when(walletService.findSumaryByIdAndUser(walletId, currentUserId, false))
                 .thenReturn(Optional.empty());
@@ -128,7 +128,7 @@ class TxnBehavierImplTest {
         CateSumaryRes cateSummary = new CateSumaryRes(UUID.randomUUID(), "Cà phê", "ca_phe", "M1 1", "#112233");
         WalletSumaryRes walletSummary = new WalletSumaryRes(walletId, "Ví chính", "icon", "#color");
 
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false, true))
+        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false))
                 .thenReturn(Optional.of(cateSummary));
         when(walletService.findSumaryByIdAndUser(walletId, currentUserId, false))
                 .thenReturn(Optional.of(walletSummary));
@@ -144,12 +144,12 @@ class TxnBehavierImplTest {
                 .build();
         when(txnMapper.toEntity(req)).thenReturn(txnEntity);
 
-        TxnDetailResponse expectedRes = new TxnDetailResponse(
+        TxnDetailRes expectedRes = new TxnDetailRes(
                 UUID.randomUUID(), walletSummary, cateSummary, TxnType.EXPENSE, 50_000L, now, "Cà phê", "Uống cùng bạn", now, now);
         when(txnMapper.toResponse(eq(txnEntity), eq(cateSummary), eq(walletSummary)))
                 .thenReturn(expectedRes);
 
-        TxnDetailResponse result = txnBehavierService.create(currentUserId, req);
+        TxnDetailRes result = txnBehavierService.create(currentUserId, req);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
         verify(txnRepository).save(captor.capture());
@@ -220,7 +220,7 @@ class TxnBehavierImplTest {
         when(txnRepository.findByIdAndIsDeletedFalse(txnId)).thenReturn(Optional.of(existing));
 
         CateSumaryRes newCate = new CateSumaryRes(UUID.randomUUID(), "Cà phê", "ca_phe", "M1 1", "#112233");
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false, true))
+        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false))
                 .thenReturn(Optional.of(newCate));
 
         TxnUpdateReq req = new TxnUpdateReq(null, 70_000L, null, "ca_phe", null, null, null);

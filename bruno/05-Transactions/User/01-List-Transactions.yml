@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 01. Danh sách giao dịch
   type: http
   seq: 1
@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/transactions"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
   params:
     - name: page
       value: "1"
@@ -17,7 +17,13 @@ http:
       value: "20"
       type: query
     - name: period
-      value: "month"
+      value: month
+      type: query
+    - name: from
+      value: ""
+      type: query
+    - name: to
+      value: ""
       type: query
     - name: type
       value: ""
@@ -25,20 +31,24 @@ http:
     - name: wallet_id
       value: ""
       type: query
-    - name: category_id
+    - name: category_codes
       value: ""
       type: query
     - name: search
       value: ""
       type: query
-    - name: sort_by
-      value: "date"
+    - name: min_amount
+      value: ""
       type: query
-    - name: sort_order
-      value: "desc"
+    - name: max_amount
+      value: ""
       type: query
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
-docs: Lấy danh sách giao dịch có phân trang, bộ lọc thời gian, loại thu/chi/chuyển khoản, ví, danh mục.
+docs: Lấy danh sách giao dịch có phân trang (page từ 1, page_size), lọc theo thời gian (period hoặc from/to dạng ISO-8601), loại (EXPENSE | INCOME | LOAN), ví, danh mục (category_codes), từ khoá và khoảng số tiền.

@@ -4,12 +4,11 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.module.user.dto.request.UpdateProfileRequest;
+import com.datn.financeapp.module.user.dto.request.ProfileUpdateRequest;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.event.publiser.UserDeletedEvent;
 import com.datn.financeapp.module.user.event.publiser.UserPasswordChangedEvent;
-import com.datn.financeapp.module.user.exception.*;
 import com.datn.financeapp.module.user.exception.*;
 import com.datn.financeapp.module.user.helper.PasswordGenerator;
 import com.datn.financeapp.module.user.mapper.UserMapper;
@@ -41,7 +40,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
     @Transactional(readOnly = true)
     @Override
     public UserRes getMe(UUID userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(UserNotFoundException::new);
 
         return userMapper.toResponse(user);
@@ -49,17 +48,14 @@ public class UserBehavierServiceImpl implements UserBehavierService {
 
     @Transactional
     @Override
-    public UserRes updateMe(UUID userId, UpdateProfileRequest req) {
-        User user = userRepository.findById(userId)
+    public UserRes updateMe(UUID userId, ProfileUpdateRequest req) {
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(UserNotFoundException::new);
 
-        if (req.firstName() != null) {
-            user.setFirstName(req.firstName());
-        }
-        if (req.lastName() != null) {
-            user.setLastName(req.lastName());
-        }
+        if (req.firstName() != null) user.setFirstName(req.firstName());
+        if (req.lastName() != null) user.setLastName(req.lastName());
         if (req.avatarUrl() != null) {
+            log.debug("update url");
             user.setAvatarUrl(req.avatarUrl());
         }
         userRepository.save(user);
@@ -72,7 +68,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
     public void deleteMe(String password) {
 
         UUID uid = SecurityContextUtil.currentUserId();
-        User user = userRepository.findById(uid)
+        User user = userRepository.findByIdAndIsDeletedFalse(uid)
                 .orElseThrow(UserNotFoundException::new);
 
         if (user.getPassword() != null
@@ -88,7 +84,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
 
     @Override
     public void changePassword(UUID userId, UpdatePassReq req) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(UserNotFoundException::new);
 
         if (user.getPassword() == null) {
@@ -111,7 +107,7 @@ public class UserBehavierServiceImpl implements UserBehavierService {
 
     @Override
     public void createPassword(UUID userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndIsDeletedFalse(userId)
                 .orElseThrow(UserNotFoundException::new);
 
         // chỉ tài khoản chưa có mật khẩu (đăng nhập Google thuần) mới được tạo

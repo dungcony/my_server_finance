@@ -88,8 +88,8 @@ class IdempotencyAspectIntegrationTest {
                 "$2a$12$placeholderplaceholderplaceholderplacehold",
                 "User",
                 "Idempotency Test",
-                "free",
-                "active");
+                "FREE",
+                "ACTIVE");
     }
 
     @TestConfiguration

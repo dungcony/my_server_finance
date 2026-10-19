@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/admin/user/{{userId}}"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
 
 settings:
   encodeUrl: true

@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/admin/role/ROLE_ADMIN/permissions"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
 
 settings:
   encodeUrl: true

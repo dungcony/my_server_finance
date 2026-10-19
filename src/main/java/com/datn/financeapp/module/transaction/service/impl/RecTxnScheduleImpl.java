@@ -137,7 +137,7 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
                     .amount(recTxn.getAmount())
                     .status(RecTxnScheduleStatus.PENDING)
                     .userId(recTxn.getUserId())
-                    .recTxn(recTxn)
+                    .recTxnId(recTxn.getId())
                     .build();
 
             schedule.setId(UUID.randomUUID());

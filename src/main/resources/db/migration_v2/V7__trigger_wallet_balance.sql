@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION fn_txn_wallet_effect(p_type VARCHAR, p_amount BIGINT)
 RETURNS BIGINT AS $$
     SELECT CASE
         WHEN p_type = 'INCOME' THEN p_amount
-        WHEN p_type IN ('EXPENSE', 'LOAN') THEN -p_amount
+        WHEN p_type IN ('EXPENSE') THEN -p_amount
         ELSE 0
     END;
 $$ LANGUAGE sql IMMUTABLE;

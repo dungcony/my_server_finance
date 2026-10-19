@@ -301,7 +301,7 @@ module/
 **PHẢI:**
 
 - Sử dụng `@ConfigurationProperties` đóng gói theo record/POJO có type-safe và validate cho các nhóm cấu hình nghiệp vụ.
-- Tách cấu hình môi trường rõ ràng (`application.yml`, `application-dev.yml`, `application-prod.yml`).
+- Tách cấu hình môi trường rõ ràng (`application.yml`, `application-dev.yml`, `application-prod.yaml`).
 - Cấu hình hạ tầng/dùng chung đặt ở `common/config/`, cấu hình đặc thù của domain đặt ở `<domain>/config/`.
 
 **KHÔNG ĐƯỢC:**

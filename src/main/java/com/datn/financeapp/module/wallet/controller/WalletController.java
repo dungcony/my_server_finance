@@ -28,9 +28,9 @@ public class WalletController {
 
     private final WalletBehavierService walletBehavierService;
 
-    private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.getValue())";
-    private static final String MANAGE_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_UPDATE.getValue())";
-    private static final String MANAGE_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_DELETE.getValue())";
+    private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.name())";
+    private static final String MANAGE_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_UPDATE.name())";
+    private static final String MANAGE_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_DELETE.name())";
 
     @GetMapping
     public ApiResponse<?> gets(
@@ -49,12 +49,6 @@ public class WalletController {
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody WalletCreateReq req) {
-        if (req.type() == WalletType.SAVINGS) {
-            throw new BusinessException(
-                    ErrorCode.WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED,
-                    "Ví tiết kiệm chỉ được tạo tự động thông qua Mục tiêu tiết kiệm."
-            );
-        }
         return ApiResponse.of(walletBehavierService.create(req, false));
     }
 
@@ -79,7 +73,7 @@ public class WalletController {
             WalletFillterReq filter,
             Pageable pageable) {
         WalletFillterReq adminFilter = filter != null ? filter.withUser(userId)
-                : new WalletFillterReq(null, null, null, null, null, null, null, false, userId);
+                : new WalletFillterReq(null, null, null, null, null, null, false, userId);
         return ApiResponse.of(walletBehavierService.gets(adminFilter, pageable, true));
     }
 

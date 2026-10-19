@@ -9,12 +9,8 @@ http:
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
-  params:
-    - name: delete_transactions
-      value: "false"
-      type: query
 
 settings:
   encodeUrl: true
 
-docs: Xóa mềm ví tiền. delete_transactions=false giữ lại lịch sử giao dịch.
+docs: Xóa mềm ví tiền.

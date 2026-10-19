@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 04. Cập nhật lịch định kỳ
   type: http
   seq: 4
@@ -18,7 +18,9 @@ http:
         "display_name": "Tiền thuê nhà & điện nước",
         "amount": 3800000,
         "wallet_id": "{{walletId}}",
-        "category_id": "{{categoryId}}",
+        "category_code": "{{categoryCode}}",
+        "frequency": "MONTH",
+        "interval": 1,
         "end_date": null,
         "note": "Tăng thêm tiền nước"
       }
@@ -26,4 +28,4 @@ http:
 settings:
   encodeUrl: true
 
-docs: Sửa số tiền, ví, danh mục hoặc ngày kết thúc của lịch định kỳ.
+docs: Sửa lịch định kỳ (các trường đều tuỳ chọn). frequency và interval phải gửi cùng nhau hoặc cùng bỏ trống.

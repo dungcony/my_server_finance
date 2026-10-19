@@ -3,10 +3,13 @@ package com.datn.financeapp.module.user.controller;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.pay.dto.res.PaymentCreateRes;
 import com.datn.financeapp.module.user.dto.request.DeleteAccountRequest;
+import com.datn.financeapp.module.user.dto.request.PremiumUpgradeReq;
 import com.datn.financeapp.module.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.module.user.dto.request.UpdateProfileRequest;
+import com.datn.financeapp.module.user.dto.request.ProfileUpdateRequest;
 import com.datn.financeapp.module.user.service.UserBehavierService;
+import com.datn.financeapp.module.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserController {
     private final UserBehavierService userBehavierService;
+    private final UserService userService;
 
     @GetMapping("/me")
     public ApiResponse<?> me() {
@@ -30,7 +34,7 @@ public class UserController {
     }
 
     @PatchMapping("/me")
-    public ApiResponse<?> updateProfile(@Valid @RequestBody UpdateProfileRequest req) {
+    public ApiResponse<?> updateProfile(@Valid @RequestBody ProfileUpdateRequest req) {
         UUID userId = SecurityContextUtil.currentUserId();
         return ApiResponse.of(userBehavierService.updateMe(userId, req));
     }
@@ -48,6 +52,13 @@ public class UserController {
         UUID userId = SecurityContextUtil.currentUserId();
         userBehavierService.createPassword(userId);
         return ApiResponse.of(null, "Mật khẩu đã được gửi về email của bạn.");
+    }
+
+    @Idempotent
+    @PostMapping("/me/premium-upgrades")
+    public ApiResponse<PaymentCreateRes> upgradePremium(@Valid @RequestBody PremiumUpgradeReq req) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(userService.createPremiumUpgrade(userId, req.planCode()));
     }
 
     @DeleteMapping("/me")

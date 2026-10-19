@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 04. Cảnh báo vượt ngân sách
   type: http
   seq: 4
@@ -8,9 +8,13 @@ http:
   url: "{{baseUrl}}/budgets/alerts"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Lấy danh sách các ngân sách sắp chạm hoặc đã vượt hạn mức quy định.

@@ -98,7 +98,7 @@ class WalletRepositoryTest {
                 .balance(balance)
                 .iconCode("default_wallet")
                 .color("#112233")
-                .isDefault(false)
+
                 .build();
         wallet.setIsDeleted(deleted);
         return walletRepository.saveAndFlush(wallet);
@@ -126,7 +126,7 @@ class WalletRepositoryTest {
                 .balance(0L)
                 .iconCode("default_wallet")
                 .color("#112233")
-                .isDefault(false)
+
                 .build();
 
         int inserted1 = walletRepository.insertIfNameNotExist(w1);
@@ -140,7 +140,7 @@ class WalletRepositoryTest {
                 .balance(100_000L)
                 .iconCode("default_wallet")
                 .color("#112233")
-                .isDefault(false)
+
                 .build();
 
         int inserted2 = walletRepository.insertIfNameNotExist(w2);

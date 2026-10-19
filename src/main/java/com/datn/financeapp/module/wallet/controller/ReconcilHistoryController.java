@@ -22,7 +22,7 @@ public class ReconcilHistoryController {
 
     private final ReconcilHistoryService reconcilHistoryService;
 
-    private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.getValue())";
+    private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.name())";
 
     @GetMapping("/{id}/reconciliations")
     public ApiResponse<?> reconciliations(

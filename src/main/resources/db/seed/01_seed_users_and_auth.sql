@@ -32,11 +32,11 @@ SELECT
     '$2a$12$7humJ1hfArXzq9mpOqwJLuY46gx7wAgg4RJgu8Ht3vi/Qwb4qx60G' AS password_hash,
     (ARRAY['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Đặng', 'Bùi'])[1 + (s % 10)] AS first_name,
     'User ' || s AS last_name,
-    CASE WHEN s % 10 = 0 THEN 'premium' ELSE 'free' END AS plan,
+    CASE WHEN s % 10 = 0 THEN 'PREMIUM' ELSE 'FREE' END AS plan,
     CASE 
-        WHEN s % 100 = 0 THEN 'blocked' 
-        WHEN s % 50 = 0  THEN 'pending_verify' 
-        ELSE 'active' 
+        WHEN s % 100 = 0 THEN 'BLOCKED' 
+        WHEN s % 50 = 0  THEN 'PENDING_VERIFY' 
+        ELSE 'ACTIVE' 
     END AS status,
     false AS is_deleted,
     now() - ((s % 365) || ' days')::INTERVAL AS created_at,
@@ -90,7 +90,7 @@ FROM (
     SELECT id, email, ROW_NUMBER() OVER (ORDER BY id) AS rn
     FROM users
     WHERE email LIKE 'user%@financeapp.com'
-      AND status = 'active'
+      AND status = 'ACTIVE'
     LIMIT 10000
 ) u
 ON CONFLICT (token_hash) DO NOTHING;

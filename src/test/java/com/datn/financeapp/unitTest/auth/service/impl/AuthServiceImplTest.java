@@ -3,11 +3,12 @@ package com.datn.financeapp.unitTest.auth.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
-import com.datn.financeapp.module.auth.dto.request.*;
+import com.datn.financeapp.module.auth.dto.request.RefreshRequest;
+import com.datn.financeapp.module.auth.dto.request.RegisterRequest;
+import com.datn.financeapp.module.auth.dto.request.ResendVerificationRequest;
 import com.datn.financeapp.module.auth.dto.response.RegisterRes;
 import com.datn.financeapp.module.auth.entity.OtpModel;
 import com.datn.financeapp.module.auth.enums.OtpType;
-import com.datn.financeapp.module.auth.helper.ForgotPasswordRateLimiter;
 import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.datn.financeapp.module.auth.service.TokenService;
 import com.datn.financeapp.module.auth.service.impl.AuthServiceImpl;
@@ -52,8 +53,6 @@ class AuthServiceImplTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private ForgotPasswordRateLimiter forgotPasswordRateLimiter;
 
     @Mock
     private OtpRepository otpRepository;
@@ -80,7 +79,7 @@ class AuthServiceImplTest {
     void register_Valid_Success() {
         RegisterRequest req = new RegisterRequest("User@Example.COM", "password123");
         UUID userId = UUID.randomUUID();
-        UserRes createdUser = new UserRes(userId, "user@example.com", "User", "Name", UserPlan.FREE, UserStatus.PENDING_VERIFY, List.of(), "encodedPassword", null, false);
+        UserRes createdUser = new UserRes(userId, "user@example.com", "User", "Name", "", UserPlan.FREE, UserStatus.PENDING_VERIFY, List.of(), "encodedPassword", null, false);
 
         when(userService.existByEmail("user@example.com")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
@@ -98,7 +97,7 @@ class AuthServiceImplTest {
     @DisplayName("resendVerification: Tai khoan bi khoa (BLOCKED) -> nem AUTH_ACCOUNT_BLOCKED")
     void resendVerification_AccountBlocked_ThrowsException() {
         ResendVerificationRequest req = new ResendVerificationRequest("blocked@example.com");
-        UserRes blockedUser = new UserRes(UUID.randomUUID(), "blocked@example.com", "User", null, UserPlan.FREE, UserStatus.BLOCKED, List.of(), null, null, false);
+        UserRes blockedUser = new UserRes(UUID.randomUUID(), "blocked@example.com", "User", null, null, UserPlan.FREE, UserStatus.BLOCKED, List.of(), null, null, false);
 
         when(userService.get(any(UserGetReq.class))).thenReturn(blockedUser);
 
@@ -111,7 +110,7 @@ class AuthServiceImplTest {
     @DisplayName("resendVerification: Tai khoan da kich hoat (ACTIVE) -> nem AUTH_ACCOUNT_ALREADY_VERIFIED")
     void resendVerification_AlreadyVerified_ThrowsException() {
         ResendVerificationRequest req = new ResendVerificationRequest("active@example.com");
-        UserRes activeUser = new UserRes(UUID.randomUUID(), "active@example.com", "User", null, UserPlan.FREE, UserStatus.ACTIVE, List.of(), null, null, false);
+        UserRes activeUser = new UserRes(UUID.randomUUID(), "active@example.com", "User", null, null, UserPlan.FREE, UserStatus.ACTIVE, List.of(), null, null, false);
 
         when(userService.get(any(UserGetReq.class))).thenReturn(activeUser);
 
@@ -124,7 +123,7 @@ class AuthServiceImplTest {
     @DisplayName("resendVerification: Yeu cau gui lai trong vong 60s -> nem RATE_LIMIT_EXCEEDED")
     void resendVerification_RateLimited_ThrowsException() {
         ResendVerificationRequest req = new ResendVerificationRequest("user@example.com");
-        UserRes pendingUser = new UserRes(UUID.randomUUID(), "user@example.com", "User", null, UserPlan.FREE, UserStatus.PENDING_VERIFY, List.of(), null, null, false);
+        UserRes pendingUser = new UserRes(UUID.randomUUID(), "user@example.com", "User", null, null, UserPlan.FREE, UserStatus.PENDING_VERIFY, List.of(), null, null, false);
 
         OtpModel recentOtp = OtpModel.builder()
                 .email("user@example.com")
@@ -147,7 +146,7 @@ class AuthServiceImplTest {
     void refresh_AccountBlocked_ThrowsException() {
         RefreshRequest req = new RefreshRequest("valid-refresh-token");
         UUID userId = UUID.randomUUID();
-        UserRes blockedUser = new UserRes(userId, "user@example.com", "User", null, UserPlan.FREE, UserStatus.BLOCKED, List.of(), null, null, false);
+        UserRes blockedUser = new UserRes(userId, "user@example.com", "User", null, null, UserPlan.FREE, UserStatus.BLOCKED, List.of(), null, null, false);
 
         when(tokenService.checkRefreshAndGetUserId("valid-refresh-token")).thenReturn(userId);
         when(userService.get(any(UserGetReq.class))).thenReturn(blockedUser);

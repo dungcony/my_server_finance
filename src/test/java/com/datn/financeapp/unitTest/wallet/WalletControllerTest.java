@@ -66,7 +66,6 @@ class WalletControllerTest {
                 "Ví tiền mặt",
                 WalletType.CASH,
                 500000L,
-                false,
                 "path/to/icon",
                 "#4CAF50",
                 Instant.now()

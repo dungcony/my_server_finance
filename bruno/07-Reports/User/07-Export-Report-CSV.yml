@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 07. Yêu cầu xuất báo cáo (CSV)
   type: http
   seq: 7
@@ -27,6 +27,7 @@ http:
 runtime:
   postResponse: |-
     if (res.status === 202 && res.body && res.body.data && res.body.data.id) {
+      bru.setVar("exportJobId", res.body.data.id);
       bru.setEnvVar("exportJobId", res.body.data.id);
     }
 

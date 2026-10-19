@@ -1,10 +1,7 @@
 package com.datn.financeapp.module.transaction.controller;
 
 import com.datn.financeapp.common.response.ApiResponse;
-import com.datn.financeapp.module.transaction.dto.request.RecCreateReq;
-import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleCreateReq;
-import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateReq;
-import com.datn.financeapp.module.transaction.dto.request.RecUpdateReq;
+import com.datn.financeapp.module.transaction.dto.request.*;
 import com.datn.financeapp.module.transaction.service.RecTxnBehavierService;
 import com.datn.financeapp.module.transaction.service.RecTxnScheduleBehavierService;
 import jakarta.validation.Valid;
@@ -36,6 +33,14 @@ public class RecController {
     @GetMapping("/{id}")
     public ApiResponse<?> detail(@PathVariable UUID id) {
         return ApiResponse.of(recTxnBehavierService.get(id, false));
+    }
+
+    @GetMapping
+    public ApiResponse<?> gets(
+            RecTxnFilterReq filter,
+            Pageable pageable
+    ) {
+        return ApiResponse.of(recTxnBehavierService.gets(filter, false, pageable));
     }
 
     @PostMapping
@@ -109,7 +114,7 @@ public class RecController {
     // LUỒNG QUẢN TRỊ VIÊN
     // ==========================================
 
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.name())")
     @GetMapping("/admin/{recId}/schedules")
     public ApiResponse<?> gets(
             @PathVariable UUID recId,
@@ -117,19 +122,19 @@ public class RecController {
         return ApiResponse.of(scheduleBehavierService.gets(recId, pageable, true));
     }
 
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.name())")
     @GetMapping("/admin/{id}")
     public ApiResponse<?> adminDetail(@PathVariable UUID id) {
         return ApiResponse.of(recTxnBehavierService.get(id, true));
     }
 
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_DELETE.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_DELETE.name())")
     @DeleteMapping("/admin/{id}")
     public ApiResponse<?> adminDelete(@PathVariable UUID id) {
         return ApiResponse.of(recTxnBehavierService.delete(id, true));
     }
 
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_DELETE.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_DELETE.name())")
     @DeleteMapping("/admin/schedules/{scheduleId}")
     public ApiResponse<?> adminDeleteSchedule(@PathVariable UUID scheduleId) {
         return ApiResponse.of(scheduleBehavierService.delete(scheduleId, true));

@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 04. Xóa tài khoản
   type: http
   seq: 4
@@ -8,17 +8,21 @@ http:
   url: "{{baseUrl}}/users/me"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
     - name: Content-Type
-      value: "application/json"
+      value: application/json
   body:
     type: json
     data: |-
       {
-        "password": "Password123@"
+        "password": "15042004"
       }
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Xóa tài khoản cá nhân (yêu cầu mật khẩu xác nhận).

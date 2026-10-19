@@ -21,7 +21,7 @@ public interface RecTxnScheduleMapper {
      * @param schedule thực thể buổi lịch phát sinh
      * @return DTO phản hồi chi tiết
      */
-    @Mapping(target = "recurringId", source = "recTxn.id")
+    @Mapping(target = "recTxnId", source = "recTxnId")
     RecTxnScheduleRes toResponse(RecTxnSchedule schedule);
 
     /**
@@ -41,8 +41,9 @@ public interface RecTxnScheduleMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "recTxn", ignore = true)
-    @Mapping(target = "status", constant = "PENDING")
+    @Mapping(target = "recTxnId", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "status", ignore = true)
     @Mapping(target = "new", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

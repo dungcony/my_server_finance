@@ -1,0 +1,24 @@
+info:
+  name: 01. Trạng thái đơn thanh toán
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/payments/{{orderCode}}"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Client polling endpoint này (2-3 giây/lần) sau khi mở checkout_url cho tới khi status khác PENDING.
+  status: PENDING, PAID, CANCELLED, EXPIRED. Khi PAID thì refresh token để nhận plan PREMIUM.
+  amount_paid: số tiền thực nhận (chỉ có khi PAID). excess_amount: phần trả dư (amount_paid - amount), 0 nếu không dư; phần dư không hoàn, dùng để tra cứu khi user khiếu nại.
+  Đơn của người khác -> 404 NOT_FOUND.

@@ -1,7 +1,5 @@
 package com.datn.financeapp.integrationTest.user.service;
 
-import com.datn.financeapp.module.user.service.*;
-
 
 import com.datn.financeapp.module.auth.helper.ClientInfo;
 import com.datn.financeapp.module.auth.service.LoginService;
@@ -25,7 +23,7 @@ import com.datn.financeapp.module.auth.repository.RefreshTokenRepository;
 import com.datn.financeapp.module.auth.service.AuthService;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.mail.EmailService;
-import com.datn.financeapp.module.user.dto.request.UpdateProfileRequest;
+import com.datn.financeapp.module.user.dto.request.ProfileUpdateRequest;
 import com.datn.financeapp.module.user.dto.request.UpdatePassReq;
 
 import com.datn.financeapp.module.user.entity.User;
@@ -48,8 +46,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.Instant;
 
 /**
  * Test tích hợp cho hồ sơ người dùng (User Profile) và đổi mật khẩu (Change Password).
@@ -192,7 +188,7 @@ class UserProfileIntegrationTest {
     void patchMe_UpdatesUsername_Succeeds() {
         User user = registerUser("cap.nhat@example.com", "matkhaudung1", "Tên Cũ");
 
-        var result = userBehavierService.updateMe(user.getId(), new UpdateProfileRequest("Minh", "Nguyễn", null));
+        var result = userBehavierService.updateMe(user.getId(), new ProfileUpdateRequest("Minh", "Nguyễn", null));
 
         assertThat(result.firstName()).isEqualTo("Minh");
         assertThat(result.lastName()).isEqualTo("Nguyễn");

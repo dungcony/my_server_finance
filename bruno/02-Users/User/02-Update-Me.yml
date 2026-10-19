@@ -8,9 +8,9 @@ http:
   url: "{{baseUrl}}/users/me"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
     - name: Content-Type
-      value: "application/json"
+      value: application/json
   body:
     type: json
     data: |-
@@ -22,5 +22,9 @@ http:
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Cập nhật tên hiển thị hoặc đường dẫn ảnh đại diện.

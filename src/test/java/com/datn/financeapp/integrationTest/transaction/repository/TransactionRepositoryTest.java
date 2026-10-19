@@ -109,7 +109,7 @@ class TransactionRepositoryTest {
                 .balance(1_000_000L)
                 .iconCode("default_wallet")
                 .color("#112233")
-                .isDefault(false)
+
                 .build());
         walletId = wallet.getId();
 

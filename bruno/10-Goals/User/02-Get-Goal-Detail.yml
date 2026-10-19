@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 02. Chi tiết mục tiêu
   type: http
   seq: 2
@@ -8,9 +8,13 @@ http:
   url: "{{baseUrl}}/goals/{{goalId}}"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Xem tiến độ tích lũy và danh sách các lần nạp tiền vào mục tiêu.

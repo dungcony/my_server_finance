@@ -20,7 +20,7 @@ public class CateImpl implements CategoryService {
 
 
     @Override
-    public Optional<CateSumaryRes> findByCodeAndIsDeletedAndIsLeaf(String code, boolean includeDeleted, boolean isLeaf) {
+    public Optional<CateSumaryRes> findByCodeAndIsDeletedAndIsLeaf(String code, boolean includeDeleted) {
 
         if (code == null || code.isEmpty())
             return Optional.empty();
@@ -32,9 +32,6 @@ public class CateImpl implements CategoryService {
             return Optional.empty();
 
         if (!includeDeleted && cate.getIsDeleted())
-            return Optional.empty();
-
-        if (isLeaf && !cate.getIsLeaf())
             return Optional.empty();
 
         return Optional.of(cateMapper.toSumary(cate, iconService.findIconByCode(cate.getIconCode())));

@@ -1,4 +1,4 @@
--- bảng icons và categories được tạo ở migration categories_icon --
+ -- bảng icons và categories được tạo ở migration categories_icon --
 
 -- wallets --
 CREATE TABLE wallets (
@@ -10,7 +10,6 @@ CREATE TABLE wallets (
     icon_code  varchar(50),
     color      CHAR(7),
     sort_order INTEGER     NOT NULL DEFAULT 0,
-    is_default BOOLEAN     NOT NULL DEFAULT FALSE,
     is_deleted BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -43,7 +42,7 @@ CREATE TABLE transactions (
     CONSTRAINT fk_txn_user     FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
     CONSTRAINT fk_txn_wallet   FOREIGN KEY (wallet_id)   REFERENCES wallets    (id),
     CONSTRAINT fk_txn_category FOREIGN KEY (category_code) REFERENCES categories (code) ON DELETE RESTRICT,
-    CONSTRAINT ck_txn_type     CHECK (type IN ('EXPENSE', 'INCOME', 'LOAN')),
+    CONSTRAINT ck_txn_type     CHECK (type IN ('EXPENSE', 'INCOME')),
     CONSTRAINT ck_txn_amount   CHECK (amount > 0)
 );
 
@@ -75,7 +74,7 @@ CREATE TABLE recurring_transactions (
     CONSTRAINT fk_rec_user      FOREIGN KEY (user_id)     REFERENCES users      (id) ON DELETE CASCADE,
     CONSTRAINT fk_rec_wallet    FOREIGN KEY (wallet_id)   REFERENCES wallets    (id),
     CONSTRAINT fk_rec_category  FOREIGN KEY (category_code) REFERENCES categories (code) ON DELETE RESTRICT,
-    CONSTRAINT ck_rec_type      CHECK (type IN ('EXPENSE', 'INCOME', 'LOAN')),
+    CONSTRAINT ck_rec_type      CHECK (type IN ('EXPENSE', 'INCOME')),
     CONSTRAINT ck_rec_amount    CHECK (amount > 0),
     CONSTRAINT ck_rec_frequency CHECK (frequency IN ('DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR')),
     CONSTRAINT ck_rec_interval  CHECK (repeat_interval >= 1),

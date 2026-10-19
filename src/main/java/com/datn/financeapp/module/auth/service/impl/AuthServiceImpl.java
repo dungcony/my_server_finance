@@ -16,7 +16,10 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.mail.EmailService;
 import com.datn.financeapp.module.user.dto.request.UserCreateReq;
 import com.datn.financeapp.module.user.dto.request.UserGetReq;
+import com.datn.financeapp.module.user.dto.request.UserUpdateReq;
 import com.datn.financeapp.module.user.dto.response.UserRes;
+import com.datn.financeapp.module.user.entity.User;
+import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.service.UserService;
 import com.datn.financeapp.module.user.exception.UserNotFoundException;
@@ -50,16 +53,25 @@ public class AuthServiceImpl implements AuthService {
     public RegisterRes register(RegisterRequest req) {
         Instant now = Instant.now();
         String email = req.email().toLowerCase();
+        UserRes user;
+        try {
 
-        if (userService.existByEmail(email))
-            throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
+            user = userService.getByEmail(email, true);
 
-        UserRes user = userService.create(
-                UserCreateReq.forEmail(
-                        email,
-                        passwordEncoder.encode(req.password())
-                )
-        );
+            if (!user.isDeleted())
+                throw new BusinessException(ErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
+
+            userService.update(user.id(), UserUpdateReq.forRestore(passwordEncoder.encode(req.password())));
+
+        } catch (UserNotFoundException e) {
+            user = userService.create(
+                    UserCreateReq.forEmail(
+                            email,
+                            passwordEncoder.encode(req.password())
+                    )
+            );
+        }
+
         sendEmail(email, OtpType.REGISTER_OTP, now);
 
         return new RegisterRes(
@@ -67,7 +79,6 @@ public class AuthServiceImpl implements AuthService {
                 email
         );
     }
-
 
     @Override
     public AuthRes verifyEmail(VerifyEmailRequest req) {

@@ -41,43 +41,42 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
         if (isLockedOut(email))
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_LOCKED);
 
-        UserRes user = null;
         try {
-            user = userService.get(new UserGetReq(email));
+            
+            UserRes user = userService.get(new UserGetReq(email));
+
+            boolean isSuccess = user != null
+                    && user.password() != null
+                    && passwordEncoder.matches(req.password(), user.password());
+
+            saveLoginAttemp(email, isSuccess, client, Instant.now());
+
+            if (!isSuccess)
+                throw new BusinessException(ErrorCode.AUTH_CREDENTIALS_INVALID);
+
+            if (user.isBlocked())
+                throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
+
+            if (!user.isConfirm())
+                throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
+
+            return new AuthRes(
+                    user,
+                    tokenService.create(new TokenCreateReq(
+                            user.id(),
+                            user.email(),
+                            user.plan().name(),
+                            user.getAuthorities(),
+                            user.getTopRoleLevel()
+                    ))
+            );
         } catch (UserNotFoundException e) {
-            // bỏ qua, user sẽ bằng null và tiếp tục lưu lịch sử sai
+
+            saveLoginAttemp(req.email(), false, client, Instant.now());
+
+            throw new UserNotFoundException();
         }
 
-        // lấy trạng thái đăng nhập
-        // user = null không tìm thấy
-        // password = null sai thông tin
-        // password sai -> sai thông tin
-        // 1 trong 3 sai thì là đăng nhập sai
-        boolean isSuccess = user != null
-                && user.password() != null
-                && passwordEncoder.matches(req.password(), user.password());
-
-        saveLoginAttemp(email, isSuccess, client, Instant.now());
-
-        if (!isSuccess)
-            throw new BusinessException(ErrorCode.AUTH_CREDENTIALS_INVALID);
-
-        if (user.isBlocked())
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
-
-        if (!user.isConfirm())
-            throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
-
-        return new AuthRes(
-                user,
-                tokenService.create(new TokenCreateReq(
-                        user.id(),
-                        user.email(),
-                        user.plan().name(),
-                        user.getAuthorities(),
-                        user.getTopRoleLevel()
-                ))
-        );
     }
 
     //---------------------------------PRIVATE-------------------------------------------//
@@ -92,7 +91,6 @@ public class EmailLoginImpl implements LoginService<EmailLoginRequest> {
                 .userAgent(client.userAgent())
                 .attemptedAt(now)
                 .build());
-
     }
 
     private boolean isLockedOut(String email) {

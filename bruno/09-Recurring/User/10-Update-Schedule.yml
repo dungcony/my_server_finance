@@ -1,0 +1,29 @@
+info:
+  name: 10. Sửa buổi lịch
+  type: http
+  seq: 10
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/recurring/schedules/c3a964b7-d630-4390-a340-ff5d99a85194"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "run_date": "2026-10-21",
+        "amount": 3600000
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Sửa ngày chạy hoặc số tiền của một buổi lịch (các trường tuỳ chọn).

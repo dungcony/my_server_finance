@@ -18,13 +18,19 @@ http:
         "type": "EXPENSE",
         "money_source": "FUND",
         "amount": 250000,
-        "date": "2026-03-20",
-        "category_id": "{{categoryId}}",
+        "occurred_at": "2026-03-20T12:00:00Z",
+        "category_code": "{{categoryCode}}",
+        "transactor_id": "{{userId}}",
         "note": "Ăn tối hải sản",
-        "participants": []
+        "participants": [
+          {
+            "user_id": "{{userId}}",
+            "share_amount": 250000
+          }
+        ]
       }
 
 settings:
   encodeUrl: true
 
-docs: Mọi thành viên có thể ghi chi tiêu (EXPENSE) hoặc nộp tiền quỹ (CONTRIBUTION). Khoản ghi bởi thành viên thường sẽ ở trạng thái PENDING chờ duyệt.
+docs: "Ghi giao dịch nhóm. type: EXPENSE | CONTRIBUTION | REFUND | ADJUSTMENT_UP | ADJUSTMENT_DOWN. money_source: FUND | PERSONAL. Khoản ghi bởi thành viên thường sẽ ở trạng thái PENDING chờ duyệt."

@@ -6,7 +6,7 @@
 -- 1. Bổ sung ràng buộc kiểm tra loại ví trong wallets
 ALTER TABLE wallets DROP CONSTRAINT IF EXISTS ck_wal_type;
 ALTER TABLE wallets ADD CONSTRAINT ck_wal_type 
-    CHECK (type IN ('CASH', 'BANK', 'E_WALLET', 'LOAN', 'SAVINGS'));
+    CHECK (type IN ('CASH', 'BANK', 'E_WALLET', 'SAVINGS'));
 
 -- 2. Bảng savings_goals - Mục tiêu tích lũy tài chính
 CREATE TABLE savings_goals (

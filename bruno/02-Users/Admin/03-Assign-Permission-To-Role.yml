@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/admin/role/permission"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
   body:
@@ -16,7 +16,7 @@ http:
     data: |-
       {
         "role_name": "ROLE_ADMIN",
-        "permission_name": "role_permission:read"
+        "permission_name": "ROLE_PERMISSION_READ"
       }
 
 settings:

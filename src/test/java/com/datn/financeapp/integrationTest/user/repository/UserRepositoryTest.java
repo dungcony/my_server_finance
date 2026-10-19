@@ -14,7 +14,12 @@ import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.repository.RoleRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.module.user.enums.PermissionName;
+import com.datn.financeapp.module.user.repository.PermissionRepository;
 import com.datn.financeapp.module.user.repository.UserRoleRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.Arrays;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +62,12 @@ class UserRepositoryTest {
 
     @Autowired
     private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private PermissionRepository permissionRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void cleanTables() {
@@ -150,4 +161,44 @@ class UserRepositoryTest {
         assertThat(visibleIds).doesNotContain(adminUser.getId());
     }
 
+    @Test
+    @DisplayName("savedUser: Luu UserPlan va UserStatus vao DB duoi dang ten enum viet hoa")
+    void savedUser_PersistsPlanAndStatusAsEnumName() {
+        User user = createUser("enum.format@example.com", null, UserStatus.ACTIVE);
+
+        Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT plan, status FROM users WHERE id = ?",
+                user.getId()
+        );
+
+        assertThat(row.get("plan")).isEqualTo("FREE");
+        assertThat(row.get("status")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    @DisplayName("findAuthoritiesByUserId: Tra ve permission duoi dang ten enum viet hoa (USERS_READ)")
+    void findAuthoritiesByUserId_ReturnsPermissionEnumName() {
+        User user = createUser("authority.enum@example.com", null, UserStatus.ACTIVE);
+        Role adminRole = roleRepository.findByName(RoleName.ROLE_ADMIN).orElseThrow();
+        userRoleRepository.saveAndFlush(new UserRole(user.getId(), adminRole.getId()));
+
+        List<String> authorities = userRepository.findAuthoritiesByUserId(user.getId());
+
+        assertThat(authorities).contains(PermissionName.USERS_READ.name());
+    }
+
+    @Test
+    @DisplayName("seededPermissions: DB chua day du moi PermissionName trong enum")
+    void seededPermissions_CoverAllPermissionNames() {
+        List<String> dbPermissionNames = permissionRepository.findAll()
+                .stream()
+                .map(p -> p.getName().name())
+                .toList();
+
+        List<String> allEnumNames = Arrays.stream(PermissionName.values())
+                .map(Enum::name)
+                .toList();
+
+        assertThat(dbPermissionNames).containsAll(allEnumNames);
+    }
 }

@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 05. Đóng góp tiết kiệm
   type: http
   seq: 5
@@ -27,6 +27,7 @@ http:
 runtime:
   postResponse: |-
     if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setVar("contributionId", res.body.data.id);
       bru.setEnvVar("contributionId", res.body.data.id);
     }
 

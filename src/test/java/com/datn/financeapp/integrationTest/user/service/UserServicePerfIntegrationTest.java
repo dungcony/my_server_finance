@@ -1,7 +1,5 @@
 package com.datn.financeapp.integrationTest.user.service;
 
-import com.datn.financeapp.module.user.service.*;
-
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,8 +15,8 @@ import com.datn.financeapp.performance.SqlCountingConfig;
 import com.datn.financeapp.module.user.dto.request.AddPermissionRoleRequest;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
 import com.datn.financeapp.module.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.module.user.dto.request.UpdateProfileRequest;
-import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
+import com.datn.financeapp.module.user.dto.request.ProfileUpdateRequest;
+import com.datn.financeapp.module.user.dto.request.UserRoleUpdateReq;
 import com.datn.financeapp.module.user.dto.request.UserCreateReq;
 import com.datn.financeapp.module.user.dto.request.UserGetReq;
 import com.datn.financeapp.module.user.entity.Role;
@@ -31,7 +29,6 @@ import com.datn.financeapp.module.user.repository.RoleRepository;
 import com.datn.financeapp.module.user.repository.UserRepository;
 import com.datn.financeapp.module.user.repository.UserRoleRepository;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -196,7 +193,7 @@ class UserServicePerfIntegrationTest {
     private void measureUserBehavierService(Profile profile, UUID subjectId, AtomicReference<User> target) {
         perf.measure(profile, "UserBehavierService.getMe", () -> userBehavierService.getMe(subjectId));
         perf.measure(profile, "UserBehavierService.updateMe",
-                () -> userBehavierService.updateMe(plainUserId, new UpdateProfileRequest("Đo", "Hiệu năng", null)));
+                () -> userBehavierService.updateMe(plainUserId, new ProfileUpdateRequest("Đo", "Hiệu năng", null)));
         perf.measure(profile, "UserBehavierService.changePassword",
                 () -> target.set(createUser(true)),
                 () -> userBehavierService.changePassword(
@@ -225,7 +222,7 @@ class UserServicePerfIntegrationTest {
                 () -> managerUserService.lockUser(adminId, new BlockUserRequest(target.get().getId(), "đo hiệu năng")));
         perf.measure(profile, "ManagerUserService.addRoleToUser",
                 () -> target.set(createUser(false)),
-                () -> managerUserService.addRoleToUser(new UpdateUserRoleReq(target.get().getId(), RoleName.ROLE_USER)));
+                () -> managerUserService.addRoleToUser(new UserRoleUpdateReq(target.get().getId(), RoleName.ROLE_USER)));
         // hiện chỉ có ROLE_ADMIN (cấp ngang admin nên bị chặn cấp bậc) và ROLE_USER (vai trò mặc định, không được gỡ),
         // nên không còn lệnh gọi nào thành công để đo; bỏ chú thích này khi hệ thống có thêm vai trò trung gian
         perf.skip("ManagerUserService.removeRoleToUser", "chưa có vai trò nào gỡ được (ROLE_USER là mặc định, ROLE_ADMIN ngang cấp admin)");
@@ -250,7 +247,7 @@ class UserServicePerfIntegrationTest {
     private void removePermissionFromUserRole(PermissionName permission) {
         jdbcTemplate.update(
                 "DELETE FROM role_permissions WHERE role_id = ? AND permission_id = (SELECT id FROM permissions WHERE name = ?)",
-                userRole.getId(), permission.getValue());
+                userRole.getId(), permission.name());
     }
 
     // người dùng thường có hoặc không có vai trò ROLE_USER, mật khẩu là KNOWN_PASSWORD

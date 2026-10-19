@@ -11,7 +11,6 @@ import java.util.UUID;
  *
  * @param search      từ khoá tìm trong tên ví
  * @param type        loại ví (CASH, BANK, E_WALLET)
- * @param isDefault   chỉ lấy ví mặc định / không mặc định
  * @param minBalance  số dư tối thiểu
  * @param maxBalance  số dư tối đa
  * @param createdFrom tạo từ thời điểm (bao gồm)
@@ -22,7 +21,6 @@ import java.util.UUID;
 public record WalletFillterReq(
         String search,
         WalletType type,
-        @BindParam("is_default") Boolean isDefault,
         @BindParam("min_balance") Long minBalance,
         @BindParam("max_balance") Long maxBalance,
         @BindParam("created_from") Instant createdFrom,
@@ -31,6 +29,6 @@ public record WalletFillterReq(
         @BindParam("user_id") UUID userId) {
 
     public WalletFillterReq withUser(UUID userId) {
-        return new WalletFillterReq(search, type, isDefault, minBalance, maxBalance, createdFrom, createdTo, false, userId);
+        return new WalletFillterReq(search, type, minBalance, maxBalance, createdFrom, createdTo, false, userId);
     }
 }

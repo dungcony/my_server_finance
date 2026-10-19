@@ -21,19 +21,19 @@ public class ManagerRoleController {
     private final ManagerRoleService adminRoleService;
 
     @GetMapping("/all")
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ROLES_READ.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ROLES_READ.name())")
     public ApiResponse<List<RoleResponse>> findRoles() {
         return ApiResponse.of(adminRoleService.findRoles());
     }
 
     @GetMapping("/{roleName}/permissions")
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ROLE_PERMISSION_READ.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ROLE_PERMISSION_READ.name())")
     public ApiResponse<List<PermissionResponse>> findByRole(@PathVariable RoleName roleName) {
         return ApiResponse.of(adminRoleService.findByRole(roleName));
     }
 
     @PostMapping("/permission")
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ROLE_PERMISSION_UPDATE.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ROLE_PERMISSION_UPDATE.name())")
     public ApiResponse<Void> addPermissionToRole(
             @Valid @RequestBody AddPermissionRoleRequest req
     ) {

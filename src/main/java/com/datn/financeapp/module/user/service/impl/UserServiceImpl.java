@@ -2,12 +2,19 @@ package com.datn.financeapp.module.user.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.module.pay.dto.req.PaymentCreateReq;
+import com.datn.financeapp.module.pay.dto.res.PaymentCreateRes;
+import com.datn.financeapp.module.pay.enums.PaymentType;
+import com.datn.financeapp.module.pay.service.PaymentService;
+import com.datn.financeapp.module.user.config.PremiumPlanProperties;
 import com.datn.financeapp.module.user.dto.request.UserCreateReq;
 import com.datn.financeapp.module.user.dto.request.UserGetReq;
+import com.datn.financeapp.module.user.dto.request.UserUpdateReq;
 import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.entity.UserRole;
+import com.datn.financeapp.module.user.enums.PremiumPlan;
 import com.datn.financeapp.module.user.enums.RoleName;
 import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
@@ -26,6 +33,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +53,9 @@ public class UserServiceImpl implements UserService {
     private final UserRoleRepository userRoleRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
+    private final PaymentService paymentService;
+    private final PremiumPlanProperties premiumPlanProperties;
+    private final Clock clock;
 
     @Override
     public UserRes create(UserCreateReq req) {
@@ -81,6 +94,30 @@ public class UserServiceImpl implements UserService {
                     .orElseThrow(UserNotFoundException::new);
 
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true, noRollbackFor = UserNotFoundException.class)
+    public UserRes getById(UUID id, boolean includeDeleted) {
+        if (id == null)
+            return null;
+
+        return userRepository.findById(id)
+                .filter(u -> includeDeleted || Boolean.FALSE.equals(u.getIsDeleted()))
+                .map(userMapper::toResponse)
+                .orElseThrow(UserNotFoundException::new);
+    }
+
+    @Override
+    @Transactional(readOnly = true, noRollbackFor = UserNotFoundException.class)
+    public UserRes getByEmail(String email, boolean includeDeleted) {
+        if (email == null)
+            return null;
+
+        return userRepository.findByEmail(email)
+                .filter(u -> includeDeleted || Boolean.FALSE.equals(u.getIsDeleted()))
+                .map(userMapper::toResponse)
+                .orElseThrow(UserNotFoundException::new);
     }
 
     @Transactional(readOnly = true)
@@ -175,8 +212,75 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.AUTH_ACCOUNT_NOT_VERIFIED);
     }
 
+    @Override
+    @Transactional
+    public void update(UUID id, UserUpdateReq req) {
+        int updated = userRepository.updatePartial(
+                id,
+                req.password(),
+                req.status(),
+                req.plan(),
+                req.firstName(),
+                req.lastName(),
+                req.avatarUrl(),
+                req.isDeleted(),
+                clock.instant());
+
+        if (updated == 0)
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+    }
+
+
+    @Override
+    public PaymentCreateRes createPremiumUpgrade(UUID userId, PremiumPlan plan) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        if (isPremiumActive(user, clock.instant()))
+            throw new BusinessException(ErrorCode.PREMIUM_ALREADY_ACTIVE);
+
+        return paymentService.createPayment(new PaymentCreateReq(
+                userId, PaymentType.PREMIUM_UPGRADE, plan.name(), premiumPlanProperties.priceOf(plan)));
+    }
+
+    @Override
+    public void upgradeToPremium(UUID userId, int months) {
+        if (months <= 0) {
+            throw new IllegalArgumentException("months phải lớn hơn 0");
+        }
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(UserNotFoundException::new);
+        Instant now = clock.instant();
+
+        Instant base = now;
+        if (isPremiumActive(user, now)) {
+            // premium không hạn thì không có gì để cộng thêm
+            if (user.getPlanExpiresAt() == null) {
+                log.info("User {} đã premium không thời hạn, bỏ qua nâng cấp", userId);
+                return;
+            }
+            // đã còn hạn mà vẫn nhận được tiền (hai đơn cùng được trả): cộng dồn để không mất tiền của user
+            base = user.getPlanExpiresAt();
+        }
+
+        user.setPlan(UserPlan.PREMIUM);
+        user.setPlanExpiresAt(base.atZone(ZoneOffset.UTC).plusMonths(months).toInstant());
+        userRepository.save(user);
+        log.info("User {} nâng cấp premium đến {}", userId, user.getPlanExpiresAt());
+    }
+
+    @Override
+    public int downgradeExpiredPremium() {
+        return userRepository.downgradeExpiredPremium(UserPlan.FREE, UserPlan.PREMIUM, clock.instant());
+    }
 
     //-------------------------------------PRIVATE-------------------------------//
+
+    // premium chưa có hạn (planExpiresAt null) được coi là còn hiệu lực vô thời hạn
+    private boolean isPremiumActive(User user, Instant now) {
+        return user.getPlan() == UserPlan.PREMIUM
+                && (user.getPlanExpiresAt() == null || user.getPlanExpiresAt().isAfter(now));
+    }
 
 
     private UserRes createGoogleUser(String email, String googleId) {

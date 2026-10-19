@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 04. Tạo ví mới
   type: http
   seq: 4
@@ -18,16 +18,16 @@ http:
     data: |-
       {
         "name": "Ví tiền mặt",
-        "type": "cash",
-        "initial_balance": 500000,
-        "include_in_total": true,
-        "icon": "wallet",
+        "type": "CASH",
+        "balance": 500000,
+        "icon_code": "{{iconCode}}",
         "color": "#2ECC71"
       }
 
 runtime:
   postResponse: |-
     if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setVar("walletId", res.body.data.id);
       bru.setEnvVar("walletId", res.body.data.id);
     }
 

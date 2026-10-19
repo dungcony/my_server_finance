@@ -69,7 +69,7 @@ public class TokenServiceImpl implements TokenService {
     }
 
     @Override
-    public RefreshToken revokeRefresh(String refresh) {
+    public void revokeRefresh(String refresh) {
         // băm token thô nhận từ client
         String hash = sha256Hex(refresh);
 
@@ -80,22 +80,23 @@ public class TokenServiceImpl implements TokenService {
         if (activeToken != null) {
             // đánh dấu thời gian thu hồi
             activeToken.setRevokedAt(Instant.now());
-            return refreshTokenRepository.save(activeToken);
+            refreshTokenRepository.save(activeToken);
+            return;
         }
 
         // nếu token đã bị thu hồi trước đó thì trả về luôn để đảm bảo tính lũy thừa
-        return refreshTokenRepository.findByTokenHash(hash)
+        refreshTokenRepository.findByTokenHash(hash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.AUTH_REFRESH_TOKEN_INVALID));
     }
 
     @Override
-    public int revokeAllByUserId(UUID userId) {
-        return refreshTokenRepository.revokeAllActiveForUser(userId);
+    public void revokeAllByUserId(UUID userId) {
+        refreshTokenRepository.revokeAllActiveForUser(userId);
     }
 
     @Override
-    public int revokeAllByEmail(String email) {
-        return refreshTokenRepository.revokeAllActiveForUser(email);
+    public void revokeAllByEmail(String email) {
+        refreshTokenRepository.revokeAllActiveForUser(email);
     }
 
 

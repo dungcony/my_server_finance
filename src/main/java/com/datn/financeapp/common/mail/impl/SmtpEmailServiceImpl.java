@@ -24,7 +24,7 @@ public class SmtpEmailServiceImpl implements EmailService {
     private final String from;
 
     public SmtpEmailServiceImpl(JavaMailSender mailSender,
-                                @Value("${app.mail.from:}") String from) {
+                                @Value("${spring.mail.from}") String from) {
         this.mailSender = mailSender;
         this.from = from;
     }

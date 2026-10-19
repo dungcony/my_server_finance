@@ -7,6 +7,7 @@ let editingCode = null;
 const expandedCodes = new Set(); // code các nút đang mở, giữ lại khi làm mới cây
 const categoryByCode = new Map(); // code -> danh mục (từ lần tải gần nhất)
 const iconByCode = new Map(); // code -> path_data, để xem trước biểu tượng
+const codeByPath = new Map(); // path_data -> code, để dò ngược mã code từ path_data
 
 // Tạo phần tử với class và nội dung chữ (textContent, không dùng innerHTML để tránh XSS)
 function h(tag, className, text) {
@@ -22,17 +23,36 @@ function callApi(path, method = 'GET', body = null, options = {}) {
     return api(path, { method, body, headers, silent: quiet });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    $('fIconCode').addEventListener('input', updateIconPreview);
-    refreshTree();
-    loadIcons(true);
-});
+// Chuyển đổi linh hoạt icon (có thể là svg path string, icon code hoặc object) thành path_data
+function resolvePathData(icon) {
+    if (!icon) return '';
+    if (typeof icon === 'object') return icon.path_data || icon.pathData || '';
+    if (typeof icon === 'string') {
+        const s = icon.trim();
+        if (/^[Mm]\s*[-0-9]/.test(s)) return s;
+        if (iconByCode.has(s)) return iconByCode.get(s);
+        return s;
+    }
+    return '';
+}
 
-// ----------------- CÂY DANH MỤC -----------------
+// Dò ngược icon_code từ object, mã code hoặc svg pathData
+function resolveIconCode(icon) {
+    if (!icon) return '';
+    if (typeof icon === 'object') return icon.code || '';
+    if (typeof icon === 'string') {
+        const s = icon.trim();
+        if (iconByCode.has(s)) return s;
+        if (codeByPath.has(s)) return codeByPath.get(s);
+        if (!/^[Mm]\s*[-0-9]/.test(s)) return s;
+    }
+    return '';
+}
 
-// Vẽ biểu tượng SVG 24x24 từ path_data của kho biểu tượng
-function makeIcon(pathData) {
+// Vẽ biểu tượng SVG 24x24 từ path_data hoặc icon code
+function makeIcon(iconOrPath) {
     const box = h('span', 'icon-box');
+    const pathData = resolvePathData(iconOrPath);
     if (!pathData) return box;
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
@@ -47,6 +67,21 @@ function makeIcon(pathData) {
     box.appendChild(svg);
     return box;
 }
+
+document.addEventListener('DOMContentLoaded', async () => {
+    $('fIconCode').addEventListener('input', updateIconPreview);
+    const groupSelect = $('iconGroup');
+    if (groupSelect) groupSelect.addEventListener('change', () => loadIcons());
+
+    try {
+        await loadIcons(true);
+    } catch (e) {
+        console.error('Lỗi khi tải danh sách biểu tượng:', e);
+    }
+    await refreshTree();
+});
+
+// ----------------- CÂY DANH MỤC -----------------
 
 async function refreshTree() {
     const root = $('treeRoot');
@@ -70,7 +105,6 @@ async function refreshTree() {
 
 async function renderNode(category, parentList) {
     categoryByCode.set(category.code, category);
-    if (category.icon?.code) iconByCode.set(category.icon.code, category.icon.path_data);
 
     const item = h('li');
     const childList = h('ul');
@@ -94,7 +128,7 @@ async function renderNode(category, parentList) {
     row.append(
         toggle,
         swatch,
-        makeIcon(category.icon?.path_data),
+        makeIcon(category.icon),
         h('span', 'tree-name', category.name),
         h('span', 'tree-code', category.code),
         h('span', 'badge', `L${category.level}`),
@@ -163,7 +197,7 @@ async function collapseAll() {
 
 function updateIconPreview() {
     const code = $('fIconCode').value.trim();
-    $('iconPreview').replaceChildren(...makeIcon(iconByCode.get(code)).childNodes);
+    $('iconPreview').replaceChildren(...makeIcon(code).childNodes);
     document.querySelectorAll('.icon-item').forEach((item) => {
         item.classList.toggle('selected', item.dataset.code === code);
     });
@@ -207,7 +241,7 @@ function startEdit(category) {
     $('fDescription').value = category.description || '';
     $('fColor').value = category.color || '#3d6b7d';
     $('fParentCode').value = category.parent_code || '';
-    $('fIconCode').value = category.icon?.code || '';
+    $('fIconCode').value = resolveIconCode(category.icon);
     updateIconPreview();
     $('formTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -297,19 +331,23 @@ async function loadIcons(quiet = false) {
         if (search) {
             items = items.filter(icon =>
                 (icon.code && icon.code.toLowerCase().includes(search)) ||
-                (icon.display_name && icon.display_name.toLowerCase().includes(search))
+                (icon.display_name && icon.display_name.toLowerCase().includes(search)) ||
+                (icon.displayName && icon.displayName.toLowerCase().includes(search))
             );
         }
         $('iconTotal').textContent = `(${items.length} biểu tượng)`;
         container.replaceChildren();
         const list = h('div', 'icon-list');
         for (const icon of items) {
-            iconByCode.set(icon.code, icon.path_data);
+            const path = icon.path_data || icon.pathData || '';
+            iconByCode.set(icon.code, path);
+            if (path) codeByPath.set(path, icon.code);
+
             const button = h('button', 'icon-item');
             button.type = 'button';
             button.dataset.code = icon.code;
             button.title = icon.code;
-            button.append(makeIcon(icon.path_data), h('span', '', icon.display_name));
+            button.append(makeIcon(path), h('span', '', icon.display_name || icon.displayName || icon.code));
             button.onclick = () => {
                 $('fIconCode').value = icon.code;
                 updateIconPreview();
@@ -322,15 +360,18 @@ async function loadIcons(quiet = false) {
         $('iconTotal').textContent = `(${data.total ?? 0} biểu tượng)`;
         container.replaceChildren();
         for (const group of data.group) {
-            container.appendChild(h('div', 'icon-group-title', `${group.group_name} (${group.items?.length || 0})`));
+            container.appendChild(h('div', 'icon-group-title', `${group.group_name || group.groupName} (${group.items?.length || 0})`));
             const list = h('div', 'icon-list');
             for (const icon of group.items || []) {
-                iconByCode.set(icon.code, icon.path_data);
+                const path = icon.path_data || icon.pathData || '';
+                iconByCode.set(icon.code, path);
+                if (path) codeByPath.set(path, icon.code);
+
                 const button = h('button', 'icon-item');
                 button.type = 'button';
                 button.dataset.code = icon.code;
                 button.title = icon.code;
-                button.append(makeIcon(icon.path_data), h('span', '', icon.display_name));
+                button.append(makeIcon(path), h('span', '', icon.display_name || icon.displayName || icon.code));
                 button.onclick = () => {
                     $('fIconCode').value = icon.code;
                     updateIconPreview();

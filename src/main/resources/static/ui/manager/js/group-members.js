@@ -3,7 +3,13 @@ const UUID_PATTERN = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4
 
 async function loadMembersTab() {
     const status = $('mStatus').value;
-    const list = dataOf(await api(G.path('/members'), { query: { status } })) || [];
+    const [memberRes, balanceRes] = await Promise.all([
+        api(G.path('/members'), { query: { status } }),
+        api(G.path('/balances'), { silent: true })
+    ]);
+
+    const list = dataOf(memberRes) || [];
+    const rep = dataOf(balanceRes);
 
     if (!status && list.length) G.members = list;
     $('mCount').textContent = `(${list.length})`;
@@ -11,8 +17,12 @@ async function loadMembersTab() {
     const isOwner = G.isOwner;
     const myId = G.myId;
 
-    // Cập nhật thẻ trạng thái đóng góp của tôi
-    updateMyMemberCard();
+    const balanceMap = new Map((rep?.balances || []).map(b => [b.user_id, b]));
+
+    // Cập nhật thẻ trạng thái đóng góp của tôi và thanh tóm tắt cho Owner/Treasurer
+    updateMyMemberCard(rep, balanceMap);
+
+    const totalCols = isOwner ? 9 : 8;
 
     setTable($('memberBody'), list.map(m => {
         const isMe = m.user_id === myId;
@@ -45,6 +55,27 @@ async function loadMembersTab() {
             roleBadge = '<span class="badge info">👤 Thành viên</span>';
         }
 
+        const b = balanceMap.get(m.user_id);
+        let shareHtml = '<span class="muted">-</span>';
+        let netHtml = '<span class="muted">-</span>';
+        let needHtml = '<span class="muted">-</span>';
+
+        if (b) {
+            shareHtml = `<b>${fmtMoney(b.total_share_amount)}</b>`;
+            const net = Number(b.net_balance ?? 0);
+            const needed = Number(b.needed_contribution ?? 0);
+
+            netHtml = signedMoney(net);
+
+            if (net < 0 || needed > 0) {
+                needHtml = `<span class="neg" style="font-weight:600">Nộp ${fmtMoney(needed || Math.abs(net))}</span>`;
+            } else if (net > 0) {
+                needHtml = `<span class="pos" style="font-weight:600">Nhận ${fmtMoney(net)}</span>`;
+            } else {
+                needHtml = '<span class="muted" style="font-size:12px">0 đ (Đủ)</span>';
+            }
+        }
+
         return `<tr>
             <td>
                 <b>${esc(m.display_name || '(Chưa đặt tên)')}</b>
@@ -53,10 +84,13 @@ async function loadMembersTab() {
             <td><code>${esc(m.user_id)}</code> <button class="btn btn-secondary btn-sm" data-copy="${esc(m.user_id)}">Copy</button></td>
             <td>${roleBadge}</td>
             <td>${badge(m.status)}</td>
+            <td class="right nowrap">${shareHtml}</td>
+            <td class="right nowrap">${netHtml}</td>
+            <td class="right nowrap">${needHtml}</td>
             <td class="nowrap">${fmtDateTime(m.joined_at)}</td>
             <td class="nowrap ${isOwner ? '' : 'hidden'}">${acts.length ? acts.join(' ') : '-'}</td>
         </tr>`;
-    }).join(''), isOwner ? 6 : 5, 'Không tìm thấy thành viên phù hợp');
+    }).join(''), totalCols, 'Không tìm thấy thành viên phù hợp');
 
     $('memberBody').querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copyText(b.dataset.copy));
     $('memberBody').querySelectorAll('[data-act]').forEach(b => b.onclick = () => memberAction(b.dataset.act, b.dataset.uid, b.dataset.name));
@@ -66,8 +100,7 @@ function btnAct(act, m, label, kind) {
     return `<button class="btn ${kind} btn-sm" data-act="${act}" data-uid="${esc(m.user_id)}" data-name="${esc(m.display_name || '')}">${label}</button>`;
 }
 
-async function updateMyMemberCard() {
-    const rep = dataOf(await api(G.path('/balances'), { silent: true }));
+function updateMyMemberCard(rep, balanceMap) {
     if (!rep || !rep.balances) {
         $('myContributed').textContent = '-';
         $('myOutOfPocket').textContent = '-';
@@ -76,7 +109,7 @@ async function updateMyMemberCard() {
     }
 
     const myId = G.myId;
-    const myItem = rep.balances.find(b => b.user_id === myId);
+    const myItem = balanceMap ? balanceMap.get(myId) : rep.balances.find(b => b.user_id === myId);
 
     if (myItem) {
         $('myContributed').textContent = fmtMoney(myItem.total_share_amount);
@@ -93,6 +126,26 @@ async function updateMyMemberCard() {
         } else {
             $('myNetBalance').innerHTML = '<span class="pos">Đã cân bằng (0 đ)</span>';
             $('myNetSub').textContent = 'Công nợ của bạn đã được đối soát đủ';
+        }
+    }
+
+    // Hiển thị dải thông tin tóm tắt công nợ dành cho Reviewer (Chủ nhóm & Thủ quỹ)
+    const notice = $('reviewerBalanceNotice');
+    if (notice) {
+        if (G.isReviewer) {
+            notice.classList.remove('hidden');
+            const totalMembers = rep.balances.length;
+            const owingList = rep.balances.filter(b => Number(b.net_balance ?? 0) < 0 || Number(b.needed_contribution ?? 0) > 0);
+            const surplusList = rep.balances.filter(b => Number(b.net_balance ?? 0) > 0);
+            const totalNeeded = rep.total_needed_contribution != null
+                ? rep.total_needed_contribution
+                : owingList.reduce((sum, b) => sum + (Number(b.needed_contribution) || Math.abs(Number(b.net_balance) || 0)), 0);
+
+            $('revBalanceStats').innerHTML = `Có <b>${owingList.length}</b>/${totalMembers} thành viên đang nợ quỹ (Tổng cần thu: <b class="neg">${fmtMoney(totalNeeded)}</b>) · <b>${surplusList.length}</b> thành viên có số dư`;
+            const btnGo = $('btnGoToReport');
+            if (btnGo) btnGo.onclick = () => G.openTab('report');
+        } else {
+            notice.classList.add('hidden');
         }
     }
 }

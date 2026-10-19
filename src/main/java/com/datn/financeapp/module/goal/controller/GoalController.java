@@ -16,6 +16,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -51,9 +53,9 @@ public class GoalController {
     private final GoalService goalService;
 
     private static final String MANAGE_GOAL_READ =
-            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_READ.getValue())";
+            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_READ.name())";
     private static final String MANAGE_GOAL_DELETE =
-            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_DELETE.getValue())";
+            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_DELETE.name())";
 
     // ---------------------------------------------------------------------
     // Phân hệ Người dùng (User)
@@ -123,7 +125,7 @@ public class GoalController {
     @GetMapping("/admin/all")
     public ApiResponse<Page<GoalListItemResponse>> adminList(
             @ModelAttribute GoalFilterRequest filter,
-            Pageable pageable) {
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return ApiResponse.of(goalService.adminList(filter, pageable));
     }
 

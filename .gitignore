@@ -8,3 +8,5 @@ target/
 .project
 .settings/
 src/main/resources/application-dev.yml
+bruno/
+.agents/.plan

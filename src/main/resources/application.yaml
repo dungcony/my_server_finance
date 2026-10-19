@@ -1,0 +1,45 @@
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+spring:
+  profiles:
+    active: ${PROFILES_ACTIVE}
+  application:
+    name: financeapp
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  flyway:
+    locations: classpath:db/migration
+    encoding: UTF-8
+    baseline-on-migrate: false
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        default_batch_fetch_size: 100
+
+
+google:
+  web-client-id: ${GOOGLE_WEB_CLIENT_ID:}
+
+rate-limit:
+  max-request-email-forgot-password: 5
+  reset-request-email-forgot-password: 1h

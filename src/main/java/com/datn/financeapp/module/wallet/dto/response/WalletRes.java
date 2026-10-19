@@ -11,7 +11,6 @@ public record WalletRes(
         String name,
         WalletType type,
         Long balance,
-        boolean isDefault,
         String icon,
         String color,
         Instant createdAt) {

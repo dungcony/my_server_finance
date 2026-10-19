@@ -100,7 +100,7 @@ class DebtRepositoryTest {
                 .name("Debt Wallet")
                 .type(WalletType.CASH)
                 .balance(10_000_000L)
-                .isDefault(false)
+
                 .build());
         walletId = wallet.getId();
     }

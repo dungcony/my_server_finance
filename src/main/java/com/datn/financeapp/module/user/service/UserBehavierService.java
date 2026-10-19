@@ -1,7 +1,7 @@
 package com.datn.financeapp.module.user.service;
 
 import com.datn.financeapp.module.user.dto.request.UpdatePassReq;
-import com.datn.financeapp.module.user.dto.request.UpdateProfileRequest;
+import com.datn.financeapp.module.user.dto.request.ProfileUpdateRequest;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 
 import java.util.UUID;
@@ -12,7 +12,7 @@ public interface UserBehavierService {
     UserRes getMe(UUID userId);
 
     // Cập nhật thông tin hồ sơ: tên hiển thị, avatar (PATCH /users/me hoặc /auth/me).
-    UserRes updateMe(UUID userId, UpdateProfileRequest req);
+    UserRes updateMe(UUID userId, ProfileUpdateRequest req);
 
     // Xóa mềm tài khoản.
     void deleteMe(String password);

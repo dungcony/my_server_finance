@@ -33,12 +33,9 @@ public class WalletSpecifial {
             if (hasText(filter.search()))
                 predicates.add(cb.like(cb.lower(root.get("name")), likePattern(filter.search()), LIKE_ESCAPE));
 
-            // điều kiện lọc theo loại ví và ví mặc định
+            // điều kiện lọc theo loại ví
             if (filter.type() != null)
                 predicates.add(cb.equal(root.get("type"), filter.type()));
-
-            if (filter.isDefault() != null)
-                predicates.add(cb.equal(root.get("isDefault"), filter.isDefault()));
 
             // điều kiện lọc theo khoảng số dư
             if (filter.minBalance() != null)

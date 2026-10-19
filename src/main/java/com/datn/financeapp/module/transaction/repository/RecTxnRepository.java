@@ -3,12 +3,14 @@ package com.datn.financeapp.module.transaction.repository;
 import com.datn.financeapp.module.transaction.entity.RecTxn;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.Optional;
 import java.util.UUID;
 
-public interface RecTxnRepository extends JpaRepository<RecTxn, UUID> {
+public interface RecTxnRepository extends JpaRepository<RecTxn, UUID>, JpaSpecificationExecutor<RecTxn> {
 
     /**
      * Tìm khoản giao dịch định kỳ theo ID và thuộc về người dùng hiện tại (chưa bị xóa).

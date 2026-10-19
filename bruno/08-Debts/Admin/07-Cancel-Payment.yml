@@ -1,0 +1,16 @@
+info:
+  name: "07. Hủy một lần trả nợ"
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/debts/admin/{{debtId}}/payments/{{paymentId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (DEBT_UPDATE): Hủy lần trả nợ đã ghi nhận."

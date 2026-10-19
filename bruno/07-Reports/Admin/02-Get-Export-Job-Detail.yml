@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/reports/admin/export-jobs/{{exportJobId}}"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
 
 settings:
   encodeUrl: true

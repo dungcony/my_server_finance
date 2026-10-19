@@ -1,0 +1,16 @@
+info:
+  name: 13. Xoá buổi lịch
+  type: http
+  seq: 13
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/recurring/schedules/{{scheduleId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Xoá một buổi lịch.

@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -129,7 +130,6 @@ class WalletControllerTest {
                 "Ví Tiền Mặt",
                 WalletType.CASH,
                 500_000L,
-                false,
                 "icon_cash",
                 "#2f8272",
                 Instant.now()
@@ -155,7 +155,6 @@ class WalletControllerTest {
                 "Ví Ngân Hàng",
                 WalletType.BANK,
                 2_000_000L,
-                true,
                 "icon_bank",
                 "#123456",
                 Instant.now()
@@ -165,8 +164,7 @@ class WalletControllerTest {
 
         mockMvc.perform(get("/wallets/" + walletId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("Ví Ngân Hàng"))
-                .andExpect(jsonPath("$.data.is_default").value(true));
+                .andExpect(jsonPath("$.data.name").value("Ví Ngân Hàng"));
     }
 
     @Test
@@ -179,7 +177,6 @@ class WalletControllerTest {
                 "Tên mới",
                 WalletType.CASH,
                 1_000_000L,
-                false,
                 "icon_new",
                 "#654321",
                 Instant.now()

@@ -1,0 +1,99 @@
+server:
+  servlet:
+    context-path: /v1
+
+  port: 8080
+  tomcat:
+    max-http-form-post-size: 2MB
+    max-swallow-size: 10MB
+    max-connections: 8192
+    accept-count: 300
+    connection-timeout: 20000ms
+    keep-alive-timeout: 15000ms
+    threads:
+      max: 500
+      min-spare: 50
+
+
+app:
+  perf: #đo hiệu năng chỉ ở dev
+    slow-ms: 1000
+    sql-warn-threshold: 10
+
+spring:
+  datasource:
+    url: jdbc:postgresql://db.rhciyittetkairjgjhye.supabase.co:5432/postgres?reWriteBatchedInserts=true
+    username: postgres
+    password: Motnhipdap04
+    hikari:
+      maximum-pool-size: 60
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      minimum-idle: 5
+
+  data:
+    redis:
+      host: redis-19944.c265.us-east-1-2.ec2.cloud.redislabs.com
+      port: 19944
+      password: WfQtwblnOdR7pWEKCDqYvaNwvMLDGejj
+      timeout: 2000ms
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: superclanss22@gmail.com
+    password: 'ufnr rrqk hzgu xifr'
+    from: dungdeptrai
+
+  flyway:
+    locations: classpath:db/migration_v2
+    encoding: UTF-8
+    baseline-on-migrate: false
+
+
+cloudinary:
+  cloud-name: dquhqtugn
+  api-key: 296567242598283
+  api-secret: gysEFTIu0GIg-mNlrudzPmtLMqY
+  folder: dungcony
+  max-file-size-bytes: 10485760
+
+payos:
+  enabled: true
+  client-id: c975ded5-f9e4-4981-a19c-85c1430e14d8
+  api-key: cc3650c8-4f13-495b-b4ad-f17a201e7e19
+  checksum-key: cc94bd4fbb1af2096d3cf25ce6b1bc2ced808a6cb4b955c0e6053159b3aab0c5
+  base-url:
+  return-url: http://localhost:8080/v1/public/payments/payos/return
+  cancel-url: http://localhost:8080/v1/public/payments/payos/cancel
+  expired-minutes: 15
+  webhook-log:
+    missing-minutes: 10
+    retention-days: 30
+payment:
+  topup:
+    seconds: 86400
+    reminder-seconds: 3600
+    job-seconds: 60
+
+
+premium:
+  prices:
+    one-month: 2000
+    six-months: 3000
+    twelve-months: 4000
+
+jwt:
+  secret: 32958729472347328472467246338467
+  access-token-expiry-seconds: 3600
+
+logging:
+  level:
+    root: info
+    com.datn.financeapp: info
+    org.springframework.web: info
+    org.hibernate: WARN
+  file:
+    name: logs/server.log
+

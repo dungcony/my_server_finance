@@ -6,6 +6,7 @@ import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateReq;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnRes;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleListRec;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleRes;
 import com.datn.financeapp.module.transaction.entity.RecTxn;
@@ -15,6 +16,7 @@ import com.datn.financeapp.module.transaction.mapper.RecTxnScheduleMapper;
 import com.datn.financeapp.module.transaction.repository.RecTxnRepository;
 import com.datn.financeapp.module.transaction.repository.RecTxnScheduleRepository;
 import com.datn.financeapp.module.transaction.service.RecTxnScheduleBehavierService;
+import com.datn.financeapp.module.transaction.service.RecTxnService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,8 +35,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService {
 
+    private final RecTxnService recTxnService;
     private final RecTxnScheduleRepository scheduleRepository;
-    private final RecTxnRepository recTxnRepository;
     private final RecTxnScheduleMapper scheduleMapper;
 
     /**
@@ -43,22 +45,21 @@ public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService
     @Override
     @Transactional
     public RecTxnScheduleRes create(UUID recId, RecTxnScheduleCreateReq req, boolean isAdmin) {
-        RecTxn recTxn = recTxnRepository.findByIdAndIsDeletedFalse(recId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch định kỳ."));
+
+        RecTxnRes recTxnRes = recTxnService.getById(recId, false);
 
         if (!isAdmin) {
             UUID currentUserId = SecurityContextUtil.currentUserId();
-            if (!recTxn.getUserId().equals(currentUserId)) {
+            if (!recTxnRes.userId().equals(currentUserId)) {
                 throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch định kỳ.");
             }
         }
 
         RecTxnSchedule schedule = scheduleMapper.toEntity(req);
         schedule.setId(UUID.randomUUID());
-        schedule.setUserId(recTxn.getUserId());
-        schedule.setRecTxn(recTxn);
+        schedule.setUserId(recTxnRes.userId());
+        schedule.setRecTxnId(recTxnRes.id());
         schedule.setStatus(RecTxnScheduleStatus.PENDING);
-        schedule.setIsDeleted(false);
 
         RecTxnSchedule saved = scheduleRepository.save(schedule);
         return scheduleMapper.toResponse(saved);
@@ -151,6 +152,7 @@ public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService
      * Tìm buổi lịch và kiểm tra quyền sở hữu.
      */
     private RecTxnSchedule getSchedule(UUID scheduleId, boolean isAdmin) {
+        
         RecTxnSchedule schedule = scheduleRepository.findByIdAndIsDeletedFalse(scheduleId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy buổi lịch cần xử lý."));
 

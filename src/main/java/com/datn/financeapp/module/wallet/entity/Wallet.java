@@ -45,10 +45,4 @@ public class Wallet extends AssignedIdEntity {
     @Column(name = "color", columnDefinition = "bpchar(7)")
     private String color;
 
-    // ví mặc định nhận các khoản tự ghi từ giao dịch nhóm, mỗi người dùng đúng một ví chưa xoá
-    @Builder.Default
-    @Column(name = "is_default", nullable = false)
-    private Boolean isDefault = false;
-
-
 }

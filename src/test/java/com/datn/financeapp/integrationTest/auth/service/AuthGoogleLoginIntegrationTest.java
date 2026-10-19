@@ -127,7 +127,7 @@ class AuthGoogleLoginIntegrationTest {
     // -----------------------------------------------------------------
 
     @Test
-    void loginWithGoogle_NewUser_CreatesConfirmedAccountWithDefaultWallet() {
+    void loginWithGoogle_NewUser_CreatesConfirmedAccount() {
         stubGoogle("sub-moi-001", "nguoi.moi@example.com", "Người Mới");
 
         AuthRes res = googleLoginService.login(new GoogleLoginRequest(ID_TOKEN), new ClientInfo("127.0.0.1", "junit"));
@@ -145,9 +145,7 @@ class AuthGoogleLoginIntegrationTest {
         List<Wallet> wallets = walletRepository.findAll().stream()
                 .filter(w -> w.getUserId().equals(saved.getId()))
                 .toList();
-        assertThat(wallets).hasSize(1);
-        assertThat(wallets.get(0).getName()).isEqualTo("Tiền mặt");
-        assertThat(wallets.get(0).getIsDefault()).isTrue();
+        assertThat(wallets).isEmpty();
     }
 
     @Test

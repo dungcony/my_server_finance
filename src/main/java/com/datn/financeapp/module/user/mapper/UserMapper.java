@@ -23,13 +23,13 @@ public abstract class UserMapper {
         this.rolePermissionCacheHelper = rolePermissionCacheHelper;
     }
 
-    @Mapping(target = "password", source = "password")
     @Mapping(target = "isDeleted", expression = "java(user.getIsDeleted())")
     @Mapping(target = "roles", expression = "java(mapRoles(user))")
     public abstract UserRes toResponse(User user);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "plan", ignore = true)
+    @Mapping(target = "planExpiresAt", ignore = true)
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "userRoles", ignore = true)
     @Mapping(target = "blocked", ignore = true)

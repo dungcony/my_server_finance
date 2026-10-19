@@ -16,12 +16,11 @@ http:
     data: |-
       {
         "actual_balance": 5000000,
-        "date": "2026-03-20",
-        "note": "Kiểm kê tiền mặt thực tế",
+        "reason": "Kiểm kê tiền mặt thực tế",
         "excluded_user_ids": []
       }
 
 settings:
   encodeUrl: true
 
-docs: "Dành cho Thủ quỹ / Owner: Đối chiếu số dư thực tế, tự động sinh giao dịch điều chỉnh (ADJUSTMENT_UP hoặc ADJUSTMENT_DOWN)."
+docs: "Dành cho Thủ quỹ / Owner: Đối chiếu số dư thực tế (actual_balance), tự động sinh giao dịch điều chỉnh (ADJUSTMENT_UP hoặc ADJUSTMENT_DOWN). excluded_user_ids: thành viên loại khỏi kiểm kê."

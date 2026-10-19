@@ -16,12 +16,11 @@ http:
     data: |-
       {
         "name": "Ví chính",
-        "include_in_total": true,
-        "icon": "wallet",
+        "icon_code": "{{iconCode}}",
         "color": "#3498DB"
       }
 
 settings:
   encodeUrl: true
 
-docs: Cập nhật thông tin hiển thị của ví (tên, icon, màu, tính vào tổng).
+docs: Cập nhật thông tin hiển thị của ví (tên, icon_code, màu).

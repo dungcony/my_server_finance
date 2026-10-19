@@ -116,7 +116,7 @@ class AdminRoleServiceTest {
         when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         callerHasTopLevel(ADMIN_LEVEL);
         when(permissionRepository.findByName(PermissionName.USERS_READ)).thenReturn(Optional.of(permission));
-        callerHasAuthorities(PermissionName.USERS_READ.getValue());
+        callerHasAuthorities(PermissionName.USERS_READ.name());
         when(rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permId)).thenReturn(false);
 
         adminRoleService.addPermissionToRole(new AddPermissionRoleRequest(RoleName.ROLE_USER, PermissionName.USERS_READ));
@@ -178,7 +178,7 @@ class AdminRoleServiceTest {
         when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         callerHasTopLevel(5);
         when(permissionRepository.findByName(PermissionName.USERS_DELETE)).thenReturn(Optional.of(permission));
-        callerHasAuthorities(PermissionName.ROLE_PERMISSION_UPDATE.getValue(), RoleName.ROLE_USER.name());
+        callerHasAuthorities(PermissionName.ROLE_PERMISSION_UPDATE.name(), RoleName.ROLE_USER.name());
 
         assertThatThrownBy(() -> adminRoleService.addPermissionToRole(
                 new AddPermissionRoleRequest(RoleName.ROLE_USER, PermissionName.USERS_DELETE)))
@@ -197,7 +197,7 @@ class AdminRoleServiceTest {
         when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(role));
         callerHasTopLevel(ADMIN_LEVEL);
         when(permissionRepository.findByName(PermissionName.USERS_READ)).thenReturn(Optional.of(permission));
-        callerHasAuthorities(PermissionName.USERS_READ.getValue());
+        callerHasAuthorities(PermissionName.USERS_READ.name());
         when(rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permId)).thenReturn(true);
 
         assertThatThrownBy(() -> adminRoleService.addPermissionToRole(

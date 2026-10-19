@@ -9,16 +9,12 @@ http:
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
-    - name: Content-Type
-      value: "application/json"
-  body:
-    type: json
-    data: |-
-      {
-        "invite_code": "ABC12345"
-      }
+  params:
+    - name: code
+      value: ABC12345
+      type: query
 
 settings:
   encodeUrl: true
 
-docs: Tham gia nhóm bằng mã mời do chủ nhóm cung cấp. Nếu nhóm bật duyệt, trạng thái sẽ là PENDING.
+docs: Tham gia nhóm bằng mã mời (query code) do chủ nhóm cung cấp. Nếu nhóm bật duyệt, trạng thái sẽ là PENDING.

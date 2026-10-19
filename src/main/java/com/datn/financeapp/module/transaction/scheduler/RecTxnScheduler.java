@@ -20,7 +20,7 @@ public class RecTxnScheduler {
      * Quét các buổi lịch đến hạn và tự động sinh giao dịch thực tế.
      * Mặc định chạy mỗi giờ 1 lần tại phút 00 hoặc theo cấu hình cron {@code app.recurring.cron}.
      */
-    @Scheduled(cron = "${app.recurring.cron:0 0 * * * *}")
+    @Scheduled(cron = "${app.recurring.cron:0 * * * * *}")
     public void executeDueSchedules() {
         log.info("Bắt đầu quét và xử lý các buổi lịch giao dịch định kỳ đến hạn");
         scheduleService.processDueSchedules();

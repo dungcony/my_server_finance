@@ -4,8 +4,8 @@ info:
   seq: 10
 
 http:
-  method: PATCH
-  url: "{{baseUrl}}/groups/{{groupId}}/fund"
+  method: PUT
+  url: "{{baseUrl}}/groups/{{groupId}}/fund-kepper"
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
@@ -15,7 +15,7 @@ http:
     type: json
     data: |-
       {
-        "held_by_user_id": "{{memberUserId}}"
+        "keepper_id": "{{memberUserId}}"
       }
 
 settings:

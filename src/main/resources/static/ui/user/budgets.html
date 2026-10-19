@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý ngân sách - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <style>
+        .progress-bar-wrap {
+            background: #e2e8f0;
+            border-radius: 999px;
+            height: 10px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 6px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.3s ease;
+        }
+        .progress-green { background: #16a34a; }
+        .progress-yellow { background: #d97706; }
+        .progress-red { background: #dc2626; }
+        .alert-card {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body data-area="user" data-active="budgets" data-title="Ngân sách chi tiêu">
+<main id="page">
+    <div class="grid grid-4" id="budgetStats">
+        <div class="stat">
+            <div class="label">Tổng hạn mức ngân sách</div>
+            <div class="value" id="sLimit">0 đ</div>
+            <div class="sub" id="sBudgetCount">0 ngân sách</div>
+        </div>
+        <div class="stat">
+            <div class="label">Tổng thực tế đã chi</div>
+            <div class="value neg" id="sSpent">0 đ</div>
+            <div class="sub" id="sRatio">0% hạn mức</div>
+        </div>
+        <div class="stat">
+            <div class="label">Số tiền còn lại</div>
+            <div class="value pos" id="sRemaining">0 đ</div>
+            <div class="sub">khả dụng trong kỳ</div>
+        </div>
+        <div class="stat">
+            <div class="label">Cảnh báo chi tiêu</div>
+            <div class="value" id="sAlertCount">0</div>
+            <div class="sub" id="sAlertSub">0 vượt, 0 sắp chạm</div>
+        </div>
+    </div>
+
+    <!-- Hộp cảnh báo vượt ngân sách nếu có -->
+    <div id="alertsContainer" style="display:none"></div>
+
+    <div class="card mt">
+        <div class="card-title">
+            <span>Danh sách ngân sách <span class="muted" id="budgetListCount"></span></span>
+            <div class="btn-row">
+                <select id="fPeriod" style="width:auto">
+                    <option value="">-- Tất cả kỳ --</option>
+                    <option value="WEEK">Theo Tuần (WEEK)</option>
+                    <option value="MONTH" selected>Theo Tháng (MONTH)</option>
+                    <option value="QUARTER">Theo Quý (QUARTER)</option>
+                    <option value="YEAR">Theo Năm (YEAR)</option>
+                </select>
+                <select id="fActive" style="width:auto">
+                    <option value="true">Đang theo dõi</option>
+                    <option value="false">Tạm dừng</option>
+                    <option value="">Tất cả trạng thái</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" id="btnReloadBudgets">🔄</button>
+                <button class="btn btn-sm" id="btnCreateBudget">+ Thiết lập ngân sách</button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Danh mục chi tiêu</th>
+                        <th>Kỳ áp dụng</th>
+                        <th class="right">Hạn mức</th>
+                        <th class="right">Đã chi</th>
+                        <th class="right">Còn lại</th>
+                        <th style="width:200px">Tiến độ chi</th>
+                        <th class="center">Trạng thái</th>
+                        <th class="center">Thời hạn</th>
+                        <th class="center" style="width:140px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="budgetTableBody">
+                    <tr><td colspan="9" class="center muted">Đang tải dữ liệu ngân sách...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/budgets.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 package com.datn.financeapp.module.user.dto.response;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,7 +21,9 @@ public record UserRes(
         String email,
         String firstName,
         String lastName,
+        String avatarUrl,
         UserPlan plan,
+        Instant planExpiresAt,
         UserStatus status,
         List<RoleResponse> roles,
         @JsonIgnore String password,
@@ -32,11 +35,25 @@ public record UserRes(
         return status == UserStatus.BLOCKED;
     }
 
+    // giữ chữ ký cũ cho các chỗ dựng UserRes không quan tâm avatar và hạn gói
+    public UserRes(UUID id, String email, String firstName, String lastName, UserPlan plan, UserStatus status,
+                   List<RoleResponse> roles, String password, String googleId, boolean isDeleted) {
+        this(id, email, firstName, lastName, null, plan, null, status, roles, password, googleId, isDeleted);
+    }
+
+    // giữ chữ ký cũ cho các chỗ dựng UserRes không quan tâm hạn gói
+    public UserRes(UUID id, String email, String firstName, String lastName, String avatarUrl, UserPlan plan, UserStatus status,
+                   List<RoleResponse> roles, String password, String googleId, boolean isDeleted) {
+        this(id, email, firstName, lastName, avatarUrl, plan, null, status, roles, password, googleId, isDeleted);
+    }
+
     public UserRes(String firstName, UserStatus status, boolean isDeleted) {
         this(
                 null,
                 null,
                 firstName,
+                null,
+                null,
                 null,
                 null,
                 status,
@@ -80,7 +97,6 @@ public record UserRes(
             result.add(role.name().name());
             if (role.permissions() != null) {
                 for (PermissionResponse p : role.permissions()) {
-                    result.add(p.name().getValue());
                     result.add(p.name().name());
                 }
             }

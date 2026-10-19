@@ -42,6 +42,13 @@ public class WalletBehavierImpl implements WalletBehavierService {
     @Transactional
     public WalletRes create(WalletCreateReq req, boolean isAdmin) {
 
+        if (req.type() == WalletType.SAVINGS) {
+            throw new BusinessException(
+                    ErrorCode.WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED,
+                    "Ví tiết kiệm chỉ được tạo tự động thông qua Mục tiêu tiết kiệm."
+            );
+        }
+
         Wallet wallet = walletMapper.toEntity(req);
         if (!isAdmin) wallet.setUserId(SecurityContextUtil.currentUserId());
         else if (req.userId() == null)
@@ -135,9 +142,6 @@ public class WalletBehavierImpl implements WalletBehavierService {
         // nếu không phải admin thì người thay đổi phải là user của ví
         if (!isAdmin && !wallet.getUserId().equals(SecurityContextUtil.currentUserId()))
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được phép xoá ví này");
-
-        if (Boolean.TRUE.equals(wallet.getIsDefault()))
-            throw new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_DELETABLE);
 
         // Chặn xóa ví tiết kiệm nếu đang liên kết với mục tiêu chưa hoàn thành
         if (wallet.getType() == WalletType.SAVINGS) {
