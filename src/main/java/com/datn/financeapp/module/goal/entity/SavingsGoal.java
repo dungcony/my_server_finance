@@ -1,11 +1,11 @@
 package com.datn.financeapp.module.goal.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -16,20 +16,32 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Entity cho bảng {@code savings_goals} (db/migration/V4__so_no_muc_tieu.sql dòng 113-136).
+ * Thực thể đại diện cho Mục tiêu tiết kiệm (bảng {@code savings_goals}).
  *
- * <p><b>Hai cột KHÔNG được backend ghi:</b> {@code saved_amount} và {@code status} do trigger
- * {@code trg_goal_contributions_sync} sở hữu — trigger tự {@code SUM()} lại toàn bộ
- * {@code goal_contributions} mỗi lần bảng con thay đổi, và tự chuyển trạng thái. Backend chỉ
- * chèn/xoá bản ghi {@code goal_contributions} rồi ĐỌC LẠI hai cột này.
+ * <p>Mỗi bản ghi quản lý một mục tiêu tích lũy tài chính của người dùng (ví dụ: Mua xe, Đi du lịch, Quỹ dự phòng...).
  *
- * <p>Khác biệt so với trigger sổ nợ: {@code fn_goal_contributions_sync} KHÔNG có
- * {@code RAISE EXCEPTION} nào — mục tiêu tiết kiệm không chặn nạp vượt {@code target_amount}, chỉ
- * tự đánh dấu {@code completed}. Trigger cũng giữ nguyên {@code cancelled} (không kéo ngược về
- * {@code in_progress}), tương tự cách xử lý {@code written_off} ở sổ nợ.
- *
- * <p>{@code wallet_id} nullable + {@code ON DELETE SET NULL}: mục tiêu có thể không gắn ví nào,
- * khi đó chỉ ghi nhận tiến độ chứ không chuyển tiền thật được (GOAL_WALLET_REQUIRED).
+ * <p><b>Quy tắc nghiệp vụ quan trọng:</b>
+ * <ul>
+ *   <li><b>Tự động đồng bộ số tiền và trạng thái:</b> Hai trường {@code savedAmount} và {@code status}
+ *       được quản lý hoàn toàn tự động bởi Database Trigger ({@code trg_goal_contributions_sync}).
+ *       Backend KHÔNG trực tiếp cập nhật giá trị hai trường này. Mỗi khi có bản ghi đóng góp
+ *       ({@link GoalContribution}) được thêm hoặc xóa, Trigger sẽ tự động tính lại tổng tiền
+ *       và cập nhật trạng thái mục tiêu (chuyển sang {@code completed} khi đạt mục tiêu hoặc quay lại {@code in_progress}).
+ *   </li>
+ *   <li><b>Ví lưu trữ tiền tiết kiệm ({@code walletId}):</b>
+ *       Mục tiêu có thể liên kết với một ví riêng (ví dụ: "Ví heo đất", "Sổ tiết kiệm") đóng vai trò là <i>ví đích</i>.
+ *       Khi nạp tiền có tạo giao dịch, hệ thống sẽ thực hiện chuyển khoản ({@code transfer}) từ ví chi tiêu sang ví này,
+ *       giúp tiền được cất riêng mà không bị tính vào chi phí sinh hoạt.
+ *       Nếu không gắn ví ({@code walletId = null}), mục tiêu hoàn toàn độc lập, chỉ dùng để theo dõi tiến độ tích lũy thực tế.
+ *   </li>
+ *   <li><b>Trạng thái mục tiêu ({@code status}):</b> Bao gồm:
+ *       <ul>
+ *         <li>{@code in_progress}: Đang trong quá trình tích lũy.</li>
+ *         <li>{@code completed}: Đã hoàn thành (tiền tích lũy >= mục tiêu).</li>
+ *         <li>{@code cancelled}: Đã bị hủy bởi người dùng (Trigger sẽ giữ nguyên trạng thái này).</li>
+ *       </ul>
+ *   </li>
+ * </ul>
  */
 @Entity
 @Table(name = "savings_goals")
@@ -38,15 +50,24 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SavingsGoal {
+public class SavingsGoal extends AssignedIdEntity {
 
     @Id
     private UUID id;
 
+    @Override
+    public UUID getId() {
+        return id;
+    }
+
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    // Ví dành riêng cho mục tiêu. Nullable — không có ví thì không nạp bằng giao dịch thật được.
+    /**
+     * ID của ví dùng để lưu trữ khoản tiền tiết kiệm này (ví đích / ví heo đất, nếu có).
+     * <p>Khi nạp tiền có tạo giao dịch, hệ thống chuyển tiền từ ví nguồn vào ví này (giao dịch {@code transfer}).
+     * <p>Nếu để trống ({@code null}), mục tiêu là khoản theo dõi riêng biệt, không gắn với bất kỳ ví nào trong ứng dụng.
+     */
     @Column(name = "wallet_id")
     private UUID walletId;
 
@@ -57,8 +78,9 @@ public class SavingsGoal {
     private Long targetAmount;
 
     /**
-     * DO TRIGGER SỞ HỮU — backend không bao giờ gọi {@code setSavedAmount}. Đọc bằng
-     * {@code SavingsGoalRepository.findSavedAmountNative} sau khi đổi bảng con.
+     * Tổng số tiền đã tích lũy được tính đến thời điểm hiện tại.
+     * <p><b>Lưu ý:</b> Giá trị này do Database Trigger tự động tính toán (tổng hợp từ bảng {@code goal_contributions}).
+     * Backend không cập nhật trực tiếp trường này.
      */
     @Column(name = "saved_amount", nullable = false)
     private Long savedAmount;
@@ -69,10 +91,12 @@ public class SavingsGoal {
     @Column(name = "icon_id")
     private UUID iconId;
 
-    // DO TRIGGER SỞ HỮU — CHECK IN ('in_progress','completed','cancelled').
+    /**
+     * Trạng thái mục tiêu: {@code in_progress}, {@code completed}, hoặc {@code cancelled}.
+     * <p><b>Lưu ý:</b> Việc chuyển đổi giữa {@code in_progress} và {@code completed} do Database Trigger đảm nhận.
+     */
     @Column(name = "status", nullable = false)
     private String status;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    // createdAt, updatedAt, isDeleted thừa hưởng từ AssignedIdEntity
 }

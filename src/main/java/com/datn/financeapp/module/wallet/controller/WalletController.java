@@ -1,10 +1,13 @@
 package com.datn.financeapp.module.wallet.controller;
 
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.idempotency.Idempotent;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
 import com.datn.financeapp.module.wallet.dto.request.WalletFillterReq;
 import com.datn.financeapp.module.wallet.dto.request.WalletupdateReq;
+import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.service.WalletBehavierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +49,12 @@ public class WalletController {
     @Idempotent
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody WalletCreateReq req) {
+        if (req.type() == WalletType.SAVINGS) {
+            throw new BusinessException(
+                    ErrorCode.WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED,
+                    "Ví tiết kiệm chỉ được tạo tự động thông qua Mục tiêu tiết kiệm."
+            );
+        }
         return ApiResponse.of(walletBehavierService.create(req, false));
     }
 

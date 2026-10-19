@@ -299,6 +299,18 @@ public enum ErrorCode {
     // Nạp tiền thật vào mục tiêu chưa gắn ví.
     GOAL_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật."),
 
+    // Không thể sử dụng ví tiết kiệm làm ví nguồn nạp tiền.
+    INVALID_SOURCE_WALLET(HttpStatus.BAD_REQUEST, "Không thể sử dụng ví tiết kiệm làm ví nguồn."),
+
+    // Không thể chi tiêu trực tiếp từ ví tiết kiệm.
+    WALLET_SAVINGS_CANNOT_SPEND(HttpStatus.BAD_REQUEST, "Không thể sử dụng ví tiết kiệm để chi tiêu trực tiếp."),
+
+    // Không cho phép tự tạo ví tiết kiệm thủ công qua API ví thông thường.
+    WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Ví tiết kiệm chỉ được tạo tự động thông qua Mục tiêu tiết kiệm."),
+
+    // Ví tiết kiệm đang liên kết với mục tiêu chưa hoàn thành.
+    WALLET_SAVINGS_LINKED_TO_GOAL(HttpStatus.CONFLICT, "Ví tiết kiệm đang liên kết với mục tiêu chưa hoàn tất. Vui lòng quản lý từ mục Tiết kiệm."),
+
     // ---------------------------------------------------------------------
     // Nhóm chung quỹ — docs/prd/03-NHOM-CHUNG-QUY/thiet-ke/api.md
     // ---------------------------------------------------------------------

@@ -1,11 +1,11 @@
 package com.datn.financeapp.module.goal.entity;
 
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -16,25 +16,27 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Entity cho bảng {@code goal_contributions} (V4 dòng 143-159) — mỗi lần bỏ tiền vào mục tiêu là
- * một bản ghi riêng.
+ * Thực thể đại diện cho một lần nạp / đóng góp tiền vào mục tiêu tiết kiệm (bảng {@code goal_contributions}).
  *
- * <p>Đây là bảng DUY NHẤT backend được ghi khi muốn đổi tiến độ mục tiêu: chèn bản ghi để cộng
- * dồn, xoá bản ghi để hoàn tác. Trigger {@code trg_goal_contributions_sync} lo phần cập nhật
- * {@code savings_goals.saved_amount}/{@code status} — kể cả việc MỞ LẠI {@code completed →
- * in_progress} khi rút lại một lần nạp, vốn là bước dễ quên nhất.
+ * <p>Mỗi bản ghi ghi nhận một khoản tiền mà người dùng đã tích lũy thêm vào mục tiêu ({@link SavingsGoal}).
  *
- * <p><b>Khác biệt quan trọng so với {@code DebtPayment}:</b> {@code transaction_id} ở đây
- * <b>nullable</b> + {@code ON DELETE SET NULL}, trong khi {@code debt_payments.transaction_id} là
- * {@code NOT NULL} + {@code ON DELETE RESTRICT}. Lý do nghiệp vụ: chế độ nạp
- * {@code create_transaction = false} chỉ ghi nhận tiến độ mà không chuyển tiền thật (tiền nằm
- * ngoài ứng dụng) — khi đó không có giao dịch nào để trỏ tới.
- *
- * <p>Cũng vì {@code SET NULL} thay vì {@code RESTRICT} mà thứ tự huỷ một lần nạp ngược với sổ nợ:
- * xoá giao dịch TRƯỚC, xoá bản ghi này SAU — xem {@code GoalService.cancelContribution}.
- *
- * <p>Lưu ý bảng này KHÔNG có cột {@code note} (khác {@code debt_payments}) — ghi chú nếu có chỉ
- * nằm trên giao dịch sinh kèm.
+ * <p><b>Quy tắc nghiệp vụ quan trọng:</b>
+ * <ul>
+ *   <li><b>Điểm duy nhất thay đổi tiến độ:</b> Để tăng hoặc giảm số tiền đã tiết kiệm của một mục tiêu,
+ *       Backend chỉ cần thêm (insert) hoặc xóa (delete) bản ghi trong bảng này.
+ *       Database Trigger ({@code trg_goal_contributions_sync}) sẽ tự động cập nhật tổng tiền
+ *       và trạng thái tương ứng trên mục tiêu đó.
+ *   </li>
+ *   <li><b>Có hoặc không tạo giao dịch ví ({@code transactionId}):</b>
+ *       <ul>
+ *         <li><b>Có giao dịch (khác null):</b> Ghi nhận giao dịch trừ tiền ở ví nguồn ({@code transactionId})
+ *             và giao dịch cộng tiền vào ví tiết kiệm ({@code targetTransactionId}).</li>
+ *         <li><b>Không có giao dịch (null):</b> Người dùng chỉ ghi nhận số tiền đã tiết kiệm ở bên ngoài
+ *             mà không phát sinh biến động số dư ví trong hệ thống.
+ *         </li>
+ *       </ul>
+ *   </li>
+ * </ul>
  */
 @Entity
 @Table(name = "goal_contributions")
@@ -43,17 +45,31 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GoalContribution {
+public class GoalContribution extends AssignedIdEntity {
 
     @Id
     private UUID id;
 
+    @Override
+    public UUID getId() {
+        return id;
+    }
+
     @Column(name = "goal_id", nullable = false)
     private UUID goalId;
 
-    // NULL khi chỉ ghi nhận tiến độ mà không chuyển tiền thật — CỐ Ý không có nullable = false.
+    /**
+     * ID giao dịch trừ tiền ở ví nguồn (nếu có).
+     * <p>Mang giá trị {@code null} khi người dùng chỉ ghi nhận tiến độ mà không trừ tiền ví thực tế.
+     */
     @Column(name = "transaction_id")
     private UUID transactionId;
+
+    /**
+     * ID giao dịch cộng tiền vào ví tiết kiệm của mục tiêu (nếu có).
+     */
+    @Column(name = "target_transaction_id")
+    private UUID targetTransactionId;
 
     @Column(name = "amount", nullable = false)
     private Long amount;
@@ -61,6 +77,5 @@ public class GoalContribution {
     @Column(name = "contributed_date", nullable = false)
     private LocalDate contributedDate;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    // createdAt, updatedAt, isDeleted thừa hưởng từ AssignedIdEntity
 }

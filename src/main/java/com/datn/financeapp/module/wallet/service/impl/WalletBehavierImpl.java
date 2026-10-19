@@ -4,6 +4,7 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconService;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
@@ -13,6 +14,7 @@ import com.datn.financeapp.module.wallet.dto.response.WalletListRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import com.datn.financeapp.module.wallet.entity.Wallet;
+import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.helper.WalletSpecifial;
 import com.datn.financeapp.module.wallet.mapper.WalletMapper;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
@@ -32,6 +34,7 @@ import java.util.UUID;
 public class WalletBehavierImpl implements WalletBehavierService {
 
     private final WalletRepository walletRepository;
+    private final SavingsGoalRepository savingsGoalRepository;
     private final IconService iconService;
     private final WalletMapper walletMapper;
 
@@ -133,8 +136,19 @@ public class WalletBehavierImpl implements WalletBehavierService {
         if (!isAdmin && !wallet.getUserId().equals(SecurityContextUtil.currentUserId()))
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được phép xoá ví này");
 
-        if (wallet.getIsDefault() == true)
+        if (Boolean.TRUE.equals(wallet.getIsDefault()))
             throw new BusinessException(ErrorCode.WALLET_DEFAULT_NOT_DELETABLE);
+
+        // Chặn xóa ví tiết kiệm nếu đang liên kết với mục tiêu chưa hoàn thành
+        if (wallet.getType() == WalletType.SAVINGS) {
+            boolean hasActiveGoal = savingsGoalRepository.existsByWalletIdAndIsDeletedFalseAndStatus(walletId, "in_progress");
+            if (hasActiveGoal) {
+                throw new BusinessException(
+                        ErrorCode.WALLET_SAVINGS_LINKED_TO_GOAL,
+                        "Ví tiết kiệm đang liên kết với mục tiêu đang thực hiện. Vui lòng quản lý từ mục Tiết kiệm."
+                );
+            }
+        }
 
         wallet.setIsDeleted(true);
         walletRepository.save(wallet);
