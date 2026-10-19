@@ -85,6 +85,10 @@ POST /auth/reset-password
 -> thu hồi mọi refresh token theo email (đăng xuất mọi thiết bị)
 ```
 
+## Nâng cấp Premium
+
+User tự nâng cấp bằng `POST /users/me/premium-upgrades`; thanh toán qua payOS, giao hàng khi nhận `PaymentPaidEvent`. `users.plan` đổi sang `premium` và `users.plan_expires_at` = hạn mới; job `PremiumExpiryJob` hạ về `free` khi hết hạn. Luồng đầy đủ xem [payment.md](payment.md).
+
 ## Thu hồi phiên khi tài khoản thay đổi
 
 [AuthEventListener](../../src/main/java/com/datn/financeapp/module/auth/events/listener/AuthEventListener.java) nghe event từ module user và thu hồi toàn bộ refresh token của user:

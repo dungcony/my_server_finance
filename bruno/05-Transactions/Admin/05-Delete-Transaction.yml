@@ -1,0 +1,16 @@
+info:
+  name: "05. Xóa giao dịch"
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/transactions/admin/{{transactionId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (TXN_DELETE): Xóa mềm giao dịch bất kỳ."

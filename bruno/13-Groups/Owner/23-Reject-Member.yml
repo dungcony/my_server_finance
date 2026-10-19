@@ -1,0 +1,16 @@
+info:
+  name: "23. Từ chối thành viên chờ"
+  type: http
+  seq: 23
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/members/{{memberUserId}}/reject"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm: Từ chối người dùng đang ở trạng thái PENDING."

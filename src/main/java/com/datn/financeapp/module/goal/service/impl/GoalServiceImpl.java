@@ -13,6 +13,7 @@ import com.datn.financeapp.module.goal.dto.response.GoalListItemResponse;
 import com.datn.financeapp.module.goal.entity.GoalContribution;
 import com.datn.financeapp.module.goal.entity.SavingsGoal;
 import com.datn.financeapp.module.goal.event.GoalCompletedEvent;
+import com.datn.financeapp.module.goal.helper.GoalSpecs;
 import com.datn.financeapp.module.goal.mapper.GoalMapper;
 import com.datn.financeapp.module.goal.repository.GoalContributionRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
@@ -22,7 +23,7 @@ import com.datn.financeapp.module.icon.entity.Icon;
 import com.datn.financeapp.module.icon.mapper.IconMapper;
 import com.datn.financeapp.module.icon.repository.IconRepository;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
@@ -37,7 +38,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -163,7 +166,7 @@ public class GoalServiceImpl implements GoalService {
                     : Instant.now();
 
             // Giao dịch 1: Trừ tiền ví nguồn (EXPENSE)
-            TxnDetailResponse srcTxn = txnBehavierService.create(userId, new TxnCreateReq(
+            TxnDetailRes srcTxn = txnBehavierService.create(userId, new TxnCreateReq(
                     TxnType.EXPENSE,
                     req.amount(),
                     sourceWallet.getId(),
@@ -178,7 +181,7 @@ public class GoalServiceImpl implements GoalService {
 
             // Giao dịch 2: Cộng tiền vào ví tiết kiệm liên kết (INCOME) nếu goal có ví
             if (goal.getWalletId() != null) {
-                TxnDetailResponse tgtTxn = txnBehavierService.create(userId, new TxnCreateReq(
+                TxnDetailRes tgtTxn = txnBehavierService.create(userId, new TxnCreateReq(
                         TxnType.INCOME,
                         req.amount(),
                         goal.getWalletId(),
@@ -323,11 +326,17 @@ public class GoalServiceImpl implements GoalService {
     @Override
     @Transactional(readOnly = true)
     public Page<GoalListItemResponse> adminList(GoalFilterRequest filter, Pageable pageable) {
-        UUID filterUserId = filter != null ? filter.userId() : null;
-        String filterStatus = filter != null ? filter.status() : null;
-        String filterName = filter != null ? filter.name() : null;
+        Pageable effectivePageable = pageable;
+        if (effectivePageable == null || effectivePageable.isUnpaged()) {
+            effectivePageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        } else if (effectivePageable.getSort().isUnsorted()) {
+            effectivePageable = PageRequest.of(
+                    effectivePageable.getPageNumber(),
+                    effectivePageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
 
-        Page<SavingsGoal> page = savingsGoalRepository.findAllForAdmin(filterUserId, filterStatus, filterName, pageable);
+        Page<SavingsGoal> page = savingsGoalRepository.findAll(GoalSpecs.filter(filter), effectivePageable);
 
         Set<UUID> walletIds = page.getContent().stream()
                 .map(SavingsGoal::getWalletId)

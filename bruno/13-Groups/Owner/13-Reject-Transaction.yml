@@ -5,12 +5,22 @@ info:
 
 http:
   method: POST
-  url: "{{baseUrl}}/groups/{{groupId}}/transactions/{{groupTxnId}}/reject"
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/status"
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "txn_id": "{{groupTxnId}}",
+        "status": "REJECTED",
+        "reason": "Không hợp lệ"
+      }
 
 settings:
   encodeUrl: true
 
-docs: "Dành cho Thủ quỹ / Owner: Từ chối khoản giao dịch PENDING của thành viên."
+docs: "Dành cho Thủ quỹ / Owner: Từ chối khoản giao dịch đang ở trạng thái PENDING."

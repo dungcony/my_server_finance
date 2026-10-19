@@ -112,7 +112,7 @@ async function createTxn() {
             return toast(`Tổng chia (${fmtMoney(sum)}) không khớp với số tiền giao dịch (${fmtMoney(amount)})`, 'error');
         }
     } else {
-        // CONTRIBUTION hoặc REFUND: gán transactor làm người tham gia đối ứng với share_amount = amount
+        // CONTRIBUTION hoặc REFUND: gán transactor là người tham gia đối ứng với share_amount = amount
         participants = [{ user_id: transactorId, share_amount: amount }];
     }
 
@@ -161,7 +161,7 @@ async function loadTxnList(page = 1) {
     updateBulkBar();
 
     const mode = $('lMode').value;
-    const query = { page: page - 1, size: TXN_PAGE_SIZE }; // Spring Data Pageable is 0-indexed
+    const query = { page: page - 1, size: TXN_PAGE_SIZE, page_size: TXN_PAGE_SIZE }; // Spring Data Pageable
     const isMember = G.isMember;
 
     let path = '/transactions';
@@ -196,7 +196,11 @@ async function loadTxnList(page = 1) {
     const res = await api(G.path(path), { query });
     const data = dataOf(res) || {};
     // DTO GroupTxnListRes: records / content
-    const items = data.items || data.content || data.transactions || [];
+    const rawItems = data.items || data.content || data.transactions || [];
+    const items = rawItems.map(t => {
+        t.id = t.id || t.txn_id || t.txnId;
+        return t;
+    });
     const meta = data.meta || { page, total_pages: data.totalPages, total_items: data.totalElements };
 
     const isReviewer = G.isReviewer;
@@ -224,7 +228,7 @@ async function loadTxnList(page = 1) {
     renderPager($('txnPager'), meta, p => loadTxnList(p));
 
     $('txnBody').querySelectorAll('[data-act]').forEach(b => {
-        b.onclick = () => txnAction(b.dataset.act, items.find(t => t.id === b.dataset.id));
+        b.onclick = () => txnAction(b.dataset.act, items.find(t => String(t.id) === String(b.dataset.id)));
     });
 
     $('txnBody').querySelectorAll('.row-check').forEach(c => {

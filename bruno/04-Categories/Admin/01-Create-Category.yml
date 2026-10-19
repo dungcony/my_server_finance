@@ -1,0 +1,37 @@
+info:
+  name: 01. Tạo danh mục
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/categories"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Danh mục test",
+        "code": "test_cat",
+        "description": "Dùng cho kiểm thử tự động",
+        "icon_code": "coffee",
+        "color": "#3D6B7D",
+        "parent_code": "an_uong"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.code) {
+      bru.setEnvVar("tempCategoryCode", res.body.data.code);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (yêu cầu quyền `categories:update`): Tạo danh mục mới trong hệ thống. Hỗ trợ header `Idempotency-Key`. Để tạo danh mục gốc (master category), đặt `parent_code` là null."

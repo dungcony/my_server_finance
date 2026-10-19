@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo cáo tài chính - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <style>
+        .trend-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 20px;
+        }
+        .trend-bar {
+            height: 8px;
+            border-radius: 4px;
+        }
+        .trend-bar.inc { background: #16a34a; }
+        .trend-bar.exp { background: #dc2626; }
+    </style>
+</head>
+<body data-area="user" data-active="reports" data-title="Báo cáo & Phân tích">
+<main id="page">
+    <div class="card">
+        <div class="card-title">
+            <span>Bộ lọc báo cáo thống kê</span>
+            <div class="btn-row">
+                <button class="btn btn-secondary btn-sm" id="btnExportCsv">📥 Xuất file CSV</button>
+            </div>
+        </div>
+        <div class="grid grid-4" style="gap:10px">
+            <div class="form-group" style="margin-bottom:0">
+                <label for="fPeriod">Chu kỳ báo cáo</label>
+                <select id="fPeriod">
+                    <option value="month" selected>Tháng này</option>
+                    <option value="week">Tuần này</option>
+                    <option value="year">Năm này</option>
+                    <option value="custom">Tùy chỉnh ngày</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label for="fWallet">Lọc theo ví</label>
+                <select id="fWallet">
+                    <option value="">-- Tất cả các ví --</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0" id="boxFromDate">
+                <label for="fFromDate">Từ ngày</label>
+                <input type="date" id="fFromDate">
+            </div>
+            <div class="form-group" style="margin-bottom:0;display:flex;align-items:flex-end;gap:8px" id="boxToDate">
+                <div style="flex:1">
+                    <label for="fToDate">Đến ngày</label>
+                    <input type="date" id="fToDate">
+                </div>
+                <button class="btn btn-primary" id="btnApplyReport" style="height:36px;margin-bottom:1px">Xem</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thống kê tổng quan chu kỳ -->
+    <div class="grid grid-4 mt" id="summaryStats">
+        <div class="stat">
+            <div class="label">Tổng thu nhập</div>
+            <div class="value pos" id="rIncome">0 đ</div>
+            <div class="sub" id="rIncomeSub">trong kỳ</div>
+        </div>
+        <div class="stat">
+            <div class="label">Tổng chi tiêu</div>
+            <div class="value neg" id="rExpense">0 đ</div>
+            <div class="sub" id="rExpenseSub">so với kỳ trước</div>
+        </div>
+        <div class="stat">
+            <div class="label">Thu chi ròng</div>
+            <div class="value" id="rNet">0 đ</div>
+            <div class="sub" id="rTxnCount">0 giao dịch</div>
+        </div>
+        <div class="stat">
+            <div class="label">Chi tiêu TB / ngày</div>
+            <div class="value" id="rDailyAvg">0 đ</div>
+            <div class="sub" id="rBalanceSub">Đầu kỳ: 0 đ</div>
+        </div>
+    </div>
+
+    <div class="grid grid-2 mt">
+        <!-- Cơ cấu chi tiêu theo danh mục -->
+        <div class="card">
+            <div class="card-title">
+                <span>Cơ cấu theo Danh mục</span>
+                <div class="btn-row">
+                    <select id="fCateType" style="width:auto;font-size:12px">
+                        <option value="expense" selected>Chi tiêu</option>
+                        <option value="income">Thu nhập</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Danh mục</th>
+                            <th class="right">Số giao dịch</th>
+                            <th class="right">Số tiền</th>
+                            <th style="width:140px">Tỷ trọng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cateBreakdownBody">
+                        <tr><td colspan="4" class="center muted">Đang tải phân tích danh mục...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Xu hướng thu chi theo thời gian -->
+        <div class="card">
+            <div class="card-title">
+                <span>Xu hướng Thu & Chi</span>
+                <div class="btn-row">
+                    <select id="fTrendView" style="width:auto;font-size:12px">
+                        <option value="daily" selected>Theo ngày trong tháng</option>
+                        <option value="monthly">6 tháng gần nhất</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrap" style="max-height:360px;overflow-y:auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width:100px">Thời gian</th>
+                            <th class="right">Thu nhập</th>
+                            <th class="right">Chi tiêu</th>
+                            <th class="right">Ròng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trendBody">
+                        <tr><td colspan="4" class="center muted">Đang tải xu hướng...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/reports.js"></script>
+</body>
+</html>

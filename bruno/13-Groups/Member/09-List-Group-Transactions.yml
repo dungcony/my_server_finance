@@ -16,10 +16,16 @@ http:
     - name: type
       value: ""
       type: query
-    - name: status
+    - name: transactor_id
       value: ""
       type: query
-    - name: user_id
+    - name: create_id
+      value: ""
+      type: query
+    - name: from_occurred_at
+      value: ""
+      type: query
+    - name: to_occurred_at
       value: ""
       type: query
     - name: start_date
@@ -29,13 +35,13 @@ http:
       value: ""
       type: query
     - name: page
-      value: "0"
+      value: "1"
       type: query
-    - name: size
+    - name: page_size
       value: "20"
       type: query
 
 settings:
   encodeUrl: true
 
-docs: Xem lịch sử giao dịch nhóm, hỗ trợ phân trang và lọc theo nguồn tiền, loại giao dịch, trạng thái.
+docs: Xem lịch sử giao dịch nhóm, phân trang (page từ 1, page_size) và lọc theo nguồn tiền, loại giao dịch, người giao dịch, người tạo, khoảng thời gian.

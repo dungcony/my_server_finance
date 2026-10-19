@@ -65,8 +65,8 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
         Permission permission = rolePermissionCacheHelper.findPermissionByName(permissionName)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy quyền hạn."));
 
-        // không được gán quyền mà chính mình không có (DB lưu permission dạng getValue(), vd "users:read")
-        if (!userAuthCacheHelper.getUserAuthorities(curId).contains(permission.getName().getValue()))
+        // không được gán quyền mà chính mình không có (DB lưu tên permission viết hoa, vd "USERS_READ")
+        if (!userAuthCacheHelper.getUserAuthorities(curId).contains(permission.getName().name()))
             throw new BusinessException(ErrorCode.FORBIDDEN,
                     "Không được gán quyền mà chính mình không có.");
 
@@ -82,7 +82,7 @@ public class ManagerRoleServiceImpl implements ManagerRoleService {
         // hủy cache danh sách quyền của vai trò để nạp lại mới nhất
         rolePermissionCacheHelper.evictPermissionsByRole(role.getName());
 
-        log.info("Đã gán permission {} cho role {}", permission.getName().getValue(), role.getName().name());
+        log.info("Đã gán permission {} cho role {}", permission.getName().name(), role.getName().name());
     }
 
     private Role findRole(RoleName roleName) {

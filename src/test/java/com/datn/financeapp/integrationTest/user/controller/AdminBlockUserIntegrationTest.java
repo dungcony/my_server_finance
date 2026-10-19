@@ -1,7 +1,5 @@
 package com.datn.financeapp.integrationTest.user.controller;
 
-import com.datn.financeapp.module.user.controller.*;
-
 
 import com.datn.financeapp.module.auth.dto.request.EmailLoginRequest;
 import com.datn.financeapp.module.auth.dto.request.RegisterRequest;
@@ -13,7 +11,7 @@ import com.datn.financeapp.module.auth.service.AuthService;
 import com.datn.financeapp.module.auth.service.LoginService;
 import com.datn.financeapp.common.ratelimit.RateLimitFilter;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
-import com.datn.financeapp.module.user.dto.request.UnlockUserRequest;
+import com.datn.financeapp.module.user.dto.request.UserUnlockRequest;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.datn.financeapp.module.user.repository.UserRepository;
@@ -290,7 +288,7 @@ class AdminBlockUserIntegrationTest {
         assertThat(blacklistedUserRepository.isBlacklisted(target.getId().toString())).isTrue();
 
         // Admin mở khóa
-        UnlockUserRequest unlockReq = new UnlockUserRequest(target.getId());
+        UserUnlockRequest unlockReq = new UserUnlockRequest(target.getId());
         mockMvc.perform(patch("/admin/user/unlock")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/reports/admin/summary"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
   params:
     - name: user_id
       value: "{{userId}}"

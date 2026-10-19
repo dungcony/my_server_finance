@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 01. Danh sách ví
   type: http
   seq: 1
@@ -8,19 +8,35 @@ http:
   url: "{{baseUrl}}/wallets"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
   params:
+    - name: search
+      value: ""
+      type: query
     - name: type
       value: ""
       type: query
-    - name: only_in_total
+    - name: is_default
       value: ""
       type: query
-    - name: include_shared
-      value: "true"
+    - name: min_balance
+      value: ""
+      type: query
+    - name: max_balance
+      value: ""
+      type: query
+    - name: page
+      value: "1"
+      type: query
+    - name: page_size
+      value: "20"
       type: query
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
-docs: Lấy danh sách các ví tiền của người dùng hiện tại (cá nhân và ví chung).
+docs: Lấy danh sách ví của người dùng hiện tại, phân trang (page từ 1, page_size). Lọc theo từ khoá, loại ví, ví mặc định, khoảng số dư.

@@ -1,0 +1,37 @@
+info:
+  name: 01. Tạo biểu tượng
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/icons"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "code": "temp_icon",
+        "display_name": "Biểu tượng test",
+        "path_data": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z",
+        "icon_group": "khac",
+        "search_keywords": "coffee ca phe do uong",
+        "sort_order": 1
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.code) {
+      bru.setEnvVar("tempIconCode", res.body.data.code);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (yêu cầu quyền `icons:update`): Tạo biểu tượng mới trong kho icons hệ thống. Nhóm biểu tượng hợp lệ: an_uong, di_lai, mua_sam, giai_tri, suc_khoe, hoc_tap, tai_chinh, khac."

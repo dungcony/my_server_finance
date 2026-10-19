@@ -105,7 +105,7 @@ CREATE TABLE permissions (
 );
 ```
 
-- `name`: Tên quyền hạn duy nhất theo quy ước `resource:action` (Ví dụ: `users:read`, `users:update`, `users:delete`, `user_roles:update`, `user_roles:delete`, `roles:read`, `role_permissions:read`, `role_permissions:update`).
+- `name`: Tên quyền hạn duy nhất theo quy ước `resource:action` (Ví dụ: `USERS_READ`, `users:update`, `users:delete`, `user_roles:update`, `user_roles:delete`, `roles:read`, `role_permissions:read`, `role_permissions:update`).
 
 ### 2.4 Bảng `user_roles` (Bảng liên kết) <a id="24-bang-user_roles"></a>
 
@@ -146,7 +146,7 @@ CREATE TABLE role_permissions (
 | | `PREMIUM` | Gói trả phí nâng cao (nhiều tính năng AI và hạn mức) |
 | **`RoleName`** | `ROLE_USER` | Vai trò người dùng thông thường mặc định (level = 100) |
 | | `ROLE_ADMIN` | Vai trò quản trị viên hệ thống (level = 1) |
-| **`PermissionName`** | `USERS_READ` (`users:read`) | Quyền xem danh sách và chi tiết người dùng |
+| **`PermissionName`** | `USERS_READ` (`USERS_READ`) | Quyền xem danh sách và chi tiết người dùng |
 | | `USERS_UPDATE` (`users:update`) | Quyền khóa / mở khóa tài khoản người dùng |
 | | `USERS_DELETE` (`users:delete`) | Quyền xóa người dùng khỏi hệ thống |
 | | `USER_ROLE_UPDATE` (`user_roles:update`) | Quyền gán vai trò mới cho người dùng |

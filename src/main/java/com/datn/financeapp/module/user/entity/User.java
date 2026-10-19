@@ -5,6 +5,8 @@ import com.datn.financeapp.module.user.enums.UserPlan;
 import com.datn.financeapp.module.user.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
@@ -60,10 +62,16 @@ public class User extends AssignedIdEntity {
     private String googleId;
 
     @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(name = "plan", nullable = false)
     private UserPlan plan = UserPlan.FREE;
 
+    // Hạn gói premium; null = không có hạn (VD: tài khoản admin seed).
+    @Column(name = "plan_expires_at")
+    private Instant planExpiresAt;
+
     @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private UserStatus status = UserStatus.PENDING_VERIFY;
 

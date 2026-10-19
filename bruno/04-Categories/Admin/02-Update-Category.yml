@@ -1,0 +1,28 @@
+info:
+  name: 02. Cập nhật danh mục
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/categories/{{tempCategoryCode}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Danh mục test cập nhật",
+        "description": "Chi tiêu cho trà sữa, cà phê và đồ uống",
+        "icon_code": "coffee",
+        "color": "#112233",
+        "parent_code": "an_uong"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (yêu cầu quyền `categories:update`): Cập nhật thông tin danh mục theo mã danh mục `categoryCode`. Lưu ý: trường `parent_code` là bắt buộc."

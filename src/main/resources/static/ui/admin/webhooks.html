@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook thanh toán - Finance AI Admin</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="webhooks" data-title="Webhook thanh toán payOS">
+<main id="page">
+    <!-- Cảnh báo: đơn đã PAID nhưng không có webhook xác nhận -->
+    <div class="card hidden" id="warnBox" style="border-color:#fecaca;background:#fef2f2">
+        <div class="card-title"><span style="color:#991b1b">⚠️ Có đơn đã thanh toán nhưng webhook không xác nhận</span></div>
+        <div id="warnText" class="muted"></div>
+    </div>
+
+    <div class="grid grid-4">
+        <div class="stat">
+            <div class="label">Webhook trong <span id="hoursLabel">24</span> giờ qua</div>
+            <div class="value" id="sTotal">-</div>
+            <div class="sub">đã tính cả request bị gộp</div>
+        </div>
+        <div class="stat">
+            <div class="label">Lỗi</div>
+            <div class="value neg" id="sFailed">-</div>
+            <div class="sub" id="sRate">-</div>
+        </div>
+        <div class="stat">
+            <div class="label">Lần xác nhận thanh toán gần nhất</div>
+            <div class="value" id="sLastOk" style="font-size:16px">-</div>
+            <div class="sub">PROCESSED / ALREADY_PAID</div>
+        </div>
+        <div class="stat">
+            <div class="label">Lần lỗi gần nhất</div>
+            <div class="value" id="sLastFail" style="font-size:16px">-</div>
+            <div class="sub">bấm một loại bên dưới để lọc</div>
+        </div>
+    </div>
+
+    <div class="card mt">
+        <div class="card-title"><span>Theo loại kết quả</span></div>
+        <div class="btn-row" id="chips"></div>
+    </div>
+
+    <div class="card mt">
+        <div class="card-title">
+            <span>Nhật ký các lần payOS gọi webhook <span class="muted" id="count"></span></span>
+            <div class="btn-row">
+                <select id="fScope" style="width:auto">
+                    <option value="failed">Chỉ lỗi</option>
+                    <option value="all">Tất cả</option>
+                </select>
+                <input type="number" id="fOrder" placeholder="order_code" style="width:130px">
+                <select id="fHours" style="width:auto">
+                    <option value="1">1 giờ</option>
+                    <option value="24" selected>24 giờ</option>
+                    <option value="72">3 ngày</option>
+                    <option value="168">7 ngày</option>
+                </select>
+                <button class="btn btn-secondary" id="btnReload">🔄</button>
+                <button class="btn btn-secondary" id="btnPause">⏸️ Tạm dừng tự làm mới</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Thời điểm</th>
+                        <th>Kết quả</th>
+                        <th>order_code</th>
+                        <th>Số tiền</th>
+                        <th>HTTP</th>
+                        <th>Xử lý</th>
+                        <th>IP</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+        <div class="btn-row mt" id="pager"></div>
+        <div class="muted mt" style="font-size:12px">
+            💡 Trang tự làm mới mỗi 15 giây. Chỉ quản trị viên (quyền PAYMENT_READ hoặc ROLE_ADMIN) đọc được dữ liệu.
+            Không lưu nội dung gốc của webhook hay thông tin ngân hàng của người chuyển tiền.
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/webhooks.js"></script>
+</body>
+</html>

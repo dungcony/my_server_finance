@@ -1,0 +1,26 @@
+info:
+  name: "04. Cập nhật giao dịch"
+  type: http
+  seq: 4
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/transactions/admin?txn_id={{transactionId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "amount": 55000,
+        "display_name": "Cà phê sáng size L",
+        "note": "Cập nhật bởi admin"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (TXN_UPDATE): Cập nhật giao dịch bất kỳ (txn_id trên query). Trường thời gian tên là occured_at (thiếu chữ r)."

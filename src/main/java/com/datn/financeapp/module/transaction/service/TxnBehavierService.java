@@ -18,9 +18,9 @@ public interface TxnBehavierService {
      *
      * @param userId ID người dùng null tức là admin gửi
      * @param req    thông tin yêu cầu tạo giao dịch
-     * @return {@link TxnDetailResponse} kết quả tạo giao dịch
+     * @return {@link TxnDetailRes} kết quả tạo giao dịch
      */
-    TxnDetailResponse create(UUID userId, TxnCreateReq req);
+    TxnDetailRes create(UUID userId, TxnCreateReq req);
 
     /**
      * Truy vấn danh sách giao dịch phân trang theo bộ lọc.
@@ -29,16 +29,16 @@ public interface TxnBehavierService {
      * @param page    thông tin phân trang và sắp xếp
      * @return {@link TxnListRes}
      */
-    TxnListRes gets(TxnFilterRequest filters, Pageable page, boolean isAdmin);
+    TxnListRes gets(TxnFilterReq filters, Pageable page, boolean isAdmin);
 
 
     /**
      * Truy vấn chi tiết một giao dịch theo ID.
      *
      * @param id ID giao dịch
-     * @return {@link TxnDetailResponse} chi tiết giao dịch
+     * @return {@link TxnDetailRes} chi tiết giao dịch
      */
-    TxnDetailResponse get(UUID id, boolean isAdmin);
+    TxnDetailRes get(UUID id, boolean isAdmin);
 
     /**
      * Cập nhật thông tin giao dịch hiện có.

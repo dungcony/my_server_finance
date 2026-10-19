@@ -1,0 +1,16 @@
+info:
+  name: 04. Xoá buổi lịch (Admin)
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/recurring/admin/schedules/{{scheduleId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Admin: xoá buổi lịch bất kỳ. Quyền RECURRING_TXN_DELETE."
