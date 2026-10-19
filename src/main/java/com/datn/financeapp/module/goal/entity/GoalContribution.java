@@ -48,7 +48,8 @@ import lombok.Setter;
 public class GoalContribution extends AssignedIdEntity {
 
     @Id
-    private UUID id;
+    @Builder.Default
+    private UUID id = UUID.randomUUID();
 
     @Override
     public UUID getId() {

@@ -103,6 +103,7 @@ public class GoalServiceImpl implements GoalService {
         }
 
         SavingsGoal goal = SavingsGoal.builder()
+                .id(UUID.randomUUID())
                 .userId(userId)
                 .walletId(walletId)
                 .name(req.name())
@@ -113,6 +114,16 @@ public class GoalServiceImpl implements GoalService {
                 .status(STATUS_IN_PROGRESS)
                 .build();
         goal = savingsGoalRepository.save(goal);
+
+        if (req.initialAmount() != null && req.initialAmount() > 0) {
+            GoalContribution initContrib = GoalContribution.builder()
+                    .id(UUID.randomUUID())
+                    .goalId(goal.getId())
+                    .amount(req.initialAmount())
+                    .contributedDate(java.time.LocalDate.now())
+                    .build();
+            goalContributionRepository.save(initContrib);
+        }
 
         WalletSumaryRes wallet = loadWalletOrNull(userId, goal.getWalletId());
         GoalListItemResponse item = toListItem(goal, wallet);
@@ -133,6 +144,9 @@ public class GoalServiceImpl implements GoalService {
         if (Boolean.TRUE.equals(req.createTransaction())) {
             if (req.sourceWalletId() == null) {
                 throw new BusinessException(ErrorCode.INVALID_SOURCE_WALLET, "Ví nguồn không được để trống khi yêu cầu tạo giao dịch.");
+            }
+            if (goal.getWalletId() == null) {
+                throw new BusinessException(ErrorCode.GOAL_WALLET_REQUIRED, "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật.");
             }
             Wallet sourceWallet = walletRepository.findByIdAndUserIdAndIsDeleted(req.sourceWalletId(), userId, false)
                     .orElseThrow(() -> new BusinessException(ErrorCode.WALLET_NOT_FOUND, "Không tìm thấy ví nguồn."));
@@ -159,7 +173,7 @@ public class GoalServiceImpl implements GoalService {
                     "Nạp tiền vào mục tiêu tiết kiệm: " + goal.getName()
             ));
             transactionId = srcTxn.id();
-            transactionSummary = new CreateContributionResponse.TransactionSummary(srcTxn.id(), TxnType.EXPENSE.name(), req.amount());
+            transactionSummary = new CreateContributionResponse.TransactionSummary(srcTxn.id(), "transfer", req.amount());
             newBalance = new CreateContributionResponse.NewBalance(sourceWallet.getId(), sourceWallet.getBalance() - req.amount());
 
             // Giao dịch 2: Cộng tiền vào ví tiết kiệm liên kết (INCOME) nếu goal có ví
@@ -178,6 +192,7 @@ public class GoalServiceImpl implements GoalService {
         }
 
         GoalContribution contribution = GoalContribution.builder()
+                .id(UUID.randomUUID())
                 .goalId(goal.getId())
                 .amount(req.amount())
                 .contributedDate(req.contributedDate() != null ? req.contributedDate() : java.time.LocalDate.now())

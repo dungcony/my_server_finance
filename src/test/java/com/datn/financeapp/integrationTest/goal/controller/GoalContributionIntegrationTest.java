@@ -134,8 +134,10 @@ class GoalContributionIntegrationTest {
     private String createWallet(String token, String name, long initialBalance) throws Exception {
         Map<String, Object> body = Map.of(
                 "name", name,
-                "type", "cash",
-                "initial_balance", initialBalance);
+                "type", "CASH",
+                "balance", initialBalance,
+                "icon_code", "default_wallet",
+                "color", "#2f8272");
         String response = mockMvc.perform(post("/wallets")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -198,7 +200,7 @@ class GoalContributionIntegrationTest {
 
     private long walletBalance(String walletId) {
         return jdbcTemplate.queryForObject(
-                "SELECT current_balance FROM wallets WHERE id = ?", Long.class, UUID.fromString(walletId));
+                "SELECT balance FROM wallets WHERE id = ?", Long.class, UUID.fromString(walletId));
     }
 
     private long savedAmountFromDatabase(String goalId) {
@@ -212,7 +214,9 @@ class GoalContributionIntegrationTest {
     }
 
     private int liveTransactionCount() {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions WHERE is_deleted = false", Integer.class);
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE is_deleted = false AND category_code = 'tiet_kiem' AND type = 'EXPENSE'",
+                Integer.class);
     }
 
     // ---------------------------------------------------------------------
