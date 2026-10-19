@@ -8,6 +8,7 @@ import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleCreateRe
 import com.datn.financeapp.module.transaction.dto.request.RecTxnScheduleUpdateReq;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleListRec;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleRes;
+import com.datn.financeapp.module.transaction.entity.RecTxn;
 import com.datn.financeapp.module.transaction.entity.RecTxnSchedule;
 import com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus;
 import com.datn.financeapp.module.transaction.mapper.RecTxnScheduleMapper;
@@ -24,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.UUID;
 
 /**
- * Cài đặt các hành vi nghiệp vụ quản lý buổi lịch định kỳ (tạo, sửa, xóa) có phân quyền người dùng và admin.
+ * Cài đặt các hành vi nghiệp vụ quản lý buổi lịch định kỳ (tạo, sửa, xóa, skip, unskip) có phân quyền người dùng và admin.
  */
 @Service
 @RequiredArgsConstructor
@@ -38,45 +39,41 @@ public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService
 
     /**
      * {@inheritDoc}
-     *
-     * @throws BusinessException nếu không tìm thấy giao dịch định kỳ cha hoặc không thuộc quyền sở hữu
      */
     @Override
     @Transactional
-    public RecTxnScheduleRes create(UUID userId, UUID recId, RecTxnScheduleCreateReq req) {
-        // người dùng tự gọi thì lấy id theo token trong SecurityContext
-        if (userId == null) {
-            userId = SecurityContextUtil.currentUserId();
-        }
-
-        // kiểm tra giao dịch định kỳ cha có tồn tại và thuộc quyền sở hữu
-        var recTxn = recTxnRepository.findByIdAndUserId(recId, userId)
+    public RecTxnScheduleRes create(UUID recId, RecTxnScheduleCreateReq req, boolean isAdmin) {
+        RecTxn recTxn = recTxnRepository.findByIdAndIsDeletedFalse(recId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch định kỳ."));
+
+        if (!isAdmin) {
+            UUID currentUserId = SecurityContextUtil.currentUserId();
+            if (!recTxn.getUserId().equals(currentUserId)) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch định kỳ.");
+            }
+        }
 
         RecTxnSchedule schedule = scheduleMapper.toEntity(req);
         schedule.setId(UUID.randomUUID());
         schedule.setUserId(recTxn.getUserId());
         schedule.setRecTxn(recTxn);
+        schedule.setStatus(RecTxnScheduleStatus.PENDING);
         schedule.setIsDeleted(false);
-
-        // thiết lập trạng thái mặc định nếu client không truyền
-        if (schedule.getStatus() == null) {
-            schedule.setStatus(RecTxnScheduleStatus.PENDING);
-        }
 
         RecTxnSchedule saved = scheduleRepository.save(schedule);
         return scheduleMapper.toResponse(saved);
     }
 
     @Override
-    public RecTxnScheduleListRec gets(UUID userId, UUID recId, Pageable pageable) {
+    public RecTxnScheduleListRec gets(UUID recId, Pageable pageable, boolean isAdmin) {
+        Page<RecTxnSchedule> recTxnSchedules;
 
-        if (userId == null)
-            userId = SecurityContextUtil.currentUserId();
-
-        // kiểm tra giao dịch định kỳ cha có tồn tại
-        Page<RecTxnSchedule> recTxnSchedules = scheduleRepository.findByUserIdAndRecTxnIdAndIsDeletedFalse(userId, recId, pageable);
-
+        if (isAdmin) {
+            recTxnSchedules = scheduleRepository.findByRecTxnIdAndIsDeletedFalse(recId, pageable);
+        } else {
+            UUID currentUserId = SecurityContextUtil.currentUserId();
+            recTxnSchedules = scheduleRepository.findByUserIdAndRecTxnIdAndIsDeletedFalse(currentUserId, recId, pageable);
+        }
 
         return new RecTxnScheduleListRec(
                 recTxnSchedules.getContent().stream()
@@ -88,57 +85,81 @@ public class RecTxnScheduleBehavierImpl implements RecTxnScheduleBehavierService
 
     /**
      * {@inheritDoc}
-     *
-     * @throws BusinessException nếu không tìm thấy buổi lịch hoặc không thuộc quyền sở hữu
      */
     @Override
     @Transactional
-    public RecTxnScheduleRes update(UUID userId, UUID scheduleId, RecTxnScheduleUpdateReq req) {
-        // người dùng tự gọi thì lấy id theo token trong SecurityContext
-        if (userId == null) {
-            userId = SecurityContextUtil.currentUserId();
+    public RecTxnScheduleRes update(UUID scheduleId, RecTxnScheduleUpdateReq req, boolean isAdmin) {
+        RecTxnSchedule schedule = getSchedule(scheduleId, isAdmin);
+
+        // R8: Chỉ cho phép sửa nếu buổi lịch đang PENDING
+        if (schedule.getStatus() != RecTxnScheduleStatus.PENDING) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chỉ có thể chỉnh sửa buổi lịch đang chờ xử lý (PENDING).");
         }
 
-        // tìm buổi lịch theo ID và quyền sở hữu người dùng
-        RecTxnSchedule schedule = scheduleRepository.findByIdAndUserIdAndIsDeletedFalse(scheduleId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy buổi lịch cần cập nhật."));
-
-        // cập nhật các trường được phép thay đổi
         if (req.runAt() != null) {
             schedule.setRunAt(req.runAt());
         }
         if (req.amount() != null) {
             schedule.setAmount(req.amount());
         }
-        if (req.status() != null) {
-            schedule.setStatus(req.status());
-        }
 
         RecTxnSchedule saved = scheduleRepository.save(schedule);
         return scheduleMapper.toResponse(saved);
     }
 
+    @Override
+    @Transactional
+    public Void skip(UUID scheduleId, boolean isAdmin) {
+        RecTxnSchedule schedule = getSchedule(scheduleId, isAdmin);
+
+        if (schedule.getStatus() != RecTxnScheduleStatus.PENDING) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chỉ có thể bỏ qua buổi lịch đang ở trạng thái PENDING.");
+        }
+
+        schedule.setStatus(RecTxnScheduleStatus.SKIPPED);
+        scheduleRepository.save(schedule);
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public Void unskip(UUID scheduleId, boolean isAdmin) {
+        RecTxnSchedule schedule = getSchedule(scheduleId, isAdmin);
+
+        if (schedule.getStatus() != RecTxnScheduleStatus.SKIPPED) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chỉ có thể khôi phục buổi lịch đang ở trạng thái SKIPPED.");
+        }
+
+        schedule.setStatus(RecTxnScheduleStatus.PENDING);
+        scheduleRepository.save(schedule);
+        return null;
+    }
+
     /**
      * {@inheritDoc}
-     *
-     * @throws BusinessException nếu không tìm thấy buổi lịch hoặc không thuộc quyền sở hữu
      */
     @Override
     @Transactional
-    public Void delete(UUID userId, UUID scheduleId) {
-        // người dùng tự gọi thì lấy id theo token trong SecurityContext
-        if (userId == null) {
-            userId = SecurityContextUtil.currentUserId();
-        }
-
-        // tìm buổi lịch theo ID và quyền sở hữu người dùng
-        RecTxnSchedule schedule = scheduleRepository.findByIdAndUserIdAndIsDeletedFalse(scheduleId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy buổi lịch cần xóa."));
-
-        // thực hiện xóa mềm
+    public Void delete(UUID scheduleId, boolean isAdmin) {
+        RecTxnSchedule schedule = getSchedule(scheduleId, isAdmin);
         schedule.setIsDeleted(true);
         scheduleRepository.save(schedule);
-
         return null;
+    }
+
+    /**
+     * Tìm buổi lịch và kiểm tra quyền sở hữu.
+     */
+    private RecTxnSchedule getSchedule(UUID scheduleId, boolean isAdmin) {
+        RecTxnSchedule schedule = scheduleRepository.findByIdAndIsDeletedFalse(scheduleId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy buổi lịch cần xử lý."));
+
+        if (!isAdmin) {
+            UUID currentUserId = SecurityContextUtil.currentUserId();
+            if (!schedule.getUserId().equals(currentUserId)) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy buổi lịch cần xử lý.");
+            }
+        }
+        return schedule;
     }
 }

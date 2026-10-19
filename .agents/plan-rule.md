@@ -7,23 +7,24 @@
 
 - Mọi thay đổi file trong repo (code, test, migration, cấu hình, tài liệu) đều phải lập plan trước.
 - Không cần plan khi:
-  - Người dùng chỉ hỏi, nhờ giải thích, phân tích hoặc review (không sửa file).
-  - Người dùng nói rõ bỏ qua plan cho lần đó (VD: "sửa luôn", "không cần plan").
+    - Người dùng chỉ hỏi, nhờ giải thích, phân tích hoặc review (không sửa file).
+    - Người dùng nói rõ bỏ qua plan cho lần đó (VD: "sửa luôn", "không cần plan").
 - Việc lớn (nhiều nhóm lỗi, nhiều module) thì chia thành nhiều plan nhỏ theo thứ tự ưu tiên, mỗi plan
   duyệt riêng. Đề xuất thứ tự rồi hỏi người dùng làm plan nào trước.
+- Các file plan sẽ được đặt trong @.agents/.plan
 
 ## Quy trình
 
-- Đọc code và tài liệu liên quan trước khi viết (`docs/design/<module>/`, `api/`, migration). Mọi nhận
+- Đọc code và tài liệu liên quan trước khi viết. Mọi nhận
   định trong plan phải có căn cứ `File.java:dòng`.
 - Tìm chỗ mập mờ hoặc có nhiều hướng làm → hỏi người dùng trước, rồi ghi kết quả vào mục
   "Quyết định đã chốt". Không tự chốt thay người dùng.
 - Trình plan qua plan mode. **Chỉ bắt đầu sửa khi người dùng bấm duyệt (proceed)**. Từ chối hoặc gửi
   kèm comment nghĩa là chưa duyệt.
 - Người dùng comment vào plan:
-  - Trả lời **hết** từng comment: đồng ý và sửa plan / không đồng ý kèm lý do / hỏi lại cho rõ.
-  - Comment làm đổi quyết định → cập nhật mục "Quyết định đã chốt".
-  - Cập nhật plan rồi trình lại. Còn comment chưa xử lý thì chưa được code.
+    - Trả lời **hết** từng comment: đồng ý và sửa plan / không đồng ý kèm lý do / hỏi lại cho rõ.
+    - Comment làm đổi quyết định → cập nhật mục "Quyết định đã chốt".
+    - Cập nhật plan rồi trình lại. Còn comment chưa xử lý thì chưa được code.
 - Đang làm mà thấy phải đi chệch plan (thêm file, đổi hướng, gặp lỗi ngoài dự kiến) → dừng lại, sửa
   plan, xin duyệt lại. Không tự quyết giữa chừng.
 
@@ -35,12 +36,23 @@ Ba mục đánh số là bắt buộc, giữ đúng thứ tự. Các mục còn 
 # <Động từ + đối tượng thay đổi>
 
 ## Bối cảnh
+
 ## Quyết định đã chốt
+
 ## 1. Các file sẽ thay đổi
+
 ## 2. Lý do thay đổi
+
 ## 3. Hướng giải quyết / code xem trước
+
+## 4. Danh sách công việc chi tiết
+
 ## Ngoài phạm vi
+
 ## Kiểm tra
+
+- luôn hỏi trước có viết test hay không
+
 ## Câu hỏi còn mở
 ```
 
@@ -73,11 +85,15 @@ Ba mục đánh số là bắt buộc, giữ đúng thứ tự. Các mục còn 
 - TDD: nêu test nào viết đỏ trước và **đỏ vì khẳng định sai** ở đâu. Trường hợp không làm đỏ-xanh tự
   nhiên được (VD: bỏ giá trị enum làm lỗi biên dịch trước) thì nói rõ sẽ làm thế nào.
 - Thay đổi nhạy cảm phải đánh dấu ⚠️ cho nổi bật:
-  - Đổi API contract (thêm/bỏ/đổi tên trường, đổi mã lỗi) → ghi rõ ảnh hưởng tới app Flutter.
-  - Đổi schema: ghi số version mới sau khi `ls src/main/resources/db/migration/`. Sửa migration đã
-    chạy thì nói rõ CSDL cũ sẽ vỡ checksum.
-  - Xoá code, đổi hành vi hiện tại, thêm dependency.
+    - Đổi API contract (thêm/bỏ/đổi tên trường, đổi mã lỗi) → ghi rõ ảnh hưởng tới app Flutter.
+    - Đổi schema: ghi số version mới sau khi `ls src/main/resources/db/migration/`. Sửa migration đã
+      chạy thì nói rõ CSDL cũ sẽ vỡ checksum.
+    - Xoá code, đổi hành vi hiện tại, thêm dependency.
 - Code lệch tài liệu thiết kế thì nêu luôn tài liệu nào được cập nhật trong cùng lần thay đổi.
+
+### Danh sách công việc chi tiết
+
+- ghi danh sách công việc sẽ làm theo từng mục
 
 ### Ngoài phạm vi
 

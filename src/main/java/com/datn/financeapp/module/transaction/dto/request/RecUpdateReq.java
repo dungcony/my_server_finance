@@ -12,15 +12,15 @@ import java.util.UUID;
  * Yêu cầu cập nhật giao dịch định kỳ.
  * Tất cả các trường đều là tùy chọn; truyền null nếu giữ nguyên giá trị hiện tại.
  *
- * @param displayName tên hiển thị mới của giao dịch định kỳ
- * @param amount      số tiền mới của giao dịch
- * @param walletId    ID ví giao dịch mới
- * @param categoryId  ID danh mục chi tiêu/thu nhập mới
- * @param frequency   tần suất lặp mới (DAILY, WEEKLY, MONTHLY, YEARLY)
- * @param interval    khoảng thời gian giữa các lần lặp
- * @param endAt       Thời gian kết thúc lặp mới
- * @param isEnable    Tắt hoặc bật lại
- * @param note        ghi chú cập nhật
+ * @param displayName  tên hiển thị mới của giao dịch định kỳ
+ * @param amount       số tiền mới của giao dịch
+ * @param walletId     ID ví giao dịch mới
+ * @param categoryCode Mã danh mục chi tiêu/thu nhập mới
+ * @param frequency    tần suất lặp mới (DAILY, WEEKLY, MONTHLY, YEARLY)
+ * @param interval     khoảng thời gian giữa các lần lặp
+ * @param endAt        Thời gian kết thúc lặp mới
+ * @param isEnabled    Bật/tắt trạng thái hoạt động
+ * @param note         ghi chú cập nhật
  */
 public record RecUpdateReq(
         @Size(min = 1, max = 100, message = "Tên hiển thị phải từ 1 đến 100 ký tự.")
@@ -30,7 +30,7 @@ public record RecUpdateReq(
         Long amount,
 
         UUID walletId,
-        UUID categoryId,
+        String categoryCode,
         FrequencyType frequency,
 
         @Positive(message = "Khoảng cách lặp phải lớn hơn 0.")
@@ -39,7 +39,8 @@ public record RecUpdateReq(
         @Future(message = "Thời gian kết thúc phải ở tương lai.")
         Instant endAt,
 
-        Boolean isEnable,
+        Boolean isEnabled,
+
         String note) {
     // Compact Constructor: Chạy ngay lập tức khi record được khởi tạo
     public RecUpdateReq {

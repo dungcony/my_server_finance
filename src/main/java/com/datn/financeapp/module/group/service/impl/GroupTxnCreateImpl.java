@@ -3,6 +3,7 @@ package com.datn.financeapp.module.group.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
@@ -115,7 +116,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         groupTxnRepository.save(transaction);
 
         if (status.equals(GroupTxnStatus.CONFIRMED)) {
-            // Tính chêch lệch vào bảng tổng
+            // Tính chênh lệch vào bảng tổng
             memberBalanceService.applyDelta(groupId, new MemberBalances(), BalanceCalculator.effectOf(transaction));
             long newDelta = GroupTxnHelper.calculateDelta(transaction);
 
@@ -137,6 +138,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         List<UUID> receiverIds = req.participants().stream()
                 .map(GroupTxnParticipantReq::userId)
                 .toList();
+
 
         // đọc số dư hiện tại của người nhận kèm khoá dòng để kiểm hạn mức hoàn trả
         MemberBalances mb = memberBalanceService.getBalancesForUpdate(groupId, receiverIds);
@@ -162,7 +164,9 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         if (req.categoryCode() == null || req.categoryCode().isBlank())
             throw new BusinessException(ErrorCode.GROUP_TXN_CATEGORY_REQUIRED);
 
-        UUID categoryId = categoryService.findIdByCode(req.categoryCode());
+        UUID categoryId = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false, true)
+                .map(CateSumaryRes::id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
 
         txn.setParticipants(GroupTxnHelper.getParticipants(req.participants()));
         txn.setCategoryId(categoryId);

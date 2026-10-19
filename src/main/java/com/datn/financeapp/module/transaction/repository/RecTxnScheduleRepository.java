@@ -39,6 +39,8 @@ public interface RecTxnScheduleRepository extends JpaRepository<RecTxnSchedule, 
      */
     Optional<RecTxnSchedule> findByIdAndUserIdAndIsDeletedFalse(UUID id, UUID userId);
 
+    Optional<RecTxnSchedule> findByIdAndIsDeletedFalse(UUID id);
+
     /**
      * Tìm các buổi lịch đến hạn chạy tự động phục vụ Scheduler engine.
      *

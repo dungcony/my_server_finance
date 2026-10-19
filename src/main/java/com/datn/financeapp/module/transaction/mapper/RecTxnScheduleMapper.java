@@ -41,6 +41,7 @@ public interface RecTxnScheduleMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "recTxn", ignore = true)
+    @Mapping(target = "status", constant = "PENDING")
     @Mapping(target = "isDeleted", ignore = true)
     @Mapping(target = "new", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

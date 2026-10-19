@@ -92,8 +92,8 @@ public class GroupTxn extends AssignedIdEntity {
     /**
      * ID danh mục chi tiêu (bắt buộc với EXPENSE, null đối với CONTRIBUTION/REFUND).
      */
-    @Column(name = "category_id")
-    private UUID categoryId;
+    @Column(name = "category_code")
+    private String categoryCode;
 
     /**
      * Loại giao dịch nghiệp vụ (EXPENSE, CONTRIBUTION, REFUND, ADJUSTMENT...).

@@ -13,7 +13,7 @@ import java.util.UUID;
  */
 public interface FundService {
 
-    FundRes create(UUID operatorId, UUID groupId);
+    FundRes create(UUID groupId, UUID operatorId);
 
     /**
      * Cập nhật thông tin quỹ nhóm (chuyển giao người giữ quỹ/thủ quỹ).

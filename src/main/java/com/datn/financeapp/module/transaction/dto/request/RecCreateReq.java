@@ -10,16 +10,16 @@ import java.util.UUID;
 /**
  * Yêu cầu thiết lập giao dịch định kỳ mới.
  *
- * @param displayName Tên hiển thị của lịch giao dịch (tối đa 100 ký tự)
- * @param type        Loại giao dịch ({@code expense}, {@code income}, {@code transfer})
- * @param amount      Số tiền phát sinh mỗi kỳ (Đơn vị: VND)
- * @param walletId    ID ví trích/nhận tiền
- * @param categoryId  ID danh mục giao dịch
- * @param frequency   Tần suất lặp ({@code daily}, {@code weekly}, {@code monthly}, {@code yearly})
- * @param interval    Khoảng cách lặp (mặc định: 1)
- * @param startAt     Thời gian bắt đầu áp dụng lịch định kỳ
- * @param endAt       Thời gian kết thúc lịch định kỳ (tùy chọn)
- * @param note        Ghi chú giao dịch
+ * @param displayName  Tên hiển thị của lịch giao dịch (tối đa 100 ký tự)
+ * @param type         Loại giao dịch ({@code expense}, {@code income}, {@code transfer})
+ * @param amount       Số tiền phát sinh mỗi kỳ (Đơn vị: VND)
+ * @param walletId     ID ví trích/nhận tiền
+ * @param categoryCode Mã danh mục giao dịch (tùy chọn)
+ * @param frequency    Tần suất lặp ({@code daily}, {@code weekly}, {@code monthly}, {@code yearly})
+ * @param interval     Khoảng cách lặp (mặc định: 1)
+ * @param startAt      Thời gian bắt đầu áp dụng lịch định kỳ
+ * @param endAt        Thời gian kết thúc lịch định kỳ (tùy chọn)
+ * @param note         Ghi chú giao dịch
  */
 public record RecCreateReq(
         @NotBlank(message = "Tên hiển thị không được để trống.")
@@ -36,10 +36,10 @@ public record RecCreateReq(
         @NotNull(message = "Ví không được để trống.")
         UUID walletId,
 
-        UUID categoryId,
+        String categoryCode,
 
         @NotNull(message = "Thời gian bắt đầu không được để trống.")
-        @PastOrPresent(message = "Thời gian giao dịch không được ở tương lai.")
+        @FutureOrPresent(message = "Thời gian bắt đầu không được ở quá khứ.")
         Instant startAt,
 
         @Future(message = "Thời gian kết thúc phải ở tương lai.")
@@ -56,4 +56,3 @@ public record RecCreateReq(
         String note) {
 
 }
-

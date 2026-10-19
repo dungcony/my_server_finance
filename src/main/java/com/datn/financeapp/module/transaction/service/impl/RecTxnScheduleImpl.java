@@ -6,7 +6,6 @@ import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.module.transaction.dto.response.RecTxnScheduleListRec;
 import com.datn.financeapp.module.transaction.entity.RecTxn;
 import com.datn.financeapp.module.transaction.entity.RecTxnSchedule;
-import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.enums.RecTxnScheduleStatus;
 import com.datn.financeapp.module.transaction.events.RecTxnCreateEvent;
 import com.datn.financeapp.module.transaction.events.RecTxnUpdateEvent;
@@ -14,7 +13,6 @@ import com.datn.financeapp.module.transaction.helper.RecScheduleCalculator;
 import com.datn.financeapp.module.transaction.mapper.RecTxnScheduleMapper;
 import com.datn.financeapp.module.transaction.repository.RecTxnRepository;
 import com.datn.financeapp.module.transaction.repository.RecTxnScheduleRepository;
-import com.datn.financeapp.module.transaction.repository.TransactionRepository;
 import com.datn.financeapp.module.transaction.service.RecTxnScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +40,9 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
     private final RecTxnRepository recTxnRepository;
     private final RecTxnScheduleMapper scheduleMapper;
     private final RecScheduleCalculator scheduleCalculator;
-    private final TransactionRepository transactionRepository;
+    private final RecScheduleProcessor scheduleProcessor;
+
+    private static final int MAX_BUFFER = 12;
 
     /**
      * {@inheritDoc}
@@ -51,7 +51,6 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
      */
     @Override
     public RecTxnScheduleListRec findAll(UUID recId, Pageable pageable) {
-        // kiểm tra giao dịch định kỳ cha có tồn tại
         recTxnRepository.findById(recId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch định kỳ."));
 
@@ -62,7 +61,6 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
                 PageMeta.from(page)
         );
     }
-
 
     @Transactional
     @EventListener
@@ -96,14 +94,10 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
     }
 
     /**
-     * vấn đề chạy mọi lịch trong 1 transaction và không kiểm tra danh mục.
-     * Nếu một cấu hình định kỳ trỏ vào danh mục đã xoá / không còn là lá
-     * → trigger báo lỗi → PostgreSQL huỷ cả transaction
-     * → mọi lịch của lần chạy đó rollback, lần sau lặp lại.
-     * try/catch trong vòng lặp không cứu được vì lỗi xảy ra lúc flush.
+     * R2: Scheduler chạy từng buổi trong transaction độc lập.
+     * Không đặt @Transactional ở mức method này để một buổi lỗi không làm rollback cả lô.
      */
     @Override
-    @Transactional
     public void processDueSchedules() {
         List<RecTxnSchedule> dueList = scheduleRepository.findByStatusAndRunAtLessThanEqualAndIsDeletedFalse(
                 RecTxnScheduleStatus.PENDING,
@@ -112,30 +106,29 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
 
         for (RecTxnSchedule schedule : dueList) {
             try {
-                processSingleSchedule(schedule);
+                scheduleProcessor.processSingleSchedule(schedule.getId());
             } catch (Exception ex) {
                 log.error("Lỗi khi xử lý buổi lịch định kỳ id: {}", schedule.getId(), ex);
+                try {
+                    scheduleProcessor.markFailed(schedule.getId());
+                } catch (Exception markEx) {
+                    log.error("Không thể cập nhật trạng thái FAILED cho buổi lịch id: {}", schedule.getId(), markEx);
+                }
             }
         }
     }
 
     /**
-     * Dựng danh sách buổi PENDING bắt đầu từ mốc cho trước tới ngày kết thúc hoặc đủ số buổi đệm.
+     * R4: Dựng danh sách buổi PENDING tối đa MAX_BUFFER (12) buổi đệm.
      */
     private List<RecTxnSchedule> buildSchedules(RecTxn recTxn, Instant from) {
         List<RecTxnSchedule> schedules = new ArrayList<>();
         Instant current = from;
         int count = 0;
-        // số lượng đệm tối đa nếu lặp vô hạn
-        int maxBuffer = 12;
 
-        while (true) {
+        while (count < MAX_BUFFER) {
             // điều kiện dừng nếu có ngày kết thúc cụ thể
             if (recTxn.getEndAt() != null && current.isAfter(recTxn.getEndAt())) {
-                break;
-            }
-            // điều kiện dừng nếu lặp vô hạn
-            if (recTxn.getEndAt() == null && count >= maxBuffer) {
                 break;
             }
 
@@ -156,56 +149,5 @@ public class RecTxnScheduleImpl implements RecTxnScheduleService {
         }
 
         return schedules;
-    }
-
-
-    private void processSingleSchedule(RecTxnSchedule schedule) {
-        RecTxn rec = schedule.getRecTxn();
-        if (rec == null || !Boolean.TRUE.equals(rec.getIsEnabled()) || Boolean.TRUE.equals(rec.getIsDeleted())) {
-            return;
-        }
-
-        // tạo Transaction thực tế
-        Transaction txn = Transaction.builder()
-                .userId(schedule.getUserId())
-                .walletId(rec.getWalletId())
-                .categoryCode(rec.getCategoryCode())
-                .type(rec.getType())
-                .amount(schedule.getAmount())
-                .name(rec.getName())
-                .note(rec.getNote())
-                .occurredAt(schedule.getRunAt())
-                .build();
-        txn.setId(UUID.randomUUID());
-        transactionRepository.save(txn);
-
-        // cập nhật trạng thái buổi lịch thành SUCCESS
-        schedule.setStatus(RecTxnScheduleStatus.SUCCESS);
-        scheduleRepository.save(schedule);
-
-        // nếu lặp vô hạn thì bù thêm buổi mới gối đầu
-        if (rec.getEndAt() == null) {
-            scheduleRepository.findTopByRecTxnIdAndIsDeletedFalseOrderByRunAtDesc(rec.getId())
-                    .ifPresent(latest -> {
-                        Instant nextRun = scheduleCalculator.nextOccurrence(latest.getRunAt(), rec.getFrequency(), rec.getInterval());
-                        RecTxnSchedule newSchedule = RecTxnSchedule.builder()
-                                .runAt(nextRun)
-                                .amount(rec.getAmount())
-                                .status(RecTxnScheduleStatus.PENDING)
-                                .userId(rec.getUserId())
-                                .recTxn(rec)
-                                .build();
-                        newSchedule.setId(UUID.randomUUID());
-                        newSchedule.setIsDeleted(false);
-                        scheduleRepository.save(newSchedule);
-                    });
-        } else {
-            // nếu có ngày kết thúc và không còn buổi PENDING nào thì hoàn thành chu kỳ
-            long remaining = scheduleRepository.countByRecTxnIdAndStatusAndIsDeletedFalse(rec.getId(), RecTxnScheduleStatus.PENDING);
-            if (remaining == 0) {
-                rec.setIsEnabled(false);
-                recTxnRepository.save(rec);
-            }
-        }
     }
 }

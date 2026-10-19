@@ -28,46 +28,51 @@ public class RecController {
 
     private final RecTxnBehavierService recTxnBehavierService;
     private final RecTxnScheduleBehavierService scheduleBehavierService;
-    // luồng người dùng thông thường
+
+    // ==========================================
+    // LUỒNG NGƯỜI DÙNG THÔNG THƯỜNG
+    // ==========================================
 
     @GetMapping("/{id}")
     public ApiResponse<?> detail(@PathVariable UUID id) {
-        return ApiResponse.of(recTxnBehavierService.detail(id, null));
+        return ApiResponse.of(recTxnBehavierService.get(id, false));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<?> create(@Valid @RequestBody RecCreateReq req) {
-        return ApiResponse.of(recTxnBehavierService.create(null, req));
+        return ApiResponse.of(recTxnBehavierService.create(req, false));
     }
 
     @PatchMapping("/{id}")
     public ApiResponse<?> update(@PathVariable UUID id, @Valid @RequestBody RecUpdateReq req) {
-        return ApiResponse.of(recTxnBehavierService.update(null, id, req));
+        return ApiResponse.of(recTxnBehavierService.update(id, req, false));
     }
 
     @PostMapping("/{id}/enable")
     public ApiResponse<?> enable(@PathVariable UUID id) {
-        return ApiResponse.of(recTxnBehavierService.enable(null, id));
+        return ApiResponse.of(recTxnBehavierService.enable(id, false));
     }
 
     @PostMapping("/{id}/disable")
     public ApiResponse<?> disable(@PathVariable UUID id) {
-        return ApiResponse.of(recTxnBehavierService.disable(null, id));
+        return ApiResponse.of(recTxnBehavierService.disable(id, false));
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<?> delete(@PathVariable UUID id) {
-        return ApiResponse.of(recTxnBehavierService.delete(null, id));
+        return ApiResponse.of(recTxnBehavierService.delete(id, false));
     }
 
-    // quản lý các buổi lịch phát sinh
+    // ==========================================
+    // QUẢN LÝ CÁC BUỔI LỊCH PHÁT SINH
+    // ==========================================
 
     @GetMapping("/{recId}/schedules")
     public ApiResponse<?> getSchedules(
             @PathVariable UUID recId,
             @PageableDefault(size = 20, sort = "runAt", direction = Sort.Direction.ASC) Pageable pageable) {
-        return ApiResponse.of(scheduleBehavierService.gets(null, recId, pageable));
+        return ApiResponse.of(scheduleBehavierService.gets(recId, pageable, false));
     }
 
     @PostMapping("/{recId}/schedules")
@@ -75,53 +80,58 @@ public class RecController {
     public ApiResponse<?> createSchedule(
             @PathVariable UUID recId,
             @Valid @RequestBody RecTxnScheduleCreateReq req) {
-        return ApiResponse.of(scheduleBehavierService.create(null, recId, req));
+        return ApiResponse.of(scheduleBehavierService.create(recId, req, false));
     }
 
     @PatchMapping("/schedules/{scheduleId}")
     public ApiResponse<?> updateSchedule(
             @PathVariable UUID scheduleId,
             @Valid @RequestBody RecTxnScheduleUpdateReq req) {
-        return ApiResponse.of(scheduleBehavierService.update(null, scheduleId, req));
+        return ApiResponse.of(scheduleBehavierService.update(scheduleId, req, false));
+    }
+
+    @PostMapping("/schedules/{scheduleId}/skip")
+    public ApiResponse<?> skipSchedule(@PathVariable UUID scheduleId) {
+        return ApiResponse.of(scheduleBehavierService.skip(scheduleId, false));
+    }
+
+    @PostMapping("/schedules/{scheduleId}/unskip")
+    public ApiResponse<?> unskipSchedule(@PathVariable UUID scheduleId) {
+        return ApiResponse.of(scheduleBehavierService.unskip(scheduleId, false));
     }
 
     @DeleteMapping("/schedules/{scheduleId}")
     public ApiResponse<?> deleteSchedule(@PathVariable UUID scheduleId) {
-        return ApiResponse.of(scheduleBehavierService.delete(null, scheduleId));
+        return ApiResponse.of(scheduleBehavierService.delete(scheduleId, false));
     }
 
-    // luồng quản trị viên
+    // ==========================================
+    // LUỒNG QUẢN TRỊ VIÊN
+    // ==========================================
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.getValue())")
     @GetMapping("/admin/{recId}/schedules")
     public ApiResponse<?> gets(
-            @RequestParam(name = "user_id", required = false) UUID userId,
             @PathVariable UUID recId,
             Pageable pageable) {
-        return ApiResponse.of(scheduleBehavierService.gets(userId, recId, pageable));
+        return ApiResponse.of(scheduleBehavierService.gets(recId, pageable, true));
     }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_READ.getValue())")
     @GetMapping("/admin/{id}")
-    public ApiResponse<?> adminDetail(
-            @PathVariable UUID id,
-            @RequestParam(name = "user_id", required = false) UUID userId) {
-        return ApiResponse.of(recTxnBehavierService.detail(id, userId));
+    public ApiResponse<?> adminDetail(@PathVariable UUID id) {
+        return ApiResponse.of(recTxnBehavierService.get(id, true));
     }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_DELETE.getValue())")
     @DeleteMapping("/admin/{id}")
-    public ApiResponse<?> adminDelete(
-            @PathVariable UUID id,
-            @RequestParam(name = "user_id") UUID userId) {
-        return ApiResponse.of(recTxnBehavierService.delete(userId, id));
+    public ApiResponse<?> adminDelete(@PathVariable UUID id) {
+        return ApiResponse.of(recTxnBehavierService.delete(id, true));
     }
 
     @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).RECURRING_TXN_DELETE.getValue())")
     @DeleteMapping("/admin/schedules/{scheduleId}")
-    public ApiResponse<?> adminDeleteSchedule(
-            @PathVariable UUID scheduleId,
-            @RequestParam(name = "user_id") UUID userId) {
-        return ApiResponse.of(scheduleBehavierService.delete(userId, scheduleId));
+    public ApiResponse<?> adminDeleteSchedule(@PathVariable UUID scheduleId) {
+        return ApiResponse.of(scheduleBehavierService.delete(scheduleId, true));
     }
 }

@@ -73,7 +73,7 @@ CREATE TABLE group_transactions (
     money_source  VARCHAR(20)  NOT NULL,
     transactor_id UUID,
     created_by    UUID         NOT NULL,
-    category_id   UUID,
+    category_code varchar(50),
     type          VARCHAR(20)  NOT NULL,
     status        VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
     reviewed_by   UUID,
@@ -90,7 +90,7 @@ CREATE TABLE group_transactions (
     CONSTRAINT fk_gt_group      FOREIGN KEY (group_id)      REFERENCES groups     (id) ON DELETE CASCADE,
     CONSTRAINT fk_gt_transactor FOREIGN KEY (transactor_id) REFERENCES users      (id) ON DELETE RESTRICT,
     CONSTRAINT fk_gt_creator    FOREIGN KEY (created_by)    REFERENCES users      (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_gt_category   FOREIGN KEY (category_id)   REFERENCES categories (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_gt_category   FOREIGN KEY (category_code)   REFERENCES categories (code) ON DELETE RESTRICT,
     CONSTRAINT fk_gt_reviewer   FOREIGN KEY (reviewed_by)   REFERENCES users      (id) ON DELETE RESTRICT,
 
     CONSTRAINT ck_gt_amount       CHECK (amount > 0 AND amount <= 999999999999),
@@ -105,8 +105,8 @@ CREATE TABLE group_transactions (
         type NOT IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') OR status = 'CONFIRMED'
     ),
     CONSTRAINT ck_gt_shape CHECK (
-        (type = 'EXPENSE' AND category_id IS NOT NULL)
-     OR (type = 'CONTRIBUTION' AND money_source = 'PERSONAL' AND category_id IS NULL)
+        (type = 'EXPENSE' AND category_code IS NOT NULL)
+     OR (type = 'CONTRIBUTION' AND money_source = 'PERSONAL' AND category_code IS NULL)
      OR (type IN ('REFUND', 'ADJUSTMENT_UP', 'ADJUSTMENT_DOWN') AND money_source = 'FUND' AND category_id IS NULL)
     ),
     CONSTRAINT ck_gt_transactor CHECK (
@@ -117,7 +117,7 @@ CREATE TABLE group_transactions (
 
 CREATE INDEX idx_gt_group_occurred ON group_transactions (group_id, occurred_at DESC) WHERE deleted_at IS NULL;
 CREATE INDEX idx_gt_transactor     ON group_transactions (transactor_id)              WHERE deleted_at IS NULL;
-CREATE INDEX idx_gt_category       ON group_transactions (category_id)                WHERE deleted_at IS NULL;
+CREATE INDEX idx_gt_category       ON group_transactions (category_code)                WHERE deleted_at IS NULL;
 
 -- Bảng group_transaction_participants — Người cùng chia tiền
 CREATE TABLE group_transaction_participants (

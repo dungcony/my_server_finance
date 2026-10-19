@@ -17,7 +17,7 @@ import java.util.UUID;
  * Cung cấp các phương thức ánh xạ:
  * <ul>
  *   <li>{@link #toDetalRes(RecTxn, CateSumaryRes, WalletSumaryRes)}: Chuyển đổi sang DTO chi tiết.</li>
- *   <li>{@link #toEntity(RecCreateReq)}: Chuyển đổi yêu cầu tạo thành thực thể.</li>
+ *   <li>{@link #toEntity(RecCreateReq, UUID, UUID)}: Chuyển đổi yêu cầu tạo thành thực thể.</li>
  * </ul>
  * </p>
  */
@@ -36,10 +36,14 @@ public interface RecurringMapper {
     @Mapping(target = "displayName", source = "recTxn.name")
     @Mapping(target = "wallet", source = "walletSumaryRes")
     @Mapping(target = "category", source = "cateSumaryRes")
-    @Mapping(target = "startDate", source = "recTxn.startAt")           // <-- map startAt sang startDate
-    @Mapping(target = "endDate", source = "recTxn.endAt")               // <-- map endAt sang endDate
+    @Mapping(target = "startDate", source = "recTxn.startAt")
+    @Mapping(target = "endDate", source = "recTxn.endAt")
     @Mapping(target = "frequencyType", source = "recTxn.frequency")
-    // <-- map frequency sang frequencyType
+    @Mapping(target = "interval", source = "recTxn.interval")
+    @Mapping(target = "isEnabled", source = "recTxn.isEnabled")
+    @Mapping(target = "type", source = "recTxn.type")
+    @Mapping(target = "amount", source = "recTxn.amount")
+    @Mapping(target = "note", source = "recTxn.note")
     RecDetailRes toDetalRes(
             RecTxn recTxn,
             CateSumaryRes cateSumaryRes,
@@ -49,16 +53,25 @@ public interface RecurringMapper {
     /**
      * Chuyển đổi yêu cầu tạo giao dịch định kỳ thành thực thể {@link RecTxn}.
      *
-     * @param req yêu cầu tạo mới giao dịch định kỳ
+     * @param req    yêu cầu tạo mới giao dịch định kỳ
+     * @param id     ID của giao dịch định kỳ
+     * @param userId ID người dùng sở hữu
      * @return thực thể cấu hình giao dịch định kỳ
      */
     @Mapping(target = "id", source = "id")
     @Mapping(target = "userId", source = "userId")
-    @Mapping(target = "name", source = "displayName")
-    @Mapping(target = "startAt", source = "startAt")
-    @Mapping(target = "endAt", source = "endAt")
+    @Mapping(target = "name", source = "req.displayName")
+    @Mapping(target = "startAt", source = "req.startAt")
+    @Mapping(target = "endAt", source = "req.endAt")
+    @Mapping(target = "walletId", source = "req.walletId")
+    @Mapping(target = "categoryCode", source = "req.categoryCode")
+    @Mapping(target = "type", source = "req.type")
+    @Mapping(target = "amount", source = "req.amount")
+    @Mapping(target = "frequency", source = "req.frequency")
+    @Mapping(target = "interval", source = "req.interval")
+    @Mapping(target = "note", source = "req.note")
     @Mapping(target = "isEnabled", constant = "true")
-    @Mapping(target = "isDeleted", ignore = true)
+    @Mapping(target = "isDeleted", constant = "false")
     @Mapping(target = "new", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

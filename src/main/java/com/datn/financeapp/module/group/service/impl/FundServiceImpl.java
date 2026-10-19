@@ -48,7 +48,7 @@ public class FundServiceImpl implements FundService {
 
     @Transactional
     @Override
-    public FundRes create(UUID operatorId, UUID groupId) {
+    public FundRes create(UUID groupId, UUID operatorId) {
         Fund fund = Fund.builder()
                 .id(UUID.randomUUID())
                 .groupId(groupId)

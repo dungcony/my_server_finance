@@ -12,36 +12,58 @@ public interface RecTxnScheduleBehavierService {
     /**
      * Tạo mới thủ công một buổi lịch cho giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param recId  ID giao dịch định kỳ cha
-     * @param req    thông tin yêu cầu tạo buổi lịch
+     * @param recId   ID giao dịch định kỳ cha
+     * @param req     thông tin yêu cầu tạo buổi lịch
+     * @param isAdmin true nếu admin gọi, false nếu user gọi
      * @return thông tin chi tiết buổi lịch vừa tạo
      */
-    RecTxnScheduleRes create(UUID userId, UUID recId, RecTxnScheduleCreateReq req);
+    RecTxnScheduleRes create(UUID recId, RecTxnScheduleCreateReq req, boolean isAdmin);
 
     /**
+     * Lấy danh sách các buổi lịch của một giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
+     * @param recId    ID giao dịch định kỳ cha
+     * @param pageable thông tin phân trang
+     * @param isAdmin  true nếu admin gọi, false nếu user gọi
+     * @return danh sách các buổi lịch
      */
-    RecTxnScheduleListRec gets(UUID userId, UUID recId, Pageable pageable);
+    RecTxnScheduleListRec gets(UUID recId, Pageable pageable, boolean isAdmin);
 
     /**
-     * Cập nhật thông tin (ngày chạy, số tiền, trạng thái) của một buổi lịch cụ thể.
+     * Cập nhật thông tin (ngày chạy, số tiền) của một buổi lịch cụ thể (chỉ khi PENDING).
      *
-     * @param userId     id của người dùng nếu người gửi là admin thì là null
      * @param scheduleId ID buổi lịch cần cập nhật
      * @param req        thông tin cập nhật
+     * @param isAdmin    true nếu admin gọi, false nếu user gọi
      * @return thông tin buổi lịch sau khi cập nhật
      */
-    RecTxnScheduleRes update(UUID userId, UUID scheduleId, RecTxnScheduleUpdateReq req);
+    RecTxnScheduleRes update(UUID scheduleId, RecTxnScheduleUpdateReq req, boolean isAdmin);
+
+    /**
+     * Bỏ qua buổi lịch (chuyển trạng thái từ PENDING sang SKIPPED).
+     *
+     * @param scheduleId ID buổi lịch cần bỏ qua
+     * @param isAdmin    true nếu admin gọi, false nếu user gọi
+     * @return Void
+     */
+    Void skip(UUID scheduleId, boolean isAdmin);
+
+    /**
+     * Khôi phục buổi lịch đã bỏ qua (chuyển trạng thái từ SKIPPED về PENDING).
+     *
+     * @param scheduleId ID buổi lịch cần khôi phục
+     * @param isAdmin    true nếu admin gọi, false nếu user gọi
+     * @return Void
+     */
+    Void unskip(UUID scheduleId, boolean isAdmin);
 
     /**
      * Xóa mềm một buổi lịch cụ thể.
      *
-     * @param userId     id của người dùng nếu người gửi là admin thì là null
      * @param scheduleId ID buổi lịch cần xóa
+     * @param isAdmin    true nếu admin gọi, false nếu user gọi
      * @return null
      */
-    Void delete(UUID userId, UUID scheduleId);
+    Void delete(UUID scheduleId, boolean isAdmin);
 
 }

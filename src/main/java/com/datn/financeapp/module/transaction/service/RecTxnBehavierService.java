@@ -11,55 +11,55 @@ public interface RecTxnBehavierService {
     /**
      * Lấy chi tiết thông tin một giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param id     ID giao dịch định kỳ
+     * @param id      ID giao dịch định kỳ
+     * @param isAdmin true nếu admin gọi, false nếu user gọi
      * @return Chi tiết giao dịch định kỳ
      */
-    RecDetailRes get(UUID id, UUID userId);
+    RecDetailRes get(UUID id, boolean isAdmin);
 
     /**
      * Tạo mới một giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param req    Yêu cầu thiết lập giao dịch định kỳ
+     * @param req     Yêu cầu thiết lập giao dịch định kỳ
+     * @param isAdmin true nếu admin tạo, false nếu user tạo
      * @return Thông tin giao dịch định kỳ vừa tạo
      */
-    RecDetailRes create(UUID userId, RecCreateReq req);
+    RecDetailRes create(RecCreateReq req, boolean isAdmin);
 
     /**
      * Cập nhật thiết lập giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param id     ID giao dịch định kỳ
-     * @param req    Thông tin yêu cầu cập nhật
+     * @param id      ID giao dịch định kỳ
+     * @param req     Thông tin yêu cầu cập nhật
+     * @param isAdmin true nếu admin cập nhật, false nếu user cập nhật
      * @return Thông tin sau khi cập nhật
      */
-    RecDetailRes update(UUID userId, UUID id, RecUpdateReq req);
+    RecDetailRes update(UUID id, RecUpdateReq req, boolean isAdmin);
 
     /**
      * Bật giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param id     ID giao dịch định kỳ
-     * @return Thông tin giao dịch định kỳ sau khi thay đổi trạng thái
+     * @param id      ID giao dịch định kỳ
+     * @param isAdmin true nếu admin gọi, false nếu user gọi
+     * @return Void
      */
-    Void enable(UUID userId, UUID id);
+    Void enable(UUID id, boolean isAdmin);
 
     /**
      * Tắt giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param id     ID giao dịch định kỳ
-     * @return Thông tin giao dịch định kỳ sau khi thay đổi trạng thái
+     * @param id      ID giao dịch định kỳ
+     * @param isAdmin true nếu admin gọi, false nếu user gọi
+     * @return Void
      */
-    Void disable(UUID userId, UUID id);
+    Void disable(UUID id, boolean isAdmin);
 
     /**
      * Vô hiệu hóa (xóa mềm) giao dịch định kỳ.
      *
-     * @param userId id của người dùng nếu người gửi là admin thì là null
-     * @param id     ID giao dịch định kỳ cần xóa
+     * @param id      ID giao dịch định kỳ cần xóa
+     * @param isAdmin true nếu admin gọi, false nếu user gọi
      */
-    Void delete(UUID userId, UUID id);
+    Void delete(UUID id, boolean isAdmin);
 
 }
