@@ -1,4 +1,4 @@
-# ĐẶC TẢ RESTFUL API ENDPOINTS — PHÂN HỆ NHÓM CHUNG QUỸ
+﻿# ĐẶC TẢ RESTFUL API ENDPOINTS — PHÂN HỆ NHÓM CHUNG QUỸ
 
 ## KIẾN TRÚC MÔ HÌNH HAI SỔ GHI TÁCH BIỆT (TWO SEPARATE LEDGERS)
 
@@ -27,7 +27,7 @@ tảng:** [Kịch bản Use Case](use-case.md) · [Lớp thực thể](lop-thuc-
         - [Danh sách thành viên nhóm (`GET /v1/groups/{id}/members`)](#315b-danh-sach-thanh-vien)
         - [Chủ nhóm thêm thành viên trực tiếp (`POST /v1/groups/{id}/members`)](#315c-them-thanh-vien)
         - [Duyệt hoặc từ chối thành viên chờ (`approve`, `reject`, `approves`, `rejects`)](#316-duyet-thanh-vien)
-        - [Chuyển quyền chủ nhóm (`PUT /v1/groups/{id}/owner-role/{memberUserId}/`)](#317-chuyen-quyen-chu-nhom)
+        - [Chuyển quyền chủ nhóm (`PUT /v1/groups/{id}/members/owner-role/{memberUserId}`)](#317-chuyen-quyen-chu-nhom)
         - [Rời nhóm và mời thành viên rời nhóm](#318-roi-nhom)
         - [Lưu trữ và mở lại nhóm](#319-luu-tru-nhom)
         - [Xoá nhóm (`DELETE /v1/groups/{id}`)](#3110-xoa-nhom)
@@ -409,7 +409,7 @@ Chủ nhóm (`OWNER`) có thể thêm trực tiếp danh sách thành viên vào
 
 ---
 
-#### Chuyển quyền chủ nhóm (`PUT /v1/groups/{id}/owner-role/{memberUserId}/`) <a id="317-chuyen-quyen-chu-nhom"></a>
+#### Chuyển quyền chủ nhóm (`PUT /v1/groups/{id}/members/owner-role/{memberUserId}`) <a id="317-chuyen-quyen-chu-nhom"></a>
 
 Nhóm luôn có **đúng một** `OWNER` đang `ACTIVE` ([rule.md](rule.md) quy tắc 9).
 
@@ -429,7 +429,7 @@ Nhóm luôn có **đúng một** `OWNER` đang `ACTIVE` ([rule.md](rule.md) quy 
 - **`POST /v1/groups/{id}/leave`** — thành viên tự rời
     - Người gọi phải đang `ACTIVE`.
     - Người gọi là `OWNER` → **chặn** với `409 GROUP_OWNER_TRANSFER_REQUIRED`. Chủ nhóm phải chuyển quyền trước.
-    - Người gọi đang giữ quỹ (thủ quỹ) → **chặn** với `409 GROUP_TREASURER_TRANSFER_REQUIRED`. Phải bàn giao quỹ trước.
+    - Nếu người gọi đang giữ quỹ (thủ quỹ): hệ thống tự động bàn giao quyền thủ quỹ về cho Trưởng nhóm (`ownerId`) qua sự kiện rời nhóm.
 - **`DELETE /v1/groups/{id}/members/{userId}`** — chủ nhóm mời rời (với người đang `ACTIVE`)
     - **Phân quyền:** Chỉ `OWNER`.
     - Không mời chính mình rời: `409 GROUP_OWNER_NOT_REMOVABLE`.
@@ -561,7 +561,7 @@ Toàn bộ các loại giao dịch được quản lý và tạo lập tập tru
   Pattern** tương ứng theo từng loại giao dịch (`GroupTxnType`):
     - `EXPENSE` (Chi tiêu): Trả bằng tiền quỹ (`FUND`) hoặc tiền túi (`PERSONAL`), bắt buộc có `category_code`. Phân bổ
       chi phí qua `participants`.
-    - `CONTRIBUTION` (Nộp quỹ): Tiền túi (`PERSONAL`) nộp vào quỹ (`FUND`), `category_code = null`, `participants = []`.
+    - `CONTRIBUTION` (Nộp quỹ): Tiền túi (`PERSONAL`) nộp vào quỹ (`FUND`), `category_code = null`, `participants` bắt buộc có đúng 1 người (chính là `transactor_id`).
     - `REFUND` (Quỹ trả tiền cho thành viên): Quỹ (`FUND`) chi trả cho một hoặc nhiều thành viên, để hoàn tiền túi họ đã
       chi hộ nhóm hoặc trả lại tiền họ đã góp. Dùng tiền quỹ nên **không có người bỏ tiền túi**: `transactor_id = null`;
       `participants` là những người nhận kèm `share_amount` từng người (tổng bằng `amount`), `category_code = null`.
@@ -645,7 +645,7 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
   "money_source": "PERSONAL",
   "transactor_id": "u2000000-0000-0000-0000-000000000002",
   "note": "B đóng tiền quỹ đợt 1",
-  "participants": []
+  "participants": [{"user_id": "u2000000-0000-0000-0000-000000000002", "share_amount": 1000000}]
 }
 ```
 
@@ -803,7 +803,9 @@ Hỗ trợ 2 loại giao dịch người dùng tạo trực tiếp:
     - Query Parameters tương tự endpoint trên (ngoại trừ `transactor_id` được cố định theo người gọi).
     - **Response:** `HTTP 200 OK` - `GroupTxnListRes`.
 
-- **Danh sách giao dịch chờ duyệt (`GET /v1/groups/{id}/transactions/pending`)**:
+- **Xem tất cả giao dịch (`GET /v1/groups/{id}/transactions/all` hoặc `GET /owner/transactions`)**:
+    - **Phân quyền:** Trưởng nhóm (`OWNER`) hoặc Thủ quỹ (`isTreasurer()`) → nếu không: `403 GROUP_TREASURER_REQUIRED`.
+    - Nhận Query Parameter `statuses` (ví dụ `?statuses=PENDING` hoặc nhiều trạng thái) để lọc các khoản cần duyệt hoặc xem toàn bộ sổ cái.
     - **Phân quyền:** Chỉ Thủ quỹ (`keepper_id`) hoặc Trưởng nhóm (`OWNER`) → nếu không:
       `403 GROUP_TREASURER_REQUIRED`.
     - Lấy các khoản `PENDING` cần phê duyệt với phân trang `page`, `size`.
@@ -835,7 +837,7 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
   "occurred_at": "2026-09-17T03:00:00Z",
   "category_code": null,
   "note": "Hoàn tiền B trả hộ vé xem phim",
-  "participants": []
+  "participants": [{"user_id": "u2000000-0000-0000-0000-000000000002", "share_amount": 1000000}]
 }
 ```
 
@@ -937,7 +939,7 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 #### Sửa & Xóa giao dịch <a id="333-sua-xoa-giao-dich"></a>
 
 - **`PUT /v1/groups/{id}/transactions/{tId}`**:
-    - **Phân quyền:** người ghi khoản đó (`created_by`) hoặc `OWNER` → nếu không: `403 GROUP_TXN_EDIT_FORBIDDEN`.
+    - **Phân quyền:** Chỉ Thủ quỹ hiện tại mới có quyền sửa mọi giao dịch (kể cả đã `CONFIRMED`); thành viên khác (kể cả Trưởng nhóm nếu không giữ quỹ) chỉ sửa được khoản do mình tạo khi còn đang `PENDING`.
     - Hỗ trợ sửa các loại giao dịch `EXPENSE`, `CONTRIBUTION`, `REFUND` thông qua bộ chiến lược cập nhật
       (`GTransactionUpdate`). `ADJUSTMENT_*` không được sửa trực tiếp — nếu kiểm kê sai thì thực hiện phiên kiểm
       kê mới.
@@ -986,7 +988,7 @@ Giao dịch này được tạo qua điểm cuối thống nhất **`POST /v1/gr
 - **Response (`HTTP 200 OK` - `GroupTxnDetailRes`).**
 
 - **`DELETE /v1/groups/{id}/transactions/{tId}`**:
-    - **Phân quyền:** **chỉ `OWNER`** → nếu không: `403 GROUP_OWNER_REQUIRED`.
+    - **Phân quyền:** Trưởng nhóm (`OWNER`) hoặc Thủ quỹ → nếu không: `403 GROUP_DELETE_TXN_FORBIDDEN`.
     - Gán `deleted_at = now()` (Xóa mềm).
     - Khoản đang `CONFIRMED` → hoàn tác ảnh hưởng lên quỹ (nếu có). Áp dụng cho mọi loại, kể cả `REFUND` và
       `ADJUSTMENT_*`.
@@ -1415,3 +1417,5 @@ classDiagram
     GroupTransactionController --> GTransactionService
     GroupReportController --> ReportService
 ```
+
+

@@ -1,4 +1,4 @@
-# Workflow — Giao dịch nhóm (group transaction)
+﻿# Workflow — Giao dịch nhóm (group transaction)
 
 Code
 chính: [GroupTxnCreateImpl](../../src/main/java/com/datn/financeapp/module/group/service/impl/GroupTxnCreateImpl.java)
@@ -71,7 +71,7 @@ create
      sau commit → thông báo có giao dịch chờ duyệt cho thủ quỹ (bất đồng bộ)
 ```
 
-Body bắt buộc có ít nhất 1 người tham gia. Với `CONTRIBUTION` gửi đúng 1 người, `share_amount = amount`.
+Body bắt buộc có ít nhất 1 người tham gia (`@NotEmpty` trên `participants`). Với `CONTRIBUTION`, bắt buộc gửi đúng 1 người và người đó phải là `transactorId` (`share_amount = amount`). Với `EXPENSE`, client gửi danh sách thành viên (để `share_amount = null` nếu muốn hệ thống tự chia đều `splitEvenly`).
 
 ## Duyệt giao dịch (chủ nhóm, thủ quỹ; nhóm đang `ACTIVE`)
 
@@ -118,7 +118,8 @@ softDelete
 
 | API                                                       | Ai xem                                                                       | Trả về                                     |
 |-----------------------------------------------------------|------------------------------------------------------------------------------|--------------------------------------------|
-| `GET /groups/{groupId}/transactions`                      | Chủ nhóm, thủ quỹ                                                            | Mọi giao dịch của nhóm                     |
+| `GET /groups/{groupId}/transactions`                      | Mọi thành viên                                                               | Các giao dịch đã `CONFIRMED`               |
+| `GET /groups/{groupId}/transactions/all` (hoặc `/owner/transactions`) | Chủ nhóm, thủ quỹ                                                            | Mọi giao dịch của nhóm (lọc theo `statuses`) |
 | `GET /groups/{groupId}/transactions/mine`                 | Mọi thành viên                                                               | Giao dịch mình tạo hoặc mình là transactor |
 | `GET /groups/{groupId}/transactions/{txnId}`              | Chủ nhóm, thủ quỹ; thành viên chỉ xem giao dịch của mình hoặc đã `CONFIRMED` | Chi tiết                                   |
 | `GET /groups/{groupId}/transactions/{txnId}/participants` | Như trên                                                                     | Danh sách người tham gia và phần chia      |
@@ -171,3 +172,4 @@ Giao dịch nhóm **không tự** ghi vào ví cá nhân. Khi giao dịch `CONFI
     - `PUT /transactions/{txnId}` bỏ qua `txnId` trên đường dẫn, chỉ dùng `txn_id` trong body.
     - Tạo giao dịch chỉ kiểm người gọi là thành viên `ACTIVE`, không kiểm trạng thái nhóm, nên nhóm đã lưu trữ hoặc đã
       xoá vẫn tạo được giao dịch.
+

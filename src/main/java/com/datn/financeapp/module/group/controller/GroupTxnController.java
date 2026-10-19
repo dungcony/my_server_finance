@@ -41,14 +41,23 @@ public class GroupTxnController {
         return ApiResponse.of(groupTxnCreateService.create(groupId, req));
     }
 
-    @GetMapping("/transactions")
+    @GetMapping("/transactions/all")
     public ApiResponse<GroupTxnListRes> all(
             @PathVariable UUID groupId,
             @RequestParam(name = "statuses", required = false) List<GroupTxnStatus> statuses,
             @ModelAttribute GroupTxnFilterReq filter,
-            @PageableDefault(sort = {"occurredAt", "createdAt"}, direction = Sort.Direction.DESC) Pageable pageable
+            Pageable pageable
     ) {
         return ApiResponse.of(groupTxnGetService.all(groupId, statuses, filter, pageable));
+    }
+
+    @GetMapping("/transactions")
+    public ApiResponse<GroupTxnListRes> genera(
+            @PathVariable UUID groupId,
+            @ModelAttribute GroupTxnFilterReq filter,
+            Pageable pageable
+    ) {
+        return ApiResponse.of(groupTxnGetService.generalList(groupId, filter, pageable));
     }
 
     @GetMapping("/transactions/mine")
@@ -56,7 +65,7 @@ public class GroupTxnController {
             @PathVariable UUID groupId,
             @RequestParam(name = "statuses", required = false) List<GroupTxnStatus> statuses,
             @ModelAttribute GroupTxnFilterReq filter,
-            @PageableDefault(sort = {"occurredAt", "createdAt"}, direction = Sort.Direction.DESC) Pageable pageable
+            Pageable pageable
     ) {
         return ApiResponse.of(groupTxnGetService.myList(groupId, statuses, filter, pageable));
     }
@@ -93,7 +102,7 @@ public class GroupTxnController {
     @PostMapping("/transactions/status")
     public ApiResponse<GroupTxnDetailRes> confirm(
             @PathVariable UUID groupId,
-            @Valid GroupTxnUpdateStatusReq req) {
+            @Valid @RequestBody GroupTxnUpdateStatusReq req) {
         return ApiResponse.of(groupTxnUpdateService.status(groupId, req));
     }
 

@@ -7,7 +7,7 @@ public interface GroupTxnDeleteService {
      * Xóa mềm (soft-delete) một giao dịch nhóm bằng cách đánh dấu thời điểm
      * {@code deletedAt}.
      * <p>
-     * <b>Phân quyền:</b> Chỉ Trưởng nhóm (OWNER).
+     * <b>Phân quyền:</b> Trưởng nhóm (OWNER) hoặc Thủ quỹ.
      * <br>
      * <b>Hoàn tác quỹ:</b> Nếu giao dịch đã {@code CONFIRMED}, số tiền sẽ được tự
      * động hoàn tác (reversal) vào quỹ nhóm.

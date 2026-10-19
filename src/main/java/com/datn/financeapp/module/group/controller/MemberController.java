@@ -40,7 +40,7 @@ public class MemberController {
         );
     }
 
-    @PutMapping("/owner-role/{memberUserId}/")
+    @PutMapping("/owner-role/{memberUserId}")
     public ApiResponse<Void> updateMemberRole(
             @PathVariable UUID groupId,
             @PathVariable UUID memberUserId) {

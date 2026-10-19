@@ -1,4 +1,4 @@
-# ĐẶC TẢ USE CASE (USE CASE SPECIFICATIONS) — PHÂN HỆ NHÓM CHUNG QUỸ
+﻿# ĐẶC TẢ USE CASE (USE CASE SPECIFICATIONS) — PHÂN HỆ NHÓM CHUNG QUỸ
 
 > **File này trả lời:** Các tác nhân trong hệ thống có thể thực hiện những chức năng gì, trong điều kiện nào, luồng
 > tương tác chuẩn và luồng xử lý ngoại lệ ra sao.  
@@ -174,11 +174,11 @@ flowchart LR
 | **UC12**  | Đóng góp tiền quỹ (`CONTRIBUTION`)        | `Member` (hoặc cựu TV)        | `POST /v1/groups/{id}/transactions`                                                     |
 | **UC13**  | Duyệt / Từ chối giao dịch (Đơn lẻ & Bulk) | `Treasurer`, `Owner`          | `POST .../{tId}/confirm`, `.../reject`, `POST .../bulk-confirm`, `.../bulk-reject`      |
 | **UC14**  | Chỉnh sửa giao dịch                       | `Member` (người tạo), `Owner` | `PUT /v1/groups/{id}/transactions/{tId}`                                                |
-| **UC15**  | Xoá giao dịch                             | `Owner`                       | `DELETE /v1/groups/{id}/transactions/{tId}`                                             |
+| **UC15**  | Xoá giao dịch                             | `Owner`, `Treasurer`          | `DELETE /v1/groups/{id}/transactions/{tId}`                                             |
 | **UC16**  | Quỹ trả tiền cho thành viên (`REFUND`)    | `Treasurer`, `Owner`          | `POST /v1/groups/{id}/transactions`, `PUT .../transactions/{tId}`                       |
 | **UC18**  | Kiểm kê quỹ thực tế (`Reconcile`)         | `Treasurer`, `Owner`          | `POST /v1/groups/{id}/fund/reconcile`                                                   |
 | **UC19**  | Tra cứu thông tin nhóm & Quỹ              | `Member`                      | `GET /v1/groups`, `GET /v1/groups/{id}` (nhúng quỹ trong `fund`)                        |
-| **UC20**  | Tra cứu lịch sử giao dịch nhóm            | `Member`                      | `GET .../transactions`, `GET .../mine`, `GET .../pending`, `GET .../transactions/{tId}` |
+| **UC20**  | Tra cứu lịch sử giao dịch nhóm            | `Member`                      | `GET .../transactions`, `GET .../transactions/all`, `GET .../transactions/mine`, `GET .../transactions/{tId}` |
 | **UC21**  | Xem bảng phân bổ số dư & Số cần nộp       | `Member`                      | `GET /v1/groups/{id}/balances`                                                          |
 | **UC22**  | Xem tổng quan tài chính nhóm              | `Member`                      | `GET /v1/groups/{id}/summary`                                                           |
 
@@ -353,7 +353,7 @@ flowchart LR
         - Tự động chuyển toàn bộ giao dịch `PENDING` do người này tạo (`created_by`) sang `status = 'REJECTED'`.
     4. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `409 GROUP_TREASURER_TRANSFER_REQUIRED`: Thành viên bị mời đang giữ quỹ.
+    
     - `409 GROUP_PENDING_TXN_EXIST`: Nhóm còn khoản chờ duyệt (khi bật tính thừa thiếu).
     - `409 GROUP_MEMBER_SHARE_NOT_ZERO`: Người bị mời còn nợ hoặc còn tiền trong quỹ (khi bật tính thừa thiếu).
 
@@ -365,7 +365,7 @@ flowchart LR
 - **Mô tả:** Thành viên chủ động rời khỏi nhóm chung quỹ.
 - **Tiền điều kiện:**
     - Không phải là `OWNER` (`409 GROUP_OWNER_TRANSFER_REQUIRED` — phải dùng UC05 chuyển quyền trước).
-    - Không đang giữ quỹ (`409 GROUP_TREASURER_TRANSFER_REQUIRED` — phải yêu cầu chủ nhóm bàn giao quỹ trước).
+    - Nếu đang giữ quỹ, hệ thống tự động bàn giao quyền thủ quỹ về cho Trưởng nhóm (`ownerId`) qua sự kiện rời nhóm.
     - Nếu bật tính thừa thiếu: Phải tất toán phần trong quỹ về 0 (`net_balance == 0`) và không còn khoản `PENDING`. Nếu
       tắt tính thừa thiếu: Rời tự do.
 - **Luồng chính (Success Flow):**
@@ -378,7 +378,7 @@ flowchart LR
     4. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `409 GROUP_OWNER_TRANSFER_REQUIRED`: Chủ nhóm cố rời nhóm mà chưa chuyển quyền.
-    - `409 GROUP_TREASURER_TRANSFER_REQUIRED`: Thủ quỹ cố rời nhóm mà chưa bàn giao quỹ.
+    
     - `409 GROUP_MEMBER_SHARE_NOT_ZERO`: Phần trong quỹ khác 0 (khi bật tính thừa thiếu).
 
 ---
@@ -462,7 +462,7 @@ flowchart LR
 
 - **Tác nhân:** `Member`, `Treasurer`, `Owner` (hoặc cựu thành viên nộp bù)
 - **Mô tả:** Ghi nhận một thành viên nộp tiền cá nhân vào quỹ nhóm.
-- **Tiền điều kiện:** `money_source = 'PERSONAL'`; không có danh mục; không có người tham gia (`participants: []`).
+- **Tiền điều kiện:** `money_source = 'PERSONAL'`; không có danh mục; `participants` bắt buộc có đúng 1 người và người đó phải trùng với `transactor_id`.
 - **Luồng chính (Success Flow):**
     1. Thành viên gửi yêu cầu nộp quỹ (`type = 'CONTRIBUTION'`).
     2. Người nộp/đối ứng (`transactor_id`) phải là thành viên có mặt tại `occurred_at`, HOẶC là cựu thành viên đang có
@@ -475,7 +475,7 @@ flowchart LR
     4. Lưu bản ghi, cập nhật biến động vào `group_member_balances` (Migration `V18`) và trả về `201 Created`.
 - **Luồng ngoại lệ (Exception Flows):**
     - `400 GROUP_TXN_MONEY_SOURCE_INVALID`: Góp quỹ mà chọn nguồn tiền `FUND`.
-    - `400 GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`: Góp quỹ có gắn người tham gia chia tiền.
+    - `400 GROUP_TXN_PARTICIPANTS_NOT_ALLOWED`: Góp quỹ có nhiều hơn 1 người tham gia hoặc người tham gia không trùng với người nộp (`transactor_id`).
 
 ---
 
@@ -510,9 +510,9 @@ flowchart LR
 
 #### UC14: Chỉnh sửa giao dịch <a id="uc14-chinh-sua-giao-dich"></a>
 
-- **Tác nhân:** `Member` (người tạo), `Owner`
+- **Tác nhân:** `Treasurer`, `Member` (người tạo khi PENDING)
 - **Mô tả:** Sửa thông tin giao dịch (`EXPENSE`, `CONTRIBUTION`, `REFUND`) qua Strategy Pattern.
-- **Quy tắc phân quyền:** Người tạo (`created_by`) được sửa khoản của mình; `Owner` được sửa mọi khoản.
+- **Quy tắc phân quyền:** Chỉ Thủ quỹ hiện tại mới có quyền sửa mọi giao dịch; người khác (kể cả Trưởng nhóm nếu không giữ quỹ) chỉ được sửa khoản do chính mình tạo khi còn đang `PENDING`.
 - **Luồng chính (Success Flow):**
     1. Tác nhân gửi thông tin cập nhật (`PUT /v1/groups/{id}/transactions/{tId}`).
     2. Trong 1 transaction CSDL:
@@ -528,14 +528,14 @@ flowchart LR
         - Gửi sự kiện `FundBalanceChangedEvent` nếu có chênh lệch delta số dư quỹ.
     3. Phản hồi `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 GROUP_TXN_EDIT_FORBIDDEN`: Thành viên thường cố sửa giao dịch của người khác.
+    - `403 GROUP_TXN_EDIT_FORBIDDEN`: Không phải thủ quỹ hoặc người tạo cố sửa khoản đã duyệt/khoản của người khác.
     - `400 GROUP_TXN_TYPE_NOT_ALLOWED`: Cố ý đổi `type` sang loại khác hoặc sửa giao dịch kiểm kê (`ADJUSTMENT_*`).
 
 ---
 
 #### UC15: Xoá giao dịch <a id="uc15-xoa-giao-dich"></a>
 
-- **Tác nhân:** `Owner` (độc quyền)
+- **Tác nhân:** `Owner`, `Treasurer`
 - **Mô tả:** Xoá mềm một khoản giao dịch khỏi sổ nhóm ([rule.md](rule.md) quy tắc 21).
 - **Luồng chính (Success Flow):**
     1. `Owner` gọi `DELETE /v1/groups/{id}/transactions/{tId}`.
@@ -548,7 +548,7 @@ flowchart LR
           `memberBalanceService.applyDelta(groupId, before, NO_EFFECT)` (Migration `V18`).
     3. Trả về `200 OK`.
 - **Luồng ngoại lệ (Exception Flows):**
-    - `403 GROUP_OWNER_REQUIRED`: Thành viên thường hoặc thủ quỹ cố thực hiện xoá giao dịch.
+    - `403 GROUP_DELETE_TXN_FORBIDDEN`: Thành viên thường cố thực hiện xoá giao dịch.
 
 ---
 
@@ -629,7 +629,7 @@ flowchart LR
     1. Thành viên gọi `GET /v1/groups/{id}/transactions` kèm tham số lọc và phân trang (`page`, `size`) để xem lịch sử
        chung.
     2. Hoặc gọi `GET /v1/groups/{id}/transactions/mine` để xem toàn bộ giao dịch do mình tạo (kể cả khoản `PENDING`).
-    3. Thủ quỹ / Chủ nhóm gọi `GET /v1/groups/{id}/transactions/pending` để xem danh sách các khoản cần duyệt.
+    3. Thủ quỹ / Chủ nhóm gọi `GET /v1/groups/{id}/transactions/all?statuses=PENDING` để xem danh sách các khoản cần duyệt.
     4. Gọi `GET .../transactions/{tId}` để xem chi tiết giao dịch.
     5. Gọi `GET .../transactions/{tId}/participants` để lấy chi tiết danh sách người cùng chịu khoản chi và số tiền mỗi
        người chịu (`share_amount`).
@@ -695,3 +695,5 @@ flowchart LR
 | **UC20**  | Tra cứu lịch sử giao dịch nhóm         |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
 | **UC21**  | Xem bảng phân bổ số dư & Cần nộp       |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
 | **UC22**  | Xem tổng quan tài chính nhóm           |       ❌       |          ✅           |          ✅           |         ✅         |       ✅ (Chỉ đọc)        |
+
+

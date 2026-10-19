@@ -218,8 +218,10 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
                     throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
                 if (transactorId == null)
                     throw new BusinessException(ErrorCode.GROUP_TXN_TRANSACTOR_REQUIRED);
-                if (participants.size() > 1)
+                if (participants == null || participants.size() != 1)
                     throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_NOT_ALLOWED);
+                if (!participants.get(0).getUserId().equals(transactorId))
+                    throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Người tham gia góp quỹ phải là chính người nộp tiền.");
             }
             case EXPENSE -> {
                 if (source == MoneySource.PERSONAL && transactorId == null)

@@ -77,7 +77,7 @@ public class GroupTxnGetImpl implements GroupTxnGetService {
                 .filter(MemberAuthInfo::inGroupNotDeleted) // lưu trữ vẫn xem được
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
-        return buildListRes(groupId, null, null, filter, pageable);
+        return buildListRes(groupId, null, List.of(GroupTxnStatus.CONFIRMED), filter, pageable);
     }
 
     @Override

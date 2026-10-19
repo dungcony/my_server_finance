@@ -13,7 +13,6 @@ import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
 import com.datn.financeapp.module.group.events.FundBalanceChangedEvent;
 import com.datn.financeapp.module.group.events.GroupTxnConfirmedEvent;
-import com.datn.financeapp.module.group.events.GroupTxnPendingEvent;
 import com.datn.financeapp.module.group.helper.*;
 import com.datn.financeapp.module.group.mapper.GroupTxnMapper;
 import com.datn.financeapp.module.group.repository.GroupTxnRepository;
@@ -51,6 +50,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         UUID operatorId = SecurityContextUtil.currentUserId();
         GroupTxnType type = req.type();
         MemberAuthInfo authInfo = memberAuthCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::inGroupActive)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         GroupTxnStatus status = GroupTxnHelper.getStatus(operatorId, req, authInfo);
@@ -70,7 +70,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
                 if (req.moneySource() != MoneySource.PERSONAL)
                     throw new BusinessException(ErrorCode.GROUP_TXN_MONEY_SOURCE_INVALID);
 
-                contribute(req);
+                contribute(req, transaction);
             }
             case EXPENSE -> {
 
@@ -123,10 +123,6 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
             if (transaction.getType() != GroupTxnType.ADJUSTMENT_UP && transaction.getType() != GroupTxnType.ADJUSTMENT_DOWN) {
                 applicationEventPublisher.publishEvent(GroupTxnConfirmedEvent.of(transaction));
             }
-
-        } else if (status.equals(GroupTxnStatus.PENDING)) {
-            // báo chủ nhóm và thủ quỹ có giao dịch chờ duyệt (gửi sau khi commit)
-            applicationEventPublisher.publishEvent(new GroupTxnPendingEvent(authInfo.fundkeeperId(), transaction.getId(), groupId, transaction.getCreatedBy(), transaction.getType()));
         }
 
         return groupTxnMapper.toDetailResponse(transaction);
@@ -154,10 +150,17 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
     }
 
     // giao dịch góp quỹ
-    private void contribute(GroupTxnCreateReq req) {
-        if (req.participants().size() > 1)
+
+    private void contribute(GroupTxnCreateReq req, GroupTxn transaction) {
+        if (req.participants() == null || req.participants().size() != 1)
             throw new BusinessException(ErrorCode.GROUP_TXN_PARTICIPANTS_NOT_ALLOWED);
+
+        if (!req.participants().get(0).userId().equals(req.transactorId()))
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Người tham gia góp quỹ phải là chính người nộp tiền.");
+
+        transaction.setParticipants(GroupTxnHelper.getParticipants(req.participants()));
     }
+
 
     // giao dich chi mua đồ
     private void expense(GroupTxnCreateReq req, GroupTxn txn) {

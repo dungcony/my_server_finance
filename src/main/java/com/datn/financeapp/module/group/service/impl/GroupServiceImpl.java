@@ -23,6 +23,7 @@ import com.datn.financeapp.module.group.repository.GroupRepository;
 import com.datn.financeapp.module.group.service.FundService;
 import com.datn.financeapp.module.group.service.GroupService;
 import com.datn.financeapp.module.group.service.GroupTxnGetService;
+import com.datn.financeapp.module.group.service.MemberBalanceService;
 import com.datn.financeapp.module.group.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +51,7 @@ public class GroupServiceImpl implements GroupService {
     private final GroupMapper groupMapper;
     private final FundMapper fundMapper;
     private final MemberViewEnricher memberViewEnricher;
-
+    private final MemberBalanceService memberBalanceService;
 
     private static final int inviteCodeLength = 8;
 
@@ -187,7 +188,7 @@ public class GroupServiceImpl implements GroupService {
     public void archive(UUID groupId) {
         UUID operatorId = SecurityContextUtil.currentUserId();
         authCache.get(groupId, operatorId)
-                .filter(MemberAuthInfo::isTreasurer)
+                .filter(MemberAuthInfo::isOwner)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
         Group group = groupRepository.findActivatedWithFundById(groupId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
@@ -207,7 +208,7 @@ public class GroupServiceImpl implements GroupService {
     public void unarchive(UUID groupId) {
         UUID operatorId = SecurityContextUtil.currentUserId();
         authCache.get(groupId, operatorId)
-                .filter(MemberAuthInfo::isTreasurer)
+                .filter(MemberAuthInfo::isOwner)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Group group = groupRepository.findArchivedWithFundById(groupId)
@@ -227,7 +228,7 @@ public class GroupServiceImpl implements GroupService {
         UUID operatorId = SecurityContextUtil.currentUserId();
 
         authCache.get(groupId, operatorId)
-                .filter(MemberAuthInfo::isTreasurer)
+                .filter(MemberAuthInfo::isOwner)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Group group = groupRepository.findNotDeletedWithFundById(groupId)
@@ -236,9 +237,16 @@ public class GroupServiceImpl implements GroupService {
         if (group.getFund().getCurrentBalance() != null && group.getFund().getCurrentBalance() != 0)
             throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
 
+        if (Boolean.TRUE.equals(group.getIsSettlementEnabled())) {
+            boolean hasNonZero = memberBalanceService.getBalances(groupId).members().values().stream()
+                    .anyMatch(b -> b.net() != 0L);
+            if (hasNonZero) {
+                throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
+            }
+        }
+
         if (groupTxnGetService.countUnresolvedForGroup(groupId) > 0)
             throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
-
 
         group.setStatus(GroupStatus.DELETED);
         groupRepository.save(group);

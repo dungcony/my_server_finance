@@ -4,10 +4,7 @@ import com.datn.financeapp.module.group.enums.GroupTxnStatus;
 import com.datn.financeapp.module.group.enums.GroupTxnType;
 import com.datn.financeapp.module.group.enums.MoneySource;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,6 +29,8 @@ public record GroupTxnUpdateReq(
         GroupTxnStatus status,
         GroupTxnType type,
         MoneySource moneySource,
+
+        @PastOrPresent(message = "Thời gian giao dịch không được ở tương lai.")
         Instant occurredAt,
         String categoryCode,
         UUID transactorId,

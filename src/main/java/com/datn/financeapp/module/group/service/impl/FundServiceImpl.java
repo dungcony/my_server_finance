@@ -68,6 +68,7 @@ public class FundServiceImpl implements FundService {
 
         authCache.get(groupId, operatorId)
                 .filter(MemberAuthInfo::isOwner)
+                .filter(MemberAuthInfo::inGroupActive)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         Fund fund = fundRepository.findByGroupIdForUpdate(groupId)
@@ -95,6 +96,7 @@ public class FundServiceImpl implements FundService {
 
         authCache.get(groupId, operatorId)
                 .filter(MemberAuthInfo::isTreasurer)
+                .filter(MemberAuthInfo::inGroupActive)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
 
         // khoá dòng quỹ để hai lần kiểm kê cùng lúc không cùng tính chênh lệch trên một số dư cũ
