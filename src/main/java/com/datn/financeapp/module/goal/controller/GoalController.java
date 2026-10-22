@@ -51,9 +51,9 @@ public class GoalController {
     private final GoalService goalService;
 
     private static final String MANAGE_GOAL_READ =
-            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_READ.getValue())";
+            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_READ.name())";
     private static final String MANAGE_GOAL_DELETE =
-            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_DELETE.getValue())";
+            "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).GOAL_DELETE.name())";
 
     // ---------------------------------------------------------------------
     // Phân hệ Người dùng (User)

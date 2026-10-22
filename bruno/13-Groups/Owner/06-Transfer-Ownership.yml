@@ -4,21 +4,13 @@ info:
   seq: 6
 
 http:
-  method: POST
-  url: "{{baseUrl}}/groups/{{groupId}}/transfer-ownership"
+  method: PUT
+  url: "{{baseUrl}}/groups/{{groupId}}/owner-role/{{newOwnerId}}"
   headers:
     - name: Authorization
       value: "Bearer {{accessToken}}"
-    - name: Content-Type
-      value: "application/json"
-  body:
-    type: json
-    data: |-
-      {
-        "new_owner_user_id": "{{newOwnerId}}"
-      }
 
 settings:
   encodeUrl: true
 
-docs: "Dành cho Chủ nhóm (OWNER): Chuyển nhượng vai trò chủ nhóm cho một thành viên ACTIVE khác."
+docs: "Dành cho Chủ nhóm (OWNER): Chuyển nhượng vai trò chủ nhóm cho một thành viên ACTIVE khác (newOwnerId trên URL)."

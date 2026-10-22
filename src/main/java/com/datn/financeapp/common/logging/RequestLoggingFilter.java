@@ -9,9 +9,11 @@ import org.slf4j.MDC;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -33,6 +35,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     public static final String ATTR_ERROR_EXCEPTION = "request.errorException";
     private static final String HEADER_REQUEST_ID = "X-Request-Id";
     private static final String MDC_KEY_REQUEST_ID = "requestId";
+    private static final int MAX_LOGGED_BODY_LENGTH = 2000;
 
     private static final String[] STATIC_EXTENSIONS = {
             ".css", ".js", ".html", ".ico", ".png", ".jpg", ".jpeg", ".svg", ".gif",
@@ -63,8 +66,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         response.setHeader(HEADER_REQUEST_ID, requestId);
         String fullPath = getFullPath(request);
 
+        ContentCachingRequestWrapper cachedRequest = new ContentCachingRequestWrapper(request);
+
         try {
-            chain.doFilter(request, response);
+            chain.doFilter(cachedRequest, response);
         } finally {
             long duration = System.currentTimeMillis() - startTime;
             int status = response.getStatus();
@@ -73,6 +78,9 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             Throwable ex = (Throwable) request.getAttribute(ATTR_ERROR_EXCEPTION);
 
             logResponse(method, fullPath, status, duration, userDisplay, requestId, errorDetail, ex);
+            if (status == HttpServletResponse.SC_BAD_REQUEST) {
+                log.warn("Request body (400): {}", LogMasker.mask(readBody(cachedRequest)));
+            }
             // Dọn sạch toàn bộ MDC (không chỉ requestId) vì filter này bọc ngoài cùng
             // (HIGHEST_PRECEDENCE) toàn bộ chain, kể cả JwtAuthFilter phía sau có thể đã
             // put thêm "userId". Thread của Tomcat được tái sử dụng giữa các request, nếu
@@ -80,6 +88,11 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             // request trước.
             MDC.clear();
         }
+    }
+
+    private String readBody(ContentCachingRequestWrapper request) {
+        String body = new String(request.getContentAsByteArray(), StandardCharsets.UTF_8);
+        return body.length() > MAX_LOGGED_BODY_LENGTH ? body.substring(0, MAX_LOGGED_BODY_LENGTH) : body;
     }
 
     private boolean isStaticAsset(String uri) {

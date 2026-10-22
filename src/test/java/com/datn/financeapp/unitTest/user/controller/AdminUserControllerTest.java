@@ -1,14 +1,12 @@
 package com.datn.financeapp.unitTest.user.controller;
 
-import com.datn.financeapp.module.user.controller.*;
-
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.exception.GlobalExceptionHandler;
 import com.datn.financeapp.module.user.controller.ManagerUserController;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
-import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
+import com.datn.financeapp.module.user.dto.request.UserRoleUpdateReq;
 import com.datn.financeapp.module.user.enums.RoleName;
 import com.datn.financeapp.module.user.service.ManagerUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -130,7 +128,7 @@ class AdminUserControllerTest {
     @Test
     @DisplayName("TC_CTL_05: Admin gán role cho user thành công -> 200 OK với msg và success=true")
     void addRoleToUser_Success_Returns200Ok() throws Exception {
-        UpdateUserRoleReq req = new UpdateUserRoleReq(targetUserId, RoleName.ROLE_USER);
+        UserRoleUpdateReq req = new UserRoleUpdateReq(targetUserId, RoleName.ROLE_USER);
         doNothing().when(adminUserService).addRoleToUser(req);
 
         mockMvc.perform(post("/admin/user/role")

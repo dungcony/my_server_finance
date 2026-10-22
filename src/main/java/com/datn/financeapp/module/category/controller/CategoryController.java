@@ -34,7 +34,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CategoryController {
 
-    private static final String MANAGE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_UPDATE.getValue())";
+    private static final String MANAGE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_UPDATE.name())";
 
     private final CategoryBehavierService categoryBehavierService;
 
@@ -63,7 +63,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{code}")
-    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_DELETE.getValue())")
+    @PreAuthorize("hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).CATEGORIES_DELETE.name())")
     public ApiResponse<Void> delete(@PathVariable String code) {
         categoryBehavierService.delete(code);
         return ApiResponse.of(null);

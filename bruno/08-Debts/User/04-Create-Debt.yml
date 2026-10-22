@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 04. Thêm khoản nợ mới
   type: http
   seq: 4
@@ -8,9 +8,9 @@ http:
   url: "{{baseUrl}}/debts"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
     - name: Content-Type
-      value: "application/json"
+      value: application/json
     - name: Idempotency-Key
       value: ""
   body:
@@ -26,13 +26,11 @@ http:
         "note": "Cho vay tiền tiêu dùng"
       }
 
-runtime:
-  postResponse: |-
-    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
-      bru.setEnvVar("debtId", res.body.data.id);
-    }
-
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Tạo khoản cho vay (lending) hoặc đi vay (borrowing). Tự động cập nhật số dư ví và lưu debtId.

@@ -1,0 +1,16 @@
+info:
+  name: "09. Xóa khoản nợ"
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/debts/admin/{{debtId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (DEBT_DELETE): Xóa khoản nợ bất kỳ."

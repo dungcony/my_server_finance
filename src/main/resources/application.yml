@@ -53,6 +53,22 @@ jwt:
   access-token-expiry-seconds: 36000
   refresh-token-expiry-days: 30
 
+payos:
+  enabled: ${PAYOS_ENABLED:true}
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  base-url: ${PAYOS_BASE_URL:}
+  return-url: ${PAYOS_RETURN_URL}
+  cancel-url: ${PAYOS_CANCEL_URL}
+  expired-minutes: ${PAYOS_EXPIRED_MINUTES:15}
+
+premium:
+  prices:
+    one-month: ${PREMIUM_PRICE_1M}
+    six-months: ${PREMIUM_PRICE_6M}
+    twelve-months: ${PREMIUM_PRICE_12M}
+
 rate-limit:
   max-request-email-forgot-password: 5
   reset-request-email-forgot-password: 1h

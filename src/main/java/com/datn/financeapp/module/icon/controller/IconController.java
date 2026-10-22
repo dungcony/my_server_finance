@@ -20,9 +20,9 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class IconController {
 
-    private static final String PERM_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ICONS_UPDATE.getValue())";
+    private static final String PERM_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ICONS_UPDATE.name())";
 
-    private static final String PERM_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ICONS_DELETE.getValue())";
+    private static final String PERM_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).ICONS_DELETE.name())";
 
     private final IconBehavierService iconBehavierService;
 

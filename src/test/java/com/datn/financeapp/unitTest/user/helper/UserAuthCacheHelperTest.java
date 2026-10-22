@@ -95,11 +95,11 @@ class UserAuthCacheHelperTest {
     @DisplayName("getUserAuthorities: Cache-hit lấy từ Redis Hash mà không gọi CSDL")
     void getUserAuthorities_CacheHit_ReturnsFromRedisWithoutCallingDb() {
         when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
-        when(hashOperations.get("user:auth:" + userId, "authorities")).thenReturn("users:read,ROLE_ADMIN");
+        when(hashOperations.get("user:auth:" + userId, "authorities")).thenReturn("USERS_READ,ROLE_ADMIN");
 
         List<String> authorities = cacheHelper.getUserAuthorities(userId);
 
-        assertThat(authorities).containsExactly("users:read", "ROLE_ADMIN");
+        assertThat(authorities).containsExactly("USERS_READ", "ROLE_ADMIN");
         verify(userRepository, never()).findAuthoritiesByUserId(any());
     }
 
@@ -108,13 +108,13 @@ class UserAuthCacheHelperTest {
     void getUserAuthorities_CacheMiss_CallsDbAndSetsRedis() {
         when(stringRedisTemplate.opsForHash()).thenReturn(hashOperations);
         when(hashOperations.get("user:auth:" + userId, "authorities")).thenReturn(null);
-        when(userRepository.findAuthoritiesByUserId(userId)).thenReturn(List.of("users:read", "ROLE_USER"));
+        when(userRepository.findAuthoritiesByUserId(userId)).thenReturn(List.of("USERS_READ", "ROLE_USER"));
 
         List<String> authorities = cacheHelper.getUserAuthorities(userId);
 
-        assertThat(authorities).containsExactly("users:read", "ROLE_USER");
+        assertThat(authorities).containsExactly("USERS_READ", "ROLE_USER");
         verify(userRepository).findAuthoritiesByUserId(userId);
-        verify(hashOperations).put("user:auth:" + userId, "authorities", "users:read,ROLE_USER");
+        verify(hashOperations).put("user:auth:" + userId, "authorities", "USERS_READ,ROLE_USER");
         verify(stringRedisTemplate).expire(eq("user:auth:" + userId), any(Duration.class));
     }
 
@@ -122,11 +122,11 @@ class UserAuthCacheHelperTest {
     @DisplayName("getUserAuthorities: Redis lỗi tự động fallback truy vấn CSDL bình thường")
     void getUserAuthorities_RedisError_FallsBackToDb() {
         when(stringRedisTemplate.opsForHash()).thenThrow(new RuntimeException("Redis connection refused"));
-        when(userRepository.findAuthoritiesByUserId(userId)).thenReturn(List.of("users:read"));
+        when(userRepository.findAuthoritiesByUserId(userId)).thenReturn(List.of("USERS_READ"));
 
         List<String> authorities = cacheHelper.getUserAuthorities(userId);
 
-        assertThat(authorities).containsExactly("users:read");
+        assertThat(authorities).containsExactly("USERS_READ");
         verify(userRepository).findAuthoritiesByUserId(userId);
     }
 

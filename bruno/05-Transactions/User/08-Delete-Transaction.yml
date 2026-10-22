@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 08. Xóa giao dịch
   type: http
   seq: 8
@@ -8,9 +8,13 @@ http:
   url: "{{baseUrl}}/transactions/{{transactionId}}"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Xóa mềm giao dịch và hoàn lại số dư tương ứng cho ví.

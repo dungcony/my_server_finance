@@ -139,3 +139,6 @@ variables:
   - name: newOwnerId
     value: ""
     description: ""
+  - name: orderCode
+    value: ""
+    description: ""

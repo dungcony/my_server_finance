@@ -2,10 +2,18 @@ package com.datn.financeapp.module.user.repository;
 
 import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
 import com.datn.financeapp.module.user.entity.User;
+import com.datn.financeapp.module.user.enums.UserPlan;
+import com.datn.financeapp.module.user.enums.UserStatus;
+import jakarta.persistence.LockModeType;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,12 +22,15 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Override
     @EntityGraph(attributePaths = {"userRoles.role"})
-    Optional<User> findById(UUID id);
+    @NonNull
+    Optional<User> findById(@NonNull UUID id);
 
     @EntityGraph(attributePaths = {"userRoles.role"})
     Optional<User> findByEmail(String email);
 
     Optional<User> findByGoogleId(String googleId);
+
+    Optional<User> findByIdAndIsDeletedFalse(UUID userId);
 
     @Query("""
             select COUNT(u) > 0
@@ -91,4 +102,41 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             """)
     List<UserNameDisplayRes> findDisplay(List<UUID> ids);
 
+    // Khoá dòng user để hai request mua gói không cùng qua bước kiểm tra "đang premium còn hạn".
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id and u.isDeleted = false")
+    Optional<User> findByIdForUpdate(@Param("id") UUID id);
+
+    // Chỉ hạ user có hạn đã qua; premium không hạn (planExpiresAt null) giữ nguyên.
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            update User u set u.plan = :free
+            where u.plan = :premium and u.planExpiresAt is not null and u.planExpiresAt < :now
+            """)
+    int downgradeExpiredPremium(@Param("free") UserPlan free,
+                                @Param("premium") UserPlan premium,
+                                @Param("now") Instant now);
+
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            update User u set
+                u.password  = coalesce(:password, u.password),
+                u.status    = coalesce(:status, u.status),
+                u.plan      = coalesce(:plan, u.plan),
+                u.firstName = coalesce(:firstName, u.firstName),
+                u.lastName  = coalesce(:lastName, u.lastName),
+                u.avatarUrl = coalesce(:avatarUrl, u.avatarUrl),
+                u.isDeleted = coalesce(:isDeleted, u.isDeleted),
+                u.updatedAt = :now
+            where u.id = :id
+            """)
+    int updatePartial(@Param("id") UUID id,
+                      @Param("password") String password,
+                      @Param("status") UserStatus status,
+                      @Param("plan") UserPlan plan,
+                      @Param("firstName") String firstName,
+                      @Param("lastName") String lastName,
+                      @Param("avatarUrl") String avatarUrl,
+                      @Param("isDeleted") Boolean isDeleted,
+                      @Param("now") Instant now);
 }

@@ -28,9 +28,9 @@ public class WalletController {
 
     private final WalletBehavierService walletBehavierService;
 
-    private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.getValue())";
-    private static final String MANAGE_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_UPDATE.getValue())";
-    private static final String MANAGE_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_DELETE.getValue())";
+    private static final String MANAGE_GET = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_READ.name())";
+    private static final String MANAGE_UPDATE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_UPDATE.name())";
+    private static final String MANAGE_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).WALLET_DELETE.name())";
 
     @GetMapping
     public ApiResponse<?> gets(

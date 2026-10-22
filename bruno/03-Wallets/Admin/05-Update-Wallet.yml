@@ -1,0 +1,26 @@
+info:
+  name: "05. Cập nhật ví"
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/wallets/admin/{{walletId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ví chính",
+        "icon_code": "{{iconCode}}",
+        "color": "#3498DB"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Cập nhật tên, icon_code, màu của ví bất kỳ."

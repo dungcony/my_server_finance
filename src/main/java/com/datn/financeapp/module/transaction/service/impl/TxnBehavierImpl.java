@@ -7,9 +7,9 @@ import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
-import com.datn.financeapp.module.transaction.dto.request.TxnFilterRequest;
+import com.datn.financeapp.module.transaction.dto.request.TxnFilterReq;
 import com.datn.financeapp.module.transaction.dto.request.TxnUpdateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.dto.response.TxnListRes;
 import com.datn.financeapp.module.transaction.dto.response.TxnSummaryRes;
 import com.datn.financeapp.module.transaction.entity.Transaction;
@@ -48,7 +48,7 @@ public class TxnBehavierImpl implements TxnBehavierService {
 
     @Override
     @Transactional
-    public TxnDetailResponse create(UUID userId, TxnCreateReq req) {
+    public TxnDetailRes create(UUID userId, TxnCreateReq req) {
 
         if (userId == null)
             userId = SecurityContextUtil.currentUserId();
@@ -79,7 +79,7 @@ public class TxnBehavierImpl implements TxnBehavierService {
 
     @Override
     @Transactional(readOnly = true)
-    public TxnListRes gets(TxnFilterRequest filter, Pageable page, boolean isAdmin) {
+    public TxnListRes gets(TxnFilterReq filter, Pageable page, boolean isAdmin) {
 
         if (!isAdmin)
             filter = filter.withUser(SecurityContextUtil.currentUserId());
@@ -99,7 +99,7 @@ public class TxnBehavierImpl implements TxnBehavierService {
 
     @Override
     @Transactional(readOnly = true)
-    public TxnDetailResponse get(UUID id, boolean isAdmin) {
+    public TxnDetailRes get(UUID id, boolean isAdmin) {
 
         Transaction txn = txnRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch."));

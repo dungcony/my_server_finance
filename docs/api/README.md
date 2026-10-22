@@ -22,6 +22,7 @@
 | **Báo cáo & Xuất dữ liệu** | [`report.md`](report.md) | `/reports` | Báo cáo cơ cấu danh mục, xu hướng dòng tiền ngày/tháng, khởi tạo tiến trình xuất báo cáo CSV bất đồng bộ. |
 | **Biểu tượng hệ thống** | [`icon.md`](icon.md) | `/icons` | Kho biểu tượng SVG hệ thống dùng chung cho danh mục và ví. |
 | **Thông báo** | [`notification.md`](notification.md) | `/notifications` | Danh sách thông báo cá nhân, đếm số lượng chưa đọc, đánh dấu đã đọc. |
+| **Thanh toán & Premium** | [`payment.md`](payment.md) | `/payments`, `/users/me/premium-upgrades` | Nâng cấp FREE → PREMIUM qua payOS, trạng thái đơn, lịch sử thanh toán (user và admin), webhook payOS. |
 
 ---
 

@@ -1,0 +1,16 @@
+info:
+  name: 01. Chi tiết lịch định kỳ (Admin)
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/recurring/admin/{{recurringId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Admin: xem chi tiết lịch bất kỳ. Quyền RECURRING_TXN_READ.

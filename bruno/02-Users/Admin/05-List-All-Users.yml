@@ -8,9 +8,13 @@ http:
   url: "{{baseUrl}}/admin/user/all"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: Bearer {{adminAccessToken}}
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: "Dành cho Admin: Lấy danh sách toàn bộ người dùng trong hệ thống."

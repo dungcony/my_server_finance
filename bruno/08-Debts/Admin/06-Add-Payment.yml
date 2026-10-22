@@ -1,0 +1,27 @@
+info:
+  name: "06. Ghi một lần trả nợ"
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/debts/admin/{{debtId}}/payments"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "amount": 500000,
+        "wallet_id": "{{walletId}}",
+        "paid_date": "2026-09-15",
+        "note": "Trả đợt 1"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (DEBT_UPDATE): Ghi lần thu/trả nợ cho khoản nợ bất kỳ."

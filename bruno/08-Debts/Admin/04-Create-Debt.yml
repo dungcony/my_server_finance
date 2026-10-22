@@ -1,0 +1,30 @@
+info:
+  name: "04. Tạo khoản nợ cho người dùng"
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/debts/admin?user_id={{userId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "type": "lending",
+        "counterparty_name": "Nguyễn Văn B",
+        "principal_amount": 1000000,
+        "wallet_id": "{{walletId}}",
+        "issued_date": "2026-09-11",
+        "due_date": "2026-10-11",
+        "note": "Cho vay tiền tiêu dùng"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (DEBT_UPDATE): Tạo khoản nợ thay cho người dùng user_id (query)."

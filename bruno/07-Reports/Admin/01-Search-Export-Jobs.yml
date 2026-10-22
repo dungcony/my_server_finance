@@ -11,9 +11,9 @@ http:
       value: "Bearer {{adminAccessToken}}"
   params:
     - name: page
-      value: "0"
+      value: "1"
       type: query
-    - name: size
+    - name: page_size
       value: "10"
       type: query
     - name: user_id

@@ -1,0 +1,35 @@
+info:
+  name: 06. Nâng cấp premium
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/users/me/premium-upgrades"
+  headers:
+    - name: Authorization
+      value: Bearer {{accessToken}}
+    - name: Content-Type
+      value: application/json
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "plan_code": "PREMIUM_12M"
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Tạo đơn nâng cấp FREE -> PREMIUM. plan_code: PREMIUM_1M, PREMIUM_6M, PREMIUM_12M (giá do server tính).
+  Trả checkout_url để mở trang thanh toán payOS, order_code được lưu vào biến orderCode để dùng ở 15-Payments.
+  Đang có đơn chờ thì server huỷ link cũ và tạo đơn MỚI + link mới (order_code khác, kể cả cùng gói). Nếu đơn cũ đã được trả thì trả về đơn PAID, không tạo đơn mới.
+  Đang premium còn hạn -> 409 PREMIUM_ALREADY_ACTIVE. Đơn cũ đang bị webhook/job xử lý -> 409 REQUEST_IN_PROGRESS: thử lại sau 1-2 giây với cùng Idempotency-Key.
+  Idempotency-Key: mỗi lần user bấm dùng một key (UUID), retry gửi lại đúng key đó; để trống thì không có bảo vệ chống gửi trùng.

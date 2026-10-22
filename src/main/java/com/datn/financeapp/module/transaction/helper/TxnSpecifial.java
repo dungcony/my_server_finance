@@ -2,7 +2,7 @@ package com.datn.financeapp.module.transaction.helper;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
-import com.datn.financeapp.module.transaction.dto.request.TxnFilterRequest;
+import com.datn.financeapp.module.transaction.dto.request.TxnFilterReq;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -19,7 +19,7 @@ public class TxnSpecifial {
 
     private static final char LIKE_ESCAPE = '\\';
 
-    public static Specification<Transaction> filter(TxnFilterRequest filter) {
+    public static Specification<Transaction> filter(TxnFilterReq filter) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (filter == null)

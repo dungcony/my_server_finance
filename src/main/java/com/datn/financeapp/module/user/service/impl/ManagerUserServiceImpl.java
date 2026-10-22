@@ -5,8 +5,8 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.BlacklistedUserRepository;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.user.dto.request.BlockUserRequest;
-import com.datn.financeapp.module.user.dto.request.UnlockUserRequest;
-import com.datn.financeapp.module.user.dto.request.UpdateUserRoleReq;
+import com.datn.financeapp.module.user.dto.request.UserUnlockRequest;
+import com.datn.financeapp.module.user.dto.request.UserRoleUpdateReq;
 import com.datn.financeapp.module.user.dto.response.UserRes;
 import com.datn.financeapp.module.user.entity.Role;
 import com.datn.financeapp.module.user.entity.User;
@@ -54,13 +54,15 @@ public class ManagerUserServiceImpl implements ManagerUserService {
 
         User user = getActiveUser(req.userId());
 
+        if (user.isLocked())
+            throw new BusinessException(ErrorCode.CONFLICT, "user này đã bị khoá rồi");
+
         int targetLevel = getLevel(req.userId());
         int managerLevel = getLevel(managerId);
 
         // Số nhỏ = quyền cao — không được khóa user có cấp bậc cao hơn hoặc bằng chính mình.
-        if (targetLevel <= managerLevel) {
+        if (targetLevel <= managerLevel)
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được khóa tài khoản có cấp bậc cao hơn hoặc bằng chính mình.");
-        }
 
         user.setStatus(UserStatus.BLOCKED);
         userRepository.save(user);
@@ -76,23 +78,21 @@ public class ManagerUserServiceImpl implements ManagerUserService {
 
     @Transactional
     @Override
-    public void unlockUser(UUID managerId, UnlockUserRequest req) {
+    public void unlockUser(UUID managerId, UserUnlockRequest req) {
         if (req.userId().equals(managerId))
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không thể tự mở khóa tài khoản của chính mình.");
 
         User user = getActiveUser(req.userId());
 
+        if (!user.isLocked())
+            throw new BusinessException(ErrorCode.CONFLICT, "user này không bị khoá");
+
         int targetLevel = getLevel(req.userId());
         int managerLevel = getLevel(managerId);
 
         // Số nhỏ = quyền cao — không được mở khóa user có cấp bậc cao hơn hoặc bằng chính mình.
-        if (targetLevel <= managerLevel) {
+        if (targetLevel <= managerLevel)
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được mở khóa tài khoản có cấp bậc cao hơn hoặc bằng chính mình.");
-        }
-
-        if (user.getStatus() != UserStatus.BLOCKED) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Tài khoản không ở trạng thái bị khóa.");
-        }
 
         user.setStatus(UserStatus.ACTIVE);
         userRepository.save(user);
@@ -106,7 +106,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
 
     @Transactional
     @Override
-    public void addRoleToUser(UpdateUserRoleReq req) {
+    public void addRoleToUser(UserRoleUpdateReq req) {
         if (req == null || req.roleName() == null || req.userId() == null)
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Vui lòng cung cấp đủ thông tin.");
 
@@ -133,7 +133,7 @@ public class ManagerUserServiceImpl implements ManagerUserService {
 
     @Transactional
     @Override
-    public void removeRoleToUser(UpdateUserRoleReq req) {
+    public void removeRoleToUser(UserRoleUpdateReq req) {
         if (req == null || req.roleName() == null || req.userId() == null) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Vui lòng cung cấp đủ thông tin.");
         }
@@ -165,10 +165,11 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     @Transactional
     @Override
     public UserRes deleteByUserId(UUID userId) {
+
         UUID currentUserId = SecurityContextUtil.currentUserId();
-        if (userId.equals(currentUserId)) {
+
+        if (userId.equals(currentUserId))
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không được phép tự xóa tài khoản của chính mình.");
-        }
 
         User user = getActiveUser(userId);
 
@@ -176,15 +177,41 @@ public class ManagerUserServiceImpl implements ManagerUserService {
         int currentUserLevel = getLevel(currentUserId);
 
         // Số nhỏ = quyền cao — không được xóa user có cấp bậc cao hơn hoặc bằng chính mình.
-        if (targetLevel <= currentUserLevel) {
+        if (targetLevel <= currentUserLevel)
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được xóa tài khoản có cấp bậc cao hơn hoặc bằng chính mình.");
-        }
 
         user.setIsDeleted(true);
         userRepository.save(user);
         userAuthCacheHelper.evictUserAuth(userId);
 
         eventPublisher.publishEvent(new UserDeletedEvent(userId));
+
+        return userMapper.toResponse(user);
+    }
+
+    @Override
+    public UserRes unDeleteByUserId(UUID userId) {
+        UUID currentUserId = SecurityContextUtil.currentUserId();
+
+        if (userId.equals(currentUserId))
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không được phép tự xóa tài khoản của chính mình.");
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        if (!user.getIsDeleted())
+            throw new BusinessException(ErrorCode.CONFLICT, "user đang hoạt động bình thường bị xoá");
+
+        int targetLevel = getLevel(userId);
+        int currentUserLevel = getLevel(currentUserId);
+
+        // Số nhỏ = quyền cao — không được xóa user có cấp bậc cao hơn hoặc bằng chính mình.
+        if (targetLevel <= currentUserLevel)
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Không được xóa tài khoản có cấp bậc cao hơn hoặc bằng chính mình.");
+
+        user.setIsDeleted(false);
+        userRepository.save(user);
+        userAuthCacheHelper.evictUserAuth(userId);
 
         return userMapper.toResponse(user);
     }
@@ -219,9 +246,14 @@ public class ManagerUserServiceImpl implements ManagerUserService {
     }
 
     private User getActiveUser(UUID userId) {
-        return userRepository.findById(userId)
-                .filter(u -> !u.getIsDeleted())
+
+        User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
+
+        if (user.getIsDeleted())
+            throw new BusinessException(ErrorCode.CONFLICT, "user đã bị xoá");
+
+        return user;
     }
 
     private Role getRole(RoleName roleName) {

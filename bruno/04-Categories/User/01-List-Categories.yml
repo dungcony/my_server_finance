@@ -8,15 +8,13 @@ http:
   url: "{{baseUrl}}/categories"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
-
-runtime:
-  postResponse: |-
-    if (res.status === 200 && res.body && res.body.data && res.body.data.length > 0) {
-      bru.setEnvVar("categoryCode", res.body.data[0].code);
-    }
+      value: Bearer {{accessToken}}
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Lấy danh sách các danh mục gốc (không có danh mục cha). Mọi người dùng đã xác thực đều có thể truy cập. Tự động lưu mã danh mục đầu tiên vào biến `categoryCode`.

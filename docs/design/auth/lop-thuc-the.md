@@ -125,7 +125,7 @@ Access Token được ký bằng thuật toán HMAC-SHA256 (`HS256`) và chứa 
   "plan": "FREE",
   "roleLevel": 1,
   "roles": ["ROLE_USER"],
-  "authorities": ["users:read", "transactions:create"],
+  "authorities": ["USERS_READ", "transactions:create"],
   "iat": 1728450000,
   "exp": 1728450900
 }

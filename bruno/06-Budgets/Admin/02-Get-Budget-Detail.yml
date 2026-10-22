@@ -1,0 +1,16 @@
+info:
+  name: "02. Chi tiết ngân sách"
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/budgets/admin/{{budgetId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin (BUDGET_READ): Chi tiết ngân sách bất kỳ."

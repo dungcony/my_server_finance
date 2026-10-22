@@ -22,7 +22,7 @@ import com.datn.financeapp.module.icon.entity.Icon;
 import com.datn.financeapp.module.icon.mapper.IconMapper;
 import com.datn.financeapp.module.icon.repository.IconRepository;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
@@ -163,7 +163,7 @@ public class GoalServiceImpl implements GoalService {
                     : Instant.now();
 
             // Giao dịch 1: Trừ tiền ví nguồn (EXPENSE)
-            TxnDetailResponse srcTxn = txnBehavierService.create(userId, new TxnCreateReq(
+            TxnDetailRes srcTxn = txnBehavierService.create(userId, new TxnCreateReq(
                     TxnType.EXPENSE,
                     req.amount(),
                     sourceWallet.getId(),
@@ -178,7 +178,7 @@ public class GoalServiceImpl implements GoalService {
 
             // Giao dịch 2: Cộng tiền vào ví tiết kiệm liên kết (INCOME) nếu goal có ví
             if (goal.getWalletId() != null) {
-                TxnDetailResponse tgtTxn = txnBehavierService.create(userId, new TxnCreateReq(
+                TxnDetailRes tgtTxn = txnBehavierService.create(userId, new TxnCreateReq(
                         TxnType.INCOME,
                         req.amount(),
                         goal.getWalletId(),
