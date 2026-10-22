@@ -1,0 +1,16 @@
+info:
+  name: 13. Bảng phần trong quỹ
+  type: http
+  seq: 13
+
+http:
+  method: GET
+  url: "{{baseUrl}}/groups/{{groupId}}/balances"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Xem bảng chi tiết số tiền từng người đã góp, trả tiền túi, được hoàn lại và tình trạng nộp quỹ.

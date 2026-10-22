@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Finance AI</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="./assets/css/base.css">
+</head>
+<body>
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Finance AI</h1>
+        <div class="sub">Hệ thống quản lý tài chính cá nhân & quỹ nhóm</div>
+
+        <!-- Demo Quick Login Box -->
+        <div class="demo-login-box">
+            <div class="demo-login-title">
+                <span>🚀 Đăng nhập nhanh (Test Mode)</span>
+                <span class="muted" style="font-size:11px">Pass: Admin@123</span>
+            </div>
+            <div class="demo-btn-grid">
+                <button type="button" class="demo-btn" data-email="admin@financeapp.com" title="Quản trị viên toàn hệ thống">
+                    <span>🛡️</span>
+                    <div>
+                        <div>Admin</div>
+                        <small class="muted">Toàn hệ thống</small>
+                    </div>
+                </button>
+                <button type="button" class="demo-btn" data-email="user1@financeapp.com" title="Chủ nhóm (Group Owner)">
+                    <span>👑</span>
+                    <div>
+                        <div>Chủ nhóm</div>
+                        <small class="muted">User 1</small>
+                    </div>
+                </button>
+                <button type="button" class="demo-btn" data-email="user2@financeapp.com" title="Thủ quỹ (Treasurer)">
+                    <span>💰</span>
+                    <div>
+                        <div>Thủ quỹ</div>
+                        <small class="muted">User 2</small>
+                    </div>
+                </button>
+                <button type="button" class="demo-btn" data-email="user3@financeapp.com" title="Thành viên thường (Member)">
+                    <span>👤</span>
+                    <div>
+                        <div>Thành viên</div>
+                        <small class="muted">User 3</small>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label for="password">Mật khẩu</label>
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn" id="btnLogin">Đăng nhập</button>
+
+        <div class="divider">— hoặc —</div>
+        <div id="g_id_onload"
+             data-client_id="230124581595-mmbk1ugmrs4a2820m7mi5ra0m3m6t8o6.apps.googleusercontent.com"
+             data-callback="handleGoogleResponse"
+             data-auto_prompt="false"></div>
+        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-width="384"></div>
+
+        <div class="auth-links">
+            <a href="./register.html">Tạo tài khoản</a>
+            <a href="./forgot-password.html">Quên mật khẩu?</a>
+        </div>
+
+        <details class="mt">
+            <summary class="muted" style="cursor:pointer;font-size:12px">🛠️ Dành cho dev: dán Access Token trực tiếp</summary>
+            <div class="form-group mt">
+                <textarea id="rawToken" rows="3" placeholder="eyJhbGciOi..."></textarea>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btnRaw">Dùng token này</button>
+        </details>
+    </div>
+</div>
+
+<script src="./assets/js/api.js"></script>
+<script src="./assets/js/ui.js"></script>
+<script src="./assets/js/login.js"></script>
+</body>
+</html>

@@ -1,39 +1,48 @@
 package com.datn.financeapp.common.exception;
 
+import com.datn.financeapp.common.logging.RequestLoggingFilter;
+import com.datn.financeapp.common.properties.TriggerProperty;
+import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.common.response.ErrorResponse;
 import com.datn.financeapp.common.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.List;
-
 /**
- * Gom mọi exception thành khung phản hồi thống nhất {success:false, error:{...}}
- * theo api/00-QUY-UOC-CHUNG.md mục 4.3/4.4/6.
+ * Xử lý ngoại lệ toàn cục, gom mọi exception thành khung phản hồi thống nhất {@link ErrorResponse}.
+ * Cung cấp các phương thức xử lý lỗi như {@link #handleValidation}, {@link #handleBusinessException} và các handler khác.
  *
- * Ranh giới rò rỉ thông tin nội bộ (T-02-02): catch-all Exception.class KHÔNG đưa
+ * <p>Ranh giới rò rỉ thông tin nội bộ: catch-all Exception.class KHÔNG đưa
  * message/stack trace gốc ra response, chỉ log SLF4J ở server-side.
  */
 @Slf4j
 @RestControllerAdvice
-// Phải chạy TRƯỚC DefaultHandlerExceptionResolver của Spring MVC — nếu không, resolver mặc định
-// giành xử lý MissingServletRequestParameter/MethodArgumentTypeMismatch trước và trả 400 với thân
-// rỗng, sau đó Spring Security thấy response chưa commit nên entry point ghi đè thành 401.
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class GlobalExceptionHandler {
 
@@ -42,7 +51,11 @@ public class GlobalExceptionHandler {
         List<ErrorResponse.FieldError> fields = ex.getBindingResult().getFieldErrors().stream()
                 .map(fe -> new ErrorResponse.FieldError(toSnakeCase(fe.getField()), fe.getDefaultMessage()))
                 .toList();
-        log.warn("Validation thất bại tại {} {}: {}", request.getMethod(), request.getRequestURI(), fields);
+        String detail = fields.stream()
+                .map(fe -> fe.field() + ": " + fe.message())
+                .collect(Collectors.joining(", "));
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "VALIDATION_ERROR: " + detail);
+        log.debug("Validation thất bại tại {} {}: {}", request.getMethod(), request.getRequestURI(), fields);
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("VALIDATION_ERROR", "Dữ liệu gửi lên không hợp lệ.", fields, null));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
@@ -58,9 +71,9 @@ public class GlobalExceptionHandler {
      * gõ sai tham số và làm nhiễu log lỗi thật.
      */
     @ExceptionHandler({
-        MissingServletRequestParameterException.class,
-        MethodArgumentTypeMismatchException.class,
-        HttpMessageNotReadableException.class
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            HttpMessageNotReadableException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
         String field = null;
@@ -69,7 +82,9 @@ public class GlobalExceptionHandler {
         } else if (ex instanceof MethodArgumentTypeMismatchException e) {
             field = e.getName();
         }
-        log.warn("Yêu cầu không hợp lệ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        String detail = field != null ? field + ": Thiếu hoặc sai định dạng." : "Dữ liệu gửi lên không đọc được.";
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "VALIDATION_ERROR: " + detail);
+        log.debug("Yêu cầu không hợp lệ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         List<ErrorResponse.FieldError> fields = field == null
                 ? null
                 : List.of(new ErrorResponse.FieldError(field, "Thiếu hoặc sai định dạng."));
@@ -81,7 +96,8 @@ public class GlobalExceptionHandler {
     // Đường dẫn không tồn tại → 404 NOT_FOUND, không phải 500.
     @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(Exception ex, HttpServletRequest request) {
-        log.warn("Không tìm thấy tài nguyên tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "NOT_FOUND: " + ex.getMessage());
+        log.debug("Không tìm thấy tài nguyên tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("NOT_FOUND", "Không tìm thấy tài nguyên."));
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
@@ -90,7 +106,8 @@ public class GlobalExceptionHandler {
     // Sai phương thức HTTP → 405, không phải 500.
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
-        log.warn("Phương thức không được hỗ trợ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "METHOD_NOT_ALLOWED: " + ex.getMessage());
+        log.debug("Phương thức không được hỗ trợ tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("METHOD_NOT_ALLOWED", "Phương thức không được hỗ trợ."));
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
@@ -98,10 +115,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
-        log.warn("Nghiệp vụ từ chối tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), ex.getCode(), ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, ex.getCode() + ": " + ex.getMessage());
+        log.debug("Nghiệp vụ từ chối tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), ex.getCode(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody(ex.getCode(), ex.getMessage(), ex.getDetail()));
         return ResponseEntity.status(ex.getHttpStatus()).body(body);
+    }
+
+    // Hai yêu cầu cùng ghi một bản ghi: yêu cầu đến sau bị từ chối → 409, không phải 500.
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex,
+                                                              HttpServletRequest request) {
+        ErrorCode errorCode = ErrorCode.CONCURRENT_MODIFICATION;
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL,
+                errorCode.getCode() + ": " + ex.getMessage());
+        log.debug("Xung đột ghi đồng thời tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        var body = new ErrorResponse(false,
+                new ErrorResponse.ErrorBody(errorCode.getCode(), errorCode.getDefaultMessage()));
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(body);
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -111,34 +142,83 @@ public class GlobalExceptionHandler {
         String message = "TOKEN_EXPIRED".equals(code)
                 ? "Thẻ truy cập đã hết hạn."
                 : "TOKEN_INVALID".equals(code)
-                        ? "Thẻ truy cập không hợp lệ."
-                        : "Vui lòng đăng nhập để tiếp tục.";
-        log.warn("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
+                ? "Thẻ truy cập không hợp lệ."
+                : "Vui lòng đăng nhập để tiếp tục.";
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, code + ": " + message);
+        log.debug("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        log.warn("Từ chối quyền truy cập tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "FORBIDDEN: Bạn không có quyền truy cập tài nguyên này.");
+        log.debug("Từ chối quyền truy cập tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("FORBIDDEN", "Bạn không có quyền truy cập tài nguyên này."));
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+        Throwable rootCause = ex.getRootCause();
+        ErrorCode errorCode = ErrorCode.INTERNAL_ERROR;
+
+        if (rootCause != null && rootCause.getMessage() != null) {
+            String msg = rootCause.getMessage();
+            for (Map.Entry<String, ErrorCode> entry : TriggerProperty.CONSTRAINT_MAP.entrySet()) {
+                if (msg.contains(entry.getKey())) {
+                    errorCode = entry.getValue();
+                    break;
+                }
+            }
+        }
+
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, errorCode.getCode() + ": " + ex.getMessage());
+
+        log.debug("Lỗi ràng buộc dữ liệu tại {} {}: [{}]", request.getMethod(), request.getRequestURI(), errorCode.getCode());
+
+        var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(errorCode.getCode(), errorCode.getDefaultMessage()));
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler({
+            ClientAbortException.class,
+            AsyncRequestTimeoutException.class,
+            AsyncRequestNotUsableException.class,
+            IOException.class
+    })
+    public void handleClientDisconnection(Exception ex, HttpServletRequest request) {
+        log.debug("Client đã ngắt kết nối SSE tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
-        log.error("Lỗi ngoài dự kiến tại {} {}", request.getMethod(), request.getRequestURI(), ex);
+        // 1. Nếu là request stream SSE bị client hủy kết nối (F5, tắt tab)
+        if (request.getRequestURI() != null && request.getRequestURI().contains("/admin/logs/stream")) {
+            log.debug("Client đóng kết nối stream SSE tại {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
+            return null;
+        }
+
+        // 2. Nếu là exception do client ngắt kết nối socket ngầm hoặc response đã commit từ trước
+        String exName = ex.getClass().getName();
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+        if (exName.contains("ClientAbortException") || exName.contains("AsyncRequestNotUsableException")
+                || msg.contains("response is already committed") || msg.contains("Broken pipe")
+                || msg.contains("Connection reset")) {
+            log.debug("Bỏ qua lỗi client disconnect / response committed tại {} {}: {}", request.getMethod(), request.getRequestURI(), msg);
+            return null;
+        }
+
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, "INTERNAL_SERVER_ERROR" + (msg.isBlank() ? "" : ": " + msg));
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_EXCEPTION, ex);
+        log.debug("Lỗi ngoài dự kiến tại {} {}: {}", request.getMethod(), request.getRequestURI(), msg);
+
         var body = new ErrorResponse(false,
                 new ErrorResponse.ErrorBody("INTERNAL_ERROR", "Đã có lỗi xảy ra, vui lòng thử lại sau."));
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
-    /**
-     * Đổi tên trường Java (camelCase) sang tên trường API (snake_case) — api/00-QUY-UOC-CHUNG.md
-     * mục 4.4 dùng {@code category_id}, không phải {@code categoryId}. Client so khớp theo tên
-     * trường API để tô đỏ đúng ô nhập, nên trả camelCase là sai hợp đồng.
-     */
     private static String toSnakeCase(String field) {
         if (field == null) {
             return null;

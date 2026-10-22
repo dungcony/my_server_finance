@@ -1,0 +1,183 @@
+/* Cây danh mục, kho biểu tượng — chuyển từ category-test.css */
+.toolbar {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.api-badge {
+    font-family: monospace;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.api-badge.get { background: #dbeafe; color: #1e40af; }
+.api-badge.post { background: #dcfce7; color: #166534; }
+.api-badge.patch { background: #f3e8ff; color: #6b21a8; }
+.api-badge.delete { background: #fee2e2; color: #991b1b; }
+.tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.tree ul {
+    margin-left: 22px;
+    border-left: 1px dashed var(--border);
+    padding-left: 8px;
+}
+
+.tree > ul {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+}
+
+.tree-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.tree-row:hover {
+    background: #f8fafc;
+}
+
+.tree-toggle {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    flex: none;
+}
+
+.tree-toggle:disabled {
+    visibility: hidden;
+}
+
+.swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex: none;
+    border: 1px solid rgb(0 0 0 / 0.15);
+}
+
+.icon-box {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.icon-box svg {
+    width: 18px;
+    height: 18px;
+}
+
+.tree-name {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.tree-code {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.badge-leaf { background: #dcfce7; color: #166534; }
+.badge-branch { background: #fef3c7; color: #92400e; }
+
+.tree-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+}
+
+/* ---------- Biểu tượng ---------- */
+.icon-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-preview input {
+    flex: 1;
+}
+
+.icon-groups {
+    margin-top: 16px;
+}
+
+.icon-group-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+    margin: 14px 0 8px;
+}
+
+.icon-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+}
+
+.icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+    font-size: 11px;
+    color: #334155;
+    text-align: center;
+}
+
+.icon-item:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.icon-item.selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+.icon-item .icon-box {
+    width: 34px;
+    height: 34px;
+}
+
+.icon-item .icon-box svg {
+    width: 22px;
+    height: 22px;
+}

@@ -1,5 +1,6 @@
 package com.datn.financeapp.common.security;
 
+import com.datn.financeapp.common.logging.RequestLoggingFilter;
 import com.datn.financeapp.common.response.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,15 +48,16 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         String message = switch (code) {
             case "TOKEN_EXPIRED" -> "Thẻ truy cập đã hết hạn.";
             case "TOKEN_INVALID" -> "Thẻ truy cập không hợp lệ.";
-            case "ACCOUNT_BLOCKED" -> "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ.";
+            case "AUTH_ACCOUNT_BLOCKED" -> "Tài khoản đã bị khoá. Vui lòng liên hệ hỗ trợ.";
             default -> "Vui lòng đăng nhập để tiếp tục.";
         };
 
-        log.warn("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
+        request.setAttribute(RequestLoggingFilter.ATTR_ERROR_DETAIL, code + ": " + message);
+        log.debug("Xác thực thất bại tại {} {}: [{}] {}", request.getMethod(), request.getRequestURI(), code, message);
 
         var body = new ErrorResponse(false, new ErrorResponse.ErrorBody(code, message));
 
-        int status = "ACCOUNT_BLOCKED".equals(code) ? HttpStatus.FORBIDDEN.value() : HttpStatus.UNAUTHORIZED.value();
+        int status = "AUTH_ACCOUNT_BLOCKED".equals(code) ? HttpStatus.FORBIDDEN.value() : HttpStatus.UNAUTHORIZED.value();
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

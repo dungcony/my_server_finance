@@ -1,0 +1,26 @@
+info:
+  name: 19. Thành viên rút tiền góp
+  type: http
+  seq: 19
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/withdrawals"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "from_user_id": "{{memberUserId}}",
+        "amount": 500000,
+        "note": "Rút bớt tiền đã đóng góp vào quỹ"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Ghi nhận thành viên rút bớt tiền đã góp vào quỹ."

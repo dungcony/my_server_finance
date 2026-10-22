@@ -1,0 +1,24 @@
+info:
+  name: 04. Tham gia nhóm bằng mã mời
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/join"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "invite_code": "ABC12345"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Tham gia nhóm bằng mã mời do chủ nhóm cung cấp. Nếu nhóm bật duyệt, trạng thái sẽ là PENDING.

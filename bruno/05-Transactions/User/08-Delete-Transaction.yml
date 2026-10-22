@@ -1,0 +1,16 @@
+﻿info:
+  name: 08. Xóa giao dịch
+  type: http
+  seq: 8
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/transactions/{{transactionId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Xóa mềm giao dịch và hoàn lại số dư tương ứng cho ví.

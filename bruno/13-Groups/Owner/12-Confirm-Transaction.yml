@@ -1,0 +1,16 @@
+info:
+  name: 12. Xác nhận giao dịch
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/{{groupTxnId}}/confirm"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Duyệt khoản chi tiêu hoặc nộp quỹ đang ở trạng thái PENDING."

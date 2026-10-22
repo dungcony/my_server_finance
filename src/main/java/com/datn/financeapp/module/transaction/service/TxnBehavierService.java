@@ -1,0 +1,66 @@
+package com.datn.financeapp.module.transaction.service;
+
+import com.datn.financeapp.module.transaction.dto.request.*;
+import com.datn.financeapp.module.transaction.dto.response.*;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Interface định nghĩa dịch vụ quản lý giao dịch tài chính (CRUD thu/chi/chuyển tiền).
+ *
+ */
+public interface TxnBehavierService {
+
+    /**
+     * Tạo mới một giao dịch đơn lẻ.
+     *
+     * @param userId ID người dùng null tức là admin gửi
+     * @param req    thông tin yêu cầu tạo giao dịch
+     * @return {@link TxnDetailResponse} kết quả tạo giao dịch
+     */
+    TxnDetailResponse create(UUID userId, TxnCreateReq req);
+
+    /**
+     * Truy vấn danh sách giao dịch phân trang theo bộ lọc.
+     *
+     * @param filters thông tin bộ lọc
+     * @param page    thông tin phân trang và sắp xếp
+     * @return {@link TxnListRes}
+     */
+    TxnListRes gets(TxnFilterRequest filters, Pageable page, boolean isAdmin);
+
+
+    /**
+     * Truy vấn chi tiết một giao dịch theo ID.
+     *
+     * @param id ID giao dịch
+     * @return {@link TxnDetailResponse} chi tiết giao dịch
+     */
+    TxnDetailResponse get(UUID id, boolean isAdmin);
+
+    /**
+     * Cập nhật thông tin giao dịch hiện có.
+     *
+     * @param txnId ID giao dịch cần sửa
+     * @param req   thông tin cập nhật=
+     */
+    void update(UUID txnId, TxnUpdateReq req, boolean isAdmin);
+
+    /**
+     * Xóa mềm một giao dịch và hoàn tất cập nhật lại số dư ví.
+     *
+     * @param txnId ID giao dịch cần xóa
+     */
+    void softDelete(UUID txnId, boolean isAdmin);
+
+    /**
+     * Xóa mềm nhiều giao dịch cùng lúc.
+     *
+     * @param userId ID người dùng (nếu null sẽ lấy từ context)
+     * @param ids    danh sách ID giao dịch cần xóa
+     */
+    void bulkDelete(UUID userId, List<UUID> ids);
+
+}

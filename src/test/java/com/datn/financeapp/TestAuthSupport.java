@@ -4,11 +4,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.datn.financeapp.auth.entity.OtpModel;
-import com.datn.financeapp.auth.enums.OtpType;
-import com.datn.financeapp.auth.repository.OtpRepository;
+import com.datn.financeapp.module.auth.entity.OtpModel;
+import com.datn.financeapp.module.auth.enums.OtpType;
+import com.datn.financeapp.module.auth.repository.OtpRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +36,7 @@ import org.springframework.test.web.servlet.MockMvc;
  * khởi tạo và toàn bộ test của lớp đó chết theo. Nạp tường minh bằng
  * {@code @Import({TestRedisConfig.class, TestAuthSupport.class})} ở đúng những lớp cần.
  */
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 public class TestAuthSupport {
 
     @Autowired
@@ -45,7 +48,9 @@ public class TestAuthSupport {
     @Autowired
     private OtpRepository otpRepository;
 
-    /** Đăng ký tài khoản mới, xác thực email, trả access token dùng ngay được. */
+    /**
+     * Đăng ký tài khoản mới, xác thực email, trả access token dùng ngay được.
+     */
     public String registerAndGetAccessToken(String email) throws Exception {
         return registerAndGetAccessToken(email, "Người Kiểm Thử");
     }
@@ -55,7 +60,9 @@ public class TestAuthSupport {
         return verifyEmailAndGetAccessToken(email);
     }
 
-    /** Chỉ đăng ký, chưa xác thực — cho test cần tài khoản ở trạng thái {@code PENDING_VERIFY}. */
+    /**
+     * Chỉ đăng ký, chưa xác thực — cho test cần tài khoản ở trạng thái {@code PENDING_VERIFY}.
+     */
     public void register(String email, String displayName) throws Exception {
         Map<String, Object> body = Map.of(
                 "email", email,
@@ -91,7 +98,8 @@ public class TestAuthSupport {
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return (String) token.get("access");
     }
 
     /**
@@ -116,7 +124,9 @@ public class TestAuthSupport {
         return createWallet(token, "Ví Kiểm Thử", "cash", 0);
     }
 
-    /** Tạo ví và trả id. */
+    /**
+     * Tạo ví và trả id.
+     */
     public String createWallet(String token, String name, String type, long initialBalance)
             throws Exception {
         Map<String, Object> body = Map.of(
@@ -136,7 +146,9 @@ public class TestAuthSupport {
         return (String) data.get("id");
     }
 
-    /** Đăng nhập tài khoản đã xác thực từ trước. */
+    /**
+     * Đăng nhập tài khoản đã xác thực từ trước.
+     */
     public String loginAndGetAccessToken(String email, String password) throws Exception {
         Map<String, Object> body = Map.of("email", email, "password", password);
         String response = mockMvc.perform(post("/auth/login")
@@ -149,6 +161,7 @@ public class TestAuthSupport {
 
         Map<?, ?> parsed = objectMapper.readValue(response, Map.class);
         Map<?, ?> data = (Map<?, ?>) parsed.get("data");
-        return (String) data.get("access_token");
+        Map<?, ?> token = (Map<?, ?>) data.get("token");
+        return (String) token.get("access");
     }
 }

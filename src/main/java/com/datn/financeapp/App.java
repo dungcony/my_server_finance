@@ -8,28 +8,22 @@ import java.nio.file.Paths;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+/**
+ * Lớp khởi chạy ứng dụng Spring Boot chính.
+ * Cung cấp phương thức {@link #main} để khởi động ứng dụng và {@link #loadDotenvIfPresent} để nạp biến môi trường từ file .env.
+ */
+@SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableScheduling
 @EnableAsync
 public class App {
 
     public static void main(String[] args) {
         loadDotenvIfPresent();
-        configureFlywayLocationsIfPresent();
         SpringApplication.run(App.class, args);
-    }
-
-    private static void configureFlywayLocationsIfPresent() {
-        if (System.getProperty("spring.flyway.locations") == null && System.getenv("SPRING_FLYWAY_LOCATIONS") == null) {
-            if (new File("db/migration").isDirectory()) {
-                System.setProperty("spring.flyway.locations", "filesystem:db/migration");
-            } else if (new File("../../db/migration").isDirectory()) {
-                System.setProperty("spring.flyway.locations", "filesystem:../../db/migration");
-            }
-        }
     }
 
     private static void loadDotenvIfPresent() {

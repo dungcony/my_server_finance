@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vai trò và quyền - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="roles" data-title="Vai trò & quyền">
+<main id="page">
+    <div class="card">
+        <div class="card-title"><span>Vai trò</span><button class="btn btn-secondary" id="btnReload">↻</button></div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Vai trò</th><th>Cấp (nhỏ = quyền cao)</th><th>Mô tả</th><th>Quyền</th><th></th></tr></thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+        <div class="muted mt">API chỉ hỗ trợ <b>gán</b> quyền cho vai trò (<code>POST /admin/role/permission</code>); chưa có thao tác thu hồi.</div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/roles.js"></script>
+</body>
+</html>

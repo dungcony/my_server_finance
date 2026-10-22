@@ -1,0 +1,16 @@
+info:
+  name: 08. Lấy danh sách tất cả vai trò
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/admin/role/all"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Lấy danh sách tất cả các vai trò trong hệ thống kèm quyền hạn."

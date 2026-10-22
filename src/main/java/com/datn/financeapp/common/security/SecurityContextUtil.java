@@ -23,7 +23,7 @@ public final class SecurityContextUtil {
      * JWT — CHỈ dùng để đọc/lọc (vd ẩn bớt user cấp cao hơn khỏi danh sách), KHÔNG dùng để
      * chặn hành động ghi vì giá trị này có thể lệch so với DB tới khi token hết hạn (xem
      * javadoc JwtService.generateAccessToken).
-     *
+     * <p>
      * Quy ước "số nhỏ = quyền cao": fallback khi thiếu claim (token cũ/không có details)
      * PHẢI là Integer.MAX_VALUE (yếu nhất) — dùng 0 sẽ bị hiểu nhầm là mạnh nhất hệ thống,
      * mở lỗ hổng cho ai cầm token cũ thấy hết mọi user kể cả admin.

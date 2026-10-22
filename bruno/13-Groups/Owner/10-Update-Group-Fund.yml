@@ -1,0 +1,24 @@
+info:
+  name: 10. Bàn giao thủ quỹ
+  type: http
+  seq: 10
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/groups/{{groupId}}/fund"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "held_by_user_id": "{{memberUserId}}"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Bàn giao quyền giữ quỹ (thủ quỹ) sang một thành viên khác trong nhóm."

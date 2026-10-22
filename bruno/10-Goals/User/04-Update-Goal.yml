@@ -1,0 +1,26 @@
+﻿info:
+  name: 04. Cập nhật mục tiêu
+  type: http
+  seq: 4
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/goals/{{goalId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Mua MacBook Pro",
+        "target_amount": 30000000,
+        "target_date": "2027-01-31"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Thay đổi số tiền mục tiêu hoặc ngày dự kiến hoàn thành.

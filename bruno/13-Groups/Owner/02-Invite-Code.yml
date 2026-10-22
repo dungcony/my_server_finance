@@ -1,0 +1,20 @@
+info:
+  name: 02. Lấy hoặc tạo lại mã mời
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/invite-code"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: regenerate
+      value: "false"
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Lấy mã mời tham gia nhóm hiện tại hoặc làm mới mã mời (regenerate=true)."

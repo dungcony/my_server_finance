@@ -1,0 +1,26 @@
+info:
+  name: 14. Duyệt hàng loạt giao dịch
+  type: http
+  seq: 14
+
+http:
+  method: POST
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/bulk-confirm"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "transaction_ids": [
+          "{{groupTxnId}}"
+        ]
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Thủ quỹ / Owner: Duyệt cùng lúc nhiều khoản giao dịch PENDING."

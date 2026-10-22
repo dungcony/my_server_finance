@@ -1,0 +1,16 @@
+﻿info:
+  name: 09. Xóa khoản nợ
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/debts/{{debtId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Xóa khoản nợ khi chưa có đợt thanh toán nào phát sinh.

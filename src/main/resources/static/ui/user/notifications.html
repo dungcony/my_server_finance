@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông báo - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="user" data-active="notifications" data-title="Thông báo">
+<main id="page">
+    <div class="notice">
+        Thông báo loại <code>GROUP_TXN_*</code> chỉ là lời nhắc: <code>reference_id</code> là id giao dịch nhóm,
+        <code>data.group_id</code> là nhóm chứa giao dịch. Mở tab Giao dịch của nhóm đó để duyệt, đồng ý hoặc từ chối
+        (nút hiện theo trạng thái thật của giao dịch).
+    </div>
+    <div class="card">
+        <div class="card-title">
+            <span>Danh sách thông báo</span>
+            <div class="btn-row">
+                <select id="fRead" style="width:auto">
+                    <option value="">Tất cả</option>
+                    <option value="false">Chưa đọc</option>
+                    <option value="true">Đã đọc</option>
+                </select>
+                <button class="btn btn-secondary" id="btnReload">↻</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Loại</th><th>Tiêu đề / nội dung</th><th>Thời gian</th><th>Trạng thái</th><th></th></tr></thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+        <div class="pager" id="pager"></div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/notifications.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+﻿info:
+  name: 02. Đọc ảnh hóa đơn (OCR)
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/ai/scan-receipt"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "image_url": "https://example.com/receipts/bill1.jpg",
+        "wallet_id": "{{walletId}}"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Đọc ảnh hóa đơn chụp từ điện thoại và bóc tách thành bản nháp giao dịch.

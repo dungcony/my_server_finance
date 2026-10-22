@@ -1,0 +1,6311 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "OpenAPI definition", "version": "v0" },
+  "servers": [
+    { "url": "http://localhost:8080/v1", "description": "Generated server url" }
+  ],
+  "paths": {
+    "/users/me/password": {
+      "put": {
+        "tags": ["user-controller"],
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdatePassReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["user-controller"],
+        "operationId": "generatePassword",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{id}": {
+      "get": {
+        "tags": ["transaction-controller"],
+        "operationId": "detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransactionDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["transaction-controller"],
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreateTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["transaction-controller"],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeleteTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/{txnId}": {
+      "get": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "detail_1",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "txnId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionDetailRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "update_1",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "txnId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTransactionUpdateReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionDetailRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "txnId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/owner-role/{memberUserId}/": {
+      "put": {
+        "tags": ["member-controller"],
+        "operationId": "updateMemberRole",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/fund-kepper": {
+      "put": {
+        "tags": ["fund-controller"],
+        "operationId": "updateFund",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FundKepperUpdateReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseFundRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets": {
+      "get": {
+        "tags": ["wallet-controller"],
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "only_in_total",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "include_shared",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": true }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListWalletResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["wallet-controller"],
+        "operationId": "create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateWalletRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWalletResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/{id}/reconcile": {
+      "post": {
+        "tags": ["wallet-controller"],
+        "operationId": "reconcile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "auto_fix",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReconcileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/{id}/adjust-balance": {
+      "post": {
+        "tags": ["wallet-controller"],
+        "operationId": "adjustBalance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdjustBalanceRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdjustBalanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/transfer": {
+      "post": {
+        "tags": ["wallet-controller"],
+        "operationId": "transfer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TransferRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransferResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "get": {
+        "tags": ["transaction-controller"],
+        "operationId": "list_1",
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "counts_in_report",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "min_amount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "max_amount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "include_transfers",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32" }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32" }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["transaction-controller"],
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreateTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{id}/duplicate": {
+      "post": {
+        "tags": ["transaction-controller"],
+        "operationId": "duplicate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateTransactionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreateTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/bulk": {
+      "post": {
+        "tags": ["transaction-controller"],
+        "operationId": "createBulk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkCreateTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBulkCreateTransactionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/export": {
+      "post": {
+        "tags": ["report-controller"],
+        "operationId": "export",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ExportRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExportJobResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recurring": {
+      "get": {
+        "tags": ["recurring-controller"],
+        "operationId": "list_2",
+        "parameters": [
+          {
+            "name": "is_enabled",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListRecurringListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["recurring-controller"],
+        "operationId": "create_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecurringRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recurring/{id}/run-now": {
+      "post": {
+        "tags": ["recurring-controller"],
+        "operationId": "runNow",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRunNowResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recurring/{id}/pause": {
+      "post": {
+        "tags": ["recurring-controller"],
+        "operationId": "pause",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PauseRecurringRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups": {
+      "get": {
+        "tags": ["group-controller"],
+        "operationId": "list_3",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListGroupSummaryRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["group-controller"],
+        "operationId": "create_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GroupCreateReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupDetailRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{id}/unarchive": {
+      "post": {
+        "tags": ["group-controller"],
+        "operationId": "unarchive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{id}/archive": {
+      "post": {
+        "tags": ["group-controller"],
+        "operationId": "archive",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions": {
+      "get": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "list_4",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "money_source",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["FUND", "PERSONAL"] }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXPENSE",
+                "CONTRIBUTION",
+                "REFUND",
+                "ADJUSTMENT_UP",
+                "ADJUSTMENT_DOWN"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "CONFIRMED", "REJECTED"]
+            }
+          },
+          {
+            "name": "transactor_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionListRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "create_4",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTransactionCreateReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionDetailRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/{txnId}/reject": {
+      "post": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "reject",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "txnId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionDetailRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/{txnId}/confirm": {
+      "post": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "confirm",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "txnId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionDetailRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/bulk-reject": {
+      "post": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "bulkReject",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTransactionBulkReviewReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/bulk-confirm": {
+      "post": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "bulkConfirm",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupTransactionBulkReviewReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/rejects": {
+      "post": {
+        "tags": ["member-controller"],
+        "operationId": "rejectMembers",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/members": {
+      "get": {
+        "tags": ["member-controller"],
+        "operationId": "listMembers",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "ACTIVE", "LEFT", "REMOVED"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMemberRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["member-controller"],
+        "operationId": "addMembers",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MemberAddReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/members/{memberUserId}/reject": {
+      "post": {
+        "tags": ["member-controller"],
+        "operationId": "rejectMember",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/members/{memberUserId}/approve": {
+      "post": {
+        "tags": ["member-controller"],
+        "operationId": "approveMember",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/leave": {
+      "post": {
+        "tags": ["member-controller"],
+        "operationId": "leave",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/fund/reconcile": {
+      "post": {
+        "tags": ["fund-controller"],
+        "operationId": "reconcileFund",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FundReconcileReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupFundReconcileRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/approves": {
+      "post": {
+        "tags": ["member-controller"],
+        "operationId": "approveMembers",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/join": {
+      "post": {
+        "tags": ["group-controller"],
+        "operationId": "join",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GroupJoinReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goals": {
+      "get": {
+        "tags": ["goal-controller"],
+        "operationId": "list_5",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListGoalListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["goal-controller"],
+        "operationId": "create_5",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateGoalRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreateGoalResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goals/{id}/contributions": {
+      "post": {
+        "tags": ["goal-controller"],
+        "operationId": "addContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContributionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreateContributionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debts": {
+      "get": {
+        "tags": ["debt-controller"],
+        "operationId": "list_6",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "outstanding" }
+          },
+          {
+            "name": "is_overdue",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListDebtListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["debt-controller"],
+        "operationId": "create_6",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateDebtRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreateDebtResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debts/{id}/write-off": {
+      "post": {
+        "tags": ["debt-controller"],
+        "operationId": "writeOff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WriteOffRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDebtListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debts/{id}/payments": {
+      "post": {
+        "tags": ["debt-controller"],
+        "operationId": "addPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreatePaymentRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCreatePaymentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "tags": ["category-controller"],
+        "operationId": "list_7",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "as_tree",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": true }
+          },
+          {
+            "name": "roots_only",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["category-controller"],
+        "operationId": "create_7",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCategoryRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/budgets": {
+      "get": {
+        "tags": ["budget-controller"],
+        "operationId": "list_8",
+        "parameters": [
+          {
+            "name": "is_active",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": true }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBudgetListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["budget-controller"],
+        "operationId": "create_8",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateBudgetRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "verifyEmail",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VerifyEmailRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "resetPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ResetPasswordRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "resendVerification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RefreshRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LogoutRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["login-controller"],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/EmailLoginRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/google": {
+      "post": {
+        "tags": ["login-controller"],
+        "operationId": "loginWithGoogle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GoogleLoginRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ForgotPasswordRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/user/role": {
+      "post": {
+        "tags": ["manager-user-controller"],
+        "operationId": "addRoleToUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRoleReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["manager-user-controller"],
+        "operationId": "removeRoleToUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRoleReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/role/permission": {
+      "post": {
+        "tags": ["manager-role-controller"],
+        "operationId": "addPermissionToRole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPermissionRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/{walletId}/categories/{categoryId}": {
+      "patch": {
+        "tags": ["category-controller"],
+        "operationId": "setCategoryEnabledForWallet",
+        "parameters": [
+          {
+            "name": "walletId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleWalletCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/{id}": {
+      "get": {
+        "tags": ["wallet-controller"],
+        "operationId": "detail_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWalletDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["wallet-controller"],
+        "operationId": "delete_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "delete_transactions",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["wallet-controller"],
+        "operationId": "update_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateWalletRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWalletResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/reorder": {
+      "patch": {
+        "tags": ["wallet-controller"],
+        "operationId": "reorder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ReorderWalletsRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": ["user-controller"],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["user-controller"],
+        "operationId": "deleteAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeleteAccountRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["user-controller"],
+        "operationId": "updateProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateProfileRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recurring/{id}": {
+      "get": {
+        "tags": ["recurring-controller"],
+        "operationId": "detail_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["recurring-controller"],
+        "operationId": "delete_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["recurring-controller"],
+        "operationId": "update_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRecurringRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseRecurringListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": ["notification-controller"],
+        "operationId": "markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{id}": {
+      "get": {
+        "tags": ["group-controller"],
+        "operationId": "detail_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupDetailRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["group-controller"],
+        "operationId": "delete_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["group-controller"],
+        "operationId": "update_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GroupUpdateReq" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupDetailRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goals/{id}": {
+      "get": {
+        "tags": ["goal-controller"],
+        "operationId": "detail_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGoalDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["goal-controller"],
+        "operationId": "delete_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "revert_transactions",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["goal-controller"],
+        "operationId": "update_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateGoalRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGoalListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debts/{id}": {
+      "get": {
+        "tags": ["debt-controller"],
+        "operationId": "detail_6",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDebtDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["debt-controller"],
+        "operationId": "delete_6",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["debt-controller"],
+        "operationId": "update_6",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateDebtRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDebtListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "tags": ["category-controller"],
+        "operationId": "detail_7",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCategoryDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["category-controller"],
+        "operationId": "delete_7",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "replacement_category_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["category-controller"],
+        "operationId": "update_7",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateCategoryRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/reorder": {
+      "patch": {
+        "tags": ["category-controller"],
+        "operationId": "reorder_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderCategoriesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/budgets/{id}": {
+      "get": {
+        "tags": ["budget-controller"],
+        "operationId": "detail_8",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["budget-controller"],
+        "operationId": "delete_8",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["budget-controller"],
+        "operationId": "update_8",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateBudgetRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetListItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/user/lock": {
+      "patch": {
+        "tags": ["manager-user-controller"],
+        "operationId": "blockUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BlockUserRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/{walletId}/categories": {
+      "get": {
+        "tags": ["category-controller"],
+        "operationId": "listForWallet",
+        "parameters": [
+          {
+            "name": "walletId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/summary": {
+      "get": {
+        "tags": ["wallet-controller"],
+        "operationId": "summary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWalletSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/by-date": {
+      "get": {
+        "tags": ["transaction-controller"],
+        "operationId": "listByDate",
+        "parameters": [
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "counts_in_report",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "min_amount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "max_amount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "include_transfers",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTransactionByDateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/summary": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "summary_1",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReportSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/monthly-trend": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "monthlyTrend",
+        "parameters": [
+          {
+            "name": "months_count",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 6 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMonthlyTrendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/home": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "home",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "month" }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReportHomeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/export/{jobId}": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "exportStatus",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseExportJobResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/export/{jobId}/download": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "download",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "type": "string", "format": "binary" } }
+            }
+          }
+        }
+      }
+    },
+    "/reports/daily-trend": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "dailyTrend",
+        "parameters": [
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDailyTrendResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/by-category": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "byCategory",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "expense" }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "parent" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCategoryBreakdownResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/by-category-group": {
+      "get": {
+        "tags": ["report-controller"],
+        "operationId": "byCategoryGroup",
+        "parameters": [
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "expense" }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCategoryGroupBreakdownResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["notification-controller"],
+        "operationId": "list_9",
+        "parameters": [
+          {
+            "name": "is_read",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32" }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/icons": {
+      "get": {
+        "tags": ["category-controller"],
+        "operationId": "icons",
+        "parameters": [
+          {
+            "name": "icon_group",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseIconGroupResponseWrapper"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{id}/pending-count": {
+      "get": {
+        "tags": ["group-controller"],
+        "operationId": "pendingCount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupPendingCountRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/{txnId}/participants": {
+      "get": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "getParticipants",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "txnId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListGroupTransactionParticipantRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/pending": {
+      "get": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "listPending",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionListRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/transactions/mine": {
+      "get": {
+        "tags": ["group-transaction-controller"],
+        "operationId": "myList",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "money_source",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["FUND", "PERSONAL"] }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EXPENSE",
+                "CONTRIBUTION",
+                "REFUND",
+                "ADJUSTMENT_UP",
+                "ADJUSTMENT_DOWN"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["PENDING", "CONFIRMED", "REJECTED"]
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupTransactionListRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/summary": {
+      "get": {
+        "tags": ["group-report-controller"],
+        "operationId": "summary_2",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupSummaryReportRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/balances": {
+      "get": {
+        "tags": ["group-report-controller"],
+        "operationId": "balances",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGroupBalanceReportRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debts/summary": {
+      "get": {
+        "tags": ["debt-controller"],
+        "operationId": "summary_3",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDebtSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/category-groups": {
+      "get": {
+        "tags": ["category-controller"],
+        "operationId": "categoryGroups",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCategoryGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/budgets/summary": {
+      "get": {
+        "tags": ["budget-controller"],
+        "operationId": "summary_4",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/budgets/suggestion": {
+      "get": {
+        "tags": ["budget-controller"],
+        "operationId": "suggestion",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBudgetSuggestionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/budgets/alerts": {
+      "get": {
+        "tags": ["budget-controller"],
+        "operationId": "alerts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBudgetAlertResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/user/{userId}": {
+      "get": {
+        "tags": ["manager-user-controller"],
+        "operationId": "findUserByid",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["manager-user-controller"],
+        "operationId": "deleteUserById",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/user/all": {
+      "get": {
+        "tags": ["manager-user-controller"],
+        "operationId": "findAllUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/role/{roleName}/permissions": {
+      "get": {
+        "tags": ["manager-role-controller"],
+        "operationId": "findByRole",
+        "parameters": [
+          {
+            "name": "roleName",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "enum": ["ROLE_ADMIN", "ROLE_USER"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPermissionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/role/all": {
+      "get": {
+        "tags": ["manager-role-controller"],
+        "operationId": "findRoles",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListRoleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logs/stream": {
+      "get": {
+        "tags": ["admin-log-controller"],
+        "operationId": "streamLogs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/event-stream": {
+                "schema": { "$ref": "#/components/schemas/SseEmitter" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{groupId}/members/{memberUserId}": {
+      "delete": {
+        "tags": ["member-controller"],
+        "operationId": "removeMember",
+        "parameters": [
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/goals/{id}/contributions/{contributionId}": {
+      "delete": {
+        "tags": ["goal-controller"],
+        "operationId": "cancelContribution",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "contributionId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/debts/{id}/payments/{paymentId}": {
+      "delete": {
+        "tags": ["debt-controller"],
+        "operationId": "cancelPayment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdatePassReq": {
+        "type": "object",
+        "properties": {
+          "oldPassword": { "type": "string" },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 2147483647,
+            "minLength": 8
+          }
+        },
+        "required": ["newPassword", "oldPassword"]
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "object" },
+          "msg": { "type": "string" }
+        }
+      },
+      "UpdateTransactionRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "pattern": "^(expense|income|transfer)$"
+          },
+          "amount": { "type": "integer", "format": "int64" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "destinationWalletId": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "date": { "type": "string", "format": "date" },
+          "displayName": { "type": "string", "maxLength": 150, "minLength": 0 },
+          "note": { "type": "string", "maxLength": 500, "minLength": 0 },
+          "countsInReport": { "type": "boolean" },
+          "receiptUrl": { "type": "string" }
+        },
+        "required": ["amount", "type", "walletId"]
+      },
+      "AffectedBudgetResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "category": { "type": "string" },
+          "limitAmount": { "type": "integer", "format": "int64" },
+          "spentAmount": { "type": "integer", "format": "int64" },
+          "ratio": { "type": "number" },
+          "status": { "type": "string" },
+          "alert": { "type": "string" }
+        }
+      },
+      "ApiResponseCreateTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CreateTransactionResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CategoryRef": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "parentId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "CreateTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "transaction": { "$ref": "#/components/schemas/TransactionResponse" },
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" },
+          "affectedBudgets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AffectedBudgetResponse" }
+          }
+        }
+      },
+      "NewBalance": {
+        "type": "object",
+        "properties": {
+          "walletId": { "type": "string", "format": "uuid" },
+          "balance": { "type": "integer", "format": "int64" }
+        }
+      },
+      "TransactionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" },
+          "displayName": { "type": "string" },
+          "note": { "type": "string" },
+          "source": { "type": "string" },
+          "countsInReport": { "type": "boolean" },
+          "wallet": { "$ref": "#/components/schemas/WalletRef" },
+          "destinationWallet": { "$ref": "#/components/schemas/WalletRef" },
+          "category": { "$ref": "#/components/schemas/CategoryRef" },
+          "receiptUrl": { "type": "string" },
+          "recurringId": { "type": "string", "format": "uuid" },
+          "draftId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WalletRef": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" }
+        }
+      },
+      "GroupTransactionParticipantReq": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "shareAmount": { "type": "integer", "format": "int64" }
+        },
+        "required": ["shareAmount", "userId"]
+      },
+      "GroupTransactionUpdateReq": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "maximum": 999999999999
+          },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "date": { "type": "string", "format": "date" },
+          "moneySource": { "type": "string", "enum": ["FUND", "PERSONAL"] },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "transactorId": { "type": "string", "format": "uuid" },
+          "note": { "type": "string", "maxLength": 255, "minLength": 0 },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupTransactionParticipantReq"
+            }
+          }
+        }
+      },
+      "ApiResponseGroupTransactionDetailRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupTransactionDetailRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupTransactionDetailRes": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "groupId": { "type": "string", "format": "uuid" },
+          "transactorId": { "type": "string", "format": "uuid" },
+          "createdBy": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "moneySource": { "type": "string", "enum": ["FUND", "PERSONAL"] },
+          "type": {
+            "type": "string",
+            "enum": [
+              "EXPENSE",
+              "CONTRIBUTION",
+              "REFUND",
+              "ADJUSTMENT_UP",
+              "ADJUSTMENT_DOWN"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "CONFIRMED", "REJECTED"]
+          },
+          "reviewedBy": { "type": "string", "format": "uuid" },
+          "reviewedAt": { "type": "string", "format": "date-time" },
+          "amount": { "type": "integer", "format": "int64" },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "note": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "FundKepperUpdateReq": {
+        "type": "object",
+        "properties": { "keepperId": { "type": "string", "format": "uuid" } }
+      },
+      "ApiResponseFundRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/FundRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "FundRes": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "groupId": { "type": "string", "format": "uuid" },
+          "keepperId": { "type": "string", "format": "uuid" },
+          "currentBalance": { "type": "integer", "format": "int64" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateWalletRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 50, "minLength": 1 },
+          "type": {
+            "type": "string",
+            "pattern": "^(cash|bank|e_wallet|credit_card)$"
+          },
+          "initialBalance": { "type": "integer", "format": "int64" },
+          "includeInTotal": { "type": "boolean" },
+          "icon": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "groupId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["initialBalance", "name", "type"]
+      },
+      "ApiResponseWalletResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/WalletResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "WalletResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "currentBalance": { "type": "integer", "format": "int64" },
+          "includeInTotal": { "type": "boolean" },
+          "isShared": { "type": "boolean" },
+          "groupId": { "type": "string", "format": "uuid" },
+          "icon": { "type": "string" },
+          "color": { "type": "string" },
+          "sortOrder": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "projectedBalance": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseReconcileResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/ReconcileResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "ReconcileResponse": {
+        "type": "object",
+        "properties": {
+          "walletId": { "type": "string", "format": "uuid" },
+          "storedBalance": { "type": "integer", "format": "int64" },
+          "computedBalance": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" },
+          "matches": { "type": "boolean" },
+          "wasFixed": { "type": "boolean" }
+        }
+      },
+      "AdjustBalanceRequest": {
+        "type": "object",
+        "properties": {
+          "actualBalance": { "type": "integer", "format": "int64" },
+          "countsInReport": { "type": "boolean" },
+          "note": { "type": "string", "maxLength": 200, "minLength": 0 }
+        },
+        "required": ["actualBalance"]
+      },
+      "AdjustBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "walletId": { "type": "string", "format": "uuid" },
+          "previousBalance": { "type": "integer", "format": "int64" },
+          "actualBalance": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" },
+          "adjusted": { "type": "boolean" },
+          "transactionId": { "type": "string", "format": "uuid" },
+          "transactionType": { "type": "string" },
+          "countsInReport": { "type": "boolean" }
+        }
+      },
+      "ApiResponseAdjustBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/AdjustBalanceResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "TransferRequest": {
+        "type": "object",
+        "properties": {
+          "sourceWalletId": { "type": "string", "format": "uuid" },
+          "destinationWalletId": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" },
+          "note": { "type": "string" },
+          "failIfInsufficient": { "type": "boolean" }
+        },
+        "required": ["amount", "destinationWalletId", "sourceWalletId"]
+      },
+      "ApiResponseTransferResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/TransferResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "TransactionInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" },
+          "sourceWallet": { "$ref": "#/components/schemas/WalletRef" },
+          "destinationWallet": { "$ref": "#/components/schemas/WalletRef" },
+          "note": { "type": "string" }
+        }
+      },
+      "TransferResponse": {
+        "type": "object",
+        "properties": {
+          "transaction": { "$ref": "#/components/schemas/TransactionInfo" },
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" }
+        }
+      },
+      "CreateTransactionRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "pattern": "^(expense|income|transfer)$"
+          },
+          "amount": { "type": "integer", "format": "int64" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "destinationWalletId": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "date": { "type": "string", "format": "date" },
+          "displayName": { "type": "string", "maxLength": 150, "minLength": 0 },
+          "note": { "type": "string", "maxLength": 500, "minLength": 0 },
+          "source": { "type": "string" },
+          "countsInReport": { "type": "boolean" },
+          "receiptUrl": { "type": "string" },
+          "draftId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["amount", "type", "walletId"]
+      },
+      "DuplicateTransactionRequest": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" }
+        }
+      },
+      "BulkCreateTransactionRequest": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CreateTransactionRequest" }
+          }
+        },
+        "required": ["items"]
+      },
+      "ApiResponseBulkCreateTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "$ref": "#/components/schemas/BulkCreateTransactionResponse"
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "BulkCreateTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "successCount": { "type": "integer", "format": "int32" },
+          "failureCount": { "type": "integer", "format": "int32" },
+          "transaction": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionListItemResponse"
+            }
+          },
+          "rowErrors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RowError" }
+          },
+          "newBalance": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NewBalanceItem" }
+          }
+        }
+      },
+      "IconRef": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "pathData": { "type": "string" }
+        }
+      },
+      "NewBalanceItem": {
+        "type": "object",
+        "properties": {
+          "walletId": { "type": "string", "format": "uuid" },
+          "balance": { "type": "integer", "format": "int64" }
+        }
+      },
+      "RowError": {
+        "type": "object",
+        "properties": {
+          "rowIndex": { "type": "integer", "format": "int32" },
+          "code": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "TransactionListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" },
+          "displayName": { "type": "string" },
+          "note": { "type": "string" },
+          "source": { "type": "string" },
+          "countsInReport": { "type": "boolean" },
+          "wallet": { "$ref": "#/components/schemas/WalletRef" },
+          "destinationWallet": { "$ref": "#/components/schemas/WalletRef" },
+          "category": { "$ref": "#/components/schemas/CategoryRef" },
+          "receiptUrl": { "type": "string" },
+          "recurringId": { "type": "string", "format": "uuid" },
+          "draftId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ExportRequest": {
+        "type": "object",
+        "properties": {
+          "format": { "type": "string" },
+          "period": { "type": "string" },
+          "fromDate": { "type": "string", "format": "date" },
+          "toDate": { "type": "string", "format": "date" },
+          "include": { "type": "string" }
+        },
+        "required": ["format"]
+      },
+      "ApiResponseExportJobResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/ExportJobResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "ExportJobResponse": {
+        "type": "object",
+        "properties": {
+          "jobId": { "type": "string", "format": "uuid" },
+          "status": { "type": "string" },
+          "downloadUrl": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "errorMessage": { "type": "string" }
+        }
+      },
+      "CreateRecurringRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": { "type": "string", "maxLength": 100, "minLength": 1 },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "frequency": { "type": "string" },
+          "interval": { "type": "integer", "format": "int32" },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "note": { "type": "string" }
+        },
+        "required": [
+          "amount",
+          "categoryId",
+          "displayName",
+          "frequency",
+          "startDate",
+          "type",
+          "walletId"
+        ]
+      },
+      "ApiResponseRecurringListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/RecurringListItemResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "RecurringListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "displayName": { "type": "string" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "wallet": { "$ref": "#/components/schemas/WalletRef" },
+          "category": { "$ref": "#/components/schemas/CategoryRef" },
+          "frequency": { "type": "string" },
+          "interval": { "type": "integer", "format": "int32" },
+          "scheduleLabel": { "type": "string" },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "nextRunDate": { "type": "string", "format": "date" },
+          "lastRunDate": { "type": "string", "format": "date" },
+          "daysUntilNext": { "type": "integer", "format": "int64" },
+          "isEnabled": { "type": "boolean" },
+          "runCount": { "type": "integer", "format": "int64" },
+          "note": { "type": "string" }
+        }
+      },
+      "ApiResponseRunNowResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/RunNowResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "RunNowResponse": {
+        "type": "object",
+        "properties": {
+          "transaction": { "$ref": "#/components/schemas/TransactionSummary" },
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" }
+        }
+      },
+      "TransactionSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" }
+        }
+      },
+      "PauseRecurringRequest": {
+        "type": "object",
+        "properties": { "isEnabled": { "type": "boolean" } },
+        "required": ["isEnabled"]
+      },
+      "GroupCreateReq": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 100, "minLength": 0 },
+          "description": { "type": "string", "maxLength": 255, "minLength": 0 },
+          "target": { "type": "integer", "format": "int64" },
+          "isSettlementEnabled": { "type": "boolean" },
+          "isJoinWithoutConfirm": { "type": "boolean" },
+          "members": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": [
+          "isJoinWithoutConfirm",
+          "isSettlementEnabled",
+          "members",
+          "name"
+        ]
+      },
+      "ApiResponseGroupDetailRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupDetailRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupDetailRes": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "ARCHIVED", "DELETED"]
+          },
+          "inviteCode": { "type": "string" },
+          "target": { "type": "integer", "format": "int64" },
+          "isSettlementEnabled": { "type": "boolean" },
+          "isJoinWithoutConfirm": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "myRole": { "type": "string", "enum": ["OWNER", "MEMBER"] },
+          "fund": { "$ref": "#/components/schemas/FundRes" },
+          "members": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MemberRes" }
+          }
+        }
+      },
+      "MemberRes": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "userId": { "type": "string", "format": "uuid" },
+          "role": { "type": "string", "enum": ["OWNER", "MEMBER"] },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING", "ACTIVE", "LEFT", "REMOVED"]
+          },
+          "joinedAt": { "type": "string", "format": "date-time" },
+          "leftAt": { "type": "string", "format": "date-time" },
+          "displayName": { "type": "string" },
+          "isTreasurer": { "type": "boolean" }
+        }
+      },
+      "GroupTransactionCreateReq": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "EXPENSE",
+              "CONTRIBUTION",
+              "REFUND",
+              "ADJUSTMENT_UP",
+              "ADJUSTMENT_DOWN"
+            ]
+          },
+          "moneySource": { "type": "string", "enum": ["FUND", "PERSONAL"] },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "maximum": 999999999999
+          },
+          "occurredAt": { "type": "string", "format": "date-time" },
+          "date": { "type": "string", "format": "date" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "transactorId": { "type": "string", "format": "uuid" },
+          "note": { "type": "string", "maxLength": 255, "minLength": 0 },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupTransactionParticipantReq"
+            }
+          }
+        },
+        "required": ["amount", "moneySource", "transactorId", "type"]
+      },
+      "GroupTransactionBulkReviewReq": {
+        "type": "object",
+        "properties": {
+          "transactionIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": ["transactionIds"]
+      },
+      "ApiResponseObject": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "object" },
+          "msg": { "type": "string" }
+        }
+      },
+      "MemberAddReq": {
+        "type": "object",
+        "properties": {
+          "memberIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": ["memberIds"]
+      },
+      "FundReconcileReq": {
+        "type": "object",
+        "properties": {
+          "actualBalance": { "type": "integer", "format": "int64" },
+          "reason": { "type": "string", "maxLength": 255, "minLength": 0 },
+          "excludedUserIds": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": ["actualBalance"]
+      },
+      "ApiResponseGroupFundReconcileRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupFundReconcileRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupFundReconcileRes": {
+        "type": "object",
+        "properties": {
+          "previousBalance": { "type": "integer", "format": "int64" },
+          "actualBalance": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" },
+          "adjustmentType": {
+            "type": "string",
+            "enum": [
+              "EXPENSE",
+              "CONTRIBUTION",
+              "REFUND",
+              "ADJUSTMENT_UP",
+              "ADJUSTMENT_DOWN"
+            ]
+          },
+          "transactionId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "GroupJoinReq": {
+        "type": "object",
+        "properties": { "inviteCode": { "type": "string" } },
+        "required": ["inviteCode"]
+      },
+      "CreateGoalRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 100, "minLength": 1 },
+          "targetAmount": { "type": "integer", "format": "int64" },
+          "targetDate": { "type": "string", "format": "date" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "iconId": { "type": "string", "format": "uuid" },
+          "initialAmount": { "type": "integer", "format": "int64" }
+        },
+        "required": ["name", "targetAmount"]
+      },
+      "ApiResponseCreateGoalResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CreateGoalResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CreateGoalResponse": {
+        "type": "object",
+        "properties": {
+          "goal": { "$ref": "#/components/schemas/GoalListItemResponse" }
+        }
+      },
+      "GoalListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "targetAmount": { "type": "integer", "format": "int64" },
+          "savedAmount": { "type": "integer", "format": "int64" },
+          "missingAmount": { "type": "integer", "format": "int64" },
+          "progress": { "type": "number" },
+          "progressLabel": { "type": "string" },
+          "targetDate": { "type": "string", "format": "date" },
+          "daysRemaining": { "type": "integer", "format": "int32" },
+          "status": { "type": "string" },
+          "icon": { "$ref": "#/components/schemas/IconSummary" },
+          "wallet": { "$ref": "#/components/schemas/WalletSummary" },
+          "suggestion": { "$ref": "#/components/schemas/Suggestion" },
+          "contributionCount": { "type": "integer", "format": "int32" }
+        }
+      },
+      "IconSummary": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "pathData": { "type": "string" }
+        }
+      },
+      "Suggestion": {
+        "type": "object",
+        "properties": {
+          "monthlyRequired": { "type": "integer", "format": "int64" },
+          "content": { "type": "string" },
+          "assessment": { "type": "string" }
+        }
+      },
+      "WalletSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" }
+        }
+      },
+      "CreateContributionRequest": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "integer", "format": "int64" },
+          "contributedDate": { "type": "string", "format": "date" },
+          "sourceWalletId": { "type": "string", "format": "uuid" },
+          "createTransaction": { "type": "boolean" },
+          "note": { "type": "string" }
+        },
+        "required": ["amount"]
+      },
+      "ApiResponseCreateContributionResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CreateContributionResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "Contribution": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "format": "int64" },
+          "contributedDate": { "type": "string", "format": "date" },
+          "transactionId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "CreateContributionResponse": {
+        "type": "object",
+        "properties": {
+          "contribution": { "$ref": "#/components/schemas/Contribution" },
+          "goal": { "$ref": "#/components/schemas/GoalProgress" },
+          "transaction": { "$ref": "#/components/schemas/TransactionSummary" },
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" }
+        }
+      },
+      "GoalProgress": {
+        "type": "object",
+        "properties": {
+          "savedAmount": { "type": "integer", "format": "int64" },
+          "progress": { "type": "number" },
+          "status": { "type": "string" }
+        }
+      },
+      "CreateDebtRequest": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "pattern": "lending|borrowing" },
+          "counterpartyName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "principalAmount": { "type": "integer", "format": "int64" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "issuedDate": { "type": "string", "format": "date" },
+          "dueDate": { "type": "string", "format": "date" },
+          "note": { "type": "string" }
+        },
+        "required": ["counterpartyName", "principalAmount", "type", "walletId"]
+      },
+      "ApiResponseCreateDebtResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CreateDebtResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CreateDebtResponse": {
+        "type": "object",
+        "properties": {
+          "debt": { "$ref": "#/components/schemas/DebtListItemResponse" },
+          "originTransaction": {
+            "$ref": "#/components/schemas/OriginTransaction"
+          },
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" }
+        }
+      },
+      "DebtListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "counterpartyName": { "type": "string" },
+          "principalAmount": { "type": "integer", "format": "int64" },
+          "paidAmount": { "type": "integer", "format": "int64" },
+          "remainingAmount": { "type": "integer", "format": "int64" },
+          "paidRatio": { "type": "number" },
+          "issuedDate": { "type": "string", "format": "date" },
+          "dueDate": { "type": "string", "format": "date" },
+          "daysRemaining": { "type": "integer", "format": "int32" },
+          "isOverdue": { "type": "boolean" },
+          "status": { "type": "string" },
+          "note": { "type": "string" },
+          "wallet": { "$ref": "#/components/schemas/WalletSummary" },
+          "paymentCount": { "type": "integer", "format": "int32" }
+        }
+      },
+      "OriginTransaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "WriteOffRequest": {
+        "type": "object",
+        "properties": { "reason": { "type": "string" } }
+      },
+      "ApiResponseDebtListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/DebtListItemResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CreatePaymentRequest": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "integer", "format": "int64" },
+          "paidDate": { "type": "string", "format": "date" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "note": { "type": "string" }
+        },
+        "required": ["amount"]
+      },
+      "ApiResponseCreatePaymentResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CreatePaymentResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CreatePaymentResponse": {
+        "type": "object",
+        "properties": {
+          "payment": { "$ref": "#/components/schemas/Payment" },
+          "debt": { "$ref": "#/components/schemas/DebtProgress" },
+          "transaction": { "$ref": "#/components/schemas/TransactionSummary" },
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" }
+        }
+      },
+      "DebtProgress": {
+        "type": "object",
+        "properties": {
+          "paidAmount": { "type": "integer", "format": "int64" },
+          "remainingAmount": { "type": "integer", "format": "int64" },
+          "status": { "type": "string" }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "format": "int64" },
+          "paidDate": { "type": "string", "format": "date" },
+          "note": { "type": "string" }
+        }
+      },
+      "CreateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 50, "minLength": 1 },
+          "type": { "type": "string", "pattern": "^(expense|income)$" },
+          "iconId": { "type": "string", "format": "uuid" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "parentCategoryId": { "type": "string", "format": "uuid" },
+          "categoryGroupId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["color", "iconId", "name", "type"]
+      },
+      "ApiResponseCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CategoryResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CategoryGroupSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string" }
+        }
+      },
+      "CategoryResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "isSystem": { "type": "boolean" },
+          "parentCategoryId": { "type": "string", "format": "uuid" },
+          "categoryGroup": {
+            "$ref": "#/components/schemas/CategoryGroupSummary"
+          },
+          "icon": { "$ref": "#/components/schemas/IconSummary" },
+          "color": { "type": "string" },
+          "sortOrder": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "isEnabled": { "type": "boolean" },
+          "children": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CategoryResponse" }
+          }
+        }
+      },
+      "CreateBudgetRequest": {
+        "type": "object",
+        "properties": {
+          "categoryId": { "type": "string", "format": "uuid" },
+          "limitAmount": { "type": "integer", "format": "int64" },
+          "periodType": {
+            "type": "string",
+            "pattern": "week|month|quarter|year"
+          },
+          "startDate": { "type": "string", "format": "date" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "autoRenew": { "type": "boolean" }
+        },
+        "required": ["categoryId", "limitAmount", "periodType"]
+      },
+      "Alert": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "projectedDepletionDate": { "type": "string", "format": "date" }
+        }
+      },
+      "ApiResponseBudgetListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/BudgetListItemResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "BudgetListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "category": { "$ref": "#/components/schemas/CategorySummary" },
+          "wallet": { "$ref": "#/components/schemas/WalletSummary" },
+          "limitAmount": { "type": "integer", "format": "int64" },
+          "spentAmount": { "type": "integer", "format": "int64" },
+          "remaining": { "type": "integer", "format": "int64" },
+          "ratio": { "type": "number" },
+          "percentLabel": { "type": "integer", "format": "int32" },
+          "status": { "type": "string" },
+          "statusColor": { "type": "string" },
+          "periodType": { "type": "string" },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "daysRemaining": { "type": "integer", "format": "int32" },
+          "autoRenew": { "type": "boolean" },
+          "isShared": { "type": "boolean" },
+          "alert": { "$ref": "#/components/schemas/Alert" }
+        }
+      },
+      "CategorySummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "icon": { "$ref": "#/components/schemas/IconSummary" },
+          "color": { "type": "string" }
+        }
+      },
+      "VerifyEmailRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "code": { "type": "string", "pattern": "^\\d{6}$" }
+        },
+        "required": ["code", "email"]
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "resetCode": { "type": "string" },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 2147483647,
+            "minLength": 8
+          }
+        },
+        "required": ["email", "newPassword", "resetCode"]
+      },
+      "ResendVerificationRequest": {
+        "type": "object",
+        "properties": { "email": { "type": "string" } },
+        "required": ["email"]
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "password": {
+            "type": "string",
+            "maxLength": 2147483647,
+            "minLength": 8
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "properties": { "refreshToken": { "type": "string" } },
+        "required": ["refreshToken"]
+      },
+      "LogoutRequest": {
+        "type": "object",
+        "properties": {
+          "refreshToken": { "type": "string" },
+          "logoutAllDevices": { "type": "boolean" }
+        }
+      },
+      "EmailLoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string" },
+          "password": { "type": "string" }
+        },
+        "required": ["email", "password"]
+      },
+      "GoogleLoginRequest": {
+        "type": "object",
+        "properties": { "idToken": { "type": "string" } },
+        "required": ["idToken"]
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "properties": { "email": { "type": "string" } },
+        "required": ["email"]
+      },
+      "UpdateUserRoleReq": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "roleName": { "type": "string", "enum": ["ROLE_ADMIN", "ROLE_USER"] }
+        },
+        "required": ["roleName", "userId"]
+      },
+      "AddPermissionRoleRequest": {
+        "type": "object",
+        "properties": {
+          "roleName": { "type": "string", "enum": ["ROLE_ADMIN", "ROLE_USER"] },
+          "permissionName": {
+            "type": "string",
+            "enum": [
+              "users:read",
+              "users:update",
+              "users:delete",
+              "roles:read",
+              "roles:update",
+              "roles:delete",
+              "user_role:read",
+              "user_role:update",
+              "user_role:delete",
+              "role_permission:read",
+              "role_permission:update",
+              "role_permission:delete",
+              "categories:manage",
+              "system:view_stats",
+              "group:read"
+            ]
+          }
+        }
+      },
+      "ToggleWalletCategoryRequest": {
+        "type": "object",
+        "properties": { "isEnabled": { "type": "boolean" } },
+        "required": ["isEnabled"]
+      },
+      "UpdateWalletRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "writeOnly": true },
+          "includeInTotal": { "type": "boolean", "writeOnly": true },
+          "icon": { "type": "string", "writeOnly": true },
+          "color": { "type": "string", "writeOnly": true }
+        }
+      },
+      "ReorderWalletsRequest": {
+        "type": "object",
+        "properties": {
+          "sortOrder": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": ["sortOrder"]
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "firstName": { "type": "string", "maxLength": 100, "minLength": 0 },
+          "lastName": { "type": "string", "maxLength": 100, "minLength": 0 },
+          "avatarUrl": { "type": "string" }
+        }
+      },
+      "UpdateRecurringRequest": {
+        "type": "object",
+        "properties": {
+          "displayName": { "type": "string", "maxLength": 100, "minLength": 1 },
+          "amount": { "type": "integer", "format": "int64" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "frequency": { "type": "string" },
+          "interval": { "type": "integer", "format": "int32" },
+          "endDate": { "type": "string", "format": "date" },
+          "note": { "type": "string" }
+        }
+      },
+      "GroupUpdateReq": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 100, "minLength": 0 },
+          "description": { "type": "string", "maxLength": 255, "minLength": 0 },
+          "target": { "type": "integer", "format": "int64" },
+          "isSettlementEnabled": { "type": "boolean" },
+          "isJoinWithoutConfirm": { "type": "boolean" }
+        }
+      },
+      "UpdateGoalRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 100, "minLength": 1 },
+          "targetAmount": { "type": "integer", "format": "int64" },
+          "targetDate": { "type": "string", "format": "date" },
+          "iconId": { "type": "string", "format": "uuid" },
+          "status": { "type": "string" }
+        }
+      },
+      "ApiResponseGoalListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GoalListItemResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "UpdateDebtRequest": {
+        "type": "object",
+        "properties": {
+          "counterpartyName": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "dueDate": { "type": "string", "format": "date" },
+          "note": { "type": "string" }
+        }
+      },
+      "UpdateCategoryRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "writeOnly": true },
+          "iconId": { "type": "string", "format": "uuid", "writeOnly": true },
+          "color": { "type": "string", "writeOnly": true },
+          "categoryGroupId": {
+            "type": "string",
+            "format": "uuid",
+            "writeOnly": true
+          },
+          "parentCategoryId": {
+            "type": "string",
+            "format": "uuid",
+            "writeOnly": true
+          },
+          "parentCategoryIdSet": { "type": "boolean" }
+        }
+      },
+      "ReorderCategoriesRequest": {
+        "type": "object",
+        "properties": {
+          "parentCategoryId": { "type": "string", "format": "uuid" },
+          "sortOrder": {
+            "type": "array",
+            "items": { "type": "string", "format": "uuid" }
+          }
+        },
+        "required": ["sortOrder"]
+      },
+      "UpdateBudgetRequest": {
+        "type": "object",
+        "properties": {
+          "limitAmount": { "type": "integer", "format": "int64" },
+          "autoRenew": { "type": "boolean" },
+          "isActive": { "type": "boolean" },
+          "walletId": { "type": "string", "format": "uuid" },
+          "categoryId": { "type": "string", "format": "uuid" },
+          "periodType": { "type": "string" }
+        }
+      },
+      "BlockUserRequest": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "reason": { "type": "string", "maxLength": 500, "minLength": 0 }
+        },
+        "required": ["userId"]
+      },
+      "ApiResponseListWalletResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WalletResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseListCategoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CategoryResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseWalletDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/WalletDetailResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "WalletDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "initialBalance": { "type": "integer", "format": "int64" },
+          "currentBalance": { "type": "integer", "format": "int64" },
+          "includeInTotal": { "type": "boolean" },
+          "isShared": { "type": "boolean" },
+          "groupId": { "type": "string", "format": "uuid" },
+          "icon": { "type": "string" },
+          "color": { "type": "string" },
+          "sortOrder": { "type": "integer", "format": "int32" },
+          "stats": { "$ref": "#/components/schemas/WalletStatsResponse" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "projectedBalance": { "type": "integer", "format": "int64" }
+        }
+      },
+      "WalletStatsResponse": {
+        "type": "object",
+        "properties": {
+          "transactionCount": { "type": "integer", "format": "int64" },
+          "incomeThisMonth": { "type": "integer", "format": "int64" },
+          "expenseThisMonth": { "type": "integer", "format": "int64" },
+          "lastTransactionDate": { "type": "string", "format": "date" }
+        }
+      },
+      "ApiResponseWalletSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/WalletSummaryResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "ByTypeItem": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "total": { "type": "integer", "format": "int64" },
+          "walletCount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "WalletSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "personalTotal": { "type": "integer", "format": "int64" },
+          "personalWalletCount": { "type": "integer", "format": "int64" },
+          "sharedTotal": { "type": "integer", "format": "int64" },
+          "sharedWalletCount": { "type": "integer", "format": "int64" },
+          "byType": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ByTypeItem" }
+          }
+        }
+      },
+      "PageMeta": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalItems": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" }
+        }
+      },
+      "TransactionListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionListItemResponse"
+            }
+          },
+          "pagination": { "$ref": "#/components/schemas/PageMeta" },
+          "summary": {
+            "$ref": "#/components/schemas/TransactionSummaryResponse"
+          }
+        }
+      },
+      "TransactionSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "totalIncome": { "type": "integer", "format": "int64" },
+          "totalExpense": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" }
+        }
+      },
+      "AiDraftRef": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "method": { "type": "string" },
+          "rawInput": { "type": "string" },
+          "confidence": { "type": "number", "format": "double" }
+        }
+      },
+      "ApiResponseTransactionDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/TransactionDetailResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "TransactionDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" },
+          "displayName": { "type": "string" },
+          "note": { "type": "string" },
+          "source": { "type": "string" },
+          "countsInReport": { "type": "boolean" },
+          "wallet": { "$ref": "#/components/schemas/WalletRef" },
+          "destinationWallet": { "$ref": "#/components/schemas/WalletRef" },
+          "category": { "$ref": "#/components/schemas/CategoryRef" },
+          "receiptUrl": { "type": "string" },
+          "recurringId": { "type": "string", "format": "uuid" },
+          "draftId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "relatedDebt": { "type": "object" },
+          "recurring": { "type": "object" },
+          "aiDrafts": { "$ref": "#/components/schemas/AiDraftRef" }
+        }
+      },
+      "ApiResponseTransactionByDateResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/TransactionByDateResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "DayGroupDto": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "dayNumber": { "type": "string" },
+          "dayLabel": { "type": "string" },
+          "monthYear": { "type": "string" },
+          "dayTotal": { "type": "integer", "format": "int64" },
+          "transaction": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionListItemResponse"
+            }
+          }
+        }
+      },
+      "PeriodSummaryDto": {
+        "type": "object",
+        "properties": {
+          "periodLabel": { "type": "string" },
+          "totalIncome": { "type": "integer", "format": "int64" },
+          "totalExpense": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" }
+        }
+      },
+      "TransactionByDateResponse": {
+        "type": "object",
+        "properties": {
+          "periodSummary": { "$ref": "#/components/schemas/PeriodSummaryDto" },
+          "days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DayGroupDto" }
+          }
+        }
+      },
+      "ApiResponseReportSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/ReportSummaryResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "PeriodInfo": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "fromDate": { "type": "string", "format": "date" },
+          "toDate": { "type": "string", "format": "date" }
+        }
+      },
+      "ReportSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "period": { "$ref": "#/components/schemas/PeriodInfo" },
+          "openingBalance": { "type": "integer", "format": "int64" },
+          "closingBalance": { "type": "integer", "format": "int64" },
+          "totalIncome": { "type": "integer", "format": "int64" },
+          "totalExpense": { "type": "integer", "format": "int64" },
+          "netIncome": { "type": "integer", "format": "int64" },
+          "transactionCount": { "type": "integer", "format": "int64" },
+          "avgDailyExpense": { "type": "integer", "format": "int64" },
+          "vsPreviousPeriod": {
+            "$ref": "#/components/schemas/VsPreviousPeriod"
+          }
+        }
+      },
+      "VsPreviousPeriod": {
+        "type": "object",
+        "properties": {
+          "previousPeriodExpense": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" },
+          "changeRatio": { "type": "number", "format": "double" },
+          "label": { "type": "string" }
+        }
+      },
+      "ApiResponseMonthlyTrendResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/MonthlyTrendResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "MonthAmount": {
+        "type": "object",
+        "properties": {
+          "month": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "MonthItem": {
+        "type": "object",
+        "properties": {
+          "month": { "type": "string" },
+          "label": { "type": "string" },
+          "totalIncome": { "type": "integer", "format": "int64" },
+          "totalExpense": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" }
+        }
+      },
+      "MonthlyTrendResponse": {
+        "type": "object",
+        "properties": {
+          "months": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MonthItem" }
+          },
+          "averageExpense": { "type": "integer", "format": "int64" },
+          "highestMonth": { "$ref": "#/components/schemas/MonthAmount" },
+          "lowestMonth": { "$ref": "#/components/schemas/MonthAmount" }
+        }
+      },
+      "ApiResponseReportHomeResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/ReportHomeResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "AveragePoint": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "integer", "format": "int32" },
+          "cumulative": { "type": "integer", "format": "int64" }
+        }
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "personalTotal": { "type": "integer", "format": "int64" },
+          "sharedTotal": { "type": "integer", "format": "int64" }
+        }
+      },
+      "BudgetAttentionItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "category": { "type": "string" },
+          "ratio": { "type": "number" },
+          "status": { "type": "string" }
+        }
+      },
+      "CurrentPoint": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "integer", "format": "int32" },
+          "spentThatDay": { "type": "integer", "format": "int64" },
+          "cumulative": { "type": "integer", "format": "int64" }
+        }
+      },
+      "DailyTrend": {
+        "type": "object",
+        "properties": {
+          "currentPoints": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CurrentPoint" }
+          },
+          "averageLine": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AveragePoint" }
+          },
+          "maxValue": { "type": "integer", "format": "int64" },
+          "note": { "$ref": "#/components/schemas/Note" }
+        }
+      },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "highestSpendDate": { "type": "string" },
+          "amountThatDay": { "type": "integer", "format": "int64" },
+          "avgPrevious3Months": { "type": "integer", "format": "int64" }
+        }
+      },
+      "PeriodSummary": {
+        "type": "object",
+        "properties": {
+          "periodLabel": { "type": "string" },
+          "totalIncome": { "type": "integer", "format": "int64" },
+          "totalExpense": { "type": "integer", "format": "int64" },
+          "difference": { "type": "integer", "format": "int64" }
+        }
+      },
+      "RecentTransactionItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "date": { "type": "string", "format": "date" },
+          "displayName": { "type": "string" },
+          "category": { "$ref": "#/components/schemas/CategoryRef" },
+          "wallet": { "$ref": "#/components/schemas/WalletRef" }
+        }
+      },
+      "ReportHomeResponse": {
+        "type": "object",
+        "properties": {
+          "balance": { "$ref": "#/components/schemas/Balance" },
+          "topWallets": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/WalletItem" }
+          },
+          "periodSummary": { "$ref": "#/components/schemas/PeriodSummary" },
+          "dailyTrend": { "$ref": "#/components/schemas/DailyTrend" },
+          "topSpending": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TopSpendingItem" }
+          },
+          "recentTransactions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RecentTransactionItem" }
+          },
+          "budgetsNeedingAttention": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BudgetAttentionItem" }
+          }
+        }
+      },
+      "TopSpendingItem": {
+        "type": "object",
+        "properties": {
+          "categoryId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "ratio": { "type": "number", "format": "double" },
+          "icon": { "$ref": "#/components/schemas/IconRef" },
+          "color": { "type": "string" }
+        }
+      },
+      "WalletItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "currentBalance": { "type": "integer", "format": "int64" },
+          "type": { "type": "string" }
+        }
+      },
+      "ApiResponseDailyTrendResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/DailyTrendResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "Assessment": {
+        "type": "object",
+        "properties": {
+          "label": { "type": "string" },
+          "ratioVsAverage": { "type": "number", "format": "double" },
+          "content": { "type": "string" }
+        }
+      },
+      "DailyTrendResponse": {
+        "type": "object",
+        "properties": {
+          "month": { "type": "string" },
+          "daysInMonth": { "type": "integer", "format": "int32" },
+          "currentLine": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CurrentPoint" }
+          },
+          "avg3MonthsLine": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AveragePoint" }
+          },
+          "currentTotal": { "type": "integer", "format": "int64" },
+          "avg3MonthsSamePoint": { "type": "integer", "format": "int64" },
+          "assessment": { "$ref": "#/components/schemas/Assessment" }
+        }
+      },
+      "ApiResponseCategoryBreakdownResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CategoryBreakdownResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CategoryBreakdownResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "format": "int64" },
+          "avgPerDay": { "type": "integer", "format": "int64" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Item" }
+          }
+        }
+      },
+      "ChildDetail": {
+        "type": "object",
+        "properties": {
+          "categoryId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "transactionCount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "categoryId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "icon": { "$ref": "#/components/schemas/IconRef" },
+          "color": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "ratio": { "type": "number", "format": "double" },
+          "transactionCount": { "type": "integer", "format": "int64" },
+          "avgPerTransaction": { "type": "integer", "format": "int64" },
+          "hasChildren": { "type": "boolean" },
+          "childrenDetail": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChildDetail" }
+          }
+        }
+      },
+      "ApiResponseCategoryGroupBreakdownResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "$ref": "#/components/schemas/CategoryGroupBreakdownResponse"
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "CategoryGroupBreakdownResponse": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "format": "int64" },
+          "groups": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GroupItem" }
+          }
+        }
+      },
+      "CategoryItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "ratioInGroup": { "type": "number", "format": "double" }
+        }
+      },
+      "GroupItem": {
+        "type": "object",
+        "properties": {
+          "categoryGroupId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string" },
+          "amount": { "type": "integer", "format": "int64" },
+          "ratio": { "type": "number", "format": "double" },
+          "percentLabel": { "type": "string" },
+          "transactionCount": { "type": "integer", "format": "int64" },
+          "category": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CategoryItem" }
+          }
+        }
+      },
+      "ApiResponseListRecurringListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecurringListItemResponse"
+            }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseRecurringDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/RecurringDetailResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GeneratedTransaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "date": { "type": "string", "format": "date" },
+          "amount": { "type": "integer", "format": "int64" },
+          "type": { "type": "string" },
+          "source": { "type": "string" }
+        }
+      },
+      "RecurringDetailResponse": {
+        "type": "object",
+        "properties": {
+          "recurring": {
+            "$ref": "#/components/schemas/RecurringListItemResponse"
+          },
+          "history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GeneratedTransaction" }
+          }
+        }
+      },
+      "NotificationListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "referenceId": { "type": "string", "format": "uuid" },
+          "isRead": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NotificationListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationListItemResponse"
+            }
+          },
+          "pagination": { "$ref": "#/components/schemas/PageMeta" }
+        }
+      },
+      "ApiResponseIconGroupResponseWrapper": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/IconGroupResponseWrapper" },
+          "msg": { "type": "string" }
+        }
+      },
+      "IconGroupResponse": {
+        "type": "object",
+        "properties": {
+          "groupCode": { "type": "string" },
+          "groupName": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IconResponse" }
+          }
+        }
+      },
+      "IconGroupResponseWrapper": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IconGroupResponse" }
+          },
+          "total": { "type": "integer", "format": "int32" }
+        }
+      },
+      "IconResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "code": { "type": "string" },
+          "displayName": { "type": "string" },
+          "pathData": { "type": "string" }
+        }
+      },
+      "ApiResponseListGroupSummaryRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GroupSummaryRes" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupSummaryRes": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "myRole": { "type": "string", "enum": ["OWNER", "MEMBER"] },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "ARCHIVED", "DELETED"]
+          },
+          "inviteCode": { "type": "string" },
+          "memberCount": { "type": "integer", "format": "int64" },
+          "fundBalance": { "type": "integer", "format": "int64" },
+          "target": { "type": "integer", "format": "int64" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseGroupPendingCountRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupPendingCountRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupPendingCountRes": {
+        "type": "object",
+        "properties": {
+          "pendingTransactions": { "type": "integer", "format": "int64" },
+          "pendingMembers": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseGroupTransactionListRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupTransactionListRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupTransactionListRes": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupTransactionDetailRes"
+            }
+          },
+          "meta": { "$ref": "#/components/schemas/PageMeta" }
+        }
+      },
+      "ApiResponseListGroupTransactionParticipantRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupTransactionParticipantRes"
+            }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupTransactionParticipantRes": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "shareAmount": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseGroupSummaryReportRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupSummaryReportRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupSummaryReportRes": {
+        "type": "object",
+        "properties": {
+          "groupId": { "type": "string", "format": "uuid" },
+          "groupName": { "type": "string" },
+          "target": { "type": "integer", "format": "int64" },
+          "period": { "type": "string" },
+          "fund": { "$ref": "#/components/schemas/FundRes" },
+          "totalExpense": { "type": "integer", "format": "int64" },
+          "totalContribution": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseListMemberRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MemberRes" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseGroupBalanceReportRes": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GroupBalanceReportRes" },
+          "msg": { "type": "string" }
+        }
+      },
+      "GroupBalanceItemRes": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "format": "uuid" },
+          "fullName": { "type": "string" },
+          "status": { "type": "string" },
+          "totalPaidOutOfPocket": { "type": "integer", "format": "int64" },
+          "totalRefunded": { "type": "integer", "format": "int64" },
+          "totalShareAmount": { "type": "integer", "format": "int64" },
+          "netBalance": { "type": "integer", "format": "int64" },
+          "neededContribution": { "type": "integer", "format": "int64" }
+        }
+      },
+      "GroupBalanceReportRes": {
+        "type": "object",
+        "properties": {
+          "groupId": { "type": "string", "format": "uuid" },
+          "target": { "type": "integer", "format": "int64" },
+          "fundBalance": { "type": "integer", "format": "int64" },
+          "totalNeededContribution": { "type": "integer", "format": "int64" },
+          "isSettlementEnabled": { "type": "boolean" },
+          "balances": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GroupBalanceItemRes" }
+          }
+        }
+      },
+      "ApiResponseListGoalListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GoalListItemResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseGoalDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/GoalDetailResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "ContributionHistoryItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "format": "int64" },
+          "contributedDate": { "type": "string", "format": "date" },
+          "transactionId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "GoalDetailResponse": {
+        "type": "object",
+        "properties": {
+          "goal": { "$ref": "#/components/schemas/GoalListItemResponse" },
+          "contributions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ContributionHistoryItem" }
+          }
+        }
+      },
+      "ApiResponseListDebtListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DebtListItemResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseDebtDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/DebtDetailResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "DebtDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "counterpartyName": { "type": "string" },
+          "principalAmount": { "type": "integer", "format": "int64" },
+          "paidAmount": { "type": "integer", "format": "int64" },
+          "remainingAmount": { "type": "integer", "format": "int64" },
+          "paidRatio": { "type": "number" },
+          "issuedDate": { "type": "string", "format": "date" },
+          "dueDate": { "type": "string", "format": "date" },
+          "daysRemaining": { "type": "integer", "format": "int32" },
+          "isOverdue": { "type": "boolean" },
+          "status": { "type": "string" },
+          "note": { "type": "string" },
+          "wallet": { "$ref": "#/components/schemas/WalletSummary" },
+          "paymentCount": { "type": "integer", "format": "int32" },
+          "paymentHistory": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PaymentHistoryItem" }
+          },
+          "originTransaction": {
+            "$ref": "#/components/schemas/OriginTransaction"
+          }
+        }
+      },
+      "PaymentHistoryItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "amount": { "type": "integer", "format": "int64" },
+          "paidDate": { "type": "string", "format": "date" },
+          "note": { "type": "string" },
+          "transactionId": { "type": "string", "format": "uuid" }
+        }
+      },
+      "ApiResponseDebtSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/DebtSummaryResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "DebtSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "receivable": { "$ref": "#/components/schemas/Side" },
+          "payable": { "$ref": "#/components/schemas/Side" },
+          "difference": { "type": "integer", "format": "int64" },
+          "dueSoon": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DueSoonItem" }
+          }
+        }
+      },
+      "DueSoonItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "counterpartyName": { "type": "string" },
+          "remainingAmount": { "type": "integer", "format": "int64" },
+          "dueDate": { "type": "string", "format": "date" },
+          "daysRemaining": { "type": "integer", "format": "int32" },
+          "type": { "type": "string" }
+        }
+      },
+      "OverduePart": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "format": "int64" },
+          "count": { "type": "integer", "format": "int32" }
+        }
+      },
+      "Side": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "format": "int64" },
+          "count": { "type": "integer", "format": "int32" },
+          "isOverdue": { "$ref": "#/components/schemas/OverduePart" }
+        }
+      },
+      "ApiResponseListCategoryGroupResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CategoryGroupResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "CategoryGroupResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "color": { "type": "string" },
+          "icon": { "$ref": "#/components/schemas/IconSummary" },
+          "sortOrder": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ApiResponseCategoryDetailResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/CategoryDetailResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "CategoryDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "isSystem": { "type": "boolean" },
+          "parentCategoryId": { "type": "string", "format": "uuid" },
+          "categoryGroup": {
+            "$ref": "#/components/schemas/CategoryGroupSummary"
+          },
+          "icon": { "$ref": "#/components/schemas/IconSummary" },
+          "color": { "type": "string" },
+          "sortOrder": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "stats": { "$ref": "#/components/schemas/Stats" }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "properties": {
+          "transactionCount": { "type": "integer", "format": "int64" },
+          "expenseThisMonth": { "type": "integer", "format": "int64" },
+          "hasBudget": { "type": "boolean" }
+        }
+      },
+      "ApiResponseListBudgetListItemResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BudgetListItemResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "ApiResponseBudgetSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/BudgetSummaryResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "BudgetSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "period": { "$ref": "#/components/schemas/Period" },
+          "totalLimit": { "type": "integer", "format": "int64" },
+          "totalSpent": { "type": "integer", "format": "int64" },
+          "totalRemaining": { "type": "integer", "format": "int64" },
+          "ratio": { "type": "number" },
+          "status": { "type": "string" },
+          "budgetCount": { "type": "integer", "format": "int32" },
+          "overLimitCount": { "type": "integer", "format": "int32" },
+          "nearLimitCount": { "type": "integer", "format": "int32" }
+        }
+      },
+      "Period": {
+        "type": "object",
+        "properties": {
+          "periodType": { "type": "string" },
+          "label": { "type": "string" },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "daysRemaining": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ApiResponseBudgetSuggestionResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/BudgetSuggestionResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "Basis": {
+        "type": "object",
+        "properties": {
+          "avg3Months": { "type": "integer", "format": "int64" },
+          "max3Months": { "type": "integer", "format": "int64" },
+          "min3Months": { "type": "integer", "format": "int64" },
+          "monthsWithData": { "type": "integer", "format": "int32" }
+        }
+      },
+      "BudgetSuggestionResponse": {
+        "type": "object",
+        "properties": {
+          "category": { "$ref": "#/components/schemas/CategorySummary" },
+          "suggestedLimit": { "type": "integer", "format": "int64" },
+          "basis": { "$ref": "#/components/schemas/Basis" },
+          "explanation": { "type": "string" }
+        }
+      },
+      "ApiResponseListBudgetAlertResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BudgetAlertResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "BudgetAlertResponse": {
+        "type": "object",
+        "properties": {
+          "budgetId": { "type": "string", "format": "uuid" },
+          "category": { "type": "string" },
+          "severity": { "type": "string" },
+          "ratio": { "type": "number" },
+          "percentLabel": { "type": "string" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "suggestion": { "$ref": "#/components/schemas/Suggestion" }
+        }
+      },
+      "ApiResponseListPermissionResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "PermissionResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "users:read",
+              "users:update",
+              "users:delete",
+              "roles:read",
+              "roles:update",
+              "roles:delete",
+              "user_role:read",
+              "user_role:update",
+              "user_role:delete",
+              "role_permission:read",
+              "role_permission:update",
+              "role_permission:delete",
+              "categories:manage",
+              "system:view_stats",
+              "group:read"
+            ]
+          },
+          "desc": { "type": "string" }
+        }
+      },
+      "ApiResponseListRoleResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RoleResponse" }
+          },
+          "msg": { "type": "string" }
+        }
+      },
+      "RoleResponse": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "enum": ["ROLE_ADMIN", "ROLE_USER"] },
+          "level": { "type": "integer", "format": "int32" },
+          "permissions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PermissionResponse" }
+          },
+          "desc": { "type": "string" }
+        }
+      },
+      "SseEmitter": {
+        "type": "object",
+        "properties": { "timeout": { "type": "integer", "format": "int64" } }
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "properties": { "password": { "type": "string" } }
+      },
+      "ApiResponseDeleteTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "$ref": "#/components/schemas/DeleteTransactionResponse" },
+          "msg": { "type": "string" }
+        }
+      },
+      "DeleteTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "newBalance": { "$ref": "#/components/schemas/NewBalance" }
+        }
+      }
+    }
+  }
+}

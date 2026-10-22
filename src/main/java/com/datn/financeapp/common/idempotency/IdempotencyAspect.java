@@ -5,8 +5,10 @@ import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.lang.reflect.Method;
 import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -21,18 +23,18 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * AOP chặn method controller đánh dấu {@link Idempotent} (CORE-03, D-10 đến D-13).
- *
+ * <p>
  * Luồng:
  * 1. Không có header {@code Idempotency-Key} -> chạy nghiệp vụ bình thường, không đụng DB.
  * 2. {@code INSERT ... ON CONFLICT DO NOTHING} với status=processing:
- *    - Insert thành công (chưa từng có key này) -> chạy nghiệp vụ thật, lưu kết quả, đổi
- *      status=completed.
- *    - Insert thất bại (đã tồn tại) -> tra bản ghi cũ:
- *        - completed -> trả lại response_body đã lưu, KHÔNG chạy lại nghiệp vụ.
- *        - processing -> ném 409 REQUEST_IN_PROGRESS ngay lập tức (D-13/D-14).
+ * - Insert thành công (chưa từng có key này) -> chạy nghiệp vụ thật, lưu kết quả, đổi
+ * status=completed.
+ * - Insert thất bại (đã tồn tại) -> tra bản ghi cũ:
+ * - completed -> trả lại response_body đã lưu, KHÔNG chạy lại nghiệp vụ.
+ * - processing -> ném 409 REQUEST_IN_PROGRESS ngay lập tức (D-13/D-14).
  * 3. Nghiệp vụ ném exception -> xoá bản ghi processing (không cache lỗi), throw lại nguyên
- *    exception gốc để GlobalExceptionHandler xử lý tiếp bình thường.
- *
+ * exception gốc để GlobalExceptionHandler xử lý tiếp bình thường.
+ * <p>
  * Dùng {@link RequestContextHolder} thay vì inject {@link HttpServletRequest} trực tiếp vào
  * field của bean singleton {@code @Aspect @Component} — an toàn hơn trong {@code @Around}.
  */

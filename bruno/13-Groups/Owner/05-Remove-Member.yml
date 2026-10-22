@@ -1,0 +1,16 @@
+info:
+  name: 05. Xóa thành viên khỏi nhóm
+  type: http
+  seq: 5
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/groups/{{groupId}}/members/{{memberUserId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Mời thành viên rời nhóm hoặc từ chối người dùng đang PENDING."

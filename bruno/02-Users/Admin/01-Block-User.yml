@@ -1,0 +1,25 @@
+info:
+  name: 01. Khóa tài khoản
+  type: http
+  seq: 1
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/admin/user/lock"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "user_id": "{{userId}}",
+        "reason": "Vi phạm điều khoản dịch vụ"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Khóa tài khoản người dùng."

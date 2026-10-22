@@ -1,0 +1,31 @@
+﻿info:
+  name: 06. Cập nhật giao dịch
+  type: http
+  seq: 6
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/transactions/{{transactionId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "type": "expense",
+        "amount": 55000,
+        "wallet_id": "{{walletId}}",
+        "category_id": "{{categoryId}}",
+        "date": "2026-09-11",
+        "display_name": "Cà phê sáng size L",
+        "note": "Highlands Coffee kèm bánh ngọt",
+        "counts_in_report": true
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Cập nhật thông tin giao dịch và hoàn/trừ chênh lệch số dư ví tương ứng.

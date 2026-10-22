@@ -1,5 +1,6 @@
 package com.datn.financeapp.common.security;
 
+import com.datn.financeapp.common.logging.RequestLoggingFilter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -7,22 +8,28 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Đọc header Authorization: Bearer <token>, verify bằng JwtService, set SecurityContext
  * nếu hợp lệ. Nếu thiếu header hoặc token không hợp lệ, KHÔNG set SecurityContext, để
  * chain.doFilter tiếp tục — Spring Security tự trả 401 ở entry point cho endpoint yêu
  * cầu auth (qua GlobalExceptionHandler.handleAuthentication).
- *
+ * <p>
  * Bắt riêng ExpiredJwtException để set request attribute phân biệt TOKEN_EXPIRED vs
  * TOKEN_INVALID cho tầng sau (entry point/controller) dùng khi cần.
  */
@@ -41,26 +48,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain chain) throws ServletException, IOException {
 
+        String token = null;
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+            token = header.substring(7);
+        } else {
+            String paramToken = request.getParameter("token");
+            if (paramToken != null && !paramToken.isBlank()) {
+                token = paramToken.trim();
+            }
+        }
+
+        if (token != null) {
             try {
                 Claims claims = jwtService.parseAndValidate(token);
                 String userId = claims.getSubject();
 
                 if (blacklistedUserRepository.isBlacklisted(userId)) {
-                    request.setAttribute(ATTR_TOKEN_ERROR, "ACCOUNT_BLOCKED");
+                    request.setAttribute(ATTR_TOKEN_ERROR, "AUTH_ACCOUNT_BLOCKED");
                     chain.doFilter(request, response);
                     return;
                 }
 
-                java.util.List<org.springframework.security.core.GrantedAuthority> grantedAuthorities = Collections.emptyList();
+                List<GrantedAuthority> grantedAuthorities = Collections.emptyList();
                 Object authoritiesClaim = claims.get("authorities");
-                if (authoritiesClaim instanceof java.util.List<?> list) {
+                if (authoritiesClaim instanceof List<?> list) {
                     grantedAuthorities = list.stream()
                             .filter(item -> item instanceof String)
-                            .map(item -> new org.springframework.security.core.authority.SimpleGrantedAuthority((String) item))
-                            .collect(java.util.stream.Collectors.toList());
+                            .map(item -> new SimpleGrantedAuthority((String) item))
+                            .collect(Collectors.toList());
                 }
 
                 Integer topRoleLevel = claims.get("roles_level_top", Integer.class);
@@ -69,7 +85,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         userId, null, grantedAuthorities);
                 authentication.setDetails(topRoleLevel);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                request.setAttribute(com.datn.financeapp.common.logging.RequestLoggingFilter.ATTR_USER_ID, userId);
+                request.setAttribute(RequestLoggingFilter.ATTR_USER_ID, userId);
+                // Đưa userId vào MDC để MỌI log phát sinh trong phần còn lại của request
+                // (không chỉ dòng tổng kết HTTP của RequestLoggingFilter) đều mang theo userId,
+                // phục vụ lọc log theo user ở admin console. Dọn dẹp tập trung ở
+                // RequestLoggingFilter.MDC.clear() vì filter đó bọc ngoài cùng.
+                MDC.put("userId", userId);
             } catch (ExpiredJwtException ex) {
                 request.setAttribute(ATTR_TOKEN_ERROR, "TOKEN_EXPIRED");
             } catch (JwtException | IllegalArgumentException ex) {

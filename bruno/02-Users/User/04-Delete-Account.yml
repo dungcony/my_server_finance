@@ -1,0 +1,24 @@
+﻿info:
+  name: 04. Xóa tài khoản
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/users/me"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "password": "Password123@"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Xóa tài khoản cá nhân (yêu cầu mật khẩu xác nhận).

@@ -1,0 +1,20 @@
+﻿info:
+  name: 07. Xóa mục tiêu
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/goals/{{goalId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: revert_transactions
+      value: "false"
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: Xóa mục tiêu tiết kiệm.

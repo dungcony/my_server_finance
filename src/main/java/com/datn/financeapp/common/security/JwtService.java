@@ -4,24 +4,23 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.MacAlgorithm;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Date;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Sinh/verify JWT access token bằng API jjwt 0.13.x (Jwts.parser()/.verifyWith(key) —
  * KHÔNG dùng parserBuilder()/setSigningKey() đã lỗi thời của 0.11.x).
- *
+ * <p>
  * AUTH-08: access token chỉ chứa sub (user id), claim plan, authorities, roles_level_top
  * và exp — không có trường nhạy cảm khác (password, email...). Mọi claim mới phải thêm qua
  * tham số riêng của generateAccessToken (không nhét tuỳ tiện vào Map) để buộc thay đổi sau
  * này phải sửa method signature, dễ review (T-02-04).
- *
+ * <p>
  * roles_level_top = level của role MẠNH NHẤT user đang giữ (quy ước số nhỏ = quyền cao,
  * nên "mạnh nhất" = số NHỎ nhất — xem NO_ROLE_LEVEL bên dưới cho trường hợp không có role).
  * Chỉ dùng cho việc ĐỌC/LỌC (vd quản lý chỉ thấy user cấp thấp hơn) — KHÔNG dùng để chặn
@@ -38,6 +37,14 @@ public class JwtService {
     private static final int NO_ROLE_LEVEL = Integer.MAX_VALUE;
 
     private final SecretKey key;
+    /**
+     * -- GETTER --
+     * AUTH-08: dùng để trả đúng
+     * trong response register/login/refresh — tránh
+     * hằng số trùng lặp lệch khỏi cấu hình thật
+     * .
+     */
+    @Getter
     private final long accessTokenExpirySeconds;
 
     public JwtService(
@@ -52,14 +59,14 @@ public class JwtService {
     }
 
     public String generateAccessToken(UUID userId, String plan) {
-        return generateAccessToken(userId, plan, java.util.Collections.emptyList(), NO_ROLE_LEVEL);
+        return generateAccessToken(userId, plan, Collections.emptyList(), NO_ROLE_LEVEL);
     }
 
-    public String generateAccessToken(UUID userId, String plan, java.util.Collection<String> authorities) {
+    public String generateAccessToken(UUID userId, String plan, Collection<String> authorities) {
         return generateAccessToken(userId, plan, authorities, NO_ROLE_LEVEL);
     }
 
-    public String generateAccessToken(UUID userId, String plan, java.util.Collection<String> authorities, int topRoleLevel) {
+    public String generateAccessToken(UUID userId, String plan, Collection<String> authorities, int topRoleLevel) {
         Instant now = Instant.now();
         var builder = Jwts.builder()
                 .subject(userId.toString())
@@ -73,17 +80,6 @@ public class JwtService {
                 .expiration(Date.from(now.plusSeconds(accessTokenExpirySeconds)))
                 .signWith(key, ALG)
                 .compact();
-    }
-
-    /**
-     * Ném ExpiredJwtException / SignatureException / MalformedJwtException nếu token
-     * hết hạn / sai chữ ký / sai định dạng. verifyWith(key) mặc định từ chối alg=none
-     * và ép đúng thuật toán đã ký (T-02-01 — JWT algorithm confusion).
-     */
-    /** AUTH-08: dùng để trả đúng {@code expires_in} trong response register/login/refresh — tránh
-     * hằng số trùng lặp lệch khỏi cấu hình thật {@code jwt.access-token-expiry-seconds}. */
-    public long getAccessTokenExpirySeconds() {
-        return accessTokenExpirySeconds;
     }
 
     public Claims parseAndValidate(String token) {

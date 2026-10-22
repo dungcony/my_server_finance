@@ -1,0 +1,26 @@
+info:
+  name: 02. Cập nhật hồ sơ
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/users/me"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "first_name": "Văn A",
+        "last_name": "Nguyễn",
+        "avatar_url": "https://example.com/avatar.jpg"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Cập nhật tên hiển thị hoặc đường dẫn ảnh đại diện.

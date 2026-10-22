@@ -1,0 +1,31 @@
+﻿info:
+  name: 05. Đăng nhập với Google
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/google"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "id_token": "google_id_token_here"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data && res.body.data.access_token) {
+      bru.setEnvVar("accessToken", res.body.data.access_token);
+      if (res.body.data.refresh_token) {
+        bru.setEnvVar("refreshToken", res.body.data.refresh_token);
+      }
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Đăng nhập hoặc đăng ký nhanh thông qua Google ID Token.

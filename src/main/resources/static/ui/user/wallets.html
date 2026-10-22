@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ví cá nhân - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="user" data-active="wallets" data-title="Ví Cá nhân">
+<main id="page">
+    <div class="grid grid-3" id="summaryCards"></div>
+
+    <div class="card mt">
+        <div class="card-title">
+            <span>Danh sách ví cá nhân <span class="muted" id="count"></span></span>
+            <div class="btn-row">
+                <input type="text" id="fSearch" placeholder="Tìm tên ví..." style="width:160px">
+                <select id="fType" style="width:auto">
+                    <option value="">Tất cả loại ví</option>
+                    <option value="CASH">Tiền mặt</option>
+                    <option value="BANK">Ngân hàng</option>
+                    <option value="E_WALLET">Ví điện tử</option>
+                    <option value="LOAN">Khoản vay</option>
+                    <option value="SAVINGS">Tiết kiệm</option>
+                </select>
+                <button class="btn btn-secondary" id="btnReload">🔄</button>
+                <button class="btn" id="btnCreate">+ Tạo ví mới</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tên ví</th>
+                        <th>Loại ví</th>
+                        <th class="right">Số dư</th>
+                        <th>Mặc định</th>
+                        <th>Ngày tạo</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="walletBody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/wallets.js"></script>
+</body>
+</html>

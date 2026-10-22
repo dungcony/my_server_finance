@@ -1,0 +1,16 @@
+info:
+  name: 09. Xóa nhóm
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/groups/{{groupId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Chủ nhóm (OWNER): Xóa nhóm. Yêu cầu quỹ bằng 0, không còn giao dịch chờ duyệt và đã tất toán thừa thiếu."

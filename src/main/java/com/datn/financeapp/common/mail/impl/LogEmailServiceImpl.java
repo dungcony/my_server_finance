@@ -25,6 +25,11 @@ public class LogEmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendGeneratedPassword(String email, String rawPassword) {
+        log.info("Mật khẩu mới cho {}: {}", email, rawPassword);
+    }
+
+    @Override
     public void sendEmail(String to, String subject, String content) {
         log.info("Email gửi tới [{}]: Tiêu đề '{}' - Nội dung: {}", to, subject, content);
     }

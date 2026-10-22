@@ -1,0 +1,30 @@
+info:
+  name: 11. Cập nhật giao dịch nhóm
+  type: http
+  seq: 11
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/groups/{{groupId}}/transactions/{{groupTxnId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "amount": 300000,
+        "date": "2026-03-20",
+        "money_source": "FUND",
+        "category_id": "{{categoryId}}",
+        "user_id": "{{userId}}",
+        "note": "Ăn tối hải sản (đã chỉnh sửa)",
+        "participants": []
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Người ghi hoặc Chủ nhóm sửa giao dịch. Nếu thành viên thường sửa khoản đã duyệt, khoản sẽ quay lại PENDING.

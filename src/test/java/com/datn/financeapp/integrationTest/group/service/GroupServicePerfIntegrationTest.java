@@ -1,0 +1,545 @@
+package com.datn.financeapp.integrationTest.group.service;
+
+import com.datn.financeapp.module.group.service.*;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.datn.financeapp.TestRedisConfig;
+import com.datn.financeapp.common.mail.EmailService;
+import com.datn.financeapp.module.group.dto.request.fund.FundKepperUpdateReq;
+import com.datn.financeapp.module.group.dto.request.fund.FundReconcileReq;
+import com.datn.financeapp.module.group.dto.request.group.GroupCreateReq;
+import com.datn.financeapp.module.group.dto.request.group.GroupJoinReq;
+import com.datn.financeapp.module.group.dto.request.group.GroupUpdateReq;
+import com.datn.financeapp.module.group.dto.request.member.MemberAddReq;
+import com.datn.financeapp.module.group.dto.request.member.MemberCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.BatchGroupTxnUpdateStatusReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnFilterReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnUpdateReq;
+import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnUpdateStatusReq;
+import com.datn.financeapp.module.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.module.group.enums.*;
+import com.datn.financeapp.performance.ServicePerfSupport;
+import com.datn.financeapp.performance.ServicePerfSupport.Profile;
+import com.datn.financeapp.performance.SqlCountingConfig;
+import com.datn.financeapp.module.user.entity.Role;
+import com.datn.financeapp.module.user.entity.User;
+import com.datn.financeapp.module.user.entity.UserRole;
+import com.datn.financeapp.module.user.enums.RoleName;
+import com.datn.financeapp.module.user.enums.UserStatus;
+import com.datn.financeapp.module.user.repository.RoleRepository;
+import com.datn.financeapp.module.user.repository.UserRepository;
+import com.datn.financeapp.module.user.repository.UserRoleRepository;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+/**
+ * Đo hiệu năng (số câu SQL + thời gian) của từng hàm trong module {@code group}: {@link GroupService},
+ * {@link MemberService}, {@link MemberBehavierService}, {@link GroupTxnGetService},
+ * , {@link FundService}, {@link ReportService}. Khung đo và cách đọc báo cáo
+ * xem {@link com.datn.financeapp.performance.ServicePerfSupport}.
+ *
+ * <p>Hồ sơ dữ liệu của nhóm chính mà các hàm đọc nhắm vào:
+ * <ul>
+ *   <li><b>Tốt nhất</b>: nhóm {@value #FEW_MEMBERS} thành viên, chưa có giao dịch.</li>
+ *   <li><b>Tệ nhất</b>: nhóm {@value #MANY_MEMBERS} thành viên đang hoạt động cộng {@value #PENDING_MEMBERS}
+ *       người chờ duyệt, {@value #CONFIRMED_TRANSACTIONS} giao dịch đã duyệt (mỗi giao dịch chi chia cho cả nhóm)
+ *       và {@value #PENDING_TRANSACTIONS} giao dịch chờ duyệt; chủ nhóm còn thuộc thêm {@value #EXTRA_GROUPS}
+ *       nhóm khác để hàm liệt kê nhóm phải duyệt nhiều nhóm.</li>
+ * </ul>
+ * Hàm ghi và hàm phá huỷ (xoá nhóm, rời nhóm, duyệt giao dịch...) chạy trên nhóm hoặc giao dịch dựng riêng cho
+ * từng lần gọi, nên không làm bẩn nhóm chính; kích thước nhóm dựng riêng cũng đổi theo hồ sơ.
+ *
+ * <p>{@link FundService#create} chỉ được {@code GroupService.create} gọi nội bộ và không gọi lại được trên nhóm
+ * đã có quỹ, nên chi phí của nó nằm trong số đo của {@code GroupService.create}.
+ *
+ * <p>Không phải test hành vi, chỉ ghi báo cáo vào log và {@code target/perf-group.txt}. Chạy riêng:
+ * {@code mvn test -Dtest=GroupServicePerfIntegrationTest}
+ */
+@Slf4j
+@Testcontainers
+@SpringBootTest
+@ActiveProfiles("test")
+@org.springframework.context.annotation.Import({TestRedisConfig.class, SqlCountingConfig.class})
+@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
+class GroupServicePerfIntegrationTest {
+
+    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    static final int FEW_MEMBERS = 2;
+    static final int MANY_MEMBERS = 30;
+    static final int PENDING_MEMBERS = 5;
+    static final int CONFIRMED_TRANSACTIONS = 300;
+    static final int PENDING_TRANSACTIONS = 30;
+    static final int EXTRA_GROUPS = 19;
+    // số thành viên / giao dịch dựng riêng cho các hàm thao tác hàng loạt
+    private static final int BATCH_FEW = 1;
+    private static final int BATCH_MANY = 10;
+    // tổng người dùng dựng sẵn: đủ cho nhóm lớn nhất, người chờ duyệt, người vào nhóm và người nhận chuyển quyền
+    private static final int USER_POOL_SIZE = MANY_MEMBERS + PENDING_MEMBERS + 15;
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+
+    @DynamicPropertySource
+    static void registerJwtSecret(DynamicPropertyRegistry registry) {
+        registry.add("jwt.secret", () -> "dGVzdC1qd3Qtc2VjcmV0LWZvci1ncm91cC1wZXJmLXRlc3QtMDcwNzA3MDc=");
+    }
+
+    @MockitoBean
+    private EmailService emailService;
+
+    @Autowired
+    private GroupService groupService;
+
+    @Autowired
+    private MemberService memberService;
+
+    @Autowired
+    private MemberBehavierService memberBehavierService;
+
+    @Autowired
+    private GroupTxnGetService groupTxnGetService;
+
+    @Autowired
+    private GroupTxnCreateService groupTxnCreateService;
+
+    @Autowired
+    private FundService fundService;
+
+    @Autowired
+    private GroupTxnUpdateService groupTxnUpdateService;
+
+    @Autowired
+    private GroupTxnDeleteService groupTxnDeleteService;
+
+    @Autowired
+    private ReportService reportService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    private final ServicePerfSupport perf = new ServicePerfSupport("group");
+    private final AtomicInteger counter = new AtomicInteger();
+
+    private UUID ownerId;
+    private List<UUID> pool;
+    private UUID categoryId;
+    private String categoryCode;
+    private UUID mainGroupId;
+
+    @Test
+    @DisplayName("Đo SQL và thời gian từng hàm của module group ở hồ sơ tốt nhất và tệ nhất")
+    void measureGroupModuleFunctions() throws Exception {
+        Role userRole = roleRepository.findByName(RoleName.ROLE_USER).orElseThrow();
+        ownerId = createUser(userRole);
+        pool = new ArrayList<>();
+        for (int i = 0; i < USER_POOL_SIZE; i++)
+            pool.add(createUser(userRole));
+        categoryId = jdbcTemplate.queryForObject(
+                "SELECT id FROM categories WHERE NOT deleted LIMIT 1", UUID.class);
+        categoryCode = jdbcTemplate.queryForObject("SELECT code FROM categories WHERE id = ?", String.class, categoryId);
+
+        // pool.get(0) là thành viên thường của nhóm chính, cũng là người tạo giao dịch chờ duyệt
+        mainGroupId = newGroup(FEW_MEMBERS - 1);
+
+        measureAll(Profile.TOT_NHAT, BATCH_FEW);
+
+        growMainGroupToWorstCase();
+        measureAll(Profile.TE_NHAT, BATCH_MANY);
+
+        perf.writeReport(
+                FEW_MEMBERS + " thành viên, 0 giao dịch",
+                MANY_MEMBERS + " thành viên + " + PENDING_MEMBERS + " chờ duyệt, "
+                        + CONFIRMED_TRANSACTIONS + " giao dịch đã duyệt + " + PENDING_TRANSACTIONS
+                        + " chờ duyệt, " + (EXTRA_GROUPS + 1) + " nhóm của chủ");
+        assertThat(perf.measuredFunctionCount()).isPositive();
+    }
+
+    // batch là số thành viên / giao dịch cho hàm thao tác hàng loạt: ít ở hồ sơ tốt nhất, nhiều ở hồ sơ tệ nhất
+    private void measureAll(Profile profile, int batch) {
+        UUID group = mainGroupId;
+        measureGroupService(profile, group, batch);
+        measureMemberService(profile, group, batch);
+        measureMemberBehavierService(profile, group, batch);
+        measureTransactionService(profile, group);
+        measureReviewService(profile, batch);
+        measureFundService(profile, group, batch);
+        measureReportService(profile, group);
+    }
+
+    private void authAs(UUID userId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userId.toString(), null, Collections.emptyList())
+        );
+    }
+
+    private void measureGroupService(Profile profile, UUID group, int batch) {
+        AtomicReference<GroupDetailRes> fresh = new AtomicReference<>();
+        authAs(ownerId);
+
+        perf.measure(profile, "GroupService.findNotDeletedById", () -> groupService.findNotDeletedById(group));
+        perf.measure(profile, "GroupService.create",
+                () -> groupService.create(groupRequest(memberIds(0, batch), true)));
+        perf.measure(profile, "GroupService.list", () -> groupService.list());
+        perf.measure(profile, "GroupService.get", () -> groupService.detail(group));
+        perf.measure(profile, "GroupService.update",
+                () -> groupService.update(group,
+                        new GroupUpdateReq("Nhóm đo hiệu năng", "Mô tả mới", null, null, null)));
+        perf.measure(profile, "GroupService.archive",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> groupService.archive(fresh.get().id()));
+        perf.measure(profile, "GroupService.unarchive",
+                () -> {
+                    fresh.set(newGroupDetail(batch, true));
+                    groupService.archive(fresh.get().id());
+                },
+                () -> groupService.unarchive(fresh.get().id()));
+        perf.measure(profile, "GroupService.delete",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> groupService.delete(fresh.get().id()));
+        perf.measure(profile, "GroupService.joinByCode",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> {
+                    authAs(joiner());
+                    groupService.joinByCode(fresh.get().inviteCode());
+                });
+    }
+
+    private void measureMemberService(Profile profile, UUID group, int batch) {
+        AtomicReference<UUID> fresh = new AtomicReference<>();
+        List<UUID> activeIds = memberService.findIdAllMember(group);
+
+        perf.measure(profile, "MemberService.create",
+                () -> fresh.set(newGroup(batch)),
+                () -> memberService.create(new MemberCreateReq(fresh.get(), joiner(), MemberRole.MEMBER, MemberStatus.ACTIVE)));
+        perf.measure(profile, "MemberService.creates",
+                () -> fresh.set(newGroup(batch)),
+                () -> memberService.creates(joinerRequests(fresh.get(), batch)));
+        perf.measure(profile, "MemberService.countActiveMembers", () -> memberService.countActiveMembers(group));
+        perf.measure(profile, "MemberService.countPendingMembers", () -> memberService.countPendingMembers(group));
+        perf.measure(profile, "MemberService.getMember", () -> memberService.getMember(group, pool.get(0), null));
+        perf.measure(profile, "MemberService.getActivateMembers", () -> memberService.getActivateMembers(group));
+        perf.measure(profile, "MemberService.getMembersWithStatusIn",
+                () -> memberService.getMembersWithStatusIn(
+                        group, List.of(MemberStatus.ACTIVE, MemberStatus.LEFT, MemberStatus.REMOVED)));
+        perf.measure(profile, "MemberService.findIdAllMember", () -> memberService.findIdAllMember(group));
+        perf.measure(profile, "MemberService.allMemberInGroup", () -> memberService.allMemberInGroup(group, activeIds));
+        // người nằm ngoài pool thành viên và pool người chờ duyệt, nên chắc chắn không thuộc nhóm chính
+        perf.measure(profile, "MemberService.assertNotInGroup",
+                () -> memberService.assertNotInGroup(group, pool.get(MANY_MEMBERS + PENDING_MEMBERS)));
+    }
+
+    private void measureMemberBehavierService(Profile profile, UUID group, int batch) {
+        AtomicReference<GroupDetailRes> fresh = new AtomicReference<>();
+        authAs(ownerId);
+
+        perf.measure(profile, "MemberBehavierService.listMembers (mọi trạng thái)",
+                () -> memberBehavierService.listMembers(group, null));
+        perf.measure(profile, "MemberBehavierService.listMembers (người chờ duyệt)",
+                () -> memberBehavierService.listMembers(group, MemberStatus.PENDING));
+        perf.measure(profile, "MemberBehavierService.ownerAddMembers",
+                () -> fresh.set(newGroupDetail(1, true)),
+                () -> memberBehavierService.ownerAddMembers(
+                        fresh.get().id(), new MemberAddReq(memberIds(1, batch))));
+        perf.measure(profile, "MemberBehavierService.ownerAddMember",
+                () -> fresh.set(newGroupDetail(1, true)),
+                () -> memberBehavierService.ownerAddMember(pool.get(1), fresh.get().id()));
+        perf.measure(profile, "MemberBehavierService.leave",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> {
+                    authAs(pool.get(0));
+                    memberBehavierService.leave(fresh.get().id());
+                });
+        perf.measure(profile, "MemberBehavierService.removeMember",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> memberBehavierService.removeMember(fresh.get().id(), pool.get(0)));
+        perf.measure(profile, "MemberBehavierService.transferOwnership",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> memberBehavierService.transferOwnership(fresh.get().id(), pool.get(0)));
+        perf.measure(profile, "MemberBehavierService.approve",
+                () -> fresh.set(groupWithPendingMembers(batch)),
+                () -> memberBehavierService.approve(fresh.get().id(), joinerAt(0)));
+        perf.measure(profile, "MemberBehavierService.approveAll",
+                () -> fresh.set(groupWithPendingMembers(batch)),
+                () -> memberBehavierService.approveAll(fresh.get().id()));
+        perf.measure(profile, "MemberBehavierService.reject",
+                () -> fresh.set(groupWithPendingMembers(batch)),
+                () -> memberBehavierService.reject(fresh.get().id(), joinerAt(0)));
+        perf.measure(profile, "MemberBehavierService.rejectAll",
+                () -> fresh.set(groupWithPendingMembers(batch)),
+                () -> memberBehavierService.rejectAll(fresh.get().id()));
+    }
+
+    private void measureTransactionService(Profile profile, UUID group) {
+        AtomicReference<UUID> txn = new AtomicReference<>();
+        authAs(ownerId);
+        Pageable p20 = PageRequest.of(0, 20);
+        Pageable p100 = PageRequest.of(0, 100);
+        GroupTxnFilterReq f = filter();
+
+        perf.measure(profile, "GTransactionCreateService.create (chi tiêu)",
+                () -> groupTxnCreateService.create(group, expenseRequest(ownerId)));
+        perf.measure(profile, "GTransactionCreateService.create (nộp quỹ)",
+                () -> groupTxnCreateService.create(group, contributionRequest(ownerId)));
+        perf.measure(profile, "GTransactionService.list (trang mặc định, 20 bản ghi)",
+                () -> groupTxnGetService.generalList(group, f, p20));
+        perf.measure(profile, "GTransactionService.list (trang lớn nhất, 100 bản ghi)",
+                () -> groupTxnGetService.generalList(group, f, p100));
+        perf.measure(profile, "GTransactionService.myList",
+                () -> groupTxnGetService.myList(group, List.of(GroupTxnStatus.CONFIRMED), f, p100));
+        perf.measure(profile, "GTransactionService.listPending",
+                () -> groupTxnGetService.all(group, List.of(GroupTxnStatus.PENDING), f, p20));
+        perf.measure(profile, "GTransactionService.get",
+                () -> txn.set(createExpense(group)),
+                () -> groupTxnGetService.detail(group, txn.get()));
+        perf.measure(profile, "GTransactionService.update",
+                () -> txn.set(createExpense(group)),
+                () -> groupTxnUpdateService.update(group, updateRequest(txn.get())));
+        perf.measure(profile, "GTransactionService.delete",
+                () -> txn.set(createExpense(group)),
+                () -> groupTxnDeleteService.softDelete(group, txn.get()));
+        perf.measure(profile, "GTransactionService.countPendingForGroup",
+                () -> groupTxnGetService.countPendingForGroup(group));
+        perf.measure(profile, "GTransactionService.sumConfirmedAmount (toàn thời gian)",
+                () -> groupTxnGetService.sumConfirmedAmount(group, GroupTxnType.EXPENSE));
+        perf.measure(profile, "GTransactionService.sumConfirmedAmount (theo kỳ)",
+                () -> groupTxnGetService.sumConfirmedAmount(
+                        group, GroupTxnType.EXPENSE, Instant.now().minusSeconds(30L * 24 * 3600), Instant.now()));
+    }
+
+    // giao dịch chờ duyệt do thành viên thường (pool.get(0)) tạo trong nhóm chính
+    private void measureReviewService(Profile profile, int batch) {
+        UUID group = mainGroupId;
+        AtomicReference<UUID> txn = new AtomicReference<>();
+        AtomicReference<List<UUID>> txns = new AtomicReference<>();
+
+        authAs(ownerId);
+        perf.measure(profile, "GTransactionService.confirm",
+                () -> txn.set(createPendingExpense(group)),
+                () -> groupTxnUpdateService.status(group, new GroupTxnUpdateStatusReq(txn.get(), GroupTxnStatus.CONFIRMED, null)));
+        perf.measure(profile, "GTransactionService.reject",
+                () -> txn.set(createPendingExpense(group)),
+                () -> groupTxnUpdateService.status(group, new GroupTxnUpdateStatusReq(txn.get(), GroupTxnStatus.REJECTED, "Lý do")));
+        perf.measure(profile, "GTransactionService.bulkConfirm",
+                () -> txns.set(createPendingExpenses(group, batch)),
+                () -> groupTxnUpdateService.statuses(group, new BatchGroupTxnUpdateStatusReq(txns.get(), GroupTxnStatus.CONFIRMED)));
+        perf.measure(profile, "GTransactionService.bulkReject",
+                () -> txns.set(createPendingExpenses(group, batch)),
+                () -> groupTxnUpdateService.statuses(group, new BatchGroupTxnUpdateStatusReq(txns.get(), GroupTxnStatus.REJECTED)));
+    }
+
+    private void measureFundService(Profile profile, UUID group, int batch) {
+        AtomicReference<GroupDetailRes> fresh = new AtomicReference<>();
+        UUID fundId = groupService.findNotDeletedById(group).fund().id();
+
+        perf.skip("FundService.create", "chỉ GroupService.create gọi nội bộ, đã nằm trong số đo của hàm đó");
+        perf.measure(profile, "FundService.updateFundKeepper",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> fundService.updateFundKeepper(fresh.get().id(), new FundKepperUpdateReq(pool.get(0))));
+        perf.measure(profile, "FundService.reconcileFund",
+                () -> fresh.set(newGroupDetail(batch, true)),
+                () -> fundService.reconcileFund(fresh.get().id(),
+                        new FundReconcileReq(100_000L, "Kiểm kê đo hiệu năng", List.of(pool.get(0)))));
+        perf.measure(profile, "FundService.adjustBalance", () -> fundService.adjustBalance(fundId, 1L));
+    }
+
+    private void measureReportService(Profile profile, UUID group) {
+        String thisMonth = YearMonth.now(VIETNAM_ZONE).toString();
+
+        perf.measure(profile, "ReportService.getSummary (toàn thời gian)", () -> reportService.getSummary(group, null));
+        perf.measure(profile, "ReportService.getSummary (theo tháng)", () -> reportService.getSummary(group, thisMonth));
+        perf.measure(profile, "ReportService.getBalances", () -> reportService.getBalances(group));
+    }
+
+    // đưa nhóm chính từ hồ sơ tốt nhất lên tệ nhất, làm tăng dần nên không phải dựng lại từ đầu
+    private void growMainGroupToWorstCase() {
+        authAs(ownerId);
+        memberBehavierService.ownerAddMembers(
+                mainGroupId, new MemberAddReq(memberIds(FEW_MEMBERS - 1, MANY_MEMBERS - FEW_MEMBERS)));
+
+        groupService.update(mainGroupId, new GroupUpdateReq(null, null, null, null, false));
+        GroupDetailRes detail = groupService.detail(mainGroupId);
+        for (int i = 0; i < PENDING_MEMBERS; i++) {
+            authAs(pool.get(MANY_MEMBERS + i));
+            groupService.joinByCode(detail.inviteCode());
+        }
+        authAs(ownerId);
+        groupService.update(mainGroupId, new GroupUpdateReq(null, null, null, null, true));
+
+        int created = 0;
+        for (int i = 0; i < CONFIRMED_TRANSACTIONS; i++) {
+            authAs(ownerId);
+            created += trySeed(() -> groupTxnCreateService.create(mainGroupId, expenseRequest(ownerId)));
+        }
+        int createdPending = 0;
+        for (int i = 0; i < PENDING_TRANSACTIONS; i++) {
+            authAs(pool.get(0));
+            createdPending += trySeed(() -> groupTxnCreateService.create(mainGroupId, expenseRequest(pool.get(0))));
+        }
+        authAs(ownerId);
+        for (int i = 0; i < EXTRA_GROUPS; i++)
+            newGroup(1);
+
+        log.warn("[PERF] dựng hồ sơ tệ nhất: {}/{} giao dịch đã duyệt, {}/{} giao dịch chờ duyệt",
+                created, CONFIRMED_TRANSACTIONS, createdPending, PENDING_TRANSACTIONS);
+    }
+
+    // dữ liệu mẫu sai thì chỉ ghi log và đếm, không làm hỏng cả test
+    private int trySeed(Runnable seed) {
+        try {
+            seed.run();
+            return 1;
+        } catch (RuntimeException e) {
+            log.warn("[PERF] dựng dữ liệu mẫu thất bại: {}", e.toString());
+            return 0;
+        }
+    }
+
+    private GroupDetailRes newGroupDetail(int memberCount, boolean joinWithoutConfirm) {
+        authAs(ownerId);
+        return groupService.create(groupRequest(memberIds(0, memberCount), joinWithoutConfirm));
+    }
+
+    private UUID newGroup(int memberCount) {
+        return newGroupDetail(memberCount, true).id();
+    }
+
+    // nhóm cần duyệt thành viên, đã có pendingCount người xin vào ở trạng thái chờ
+    private GroupDetailRes groupWithPendingMembers(int pendingCount) {
+        GroupDetailRes group = newGroupDetail(1, false);
+        for (int i = 0; i < pendingCount; i++) {
+            authAs(joinerAt(i));
+            groupService.joinByCode(group.inviteCode());
+        }
+        authAs(ownerId);
+        return group;
+    }
+
+    private GroupCreateReq groupRequest(List<UUID> members, boolean joinWithoutConfirm) {
+        return new GroupCreateReq(
+                "Nhóm đo " + counter.incrementAndGet(), "Dữ liệu mẫu đo hiệu năng", 10_000_000L,
+                true, joinWithoutConfirm, members);
+    }
+
+    // người dùng pool[from, from + count)
+    private List<UUID> memberIds(int from, int count) {
+        return new ArrayList<>(pool.subList(from, from + count));
+    }
+
+    // người vào nhóm dựng riêng luôn lấy từ cuối pool, không trùng với thành viên các nhóm đo
+    private UUID joiner() {
+        return joinerAt(0);
+    }
+
+    private UUID joinerAt(int index) {
+        return pool.get(MANY_MEMBERS + index);
+    }
+
+    private List<MemberCreateReq> joinerRequests(UUID groupId, int count) {
+        List<MemberCreateReq> requests = new ArrayList<>();
+        for (int i = 0; i < count; i++)
+            requests.add(new MemberCreateReq(groupId, joinerAt(i), MemberRole.MEMBER, MemberStatus.ACTIVE));
+        return requests;
+    }
+
+    private GroupTxnFilterReq filter() {
+        return new GroupTxnFilterReq(null, null, null, null, null, null, null, null);
+    }
+
+    // chi bằng tiền túi của transactor, chỉ mình transactor chịu phần chi phí
+    private GroupTxnCreateReq expenseRequest(UUID transactor) {
+        long amount = 10_000L + counter.incrementAndGet();
+        return new GroupTxnCreateReq(
+                GroupTxnType.EXPENSE, MoneySource.PERSONAL, amount,
+                Instant.now().minusSeconds(60), categoryCode, transactor, "Chi đo hiệu năng",
+                List.of(new GroupTxnParticipantReq(transactor, amount)));
+    }
+
+    private GroupTxnCreateReq contributionRequest(UUID transactor) {
+        return new GroupTxnCreateReq(
+                GroupTxnType.CONTRIBUTION, MoneySource.PERSONAL, 50_000L,
+                Instant.now().minusSeconds(60), null, transactor, "Nộp quỹ đo hiệu năng",
+                List.of(new GroupTxnParticipantReq(transactor, 50_000L)));
+    }
+
+    // không đổi số tiền: đổi tổng tiền thì nghiệp vụ bắt buộc gửi kèm lại danh sách người chia tiền
+    private GroupTxnUpdateReq updateRequest(UUID txnId) {
+        return new GroupTxnUpdateReq(
+                txnId, null, null, null, null, null, null, null, "Sửa đo hiệu năng", null);
+    }
+
+    // giao dịch đã duyệt của chủ nhóm
+    private UUID createExpense(UUID group) {
+        authAs(ownerId);
+        return groupTxnCreateService.create(group, expenseRequest(ownerId)).id();
+    }
+
+    // thành viên thường tạo giao dịch nên rơi vào trạng thái chờ duyệt
+    private UUID createPendingExpense(UUID group) {
+        authAs(pool.get(0));
+        return groupTxnCreateService.create(group, expenseRequest(pool.get(0))).id();
+    }
+
+    private List<UUID> createPendingExpenses(UUID group, int count) {
+        List<UUID> ids = new ArrayList<>();
+        for (int i = 0; i < count; i++)
+            ids.add(createPendingExpense(group));
+        return ids;
+    }
+
+    private UUID createUser(Role userRole) {
+        User user = userRepository.save(User.builder()
+                .id(UUID.randomUUID())
+                .email("perf.group." + counter.incrementAndGet() + "." + UUID.randomUUID() + "@example.com")
+                .firstName("Đo")
+                .lastName("Nhóm " + counter.get())
+                .status(UserStatus.ACTIVE)
+                .build());
+        UserRole link = new UserRole(user.getId(), userRole.getId());
+        link.setUser(user);
+        link.setRole(userRole);
+        userRoleRepository.save(link);
+        return user.getId();
+    }
+}

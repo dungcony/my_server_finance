@@ -1,0 +1,24 @@
+info:
+  name: 02. Đăng xuất Admin
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/logout"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "refresh_token": "{{adminRefreshToken}}"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Đăng xuất tài khoản Admin, thu hồi refresh token và blacklist access token.

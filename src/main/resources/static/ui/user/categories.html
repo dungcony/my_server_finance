@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh mục - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <link rel="stylesheet" href="./css/categories.css">
+</head>
+<body data-area="user" data-active="categories" data-title="Danh mục">
+<main id="page">
+    <div class="notice">
+        Đọc danh mục: mọi người dùng đã đăng nhập. Tạo / sửa / xoá cần quyền <code>categories:manage</code> (admin) —
+        tài khoản thường sẽ nhận <b>403</b>. Danh mục dùng cho khoản chi nhóm (<code>category_code</code>).
+    </div>
+    <div class="notice warning">
+        <b>Ràng buộc hiện tại:</b> <code>parent_code</code> đang <code>@NotBlank</code> ở cả yêu cầu tạo và sửa → không tạo được danh mục
+        <b>gốc</b> qua API, và mỗi lần sửa đều phải gửi <code>parent_code</code>. Đổi cha sẽ tính lại <code>level</code>/<code>path</code>
+        của cả nhánh; xoá sẽ xoá cả cây con.
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card">
+            <div class="card-title">
+                <span>🌳 Cây danh mục</span>
+                <div class="toolbar">
+                    <button class="btn btn-secondary btn-sm" onclick="refreshTree()">↻ Làm mới</button>
+                    <button class="btn btn-secondary btn-sm" onclick="expandAll()">Mở hết</button>
+                    <button class="btn btn-secondary btn-sm" onclick="collapseAll()">Thu gọn</button>
+                </div>
+            </div>
+            <div id="treeRoot" class="tree"><div class="muted">Đang tải...</div></div>
+        </div>
+
+        <div>
+            <div class="card">
+                <div class="card-title">
+                    <span id="formTitle">➕ Tạo danh mục</span>
+                    <span id="formModeBadge" class="api-badge post">POST /categories</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="fName">Tên (≤ 50, duy nhất toàn cây)</label><input type="text" id="fName" maxlength="50" placeholder="Cà phê"></div>
+                    <div class="form-group"><label for="fCode">Mã code (a-z, 0-9, _)</label><input type="text" id="fCode" maxlength="50" placeholder="ca_phe"></div>
+                </div>
+                <div class="form-group"><label for="fDescription">Mô tả</label><input type="text" id="fDescription" placeholder="Các khoản cà phê, trà"></div>
+                <div class="form-row">
+                    <div class="form-group"><label for="fColor">Màu</label><input type="color" id="fColor" value="#3d6b7d"></div>
+                    <div class="form-group"><label for="fParentCode">Mã danh mục cha (parent_code)</label><input type="text" id="fParentCode" placeholder="an_uong — bấm '+ Con' trên cây để điền"></div>
+                </div>
+                <div class="form-group">
+                    <label>Biểu tượng (icon_code) — chọn ở kho bên dưới</label>
+                    <div class="icon-preview"><span id="iconPreview" class="icon-box"></span><input type="text" id="fIconCode" placeholder="ca_phe"></div>
+                </div>
+                <label class="check" id="idemRow"><input type="checkbox" id="fIdempotency"> Gửi header <code>Idempotency-Key</code> (chỉ khi tạo)</label>
+                <div class="btn-row">
+                    <button class="btn" id="btnSubmit" onclick="submitForm()">Tạo danh mục</button>
+                    <button class="btn btn-secondary" onclick="resetForm()">Huỷ / Làm mới form</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><span>🗑️ Xoá danh mục</span><span class="api-badge delete">DELETE /categories/{code}</span></div>
+                <div class="form-row">
+                    <div class="form-group"><label for="dCode">Mã danh mục cần xoá</label><input type="text" id="dCode" placeholder="bấm 'Xoá' trên cây để điền"></div>
+                    <div class="form-group"><label for="dReplacement">replacement_code (tuỳ chọn)</label><input type="text" id="dReplacement" placeholder="danh mục lá thay thế"></div>
+                </div>
+                <div class="notice danger">Xoá <b>cả cây con</b> của danh mục này (xoá mềm). Cha trực tiếp sẽ thành lá nếu hết con.</div>
+                <button class="btn btn-danger" onclick="deleteCategory()">Xoá danh mục (cả cây con)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title"><span>🎨 Kho biểu tượng <span class="muted" id="iconTotal"></span></span><span class="api-badge get">GET /icons</span></div>
+        <div class="form-row">
+            <div class="form-group"><label for="iconSearch">Tìm kiếm</label><input type="text" id="iconSearch" placeholder="cà phê, xăng..." onkeydown="if(event.key==='Enter')loadIcons()"></div>
+            <div class="form-group"><label for="iconGroup">Nhóm</label>
+                <select id="iconGroup">
+                    <option value="">Tất cả</option>
+                    <option value="an_uong">Ăn uống</option>
+                    <option value="di_lai">Đi lại</option>
+                    <option value="mua_sam">Mua sắm</option>
+                    <option value="giai_tri">Giải trí</option>
+                    <option value="suc_khoe">Sức khoẻ</option>
+                    <option value="hoc_tap">Học tập</option>
+                    <option value="tai_chinh">Tài chính</option>
+                    <option value="khac">Khác</option>
+                </select></div>
+        </div>
+        <button class="btn btn-secondary" onclick="loadIcons()">Tải biểu tượng</button>
+        <div id="iconGrid" class="icon-groups"></div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/categories.js?v=20261019_2"></script>
+</body>
+</html>

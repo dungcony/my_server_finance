@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Nhóm & Quỹ - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="manager" data-active="dashboard" data-title="Tổng quan Quản lý Nhóm & Quỹ">
+<main id="page">
+    <!-- Thống kê tổng thể các quỹ -->
+    <div class="grid grid-4">
+        <div class="stat">
+            <div class="label">Tổng số nhóm</div>
+            <div class="value" id="sTotalGroups">-</div>
+            <div class="sub" id="sTotalGroupsSub">đang hoạt động</div>
+        </div>
+        <div class="stat">
+            <div class="label">Tổng quỹ quản lý</div>
+            <div class="value pos" id="sTotalFund">-</div>
+            <div class="sub">tổng số dư các nhóm</div>
+        </div>
+        <div class="stat">
+            <div class="label">Vai trò quản trị</div>
+            <div class="value" id="sRolesSummary">-</div>
+            <div class="sub" id="sRolesSub">👑 Chủ nhóm · 💰 Thủ quỹ</div>
+        </div>
+        <div class="stat">
+            <div class="label">Thành viên thường</div>
+            <div class="value" id="sMemberOnly">-</div>
+            <div class="sub">nhóm chỉ đóng vai trò member</div>
+        </div>
+    </div>
+
+    <!-- Thanh tác vụ nhanh -->
+    <div class="card mt">
+        <div class="card-title">
+            <span>⚡ Tác vụ nhanh</span>
+        </div>
+        <div class="btn-row">
+            <a href="./groups.html?action=create" class="btn">+ Tạo nhóm mới</a>
+            <a href="./groups.html?action=join" class="btn btn-secondary">🔑 Nhập mã tham gia nhóm</a>
+            <a href="${UI_ROOT}user/dashboard.html" class="btn btn-secondary">👤 Về Trang cá nhân</a>
+            <button class="btn btn-secondary" id="btnReload">🔄 Làm mới dữ liệu</button>
+        </div>
+    </div>
+
+    <!-- Danh sách nhóm theo vai trò -->
+    <div class="card">
+        <div class="card-title">
+            <span>Danh sách nhóm theo vai trò</span>
+            <div class="btn-row">
+                <select id="roleFilter" style="width:auto">
+                    <option value="">Tất cả vai trò</option>
+                    <option value="OWNER">👑 Tôi làm Chủ nhóm (Owner)</option>
+                    <option value="TREASURER">💰 Tôi làm Thủ quỹ (Treasurer)</option>
+                    <option value="MEMBER">👤 Tôi làm Thành viên (Member)</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tên nhóm</th>
+                        <th>Vai trò của bạn</th>
+                        <th>Trạng thái</th>
+                        <th>Mã mời</th>
+                        <th>Thành viên</th>
+                        <th class="right">Số dư quỹ</th>
+                        <th class="right">Mục tiêu</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody id="groupBody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/dashboard.js"></script>
+</body>
+</html>

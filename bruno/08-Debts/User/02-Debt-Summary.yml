@@ -1,0 +1,16 @@
+﻿info:
+  name: 02. Tổng kết sổ nợ
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/debts/summary"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Tổng số tiền người khác đang nợ mình và tổng tiền mình đang nợ.

@@ -1,0 +1,16 @@
+﻿info:
+  name: 02. Đánh dấu đã đọc
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/notifications/{{notificationId}}/read"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Đánh dấu một thông báo là đã đọc.

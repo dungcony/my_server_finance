@@ -1,0 +1,20 @@
+﻿info:
+  name: 06. Xóa ví
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/wallets/{{walletId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: delete_transactions
+      value: "false"
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: Xóa mềm ví tiền. delete_transactions=false giữ lại lịch sử giao dịch.

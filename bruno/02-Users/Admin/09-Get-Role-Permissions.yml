@@ -1,0 +1,16 @@
+info:
+  name: 09. Lấy quyền hạn theo vai trò
+  type: http
+  seq: 9
+
+http:
+  method: GET
+  url: "{{baseUrl}}/admin/role/ROLE_ADMIN/permissions"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Lấy chi tiết quyền hạn của một vai trò theo roleName."

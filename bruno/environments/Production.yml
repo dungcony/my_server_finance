@@ -1,0 +1,141 @@
+name: Production
+variables:
+  - name: baseUrl
+    value: https://api.yourdomain.com/v1
+    enabled: true
+    secret: false
+    type: text
+  - name: email
+    value: user@example.com
+    enabled: true
+    secret: false
+    type: text
+  - name: accessToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: refreshToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: adminEmail
+    value: admin@financeapp.com
+    enabled: true
+    secret: false
+    type: text
+  - name: adminPassword
+    value: Admin@123
+    enabled: true
+    secret: false
+    type: text
+  - name: adminAccessToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: adminRefreshToken
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: walletId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: destinationWalletId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: categoryId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: categoryCode
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: iconId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: iconCode
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: transactionId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: budgetId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: debtId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: paymentId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: recurringId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: goalId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: contributionId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: notificationId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: exportJobId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: userId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: groupId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: draftId
+    value: ""
+    enabled: true
+    secret: false
+    type: text
+  - name: memberUserId
+    value: ""
+    description: ""
+  - name: groupTxnId
+    value: ""
+    description: ""
+  - name: newOwnerId
+    value: ""
+    description: ""

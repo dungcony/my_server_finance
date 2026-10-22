@@ -1,0 +1,36 @@
+﻿info:
+  name: 05. Đóng góp tiết kiệm
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/goals/{{goalId}}/contributions"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+    - name: Idempotency-Key
+      value: ""
+  body:
+    type: json
+    data: |-
+      {
+        "amount": 2000000,
+        "contributed_date": "2026-09-11",
+        "source_wallet_id": "{{walletId}}",
+        "create_transaction": true,
+        "note": "Trích lương tháng 9"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+      bru.setEnvVar("contributionId", res.body.data.id);
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Nạp tiền vào mục tiêu tiết kiệm. create_transaction=true sẽ sinh giao dịch trừ ví.

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Người dùng - Finance AI Admin</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="users" data-title="Quản lý Người dùng">
+<main id="page">
+    <div class="card">
+        <div class="card-title">
+            <span>Danh sách người dùng hệ thống <span class="muted" id="count"></span></span>
+            <div class="btn-row">
+                <input type="text" id="search" placeholder="Tìm email / tên..." style="width:240px">
+                <select id="fStatus" style="width:auto">
+                    <option value="">Mọi trạng thái</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="BLOCKED">BLOCKED</option>
+                    <option value="PENDING">PENDING</option>
+                </select>
+                <button class="btn btn-secondary" id="btnReload">🔄</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Email & ID</th>
+                        <th>Họ tên</th>
+                        <th>Gói dịch vụ</th>
+                        <th>Trạng thái</th>
+                        <th>Vai trò hệ thống</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="body"></tbody>
+            </table>
+        </div>
+        <div class="muted mt" style="font-size:12px">
+            💡 Bạn có thể xem chi tiết tài khoản, gán/gỡ vai trò (ROLE_ADMIN, ROLE_USER), khoá hoặc mở khoá tài khoản vi phạm.
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/users.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+info:
+  name: 07. Xóa tài khoản người dùng
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/admin/user/{{userId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{adminAccessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Xóa tài khoản người dùng theo userId."

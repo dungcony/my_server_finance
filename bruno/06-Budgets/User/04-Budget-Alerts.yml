@@ -1,0 +1,16 @@
+﻿info:
+  name: 04. Cảnh báo vượt ngân sách
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{baseUrl}}/budgets/alerts"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Lấy danh sách các ngân sách sắp chạm hoặc đã vượt hạn mức quy định.

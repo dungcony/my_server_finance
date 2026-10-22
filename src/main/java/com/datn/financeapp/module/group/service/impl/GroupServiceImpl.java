@@ -1,0 +1,328 @@
+package com.datn.financeapp.module.group.service.impl;
+
+import com.datn.financeapp.common.exception.BusinessException;
+import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.group.dto.request.group.GroupCreateReq;
+import com.datn.financeapp.module.group.dto.request.group.GroupUpdateReq;
+import com.datn.financeapp.module.group.dto.request.member.MemberCreateReq;
+import com.datn.financeapp.module.group.dto.response.fund.FundRes;
+import com.datn.financeapp.module.group.dto.response.group.GroupDetailRes;
+import com.datn.financeapp.module.group.dto.response.group.GroupSummaryRes;
+import com.datn.financeapp.module.group.dto.response.member.MemberRes;
+import com.datn.financeapp.module.group.entity.Group;
+import com.datn.financeapp.module.group.enums.GroupStatus;
+import com.datn.financeapp.module.group.enums.MemberRole;
+import com.datn.financeapp.module.group.enums.MemberStatus;
+import com.datn.financeapp.module.group.helper.MemberAuthCache;
+import com.datn.financeapp.module.group.helper.MemberAuthInfo;
+import com.datn.financeapp.module.group.helper.MemberViewEnricher;
+import com.datn.financeapp.module.group.mapper.FundMapper;
+import com.datn.financeapp.module.group.mapper.GroupMapper;
+import com.datn.financeapp.module.group.repository.GroupRepository;
+import com.datn.financeapp.module.group.service.FundService;
+import com.datn.financeapp.module.group.service.GroupService;
+import com.datn.financeapp.module.group.service.GroupTxnGetService;
+import com.datn.financeapp.module.group.service.MemberBalanceService;
+import com.datn.financeapp.module.group.service.MemberService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class GroupServiceImpl implements GroupService {
+
+    private final GroupRepository groupRepository;
+    private final GroupTxnGetService groupTxnGetService;
+    private final MemberService memberService;
+    private final FundService fundService;
+    private final MemberAuthCache authCache;
+    private final GroupMapper groupMapper;
+    private final FundMapper fundMapper;
+    private final MemberViewEnricher memberViewEnricher;
+    private final MemberBalanceService memberBalanceService;
+
+    private static final int inviteCodeLength = 8;
+
+    @Override
+    public GroupDetailRes findNotDeletedById(UUID groupId) {
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        FundRes fund = (group.getFund() != null)
+                ? fundMapper.toResponse(group.getFund())
+                : null;
+
+        return groupMapper.toDetailResponse(group, null, fund, List.of());
+    }
+
+    @Override
+    @Transactional
+    public GroupDetailRes create(GroupCreateReq req) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        if (req.members().contains(operatorId))
+            throw new BusinessException(ErrorCode.GROUP_OWNER_IN_MEMBER_LIST);
+
+        if (req.members().isEmpty())
+            throw new BusinessException(ErrorCode.GROUP_MINIMUM_MEMBERS_REQUIRED);
+
+        UUID groupId = UUID.randomUUID();
+
+        Group group = groupMapper.toEntity(req, groupId, generateUniqueInviteCode(inviteCodeLength));
+
+        group = groupRepository.save(group);
+
+        var fund = fundService.create(groupId, operatorId);
+
+        var own = memberService.create(
+                new MemberCreateReq(
+                        groupId,
+                        operatorId,
+                        MemberRole.OWNER,
+                        MemberStatus.ACTIVE
+                )
+        ).orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR));
+
+        List<UUID> memberIds = req.members().stream()
+                .filter(id -> id != null && !id.equals(operatorId))
+                .distinct()
+                .toList();
+
+        List<MemberCreateReq> memberCreateReqs = new ArrayList<>();
+        for (UUID memberId : memberIds) {
+            MemberCreateReq mem = new MemberCreateReq(
+                    groupId,
+                    memberId,
+                    MemberRole.MEMBER,
+                    MemberStatus.ACTIVE
+            );
+            memberCreateReqs.add(mem);
+        }
+
+        var members = memberService.creates(memberCreateReqs);
+
+        List<MemberRes> allMembers = new ArrayList<>();
+        allMembers.add(own);
+        allMembers.addAll(members);
+        allMembers = memberViewEnricher.enrich(allMembers, fund.keepperId());
+
+        return groupMapper.toDetailResponse(
+                group,
+                MemberRole.OWNER,
+                fund,
+                allMembers
+        );
+    }
+
+    @Override
+    public List<GroupSummaryRes> list() {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        return groupRepository.findSummariesByUserId(operatorId);
+    }
+
+    @Override
+    public GroupDetailRes detail(UUID groupId) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        // chỉ loại nhóm đã xoá nên nhóm đã lưu trữ vẫn xem được
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        // tư cách thành viên được kiểm tra khi dựng chi tiết: người ngoài nhóm bị GROUP_MEMBER_REQUIRED
+        return buildGroupDetailRes(group, operatorId);
+    }
+
+    @Override
+    @Transactional
+    public GroupDetailRes update(UUID groupId, GroupUpdateReq req) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (req.name() != null && !req.name().isBlank())
+            group.setName(req.name().trim());
+
+        if (req.description() != null)
+            group.setDescription(req.description().trim());
+
+        if (req.target() != null)
+            group.setTarget(req.target());
+
+        if (req.isSettlementEnabled() != null) {
+            group.setIsSettlementEnabled(req.isSettlementEnabled());
+            authCache.evictGroup(groupId);
+        }
+
+        if (req.isJoinWithoutConfirm() != null)
+            group.setIsJoinWithoutConfirm(req.isJoinWithoutConfirm());
+
+        groupRepository.save(group);
+
+        return buildGroupDetailRes(group, operatorId);
+    }
+
+    @Override
+    @Transactional
+    public void archive(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+        Group group = groupRepository.findActivatedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (groupTxnGetService.countUnresolvedForGroup(groupId) > 0)
+            throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
+
+        group.setStatus(GroupStatus.ARCHIVED);
+        groupRepository.save(group);
+        authCache.evictGroup(groupId);
+
+        log.info("nhóm đã được lưu trữ");
+    }
+
+    @Override
+    @Transactional
+    public void unarchive(UUID groupId) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
+        Group group = groupRepository.findArchivedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_ARCHIVED));
+
+        group.setStatus(GroupStatus.ACTIVE);
+        groupRepository.save(group);
+        authCache.evictGroup(groupId);
+
+        log.info("nhóm đã được hoạt động trở lại");
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID groupId) {
+
+        UUID operatorId = SecurityContextUtil.currentUserId();
+
+        authCache.get(groupId, operatorId)
+                .filter(MemberAuthInfo::isOwner)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
+
+        Group group = groupRepository.findNotDeletedWithFundById(groupId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (group.getFund().getCurrentBalance() != null && group.getFund().getCurrentBalance() != 0)
+            throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
+
+        if (Boolean.TRUE.equals(group.getIsSettlementEnabled())) {
+            boolean hasNonZero = memberBalanceService.getBalances(groupId).members().values().stream()
+                    .anyMatch(b -> b.net() != 0L);
+            if (hasNonZero) {
+                throw new BusinessException(ErrorCode.GROUP_DELETE_BALANCE_NOT_ZERO);
+            }
+        }
+
+        if (groupTxnGetService.countUnresolvedForGroup(groupId) > 0)
+            throw new BusinessException(ErrorCode.GROUP_PENDING_TXN_EXIST);
+
+        group.setStatus(GroupStatus.DELETED);
+        groupRepository.save(group);
+        authCache.evictGroup(groupId);
+
+        log.info("deleted {} is completed", group.getId());
+    }
+
+    @Override
+    @Transactional
+    public void joinByCode(String code) {
+        UUID operatorId = SecurityContextUtil.currentUserId();
+        Group group = groupRepository.findByInviteCodeAndStatusNot(code, GroupStatus.DELETED)
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_NOT_FOUND));
+
+        if (group.getStatus().equals(GroupStatus.ARCHIVED))
+            throw new BusinessException(ErrorCode.GROUP_ARCHIVED);
+
+        memberService.assertNotInGroup(group.getId(), operatorId);
+
+        MemberStatus status = MemberStatus.PENDING;
+
+        if (Boolean.TRUE.equals(group.getIsJoinWithoutConfirm()))
+            status = MemberStatus.ACTIVE;
+
+        try {
+            memberService.create(
+                    new MemberCreateReq(
+                            group.getId(),
+                            operatorId,
+                            MemberRole.MEMBER,
+                            status
+                    )
+            );
+            log.info("Successfully joined the group.");
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(ErrorCode.GROUP_MEMBER_ALREADY_EXISTS);
+        }
+
+    }
+
+    //----------------------------------------PRIVATE------------------------------------------//
+
+    private GroupDetailRes buildGroupDetailRes(Group group, UUID operatorId) {
+        List<MemberRes> members = memberService.getActivateMembers(group.getId());
+
+        MemberRes currentMember = members.stream()
+                .filter(m -> m.userId().equals(operatorId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.GROUP_MEMBER_REQUIRED));
+
+        FundRes fund = (group.getFund() != null)
+                ? fundMapper.toResponse(group.getFund())
+                : null;
+
+        UUID keeperId = fund != null ? fund.keepperId() : null;
+        members = memberViewEnricher.enrich(members, keeperId);
+
+        return groupMapper.toDetailResponse(group, currentMember.role(), fund, members);
+    }
+
+
+    /**
+     * Sinh chuỗi mã mời ngẫu nhiên gồm {@param length} ký tự.
+     */
+    public static String generateUniqueInviteCode(int length) {
+
+        String INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        SecureRandom RANDOM = new SecureRandom();
+
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(INVITE_CHARS.charAt(RANDOM.nextInt(INVITE_CHARS.length())));
+        }
+        return sb.toString();
+
+    }
+
+}

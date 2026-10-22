@@ -1,0 +1,27 @@
+﻿info:
+  name: 05. Cập nhật ví
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/wallets/{{walletId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ví chính",
+        "include_in_total": true,
+        "icon": "wallet",
+        "color": "#3498DB"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Cập nhật thông tin hiển thị của ví (tên, icon, màu, tính vào tổng).

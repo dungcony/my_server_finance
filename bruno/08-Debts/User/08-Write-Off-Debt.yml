@@ -1,0 +1,24 @@
+﻿info:
+  name: 08. Xóa nợ khó đòi (Write-off)
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: "{{baseUrl}}/debts/{{debtId}}/write-off"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "reason": "Không thể liên lạc được đối tác"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: Đánh dấu xóa nợ khó đòi mà không hoàn trả tiền vào ví.

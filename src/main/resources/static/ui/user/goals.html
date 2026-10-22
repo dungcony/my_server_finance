@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mục tiêu tích lũy - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+    <style>
+        .goal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        .goal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .goal-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .progress-bar-wrap {
+            background: #e2e8f0;
+            border-radius: 999px;
+            height: 10px;
+            overflow: hidden;
+            margin: 10px 0 6px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #3b82f6, #10b981);
+            transition: width 0.4s ease;
+        }
+        .suggestion-box {
+            background: #f0fdf4;
+            border: 1px dashed #86efac;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #166534;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body data-area="user" data-active="goals" data-title="Mục tiêu tích lũy">
+<main id="page">
+    <div class="grid grid-4" id="goalStats">
+        <div class="stat">
+            <div class="label">Tổng tiền mục tiêu</div>
+            <div class="value" id="sTarget">0 đ</div>
+            <div class="sub" id="sGoalCount">0 mục tiêu</div>
+        </div>
+        <div class="stat">
+            <div class="label">Đã tích lũy được</div>
+            <div class="value pos" id="sSaved">0 đ</div>
+            <div class="sub" id="sAvgProgress">0% hoàn thành</div>
+        </div>
+        <div class="stat">
+            <div class="label">Còn thiếu</div>
+            <div class="value neg" id="sMissing">0 đ</div>
+            <div class="sub">cần tiếp tục tích lũy</div>
+        </div>
+        <div class="stat">
+            <div class="label">Đã hoàn thành</div>
+            <div class="value" id="sCompletedCount">0</div>
+            <div class="sub" id="sInProgressCount">0 đang tiến hành</div>
+        </div>
+    </div>
+
+    <div class="card mt">
+        <div class="card-title">
+            <span>Danh sách mục tiêu tích lũy</span>
+            <div class="btn-row">
+                <select id="fStatus" style="width:auto">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="in_progress" selected>Đang tích lũy</option>
+                    <option value="completed">Đã hoàn thành</option>
+                    <option value="cancelled">Đã hủy</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" id="btnReloadGoals">🔄 Tải lại</button>
+                <button class="btn btn-sm" id="btnCreateGoal">+ Tạo mục tiêu mới</button>
+            </div>
+        </div>
+
+        <div id="goalsContainer" class="goal-grid">
+            <div class="muted center" style="grid-column:1/-1;padding:32px">Đang tải dữ liệu mục tiêu...</div>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/goals.js"></script>
+</body>
+</html>

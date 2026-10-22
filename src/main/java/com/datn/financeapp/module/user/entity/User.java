@@ -1,0 +1,88 @@
+package com.datn.financeapp.module.user.entity;
+
+import com.datn.financeapp.common.abstracts.AssignedIdEntity;
+import com.datn.financeapp.module.user.enums.UserPlan;
+import com.datn.financeapp.module.user.enums.UserStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Entity khớp bảng {@code users} (V1__nen_tang.sql).
+ * Id được set bằng {@link UUID#randomUUID()} ở tầng Service trước khi save.
+ */
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class User extends AssignedIdEntity {
+
+    @Id
+    private UUID id;
+
+    // CHECK (email = lower(email)) ở DB — Service phải lowercase trước khi lưu.
+    @Column(name = "email", nullable = false, unique = true)
+    private String email;
+
+    // NULL với tài khoản Google thuần — chưa từng đặt mật khẩu.
+    @Column(name = "password_hash")
+    private String password;
+
+    @Column(name = "first_name")
+    private String firstName;
+
+    @Column(name = "last_name")
+    private String lastName;
+
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    private String avatarUrl;
+
+    // Trường {@code sub} của {@code id_token} Google.
+    @Column(name = "google_id", unique = true)
+    private String googleId;
+
+    @Builder.Default
+    @Column(name = "plan", nullable = false)
+    private UserPlan plan = UserPlan.FREE;
+
+    @Builder.Default
+    @Column(name = "status", nullable = false)
+    private UserStatus status = UserStatus.PENDING_VERIFY;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private Set<UserRole> userRoles = new HashSet<>();
+
+    @JsonIgnore
+    public boolean isLocked() {
+        return this.status == UserStatus.BLOCKED;
+    }
+
+    @JsonIgnore
+    public void setBlocked(boolean blocked) {
+        this.status = blocked ? UserStatus.BLOCKED : UserStatus.ACTIVE;
+    }
+
+    @JsonIgnore
+    public boolean isConfirm() {
+        return this.status == UserStatus.ACTIVE;
+    }
+}

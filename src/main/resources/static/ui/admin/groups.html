@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giám sát Nhóm Hệ thống - Finance AI Admin</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="admin" data-active="groups" data-title="Giám sát Nhóm Toàn Hệ thống">
+<main id="page">
+    <div class="card">
+        <div class="card-title">
+            <span>Danh sách Nhóm trên toàn nền tảng</span>
+            <div class="btn-row">
+                <input type="text" id="adminSearchGroup" placeholder="Tìm theo tên / mã mời..." style="width:240px">
+                <select id="adminStatusFilter" style="width:auto">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="ARCHIVED">ARCHIVED</option>
+                </select>
+                <button class="btn btn-secondary" id="btnAdminReloadGroups">🔄 Làm mới</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tên nhóm</th>
+                        <th>Trạng thái</th>
+                        <th>Mã mời</th>
+                        <th>Số TV</th>
+                        <th class="right">Số dư quỹ</th>
+                        <th class="right">Mục tiêu</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="adminGroupBody"></tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script>
+let adminGroups = [];
+
+async function loadAdminGroups() {
+    // Thử gọi /admin/groups, nếu chưa có thì fallback sang /groups
+    let res = await api('/admin/groups', { silent: true });
+    let list = dataOf(res);
+    if (!list) {
+        res = await api('/groups');
+        list = dataOf(res) || [];
+    }
+    adminGroups = list;
+    renderAdminGroups();
+}
+
+function renderAdminGroups() {
+    const q = ($('adminSearchGroup').value || '').trim().toLowerCase();
+    const st = $('adminStatusFilter').value;
+
+    const filtered = adminGroups.filter(g => {
+        if (st && g.status !== st) return false;
+        if (q && !g.name.toLowerCase().includes(q) && !(g.invite_code || '').toLowerCase().includes(q)) return false;
+        return true;
+    });
+
+    setTable($('adminGroupBody'), filtered.map(g => {
+        const bal = g.fund_balance ?? (g.fund ? g.fund.current_balance : 0);
+        return `<tr>
+            <td>
+                <b>${esc(g.name)}</b>
+                ${g.description ? `<div class="muted" style="font-size:12px">${esc(g.description)}</div>` : ''}
+            </td>
+            <td>${badge(g.status)}</td>
+            <td><code>${esc(g.invite_code || '-')}</code></td>
+            <td>${g.member_count ?? 0}</td>
+            <td class="right"><b>${fmtMoney(bal)}</b></td>
+            <td class="right">${g.target != null ? fmtMoney(g.target) : '-'}</td>
+            <td>
+                <a class="btn btn-secondary btn-sm" href="../manager/group-detail.html?id=${esc(g.id)}">Xem & Điều tra →</a>
+            </td>
+        </tr>`;
+    }).join(''), 7, 'Không có nhóm nào trong hệ thống');
+}
+
+$('adminSearchGroup').oninput = renderAdminGroups;
+$('adminStatusFilter').onchange = renderAdminGroups;
+$('btnAdminReloadGroups').onclick = loadAdminGroups;
+
+loadAdminGroups();
+</script>
+</body>
+</html>

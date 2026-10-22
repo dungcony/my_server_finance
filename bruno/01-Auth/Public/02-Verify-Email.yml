@@ -1,0 +1,32 @@
+info:
+  name: 02. Xác thực email (OTP)
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/auth/verify-email"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{email}}",
+        "code": "123456"
+      }
+
+runtime:
+  postResponse: |-
+    if (res.status === 200 && res.body && res.body.data && res.body.data.access_token) {
+      bru.setEnvVar("accessToken", res.body.data.access_token);
+      if (res.body.data.refresh_token) {
+        bru.setEnvVar("refreshToken", res.body.data.refresh_token);
+      }
+    }
+
+settings:
+  encodeUrl: true
+
+docs: Xác thực tài khoản bằng mã OTP 6 chữ số gửi qua email. Tự động lưu accessToken và refreshToken.

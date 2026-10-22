@@ -1,0 +1,23 @@
+﻿info:
+  name: 01. Số liệu trang chủ (Home)
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/reports/home"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+  params:
+    - name: period
+      value: "month"
+      type: query
+    - name: wallet_id
+      value: ""
+      type: query
+
+settings:
+  encodeUrl: true
+
+docs: Lấy số liệu tổng hợp hiển thị nhanh tại màn hình trang chủ (thu, chi, số dư ròng).

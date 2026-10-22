@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance AI - Đang chuyển hướng...</title>
+    <script>
+        (function() {
+            var token = localStorage.getItem('finance_ai_access_token');
+            if (token) {
+                try {
+                    var part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                    var payload = JSON.parse(decodeURIComponent(escape(atob(part))));
+                    var authorities = payload.authorities || [];
+                    var isAdmin = authorities.indexOf('ROLE_ADMIN') !== -1 || authorities.indexOf('ADMIN') !== -1;
+                    location.replace(isAdmin ? '../ui/admin/dashboard.html' : '../ui/user/dashboard.html');
+                    return;
+                } catch(e) {}
+            }
+            location.replace('../ui/login.html');
+        })();
+    </script>
+</head>
+<body>
+<p>Đang tải ứng dụng Finance AI... <a href="../ui/user/dashboard.html">Bấm vào đây nếu không tự chuyển</a>.</p>
+</body>
+</html>

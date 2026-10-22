@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết Nhóm & Quỹ - Finance AI</title>
+    <link rel="stylesheet" href="../assets/css/base.css">
+</head>
+<body data-area="manager" data-active="groups" data-title="Chi tiết Nhóm & Quỹ">
+<main id="page">
+    <!-- Breadcrumb & Group Header Card -->
+    <div class="card">
+        <div class="card-title">
+            <span>
+                <a href="./groups.html" class="muted">← Danh sách nhóm</a> &nbsp;
+                <b id="gName" style="font-size:18px">...</b>
+                <span id="gBadges"></span>
+            </span>
+            <div class="btn-row" id="gActions"></div>
+        </div>
+
+        <!-- Role Simulator Toolbar (Thanh thử nghiệm vai trò) -->
+        <div class="role-sim-bar">
+            <div style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px">
+                <span>🧪 Chế độ xem thử vai trò:</span>
+                <span class="muted" style="font-weight:normal">(Chuyển góc nhìn để test ngay mà không cần đổi tài khoản)</span>
+            </div>
+            <div class="role-sim-btns">
+                <button type="button" class="role-sim-btn active" id="simAuto" data-role="">⚡ Tự động (Tài khoản thực)</button>
+                <button type="button" class="role-sim-btn" id="simOwner" data-role="OWNER">👑 Xem như Chủ nhóm</button>
+                <button type="button" class="role-sim-btn" id="simTreasurer" data-role="TREASURER">💰 Xem như Thủ quỹ</button>
+                <button type="button" class="role-sim-btn" id="simMember" data-role="MEMBER">👤 Xem như Thành viên</button>
+            </div>
+        </div>
+
+        <!-- Role Identification Banner (Card nhận diện vai trò) -->
+        <div id="roleBanner" class="role-banner member">
+            <div class="role-icon" id="roleIcon">👤</div>
+            <div style="flex:1">
+                <div class="role-title" id="roleTitle">VAI TRÒ: THÀNH VIÊN (MEMBER)</div>
+                <div class="role-desc" id="roleDesc">Đang tải thông tin quyền hạn...</div>
+                <div class="role-powers" id="rolePowers"></div>
+            </div>
+        </div>
+
+        <!-- Thông số nhóm tổng quan -->
+        <div class="grid grid-4 mt">
+            <div class="stat">
+                <div class="label">Số dư két quỹ hiện tại</div>
+                <div class="value pos" id="gBalance">-</div>
+                <div class="sub" id="gTarget">Mục tiêu: -</div>
+            </div>
+            <div class="stat">
+                <div class="label">Mã mời nhóm</div>
+                <div class="value"><code id="gInvite">-</code></div>
+                <div class="sub"><a href="#" id="gCopyInvite">📋 Sao chép mã mời</a></div>
+            </div>
+            <div class="stat">
+                <div class="label">Chờ xử lý (Pending)</div>
+                <div class="value" id="gPending" style="color:var(--warning)">-</div>
+                <div class="sub">thành viên · giao dịch</div>
+            </div>
+            <div class="stat">
+                <div class="label">Cấu hình nhóm</div>
+                <div class="sub" id="gSettings" style="font-size:12px;margin-top:6px;line-height:1.4"></div>
+            </div>
+        </div>
+        <div class="muted mt" id="gDesc" style="font-size:13px"></div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs" id="tabs">
+        <button data-tab="members" class="active">👥 Thành viên (<span id="tabMemberCount">0</span>)</button>
+        <button data-tab="transactions">💸 Giao dịch & Thu chi</button>
+        <button data-tab="fund">💰 Két quỹ & Kiểm kê</button>
+        <button data-tab="report">📊 Báo cáo & Quyết toán</button>
+    </div>
+
+    <!-- ==================== TAB 1: THÀNH VIÊN ==================== -->
+    <section class="tab-pane active" id="pane-members">
+        <!-- Khu vực thông tin cá nhân dành riêng cho Member -->
+        <div class="card" id="memberSummaryCard" style="background:#f8fafc;border-left:4px solid var(--primary)">
+            <div class="card-title">
+                <span>👤 Trạng thái đóng góp của bạn trong nhóm</span>
+                <span id="myMemberBadge" class="badge info">Thành viên ACTIVE</span>
+            </div>
+            <div class="grid grid-3">
+                <div class="stat">
+                    <div class="label">Phần chi phí bạn cùng chịu</div>
+                    <div class="value" id="myContributed">-</div>
+                    <div class="sub">Tổng chi phí phân bổ cho bạn</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Tiền quỹ đã hoàn trả cho bạn</div>
+                    <div class="value" id="myOutOfPocket">-</div>
+                    <div class="sub">Đã thanh toán hoàn tiền</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Cân đối tài chính của bạn</div>
+                    <div class="value" id="myNetBalance">-</div>
+                    <div class="sub" id="myNetSub">Cần nộp thêm / Được nhận lại</div>
+                </div>
+            </div>
+            <!-- Dải thông tin công nợ toàn nhóm dành cho Chủ nhóm và Thủ quỹ -->
+            <div id="reviewerBalanceNotice" class="hidden" style="margin-top:12px;padding:10px 14px;background:#eef2ff;border-radius:8px;border:1px solid #c7d2fe;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                <div style="font-size:13px;color:#3730a3">
+                    <b>👑 Quản lý công nợ nhóm (Chủ nhóm / Thủ quỹ):</b>
+                    <span id="revBalanceStats" style="margin-left:8px">Đang tải số dư...</span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnGoToReport">📊 Xem bảng phân bổ đầy đủ</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>Danh bạ thành viên nhóm <span class="muted" id="mCount"></span></span>
+                <div class="btn-row">
+                    <select id="mStatus" style="width:auto">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="ACTIVE">ACTIVE (Đang tham gia)</option>
+                        <option value="PENDING">PENDING (Chờ duyệt vào)</option>
+                        <option value="LEFT">LEFT (Đã rời nhóm)</option>
+                        <option value="REMOVED">REMOVED (Đã bị mời ra)</option>
+                    </select>
+                    <!-- Nút chỉ Chủ nhóm mới thấy -->
+                    <span id="ownerMemberBtns" class="btn-row">
+                        <button class="btn btn-primary" id="btnAddMembers">+ Thêm thành viên</button>
+                        <button class="btn btn-success" id="btnApproveAll">✓ Duyệt tất cả PENDING</button>
+                        <button class="btn btn-danger" id="btnRejectAll">✕ Từ chối tất cả</button>
+                    </span>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tên thành viên</th>
+                            <th>User ID</th>
+                            <th>Vai trò trong nhóm</th>
+                            <th>Trạng thái</th>
+                            <th class="right">Phần cùng chịu</th>
+                            <th class="right">Số dư ròng (Net)</th>
+                            <th class="right">Cần nộp / Nhận</th>
+                            <th>Ngày tham gia</th>
+                            <th id="thMemberActions">Thao tác quản trị</th>
+                        </tr>
+                    </thead>
+                    <tbody id="memberBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 2: GIAO DỊCH & THU CHI ==================== -->
+    <section class="tab-pane" id="pane-transactions">
+        <!-- Form Giao dịch (Giao diện biến đổi theo vai trò) -->
+        <div class="card" id="txnFormCard">
+            <div class="card-title">
+                <span id="formTxnTitle">📝 Ghi nhận giao dịch</span>
+                <span class="muted" id="formTxnHint">Thành viên nộp quỹ/chi hộ → <code>PENDING</code>; Chủ nhóm & Thủ quỹ duyệt → <code>CONFIRMED</code></span>
+            </div>
+
+            <!-- Form fields -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tType">Loại giao dịch</label>
+                    <select id="tType">
+                        <option value="EXPENSE">EXPENSE — Chi tiêu (mua sắm / ăn uống / dịch vụ)</option>
+                        <option value="CONTRIBUTION">CONTRIBUTION — Đóng góp / Nộp tiền quỹ</option>
+                        <option value="REFUND">REFUND — Quỹ hoàn trả tiền cho thành viên</option>
+                    </select>
+                </div>
+                <div class="form-group" id="tSourceGroup">
+                    <label for="tSource">Nguồn chi trả</label>
+                    <select id="tSource">
+                        <option value="FUND">Tiền trong két quỹ (FUND)</option>
+                        <option value="PERSONAL">Tiền túi cá nhân (chi hộ nhóm) (PERSONAL)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tAmount">Số tiền (VNĐ)</label>
+                    <input type="number" id="tAmount" min="1" placeholder="Ví dụ: 150000">
+                </div>
+                <div class="form-group" id="tTransactorGroup">
+                    <label for="tTransactor">Người thực hiện</label>
+                    <select id="tTransactor"></select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" id="tCategoryWrap">
+                    <label for="tCategory">Danh mục chi tiêu (bắt buộc với EXPENSE)</label>
+                    <select id="tCategory"></select>
+                </div>
+                <div class="form-group">
+                    <label for="tWhen">Thời gian phát sinh (để trống = hiện tại)</label>
+                    <input type="datetime-local" id="tWhen">
+                </div>
+                <div class="form-group">
+                    <label for="tNote">Ghi chú chi tiết (nội dung chi, hóa đơn)</label>
+                    <input type="text" id="tNote" maxlength="255" placeholder="Ví dụ: Tiền mua nước ngọt liên hoan">
+                </div>
+            </div>
+
+            <div id="tParticipantsWrap">
+                <label class="check">
+                    <input type="checkbox" id="tSplitAll" checked>
+                    Chia đều cho toàn bộ thành viên ACTIVE trong nhóm
+                </label>
+                <div id="tCustom" class="hidden">
+                    <div class="btn-row" style="margin-bottom:8px">
+                        <button class="btn btn-secondary btn-sm" id="btnAutoSplit">⚡ Tự động chia đều cho các thành viên được tích</button>
+                    </div>
+                    <div id="tParticipants"></div>
+                </div>
+            </div>
+
+            <div class="btn-row mt">
+                <button class="btn" id="btnCreateTxn">Gửi ghi nhận giao dịch</button>
+            </div>
+        </div>
+
+        <!-- Danh sách giao dịch -->
+        <div class="card">
+            <div class="card-title">
+                <span>Sổ thu chi & Lịch sử giao dịch</span>
+                <div class="btn-row">
+                    <select id="lMode" style="width:auto">
+                        <option value="all">Toàn bộ giao dịch nhóm</option>
+                        <option value="mine">Chỉ giao dịch của tôi</option>
+                        <option value="pending">⏳ Đang chờ duyệt (PENDING)</option>
+                    </select>
+                    <select id="lType" style="width:auto">
+                        <option value="">Mọi loại</option>
+                        <option>EXPENSE</option>
+                        <option>CONTRIBUTION</option>
+                        <option>REFUND</option>
+                        <option>ADJUSTMENT_UP</option>
+                        <option>ADJUSTMENT_DOWN</option>
+                    </select>
+                    <select id="lSource" style="width:auto">
+                        <option value="">Mọi nguồn</option>
+                        <option>FUND</option>
+                        <option>PERSONAL</option>
+                    </select>
+                    <select id="lStatus" style="width:auto">
+                        <option value="">Mọi trạng thái</option>
+                        <option>PENDING</option>
+                        <option>CONFIRMED</option>
+                        <option>REJECTED</option>
+                    </select>
+                    <button class="btn btn-secondary" id="btnReloadTxn">🔄</button>
+                </div>
+            </div>
+
+            <!-- Thanh duyệt hàng loạt dành cho Thủ quỹ / Chủ nhóm -->
+            <div class="btn-row hidden" id="bulkBar" style="background:#fef3c7;border:1px solid #fde68a;padding:8px 12px;border-radius:8px;margin-bottom:12px">
+                <span style="font-weight:600;color:#92400e">Đã chọn <b id="bulkCount">0</b> giao dịch:</span>
+                <button class="btn btn-success btn-sm" id="btnBulkConfirm">✓ Duyệt tất cả đã chọn</button>
+                <button class="btn btn-danger btn-sm" id="btnBulkReject">✕ Từ chối tất cả đã chọn</button>
+            </div>
+
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width:28px" id="thBulkCheck"><input type="checkbox" id="chkAllTxn"></th>
+                            <th>Loại</th>
+                            <th>Nguồn</th>
+                            <th class="right">Số tiền</th>
+                            <th>Trạng thái</th>
+                            <th>Người thực hiện</th>
+                            <th>Ghi chú</th>
+                            <th>Thời gian</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="txnBody"></tbody>
+                </table>
+            </div>
+            <div class="pager" id="txnPager"></div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 3: KÉT QUỸ & KIỂM KÊ ==================== -->
+    <section class="tab-pane" id="pane-fund">
+        <!-- Thống kê két quỹ -->
+        <div class="grid grid-3" id="fundCards"></div>
+
+        <!-- Bảng điều khiển kiểm kê quỹ dành cho Thủ quỹ và Chủ nhóm -->
+        <div class="grid grid-2 mt" id="fundAdminControls">
+            <div class="card" id="cardKeeperChange">
+                <div class="card-title">
+                    <span>👑 Bổ nhiệm / Đổi thủ quỹ</span>
+                    <span class="badge purple">Chỉ Chủ nhóm</span>
+                </div>
+                <p class="muted" style="font-size:12px">
+                    Chủ nhóm có quyền chỉ định bất kỳ thành viên ACTIVE nào làm người chịu trách nhiệm giữ quỹ và đối soát két.
+                </p>
+                <div class="form-group">
+                    <label for="fKeeper">Chọn Thủ quỹ mới</label>
+                    <select id="fKeeper"></select>
+                </div>
+                <button class="btn" id="btnKeeper">Xác nhận đổi thủ quỹ</button>
+            </div>
+
+            <div class="card" id="cardReconcile">
+                <div class="card-title">
+                    <span>💰 Kiểm kê quỹ (Đối soát két tiền thực tế)</span>
+                    <span class="badge warning">Thủ quỹ & Chủ nhóm</span>
+                </div>
+                <div class="notice warning" style="font-size:12px">
+                    <b>Lưu ý nghiệp vụ:</b> Khi kiểm kê, không được còn giao dịch <code>PENDING</code>. Hệ thống sẽ so khớp tiền thực tế với số dư sổ sách và tự động tạo phiếu điều chỉnh.
+                </div>
+                <div class="form-group">
+                    <label for="rActual">Số tiền thực tế đếm được trong két (VNĐ)</label>
+                    <input type="number" id="rActual" placeholder="Nhập số tiền đếm được">
+                </div>
+                <div class="form-group">
+                    <label for="rReason">Lý do điều chỉnh sai lệch (nếu có)</label>
+                    <input type="text" id="rReason" maxlength="255" placeholder="Ví dụ: Kiểm kê định kỳ tháng 10">
+                </div>
+                <div class="form-group">
+                    <label>Loại trừ thành viên không chia sẻ khoản chênh lệch (tuỳ chọn)</label>
+                    <div id="rExcluded" style="max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px"></div>
+                </div>
+                <button class="btn btn-warning" id="btnReconcile">Thực hiện kiểm kê đối soát</button>
+            </div>
+        </div>
+
+        <!-- Lời nhắc minh bạch dành cho Member -->
+        <div class="card mt" id="fundMemberNote">
+            <div class="card-title"><span>🛡️ Tính minh bạch của Quỹ nhóm</span></div>
+            <p style="margin:0;line-height:1.6">
+                Mọi khoản nộp vào hoặc rút ra khỏi quỹ đều được hệ thống ghi nhận có kiểm soát.
+                Thủ quỹ chịu trách nhiệm lưu giữ két tiền và cập nhật đối soát định kỳ.
+                Nếu bạn phát hiện sai sót, vui lòng liên hệ trực tiếp với <b>Chủ nhóm</b> hoặc <b>Thủ quỹ</b> để kiểm tra.
+            </p>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 4: BÁO CÁO & QUYẾT TOÁN ==================== -->
+    <section class="tab-pane" id="pane-report">
+        <div class="card">
+            <div class="card-title">
+                <span>Tổng quan tài chính nhóm theo tháng</span>
+                <div class="btn-row">
+                    <input type="month" id="rMonth" style="width:auto">
+                    <button class="btn btn-secondary" id="btnSummary">Xem báo cáo</button>
+                </div>
+            </div>
+            <div class="grid grid-4" id="summaryBox"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                <span>Bảng phân bổ công nợ & phần tiền từng thành viên</span>
+                <button class="btn btn-secondary" id="btnBalances">🔄 Cập nhật</button>
+            </div>
+            <div class="grid grid-3" id="balanceCards"></div>
+            <div class="table-wrap mt">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Thành viên</th>
+                            <th>Trạng thái</th>
+                            <th class="right">Đã được hoàn</th>
+                            <th class="right">Phần cùng chịu</th>
+                            <th class="right">Số dư ròng (Net)</th>
+                            <th class="right" id="thNeed">Cần nộp thêm</th>
+                        </tr>
+                    </thead>
+                    <tbody id="balanceBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script src="../assets/js/api.js"></script>
+<script src="../assets/js/ui.js"></script>
+<script src="../assets/js/layout.js"></script>
+<script src="./js/group-detail.js"></script>
+<script src="./js/group-members.js"></script>
+<script src="./js/group-transactions.js"></script>
+<script src="./js/group-fund.js"></script>
+<script src="./js/group-report.js"></script>
+<script>G.init();</script>
+</body>
+</html>

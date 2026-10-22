@@ -1,6 +1,13 @@
 package com.datn.financeapp.common.response;
 
-// Khung phản hồi thành công thống nhất cho toàn bộ API, theo api/00-QUY-UOC-CHUNG.md mục 4.1.
+/**
+ * Khung phản hồi thành công thống nhất cho toàn bộ API.
+ *
+ * @param <T>     kiểu dữ liệu của data
+ * @param success trạng thái thành công
+ * @param data    dữ liệu phản hồi
+ * @param msg     thông điệp kèm theo
+ */
 public record ApiResponse<T>(boolean success, T data, String msg) {
 
     public static <T> ApiResponse<T> of(T data) {

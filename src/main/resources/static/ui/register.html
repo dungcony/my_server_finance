@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng ký - Finance AI</title>
+    <link rel="stylesheet" href="./assets/css/base.css">
+</head>
+<body>
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Tạo tài khoản</h1>
+        <div class="sub">Đăng ký bằng email, sau đó nhập mã OTP gửi về hộp thư</div>
+
+        <div id="stepRegister">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@example.com">
+            </div>
+            <div class="form-group">
+                <label for="password">Mật khẩu (tối thiểu 8 ký tự)</label>
+                <input type="password" id="password" autocomplete="new-password">
+            </div>
+            <button class="btn" id="btnRegister">Đăng ký</button>
+        </div>
+
+        <div id="stepVerify" class="hidden">
+            <div class="notice">Đã gửi mã OTP 6 chữ số tới <b id="targetEmail"></b>.</div>
+            <div class="form-group">
+                <label for="code">Mã OTP</label>
+                <input type="text" id="code" maxlength="6" inputmode="numeric" placeholder="123456">
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-success" id="btnVerify" style="flex:1">Xác thực</button>
+                <button class="btn btn-secondary" id="btnResend">Gửi lại</button>
+            </div>
+        </div>
+
+        <div class="auth-links"><a href="./login.html">← Về đăng nhập</a></div>
+    </div>
+</div>
+
+<script src="./assets/js/api.js"></script>
+<script src="./assets/js/ui.js"></script>
+<script>
+    let pendingEmail = '';
+
+    $('btnRegister').onclick = async () => {
+        const email = $('email').value.trim();
+        const password = $('password').value;
+        if (!email || password.length < 8) return toast('Nhập email và mật khẩu tối thiểu 8 ký tự', 'error');
+        const res = await api('/auth/register', { method: 'POST', body: { email, password } });
+        if (res.ok) {
+            pendingEmail = email;
+            $('targetEmail').textContent = email;
+            $('stepRegister').classList.add('hidden');
+            $('stepVerify').classList.remove('hidden');
+        }
+    };
+
+    $('btnVerify').onclick = async () => {
+        const code = $('code').value.trim();
+        if (!/^\d{6}$/.test(code)) return toast('Mã OTP gồm đúng 6 chữ số', 'error');
+        const res = await api('/auth/verify-email', { method: 'POST', body: { email: pendingEmail, code } });
+        if (res.ok && !Auth.startSession(dataOf(res))) {
+            toast('Kích hoạt thành công, hãy đăng nhập', 'success');
+            setTimeout(() => location.href = UI_ROOT + 'login.html', 1200);
+        }
+    };
+
+    $('btnResend').onclick = async () => {
+        const res = await api('/auth/resend-verification', { method: 'POST', body: { email: pendingEmail } });
+        toastResult(res, 'Đã gửi lại mã OTP');
+    };
+</script>
+</body>
+</html>

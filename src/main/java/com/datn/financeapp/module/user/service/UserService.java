@@ -1,0 +1,34 @@
+package com.datn.financeapp.module.user.service;
+
+import com.datn.financeapp.module.user.dto.request.UserCreateReq;
+import com.datn.financeapp.module.user.dto.request.UserGetReq;
+import com.datn.financeapp.module.user.dto.response.UserNameDisplayRes;
+import com.datn.financeapp.module.user.dto.response.UserRes;
+import com.datn.financeapp.module.user.enums.UserStatus;
+
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+public interface UserService {
+
+    UserRes create(UserCreateReq req);
+
+    UserRes get(UserGetReq req);
+
+    Map<UUID, UserNameDisplayRes> getNames(List<UUID> ids);
+
+    UserRes updateStatus(String email, UserStatus status);
+
+    UserRes updatePass(String email, String password);
+
+    // Đăng nhập Google: đã liên kết googleId thì trả về luôn, trùng email thì liên kết vào tài khoản đó,
+    // chưa có gì thì tạo mới. Ném UserNotFoundException/UserBlockedException nếu tài khoản không đủ điều kiện.
+    UserRes resolveGoogleUser(String email, String googleId);
+
+    boolean existByEmail(String email);
+
+    void validUser(String email);
+
+
+}

@@ -1,0 +1,38 @@
+package com.datn.financeapp.module.group.controller;
+
+import com.datn.financeapp.common.response.ApiResponse;
+import com.datn.financeapp.common.security.SecurityContextUtil;
+import com.datn.financeapp.module.group.dto.response.report.GroupBalanceReportRes;
+import com.datn.financeapp.module.group.dto.response.report.GroupSummaryReportRes;
+import com.datn.financeapp.module.group.service.ReportService;
+
+import java.util.UUID;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/groups/{groupId}")
+@RequiredArgsConstructor
+public class GroupReportController {
+
+    private final ReportService reportService;
+
+    @GetMapping("/summary")
+    public ApiResponse<GroupSummaryReportRes> summary(
+            @PathVariable UUID groupId,
+            @RequestParam(required = false) String month) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(reportService.getSummary(groupId, month));
+    }
+
+    @GetMapping("/balances")
+    public ApiResponse<GroupBalanceReportRes> balances(@PathVariable UUID groupId) {
+        UUID userId = SecurityContextUtil.currentUserId();
+        return ApiResponse.of(reportService.getBalances(groupId));
+    }
+}
