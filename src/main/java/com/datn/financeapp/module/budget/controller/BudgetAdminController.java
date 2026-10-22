@@ -35,8 +35,8 @@ public class BudgetAdminController {
 
     private final BudgetAdminService budgetAdminService;
 
-    private static final String PERM_READ = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).BUDGET_READ.getValue()) or hasAnyAuthority('ROLE_ADMIN', 'ADMIN')";
-    private static final String PERM_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).BUDGET_DELETE.getValue()) or hasAnyAuthority('ROLE_ADMIN', 'ADMIN')";
+    private static final String PERM_READ = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).BUDGET_READ.name()) or hasAnyAuthority('ROLE_ADMIN', 'ADMIN')";
+    private static final String PERM_DELETE = "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).BUDGET_DELETE.name()) or hasAnyAuthority('ROLE_ADMIN', 'ADMIN')";
 
     /**
      * Tra cứu danh sách ngân sách toàn hệ thống có phân trang và lọc theo điều kiện.

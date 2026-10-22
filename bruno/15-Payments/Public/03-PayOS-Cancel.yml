@@ -1,0 +1,13 @@
+info:
+  name: "03. PayOS cancel"
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{baseUrl}}/public/payments/payos/cancel"
+
+settings:
+  encodeUrl: true
+
+docs: "Public: Trang HTML đích khi người dùng hủy thanh toán, không đổi dữ liệu."

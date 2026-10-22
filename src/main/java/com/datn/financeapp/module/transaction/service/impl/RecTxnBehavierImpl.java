@@ -2,16 +2,20 @@ package com.datn.financeapp.module.transaction.service.impl;
 
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
+import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.security.SecurityContextUtil;
 import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.transaction.dto.request.RecCreateReq;
+import com.datn.financeapp.module.transaction.dto.request.RecTxnFilterReq;
 import com.datn.financeapp.module.transaction.dto.request.RecUpdateReq;
-import com.datn.financeapp.module.transaction.dto.response.RecDetailRes;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnRes;
+import com.datn.financeapp.module.transaction.dto.response.RecTxnListRes;
 import com.datn.financeapp.module.transaction.entity.RecTxn;
 import com.datn.financeapp.module.transaction.events.RecTxnCreateEvent;
 import com.datn.financeapp.module.transaction.events.RecTxnUpdateEvent;
-import com.datn.financeapp.module.transaction.mapper.RecurringMapper;
+import com.datn.financeapp.module.transaction.helper.RecTxnSpecifial;
+import com.datn.financeapp.module.transaction.mapper.RecMapper;
 import com.datn.financeapp.module.transaction.repository.RecTxnRepository;
 import com.datn.financeapp.module.transaction.repository.RecTxnScheduleRepository;
 import com.datn.financeapp.module.transaction.service.RecTxnBehavierService;
@@ -20,9 +24,13 @@ import com.datn.financeapp.module.wallet.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -34,7 +42,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
     private final RecTxnScheduleRepository scheduleRepository;
     private final WalletService walletService;
     private final CategoryService categoryService;
-    private final RecurringMapper recurringMapper;
+    private final RecMapper recMapper;
     private final ApplicationEventPublisher publisher;
 
     /**
@@ -42,15 +50,29 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
      */
     @Override
     @Transactional(readOnly = true)
-    public RecDetailRes get(UUID id, boolean isAdmin) {
+    public RecTxnRes get(UUID id, boolean isAdmin) {
         RecTxn rec = getRecTxn(id, isAdmin);
 
-        WalletSumaryRes wallet = walletService.findSumaryByIdAndUser(rec.getWalletId(), rec.getUserId(), false)
-                .orElse(null);
-        CateSumaryRes cate = (rec.getCategoryCode() == null || rec.getCategoryCode().isBlank()) ? null
-                : categoryService.findByCodeAndIsDeletedAndIsLeaf(rec.getCategoryCode(), false, false).orElse(null);
+        return getRecDetailRes(rec);
+    }
 
-        return recurringMapper.toDetalRes(rec, cate, wallet);
+    @Override
+    public RecTxnListRes gets(RecTxnFilterReq filter, boolean isAdmin, Pageable pageable) {
+
+        if (!isAdmin)
+            filter = filter.withUser(SecurityContextUtil.currentUserId());
+
+        Specification<RecTxn> spec = RecTxnSpecifial.filter(filter);
+        Page<RecTxn> pages = recurringRepository.findAll(spec, pageable);
+
+        List<RecTxnListRes.RecTxnSumaryRes> rtxns = pages.getContent().stream()
+                .map(recTxn -> new RecTxnListRes.RecTxnSumaryRes(recTxn.getId(), recTxn.getName(), recTxn.getIsEnabled()))
+                .toList();
+
+        return new RecTxnListRes(
+                rtxns,
+                PageMeta.from(pages)
+        );
     }
 
     /**
@@ -58,7 +80,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
      */
     @Override
     @Transactional
-    public RecDetailRes create(RecCreateReq req, boolean isAdmin) {
+    public RecTxnRes create(RecCreateReq req, boolean isAdmin) {
         log.debug("tạo recTxn");
         UUID userId = SecurityContextUtil.currentUserId();
 
@@ -71,14 +93,14 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
         }
 
-        RecTxn rec = recurringMapper.toEntity(req, UUID.randomUUID(), userId);
+        RecTxn rec = recMapper.toEntity(req, UUID.randomUUID(), userId);
         recurringRepository.save(rec);
 
         log.debug("recurring save {}, start create RecTxnSchedule", rec);
         publisher.publishEvent(new RecTxnCreateEvent(rec));
         log.debug("create schedule success");
 
-        return recurringMapper.toDetalRes(rec, cate, wallet);
+        return recMapper.toDetalRes(rec, cate, wallet);
     }
 
     /**
@@ -86,7 +108,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
      */
     @Override
     @Transactional
-    public RecDetailRes update(UUID id, RecUpdateReq req, boolean isAdmin) {
+    public RecTxnRes update(UUID id, RecUpdateReq req, boolean isAdmin) {
         RecTxn rec = getRecTxn(id, isAdmin);
 
         boolean scheduleChanged = isScheduleChanged(rec, req);
@@ -125,12 +147,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
             publisher.publishEvent(new RecTxnUpdateEvent(rec, scheduleChanged));
         }
 
-        WalletSumaryRes wallet = walletService.findSumaryByIdAndUser(rec.getWalletId(), rec.getUserId(), false)
-                .orElse(null);
-        CateSumaryRes cate = (rec.getCategoryCode() == null || rec.getCategoryCode().isBlank()) ? null
-                : categoryService.findByCodeAndIsDeletedAndIsLeaf(rec.getCategoryCode(), false, false).orElse(null);
-
-        return recurringMapper.toDetalRes(rec, cate, wallet);
+        return getRecDetailRes(rec);
     }
 
     @Override
@@ -171,6 +188,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
      * Tìm giao dịch định kỳ và kiểm tra quyền sở hữu.
      */
     private RecTxn getRecTxn(UUID id, boolean isAdmin) {
+
         RecTxn rec = recurringRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy giao dịch định kỳ."));
 
@@ -190,5 +208,15 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
         return (req.frequency() != null && req.frequency() != rec.getFrequency())
                 || (req.interval() != null && !req.interval().equals(rec.getInterval()))
                 || (req.endDate() != null && !req.endDate().equals(rec.getEndDate()));
+    }
+
+
+    private RecTxnRes getRecDetailRes(RecTxn rec) {
+        WalletSumaryRes wallet = walletService.findSumaryByIdAndUser(rec.getWalletId(), rec.getUserId(), false)
+                .orElse(null);
+        CateSumaryRes cate = (rec.getCategoryCode() == null || rec.getCategoryCode().isBlank()) ? null
+                : categoryService.findByCodeAndIsDeletedAndIsLeaf(rec.getCategoryCode(), false, false).orElse(null);
+
+        return recMapper.toDetalRes(rec, cate, wallet);
     }
 }

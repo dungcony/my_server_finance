@@ -1,0 +1,32 @@
+info:
+  name: "01. PayOS webhook"
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/public/payments/payos/webhook"
+  headers:
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "00",
+        "desc": "success",
+        "success": true,
+        "data": {
+          "orderCode": {{orderCode}},
+          "amount": 99000,
+          "description": "Nang cap Premium",
+          "code": "00",
+          "desc": "Thanh cong"
+        },
+        "signature": ""
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Public: payOS gọi về khi có kết quả thanh toán. Body là JSON webhook của payOS (chữ ký signature được kiểm tra phía server), dùng để giả lập cục bộ."

@@ -6,7 +6,7 @@ import com.datn.financeapp.module.debt.dto.response.DebtDetailResponse;
 import com.datn.financeapp.module.debt.dto.response.DebtListItemResponse;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.entity.DebtPayment;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import org.mapstruct.Mapper;
 
@@ -103,7 +103,7 @@ public interface DebtMapper {
                 payment.getTransactionId());
     }
 
-    default DebtDetailResponse.OriginTransaction toOriginTransaction(TxnDetailResponse originTxn) {
+    default DebtDetailResponse.OriginTransaction toOriginTransaction(TxnDetailRes originTxn) {
         if (originTxn == null) {
             return null;
         }
@@ -116,7 +116,7 @@ public interface DebtMapper {
     default DebtDetailResponse toDetailResponse(
             DebtListItemResponse listItem,
             List<DebtDetailResponse.PaymentHistoryItem> history,
-            TxnDetailResponse originTxn) {
+            TxnDetailRes originTxn) {
         return new DebtDetailResponse(listItem, history, toOriginTransaction(originTxn));
     }
 }

@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/categories"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
     - name: Idempotency-Key
@@ -17,9 +17,9 @@ http:
     type: json
     data: |-
       {
-        "name": "Cà phê",
-        "code": "ca_phe",
-        "description": "Chi tiêu cà phê, trà và đồ uống",
+        "name": "Danh mục test",
+        "code": "test_cat",
+        "description": "Dùng cho kiểm thử tự động",
         "icon_code": "coffee",
         "color": "#3D6B7D",
         "parent_code": "an_uong"
@@ -28,7 +28,7 @@ http:
 runtime:
   postResponse: |-
     if (res.status === 201 && res.body && res.body.data && res.body.data.code) {
-      bru.setEnvVar("categoryCode", res.body.data.code);
+      bru.setEnvVar("tempCategoryCode", res.body.data.code);
     }
 
 settings:

@@ -1,0 +1,17 @@
+info:
+  name: 10. Stream log hệ thống
+  type: http
+  seq: 10
+
+http:
+  method: GET
+  url: "{{baseUrl}}/admin/logs/stream"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+
+settings:
+  encodeUrl: true
+  timeout: 1500
+
+docs: "Dành cho Admin: Lắng nghe luồng log thời gian thực của máy chủ (Server-Sent Events)."

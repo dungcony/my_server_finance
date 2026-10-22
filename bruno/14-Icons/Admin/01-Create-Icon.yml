@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/icons"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
     - name: Idempotency-Key
@@ -17,10 +17,10 @@ http:
     type: json
     data: |-
       {
-        "code": "coffee",
-        "display_name": "Cà phê",
+        "code": "temp_icon",
+        "display_name": "Biểu tượng test",
         "path_data": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z",
-        "icon_group": "an_uong",
+        "icon_group": "khac",
         "search_keywords": "coffee ca phe do uong",
         "sort_order": 1
       }
@@ -28,7 +28,7 @@ http:
 runtime:
   postResponse: |-
     if (res.status === 201 && res.body && res.body.data && res.body.data.code) {
-      bru.setEnvVar("iconCode", res.body.data.code);
+      bru.setEnvVar("tempIconCode", res.body.data.code);
     }
 
 settings:

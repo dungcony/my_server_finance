@@ -5,10 +5,10 @@ info:
 
 http:
   method: DELETE
-  url: "{{baseUrl}}/categories/{{categoryCode}}"
+  url: "{{baseUrl}}/categories/{{tempCategoryCode}}"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
 
 settings:
   encodeUrl: true

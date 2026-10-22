@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 03. Tạo giao dịch định kỳ
   type: http
   seq: 3
@@ -8,34 +8,30 @@ http:
   url: "{{baseUrl}}/recurring"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
     - name: Content-Type
-      value: "application/json"
-    - name: Idempotency-Key
-      value: ""
+      value: application/json
   body:
     type: json
     data: |-
       {
         "display_name": "Tiền thuê nhà",
-        "type": "expense",
+        "type": "EXPENSE",
         "amount": 3500000,
         "wallet_id": "{{walletId}}",
-        "category_id": "{{categoryId}}",
-        "frequency": "month",
+        "category_code": "an_sang",
+        "frequency": "DAY",
         "interval": 1,
-        "start_date": "2026-09-01",
+        "start_date": "2026-10-21",
         "end_date": null,
         "note": "Thanh toán đầu tháng"
       }
 
-runtime:
-  postResponse: |-
-    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
-      bru.setEnvVar("recurringId", res.body.data.id);
-    }
-
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
-docs: Tạo lịch lặp lại định kỳ theo ngày/tuần/tháng/năm. Tự lưu recurringId.
+docs: Tạo lịch lặp lại định kỳ theo ngày/tuần/tháng/năm. start_date phải >= hôm nay, end_date (nếu có) phải ở tương lai. Tự lưu recurringId.

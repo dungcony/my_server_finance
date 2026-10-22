@@ -1,0 +1,28 @@
+info:
+  name: "04. Tạo ví cho người dùng"
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/wallets/admin/{{userId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+    - name: Content-Type
+      value: "application/json"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ví tiền mặt",
+        "type": "CASH",
+        "balance": 500000,
+        "icon_code": "{{iconCode}}",
+        "color": "#2ECC71"
+      }
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Tạo ví cho người dùng có id trên URL."

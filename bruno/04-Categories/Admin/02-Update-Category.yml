@@ -5,17 +5,17 @@ info:
 
 http:
   method: PATCH
-  url: "{{baseUrl}}/categories/{{categoryCode}}"
+  url: "{{baseUrl}}/categories/{{tempCategoryCode}}"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
   body:
     type: json
     data: |-
       {
-        "name": "Trà sữa & Cà phê",
+        "name": "Danh mục test cập nhật",
         "description": "Chi tiêu cho trà sữa, cà phê và đồ uống",
         "icon_code": "coffee",
         "color": "#112233",

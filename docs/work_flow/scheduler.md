@@ -5,6 +5,9 @@
 | Sinh giao dịch định kỳ | Mỗi giờ, phút 0 (đổi được qua `app.recurring.cron`) | [RecTxnScheduler](../../src/main/java/com/datn/financeapp/module/transaction/scheduler/RecTxnScheduler.java) |
 | Đối chiếu số dư ví | 01:00 mỗi ngày, giờ VN | [WalletReconciliationJob](../../src/main/java/com/datn/financeapp/module/wallet/scheduler/WalletReconciliationJob.java) |
 | Dọn khoá chống ghi trùng | 03:00 mỗi ngày, giờ VN | [IdempotencyCleanupJob](../../src/main/java/com/datn/financeapp/common/idempotency/IdempotencyCleanupJob.java) |
+| Dọn đơn thanh toán quá hạn | Mỗi 5 phút sau lần chạy trước (`fixedDelay`) | [PaymentExpiryJob](../../src/main/java/com/datn/financeapp/module/pay/scheduler/PaymentExpiryJob.java) |
+| Hạ premium hết hạn về free | 00:05 mỗi ngày, giờ VN | [PremiumExpiryJob](../../src/main/java/com/datn/financeapp/module/user/scheduler/PremiumExpiryJob.java) |
+| Dọn nhật ký webhook payOS | 03:30 mỗi ngày, giờ VN | [PaymentWebhookLogCleanupJob](../../src/main/java/com/datn/financeapp/module/pay/scheduler/PaymentWebhookLogCleanupJob.java) |
 
 ## Sinh giao dịch định kỳ — mỗi giờ
 
@@ -47,4 +50,39 @@ Các API có `@Idempotent` (tạo ví, tạo giao dịch...) lưu khoá chống 
 IdempotencyCleanupJob.cleanup
 -> xoá các dòng idempotency_keys tạo cách đây hơn 24 giờ
 -> log số dòng đã xoá
+```
+
+## Dọn đơn thanh toán quá hạn — mỗi 5 phút
+
+```
+PaymentExpiryJob.expireOverduePayments
+-> PaymentService.findOverdueOrderCodes: đơn PENDING có expires_at < bây giờ, tối đa 100 đơn mỗi lượt
+-> với từng đơn (mỗi đơn một transaction, đơn lỗi chỉ ghi log và không chặn các đơn sau):
+     PaymentService.expireIfOverdue
+     -> khoá đơn; đã được webhook xử lý trong lúc chờ khoá, hoặc chưa tới hạn → bỏ qua
+     -> hỏi payOS: đã nhận đủ tiền → ghi PAID và giao hàng
+                   chưa nhận đồng nào → huỷ link payOS rồi ghi EXPIRED
+                   đã nhận một phần, hoặc huỷ không hiệu lực → log ERROR, giữ PENDING (lượt sau thử lại)
+```
+
+Chi tiết xem [payment.md](payment.md).
+
+## Hạ premium hết hạn — 00:05
+
+```
+PremiumExpiryJob.run
+-> UserService.downgradeExpiredPremium: MỘT câu UPDATE
+     users.plan PREMIUM → FREE, với user có plan_expires_at < bây giờ
+     (premium không có plan_expires_at, VD tài khoản admin seed, giữ nguyên)
+-> log số tài khoản đã hạ
+```
+
+Access token cũ vẫn mang `plan = PREMIUM` tới khi hết hạn token; lần refresh sau nhận `FREE`.
+
+## Dọn nhật ký webhook payOS — 03:30
+
+```
+PaymentWebhookLogCleanupJob.cleanup
+-> xoá các dòng payment_webhook_logs có received_at cũ hơn PAYMENT_WEBHOOK_LOG_RETENTION_DAYS ngày (mặc định 30)
+-> log số dòng đã xoá; lỗi DB chỉ ghi log, không làm hỏng scheduler
 ```

@@ -5,10 +5,10 @@ info:
 
 http:
   method: DELETE
-  url: "{{baseUrl}}/icons/{{iconCode}}"
+  url: "{{baseUrl}}/icons/{{tempIconCode}}"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
 
 settings:
   encodeUrl: true

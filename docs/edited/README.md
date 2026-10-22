@@ -1,0 +1,1 @@
+# folder ghi lại các thay đổi theo từng commit

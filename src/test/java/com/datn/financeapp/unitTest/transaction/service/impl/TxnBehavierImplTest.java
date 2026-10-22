@@ -1,5 +1,6 @@
 package com.datn.financeapp.unitTest.transaction.service.impl;
 
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.service.impl.*;
 
 
@@ -10,7 +11,6 @@ import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
 import com.datn.financeapp.module.transaction.dto.request.TxnUpdateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
 import com.datn.financeapp.module.transaction.entity.Transaction;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.events.TxnCreateEvent;
@@ -144,12 +144,12 @@ class TxnBehavierImplTest {
                 .build();
         when(txnMapper.toEntity(req)).thenReturn(txnEntity);
 
-        TxnDetailResponse expectedRes = new TxnDetailResponse(
+        TxnDetailRes expectedRes = new TxnDetailRes(
                 UUID.randomUUID(), walletSummary, cateSummary, TxnType.EXPENSE, 50_000L, now, "Cà phê", "Uống cùng bạn", now, now);
         when(txnMapper.toResponse(eq(txnEntity), eq(cateSummary), eq(walletSummary)))
                 .thenReturn(expectedRes);
 
-        TxnDetailResponse result = txnBehavierService.create(currentUserId, req);
+        TxnDetailRes result = txnBehavierService.create(currentUserId, req);
 
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
         verify(txnRepository).save(captor.capture());

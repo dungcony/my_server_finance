@@ -18,10 +18,9 @@ http:
     data: |-
       {
         "name": "Ví tiền mặt",
-        "type": "cash",
-        "initial_balance": 500000,
-        "include_in_total": true,
-        "icon": "wallet",
+        "type": "CASH",
+        "balance": 500000,
+        "icon_code": "{{iconCode}}",
         "color": "#2ECC71"
       }
 

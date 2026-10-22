@@ -51,7 +51,31 @@ google:
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiry-seconds: 36000
-  refresh-token-expiry-days: 30
+
+payos:
+  enabled: ${PAYOS_ENABLED:true}
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+  base-url: ${PAYOS_BASE_URL:}
+  return-url: ${PAYOS_RETURN_URL}
+  cancel-url: ${PAYOS_CANCEL_URL}
+  expired-minutes: ${PAYOS_EXPIRED_MINUTES:15}
+  webhook-log:
+    retention-days: ${PAYMENT_WEBHOOK_LOG_RETENTION_DAYS:30}
+    missing-minutes: ${PAYMENT_WEBHOOK_MISSING_MINUTES:10}
+
+payment:
+  topup:
+    seconds: ${PAYMENT_TOPUP_SECONDS:86400}
+    reminder-seconds: ${PAYMENT_TOPUP_REMINDER_SECONDS:3600}
+    job-seconds: ${PAYMENT_TOPUP_JOB_SECONDS:60}
+
+premium:
+  prices:
+    one-month: ${PREMIUM_PRICE_1M}
+    six-months: ${PREMIUM_PRICE_6M}
+    twelve-months: ${PREMIUM_PRICE_12M}
 
 rate-limit:
   max-request-email-forgot-password: 5

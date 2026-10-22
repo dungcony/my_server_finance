@@ -1,0 +1,16 @@
+info:
+  name: "06. Xóa ví"
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/wallets/admin/{{walletId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{admin_access}}"
+
+settings:
+  encodeUrl: true
+
+docs: "Dành cho Admin: Xóa mềm ví bất kỳ."

@@ -1,0 +1,16 @@
+info:
+  name: 11. Bỏ qua buổi lịch
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{baseUrl}}/recurring/schedules/{{scheduleId}}/skip"
+  headers:
+    - name: Authorization
+      value: "Bearer {{accessToken}}"
+
+settings:
+  encodeUrl: true
+
+docs: Bỏ qua một buổi lịch (không sinh giao dịch).

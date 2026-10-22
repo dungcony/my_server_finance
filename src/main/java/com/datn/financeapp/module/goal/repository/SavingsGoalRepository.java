@@ -1,6 +1,7 @@
 package com.datn.financeapp.module.goal.repository;
 
 import com.datn.financeapp.module.goal.entity.SavingsGoal;
+import com.datn.financeapp.module.goal.helper.GoalSpecs;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,28 +38,13 @@ public interface SavingsGoalRepository extends JpaRepository<SavingsGoal, UUID>,
             nativeQuery = true)
     List<SavingsGoal> findAllForUser(@Param("currentUser") UUID currentUser, @Param("status") String status);
 
-    @Query(
-            value = """
-                    SELECT * FROM savings_goals
-                    WHERE NOT is_deleted
-                    AND (:userId IS NULL OR user_id = :userId)
-                    AND (CAST(:status AS text) IS NULL OR status = :status)
-                    AND (CAST(:name AS text) IS NULL OR name ILIKE CONCAT('%', CAST(:name AS text), '%'))
-                    ORDER BY created_at DESC
-                    """,
-            countQuery = """
-                    SELECT count(*) FROM savings_goals
-                    WHERE NOT is_deleted
-                    AND (:userId IS NULL OR user_id = :userId)
-                    AND (CAST(:status AS text) IS NULL OR status = :status)
-                    AND (CAST(:name AS text) IS NULL OR name ILIKE CONCAT('%', CAST(:name AS text), '%'))
-                    """,
-            nativeQuery = true)
-    Page<SavingsGoal> findAllForAdmin(
-            @Param("userId") UUID userId,
-            @Param("status") String status,
-            @Param("name") String name,
-            Pageable pageable);
+    default Page<SavingsGoal> findAllForAdmin(
+            UUID userId,
+            String status,
+            String name,
+            Pageable pageable) {
+        return findAll(GoalSpecs.filter(userId, status, name), pageable);
+    }
 
     /**
      * Đọc lại tiến độ mục tiêu SAU khi trigger {@code trg_goal_contributions_sync} đã UPDATE bảng cha.

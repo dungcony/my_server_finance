@@ -48,6 +48,6 @@ class UserResTest {
     }
 
     private UserRes userWithName(String firstName, String lastName) {
-        return new UserRes(null, null, firstName, lastName, null, UserStatus.ACTIVE, null, null, null, false);
+        return new UserRes(null, null, firstName, lastName, null, null, UserStatus.ACTIVE, null, null, null, false);
     }
 }

@@ -24,6 +24,7 @@
             ['roles', '🔑', 'Vai trò & quyền'],
             ['groups', '👥', 'Nhóm hệ thống'],
             ['group-transactions', '💸', 'Giao dịch nhóm'],
+            ['webhooks', '🔔', 'Webhook thanh toán'],
             ['logs', '🖥️', 'Log realtime']
         ]
     };

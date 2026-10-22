@@ -14,7 +14,7 @@ import com.datn.financeapp.module.debt.repository.DebtPaymentRepository;
 import com.datn.financeapp.module.debt.repository.DebtRepository;
 import com.datn.financeapp.module.debt.service.DebtService;
 import com.datn.financeapp.module.transaction.dto.request.TxnCreateReq;
-import com.datn.financeapp.module.transaction.dto.response.TxnDetailResponse;
+import com.datn.financeapp.module.transaction.dto.response.TxnDetailRes;
 import com.datn.financeapp.module.transaction.enums.TxnType;
 import com.datn.financeapp.module.transaction.service.TxnBehavierService;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
@@ -110,7 +110,7 @@ public class DebtServiceImpl implements DebtService {
         Instant occurredAt = issuedDate.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
 
         // Tự động sinh giao dịch liên kết vào ví
-        TxnDetailResponse txnRes = txnBehavierService.create(userId, new TxnCreateReq(
+        TxnDetailRes txnRes = txnBehavierService.create(userId, new TxnCreateReq(
                 txnType,
                 req.principalAmount(),
                 wallet.id(),
@@ -190,7 +190,7 @@ public class DebtServiceImpl implements DebtService {
         LocalDate paidDate = req.paidDate() != null ? req.paidDate() : LocalDate.now();
         Instant occurredAt = paidDate.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant();
 
-        TxnDetailResponse txnRes = txnBehavierService.create(userId, new TxnCreateReq(
+        TxnDetailRes txnRes = txnBehavierService.create(userId, new TxnCreateReq(
                 txnType,
                 req.amount(),
                 wallet.id(),
@@ -379,7 +379,7 @@ public class DebtServiceImpl implements DebtService {
                 .map(debtMapper::toHistoryItem)
                 .toList();
 
-        TxnDetailResponse originTxn = null;
+        TxnDetailRes originTxn = null;
         if (debt.getOriginTransactionId() != null) {
             try {
                 originTxn = txnBehavierService.get(debt.getOriginTransactionId(), false);

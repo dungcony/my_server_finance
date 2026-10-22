@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/auth/logout"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
   body:

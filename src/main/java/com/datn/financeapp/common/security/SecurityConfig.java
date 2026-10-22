@@ -66,7 +66,8 @@ public class SecurityConfig {
                                 "/auth/register", "/auth/login", "/auth/refresh",
                                 "/auth/forgot-password", "/auth/reset-password",
                                 "/auth/verify-email", "/auth/resend-verification",
-                                "/auth/google")
+                                "/auth/google",
+                                "/public/payments/payos/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))

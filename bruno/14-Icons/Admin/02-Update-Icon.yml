@@ -5,18 +5,18 @@ info:
 
 http:
   method: PATCH
-  url: "{{baseUrl}}/icons/{{iconCode}}"
+  url: "{{baseUrl}}/icons/{{tempIconCode}}"
   headers:
     - name: Authorization
-      value: "Bearer {{adminAccessToken}}"
+      value: "Bearer {{admin_access}}"
     - name: Content-Type
       value: "application/json"
   body:
     type: json
     data: |-
       {
-        "display_name": "Cà phê & Đồ uống",
-        "code": "coffee",
+        "display_name": "Biểu tượng test cập nhật",
+        "code": "temp_icon",
         "path_data": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"
       }
 

@@ -1,4 +1,4 @@
-﻿info:
+info:
   name: 04. Thêm giao dịch mới
   type: http
   seq: 4
@@ -8,33 +8,35 @@ http:
   url: "{{baseUrl}}/transactions"
   headers:
     - name: Authorization
-      value: "Bearer {{accessToken}}"
+      value: Bearer {{accessToken}}
     - name: Content-Type
-      value: "application/json"
+      value: application/json
     - name: Idempotency-Key
       value: ""
   body:
     type: json
     data: |-
       {
-        "type": "expense",
-        "amount": 45000,
+        "type": "EXPENSE",
+        "amount": 4500000,
         "wallet_id": "{{walletId}}",
-        "category_id": "{{categoryId}}",
-        "date": "2026-09-11",
+        "category_code": "an_trua",
+        "occurred_at": "2026-09-11T00:00:00Z",
         "display_name": "Cà phê sáng",
-        "note": "Highlands Coffee",
-        "source": "manual",
-        "counts_in_report": true
+        "note": "Highlands Coffee"
       }
 
 runtime:
   postResponse: |-
-    if (res.status === 201 && res.body && res.body.data && res.body.data.id) {
+    if ((res.status === 201 || res.status === 200) && res.body && res.body.data && res.body.data.id) {
       bru.setEnvVar("transactionId", res.body.data.id);
     }
 
 settings:
   encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
 
 docs: Tạo giao dịch thu/chi. Tự động cập nhật số dư ví và lưu transactionId.
