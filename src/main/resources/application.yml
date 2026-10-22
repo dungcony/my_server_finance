@@ -10,6 +10,23 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
 
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+  flyway:
+    locations: classpath:db/migration
+    encoding: UTF-8
+    baseline-on-migrate: false
   mail:
     host: ${MAIL_HOST:}
     port: ${MAIL_PORT:}
