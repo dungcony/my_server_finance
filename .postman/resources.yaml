@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: f1420564-7ac0-488d-83f1-56a5cda20daf
+
+localResources:
+  specs:
+    - ../api-docs.json

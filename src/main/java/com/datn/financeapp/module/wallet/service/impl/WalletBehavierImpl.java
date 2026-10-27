@@ -4,7 +4,6 @@ import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.PageMeta;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconService;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
@@ -14,7 +13,6 @@ import com.datn.financeapp.module.wallet.dto.response.WalletListRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletRes;
 import com.datn.financeapp.module.wallet.dto.response.WalletSumaryRes;
 import com.datn.financeapp.module.wallet.entity.Wallet;
-import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.helper.WalletSpecifial;
 import com.datn.financeapp.module.wallet.mapper.WalletMapper;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
@@ -34,21 +32,12 @@ import java.util.UUID;
 public class WalletBehavierImpl implements WalletBehavierService {
 
     private final WalletRepository walletRepository;
-    private final SavingsGoalRepository savingsGoalRepository;
     private final IconService iconService;
     private final WalletMapper walletMapper;
 
     @Override
     @Transactional
     public WalletRes create(WalletCreateReq req, boolean isAdmin) {
-
-        if (req.type() == WalletType.SAVINGS) {
-            throw new BusinessException(
-                    ErrorCode.WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED,
-                    "Ví tiết kiệm chỉ được tạo tự động thông qua Mục tiêu tiết kiệm."
-            );
-        }
-
         Wallet wallet = walletMapper.toEntity(req);
         if (!isAdmin) wallet.setUserId(SecurityContextUtil.currentUserId());
         else if (req.userId() == null)
@@ -65,10 +54,8 @@ public class WalletBehavierImpl implements WalletBehavierService {
         return walletMapper.toResponse(wallet, icon);
     }
 
-
     @Override
     public WalletListRes gets(WalletFillterReq filter, Pageable pageable, boolean isAdmin) {
-
         // không phải admin thì lấy theo userId
         if (!isAdmin)
             filter = filter.withUser(SecurityContextUtil.currentUserId());
@@ -101,12 +88,9 @@ public class WalletBehavierImpl implements WalletBehavierService {
         return walletMapper.toResponse(wallet, iconService.findIconByCode(wallet.getIconCode()));
     }
 
-
-    // 4 roup-trip : get wallet -> check icon -> update wallet -> geticon
     @Override
     @Transactional
     public WalletRes update(UUID walletId, WalletupdateReq req, boolean isAdmin) {
-
         Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(walletId).orElseThrow(() -> new BusinessException(ErrorCode.WALLET_NOT_FOUND));
 
         // nếu không phải admin thì người thay đổi phải là user của ví
@@ -132,27 +116,14 @@ public class WalletBehavierImpl implements WalletBehavierService {
         return walletMapper.toResponse(wallet, iconService.findIconByCode(wallet.getIconCode()));
     }
 
-
     @Override
     @Transactional
     public Void softDelete(UUID walletId, boolean isAdmin) {
-
         Wallet wallet = walletRepository.findByIdAndIsDeletedFalse(walletId).orElseThrow(() -> new BusinessException(ErrorCode.WALLET_NOT_FOUND));
 
         // nếu không phải admin thì người thay đổi phải là user của ví
         if (!isAdmin && !wallet.getUserId().equals(SecurityContextUtil.currentUserId()))
             throw new BusinessException(ErrorCode.FORBIDDEN, "Không được phép xoá ví này");
-
-        // Chặn xóa ví tiết kiệm nếu đang liên kết với mục tiêu chưa hoàn thành
-        if (wallet.getType() == WalletType.SAVINGS) {
-            boolean hasActiveGoal = savingsGoalRepository.existsByWalletIdAndIsDeletedFalseAndStatus(walletId, "in_progress");
-            if (hasActiveGoal) {
-                throw new BusinessException(
-                        ErrorCode.WALLET_SAVINGS_LINKED_TO_GOAL,
-                        "Ví tiết kiệm đang liên kết với mục tiêu đang thực hiện. Vui lòng quản lý từ mục Tiết kiệm."
-                );
-            }
-        }
 
         wallet.setIsDeleted(true);
         walletRepository.save(wallet);

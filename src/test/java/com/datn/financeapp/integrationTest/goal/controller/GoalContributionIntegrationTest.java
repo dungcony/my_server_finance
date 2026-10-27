@@ -1,10 +1,8 @@
 package com.datn.financeapp.integrationTest.goal.controller;
 
-import com.datn.financeapp.module.goal.controller.*;
-
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -28,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -47,14 +46,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Test tích hợp mục tiêu tiết kiệm (GOAL-01..04) — trọng tâm là RANH GIỚI TRIGGER và HAI CHẾ ĐỘ
- * NẠP TIỀN, mục ưu tiên số 2 của D-58.
- *
- * <p>Ca quan trọng nhất là {@link #cancelContribution_reopensCompletedToInProgress()}: trigger
- * {@code trg_goal_contributions_sync} phải tự MỞ LẠI trạng thái từ {@code completed} về
- * {@code in_progress} khi rút lại một lần nạp. Cũng như ở sổ nợ, test luôn đọc THẲNG từ CSDL để
- * đối chiếu — nếu backend tự ghi đè hai cột đó thì con số sẽ "đúng một cách tình cờ" và test
- * không phát hiện được gì.
+ * Test tích hợp mục tiêu tiết kiệm độc lập (Goal Tracking không ví) — kiểm tra nạp tiền,
+ * rút tiền, sửa/hủy đóng góp và trigger tự động cập nhật tiến độ.
  */
 @Testcontainers
 @SpringBootTest
@@ -113,7 +106,6 @@ class GoalContributionIntegrationTest {
 
     @BeforeEach
     void cleanTables() {
-        // OTP nằm ở Redis, không bị Testcontainers PostgreSQL dọn hộ.
         otpRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM goal_contributions");
         jdbcTemplate.update("DELETE FROM savings_goals");
@@ -131,36 +123,16 @@ class GoalContributionIntegrationTest {
         return authSupport.registerAndGetAccessToken(email);
     }
 
-    private String createWallet(String token, String name, long initialBalance) throws Exception {
-        Map<String, Object> body = Map.of(
-                "name", name,
-                "type", "CASH",
-                "balance", initialBalance,
-                "icon_code", "default_wallet",
-                "color", "#2f8272");
-        String response = mockMvc.perform(post("/wallets")
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        Map<?, ?> data = (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
-        return (String) data.get("id");
-    }
-
-    // Tạo mục tiêu; {@code walletId} và {@code initialAmount} cho phép null để bỏ qua.
-    private String createGoal(String token, String name, long targetAmount, String walletId, Long initialAmount)
+    private String createGoal(String token, String name, long targetAmount, Long initialAmount, String note)
             throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("name", name);
         body.put("target_amount", targetAmount);
-        if (walletId != null) {
-            body.put("wallet_id", walletId);
-        }
         if (initialAmount != null) {
             body.put("initial_amount", initialAmount);
+        }
+        if (note != null) {
+            body.put("note", note);
         }
 
         String response = mockMvc.perform(post("/goals")
@@ -175,16 +147,11 @@ class GoalContributionIntegrationTest {
         return (String) ((Map<?, ?>) data.get("goal")).get("id");
     }
 
-    private Map<?, ?> addContribution(
-            String token, String goalId, long amount, String sourceWalletId, Boolean createTransaction)
-            throws Exception {
+    private Map<?, ?> addContribution(String token, String goalId, long amount, String note) throws Exception {
         Map<String, Object> body = new HashMap<>();
         body.put("amount", amount);
-        if (sourceWalletId != null) {
-            body.put("source_wallet_id", sourceWalletId);
-        }
-        if (createTransaction != null) {
-            body.put("create_transaction", createTransaction);
+        if (note != null) {
+            body.put("note", note);
         }
 
         String response = mockMvc.perform(post("/goals/" + goalId + "/contributions")
@@ -198,9 +165,22 @@ class GoalContributionIntegrationTest {
         return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
     }
 
-    private long walletBalance(String walletId) {
-        return jdbcTemplate.queryForObject(
-                "SELECT balance FROM wallets WHERE id = ?", Long.class, UUID.fromString(walletId));
+    private Map<?, ?> withdraw(String token, String goalId, long amount, String note) throws Exception {
+        Map<String, Object> body = new HashMap<>();
+        body.put("amount", amount);
+        if (note != null) {
+            body.put("note", note);
+        }
+
+        String response = mockMvc.perform(post("/goals/" + goalId + "/withdraw")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return (Map<?, ?>) objectMapper.readValue(response, Map.class).get("data");
     }
 
     private long savedAmountFromDatabase(String goalId) {
@@ -213,178 +193,128 @@ class GoalContributionIntegrationTest {
                 "SELECT status FROM savings_goals WHERE id = ?", String.class, UUID.fromString(goalId));
     }
 
-    private int liveTransactionCount() {
-        return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM transactions WHERE is_deleted = false AND category_code = 'tiet_kiem' AND type = 'EXPENSE'",
-                Integer.class);
-    }
-
     // ---------------------------------------------------------------------
-    // Test
+    // Tests
     // ---------------------------------------------------------------------
 
-    /**
-     * GOAL-01, api/09 mục B2 — {@code initial_amount} KHÔNG sinh giao dịch nào: đó là tiền người
-     * dùng đã tích được từ trước, ghi thêm giao dịch sẽ trừ oan ví một lần nữa.
-     *
-     * <p>Tên test phản ánh đúng phạm vi khẳng định: {@code initial_amount} tự nó không sinh GIAO
-     * DỊCH, dù vẫn sinh một bản ghi {@code goal_contributions} nội bộ để trigger cộng vào
-     * {@code saved_amount} (nếu không thì tiến độ ban đầu người dùng nhập sẽ mất hẳn).
-     */
     @Test
-    void createGoal_withInitialAmount_doesNotCreateTransactionForInitialAmountItself() throws Exception {
+    @DisplayName("Tạo mục tiêu với số tiền ban đầu: trigger tự ghi nhận saved_amount, không sinh transaction")
+    void createGoal_withInitialAmount_recordsSavedAmountWithoutTransactions() throws Exception {
         String token = registerAndGetAccessToken("muc.tieu.tao@example.com");
-        String walletId = createWallet(token, "Ví Tiết Kiệm", 10_000_000);
+        String goalId = createGoal(token, "Mua xe máy", 50_000_000, 2_000_000L, "Nuôi heo đất");
 
-        long balanceBefore = walletBalance(walletId);
-        String goalId = createGoal(token, "Mua xe máy", 50_000_000, walletId, 2_000_000L);
-
-        // Không một giao dịch nào được tạo — đây là khẳng định cốt lõi của api/09 mục B2.
-        assertThat(liveTransactionCount()).isZero();
-        // Số dư ví không hề bị đụng tới.
-        assertThat(walletBalance(walletId)).isEqualTo(balanceBefore);
-        // Nhưng tiến độ ban đầu vẫn được ghi nhận, và do TRIGGER tính chứ không phải backend.
+        // Tiến độ ban đầu được trigger tính toán
         assertThat(savedAmountFromDatabase(goalId)).isEqualTo(2_000_000L);
-        assertThat(statusFromDatabase(goalId)).isEqualTo("in_progress");
+        assertThat(statusFromDatabase(goalId)).isEqualTo("IN_PROGRESS");
+
+        // Không có giao dịch ví nào sinh ra
+        Integer txnCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transactions", Integer.class);
+        assertThat(txnCount).isZero();
     }
 
-    /**
-     * GOAL-03 chế độ {@code create_transaction = true} — chuyển tiền THẬT từ ví nguồn sang ví mục
-     * tiêu bằng một giao dịch {@code transfer}, cả hai số dư đổi đúng chiều.
-     */
     @Test
-    void addContribution_createTransactionTrue_createsTransferTransaction() throws Exception {
-        String token = registerAndGetAccessToken("muc.tieu.nap.that@example.com");
-        String sourceWalletId = createWallet(token, "Ví Tiêu Dùng", 10_000_000);
-        String goalWalletId = createWallet(token, "Ví Tiết Kiệm", 1_000_000);
-        String goalId = createGoal(token, "Mua xe máy", 50_000_000, goalWalletId, null);
+    @DisplayName("Nạp tiền vào mục tiêu: tiến độ tăng và chuyển sang completed khi đủ target")
+    void addContribution_updatesSavedAmountAndCompletesWhenTargetReached() throws Exception {
+        String token = registerAndGetAccessToken("muc.tieu.nap@example.com");
+        String goalId = createGoal(token, "Mua tai nghe", 2_000_000, null, "Heo đất");
 
-        Map<?, ?> data = addContribution(token, goalId, 3_000_000, sourceWalletId, true);
+        Map<?, ?> res = addContribution(token, goalId, 2_000_000, "Thưởng tuần");
 
-        // Giao dịch thật được tạo, đúng loại transfer.
-        Map<?, ?> transaction = (Map<?, ?>) data.get("transaction");
-        assertThat(transaction).isNotNull();
-        assertThat(transaction.get("type")).isEqualTo("transfer");
+        assertThat(savedAmountFromDatabase(goalId)).isEqualTo(2_000_000L);
+        assertThat(statusFromDatabase(goalId)).isEqualTo("COMPLETED");
 
-        // Số dư hai ví đổi đúng chiều: ví nguồn trừ, ví mục tiêu cộng.
-        assertThat(walletBalance(sourceWalletId)).isEqualTo(7_000_000L);
-        assertThat(walletBalance(goalWalletId)).isEqualTo(4_000_000L);
-
-        // goal_contributions.transaction_id phải khác NULL.
-        UUID linkedTransactionId = jdbcTemplate.queryForObject(
-                "SELECT transaction_id FROM goal_contributions WHERE goal_id = ?",
-                UUID.class,
-                UUID.fromString(goalId));
-        assertThat(linkedTransactionId).isNotNull();
-
-        // Tiến độ do trigger tính.
-        assertThat(savedAmountFromDatabase(goalId)).isEqualTo(3_000_000L);
-        assertThat(((Number) ((Map<?, ?>) data.get("goal")).get("saved_amount")).longValue())
-                .isEqualTo(3_000_000L);
+        Map<?, ?> goalProgress = (Map<?, ?>) res.get("goal");
+        assertThat(goalProgress.get("status")).isEqualTo("COMPLETED");
+        assertThat(((Number) goalProgress.get("saved_amount")).longValue()).isEqualTo(2_000_000L);
     }
 
-    /**
-     * GOAL-03 chế độ {@code create_transaction = false} — chỉ ghi nhận tiến độ, tiền nằm ngoài
-     * ứng dụng nên KHÔNG ví nào được đụng tới và KHÔNG giao dịch nào được tạo.
-     */
     @Test
-    void addContribution_createTransactionFalse_noWalletChange() throws Exception {
-        String token = registerAndGetAccessToken("muc.tieu.nap.ao@example.com");
-        String goalWalletId = createWallet(token, "Ví Tiết Kiệm", 1_000_000);
-        String goalId = createGoal(token, "Mua xe máy", 50_000_000, goalWalletId, null);
+    @DisplayName("Rút bớt tiền khi có việc gấp: tiến độ giảm và mở lại trạng thái in_progress")
+    void withdraw_reducesSavedAmountAndReopensStatus() throws Exception {
+        String token = registerAndGetAccessToken("muc.tieu.rut@example.com");
+        String goalId = createGoal(token, "Mua máy giặt", 10_000_000, 10_000_000L, "Sổ tiết kiệm");
 
-        long balanceBefore = walletBalance(goalWalletId);
-        Map<?, ?> data = addContribution(token, goalId, 3_000_000, null, false);
+        assertThat(statusFromDatabase(goalId)).isEqualTo("COMPLETED");
 
-        // Không giao dịch nào được tạo, kể cả khi mục tiêu CÓ gắn ví — chế độ đọc từ request,
-        // không suy đoán từ wallet_id (D-49).
-        assertThat(liveTransactionCount()).isZero();
-        assertThat(data.get("transaction")).isNull();
-        assertThat(walletBalance(goalWalletId)).isEqualTo(balanceBefore);
+        // Rút 2.000.000đ khi có việc gấp
+        Map<?, ?> res = withdraw(token, goalId, 2_000_000, "Cần tiền sửa xe");
 
-        // transaction_id phải là NULL trong bảng con.
-        UUID linkedTransactionId = jdbcTemplate.queryForObject(
-                "SELECT transaction_id FROM goal_contributions WHERE goal_id = ?",
-                UUID.class,
-                UUID.fromString(goalId));
-        assertThat(linkedTransactionId).isNull();
+        assertThat(savedAmountFromDatabase(goalId)).isEqualTo(8_000_000L);
+        assertThat(statusFromDatabase(goalId)).isEqualTo("IN_PROGRESS");
 
-        // Nhưng tiến độ vẫn tăng đúng qua trigger.
-        assertThat(savedAmountFromDatabase(goalId)).isEqualTo(3_000_000L);
+        Map<?, ?> goalProgress = (Map<?, ?>) res.get("goal");
+        assertThat(goalProgress.get("status")).isEqualTo("IN_PROGRESS");
+        assertThat(((Number) goalProgress.get("saved_amount")).longValue()).isEqualTo(8_000_000L);
     }
 
-    /**
-     * GOAL-03 — muốn chuyển tiền thật nhưng mục tiêu chưa gắn ví đích thì không có chỗ nào để
-     * chuyển tới: 400 {@code GOAL_WALLET_REQUIRED} (api/09 mục B3).
-     */
     @Test
-    void addContribution_createTransactionTrueWithoutGoalWallet_returns400() throws Exception {
-        String token = registerAndGetAccessToken("muc.tieu.khong.vi@example.com");
-        String sourceWalletId = createWallet(token, "Ví Tiêu Dùng", 10_000_000);
-        String goalId = createGoal(token, "Mua xe máy", 50_000_000, null, null);
+    @DisplayName("Rút bớt tiền vượt quá số tiền hiện tích lũy -> trả về lỗi 400")
+    void withdraw_exceedsSavedAmount_returns400() throws Exception {
+        String token = registerAndGetAccessToken("muc.tieu.rut.qua@example.com");
+        String goalId = createGoal(token, "Mua điện thoại", 10_000_000, 1_000_000L, null);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("amount", 3_000_000);
-        body.put("source_wallet_id", sourceWalletId);
-        body.put("create_transaction", true);
+        Map<String, Object> body = Map.of(
+                "amount", 2_000_000,
+                "note", "Rút quá số dư"
+        );
 
-        mockMvc.perform(post("/goals/" + goalId + "/contributions")
+        mockMvc.perform(post("/goals/" + goalId + "/withdraw")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("GOAL_WALLET_REQUIRED"));
+                .andExpect(jsonPath("$.error.code").value("GOAL_WITHDRAW_EXCEEDS_SAVED"));
 
-        // Không có gì được ghi lại: không giao dịch, không bản ghi nạp, ví nguyên vẹn.
-        assertThat(liveTransactionCount()).isZero();
-        assertThat(savedAmountFromDatabase(goalId)).isZero();
-        assertThat(walletBalance(sourceWalletId)).isEqualTo(10_000_000L);
+        // Số tiền giữ nguyên
+        assertThat(savedAmountFromDatabase(goalId)).isEqualTo(1_000_000L);
     }
 
-    /**
-     * GOAL-04, mục ưu tiên số 2 của D-58 — BẰNG CHỨNG backend không tự ghi
-     * {@code saved_amount}/{@code status}.
-     *
-     * <p>Nạp đủ target thì trigger tự đặt {@code completed}. Rút lại MỘT lần nạp khiến
-     * {@code saved_amount < target_amount} thì trigger tự MỞ LẠI về {@code in_progress} — bước dễ
-     * quên nhất, và là thứ backend sẽ làm sai nếu tự quản hai cột đó.
-     */
     @Test
-    void cancelContribution_reopensCompletedToInProgress() throws Exception {
-        String token = registerAndGetAccessToken("muc.tieu.rut.lai@example.com");
-        String sourceWalletId = createWallet(token, "Ví Tiêu Dùng", 10_000_000);
-        String goalWalletId = createWallet(token, "Ví Tiết Kiệm", 0);
-        String goalId = createGoal(token, "Mua điện thoại", 5_000_000, goalWalletId, null);
+    @DisplayName("Sửa khoản đóng góp: trigger tự tính toán lại số dư sau khi điều chỉnh")
+    void updateContribution_adjustsSavedAmount() throws Exception {
+        String token = registerAndGetAccessToken("muc.tieu.sua@example.com");
+        String goalId = createGoal(token, "Đi du lịch", 10_000_000, null, null);
 
-        // Hai lần nạp 2.500.000 -> vừa đủ target -> trigger tự đặt completed.
-        Map<?, ?> first = addContribution(token, goalId, 2_500_000, sourceWalletId, true);
-        Map<?, ?> second = addContribution(token, goalId, 2_500_000, sourceWalletId, true);
+        Map<?, ?> first = addContribution(token, goalId, 3_000_000, "Lần 1");
+        String contribId = (String) ((Map<?, ?>) first.get("contribution")).get("id");
+
+        // Người dùng phát hiện ghi nhầm 3 triệu thành 5 triệu -> sửa thành 5 triệu
+        Map<String, Object> updateBody = Map.of(
+                "amount", 5_000_000,
+                "note", "Sửa lại số tiền đúng"
+        );
+
+        mockMvc.perform(patch("/goals/" + goalId + "/contributions/" + contribId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateBody)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.goal.saved_amount").value(5_000_000));
 
         assertThat(savedAmountFromDatabase(goalId)).isEqualTo(5_000_000L);
-        assertThat(statusFromDatabase(goalId)).isEqualTo("completed");
-        // Response của chính lần nạp thứ hai đã phải phản ánh giá trị SAU trigger — nếu đọc lại
-        // bằng query trả entity thì Hibernate identity map sẽ trả về giá trị cũ.
-        assertThat(((Map<?, ?>) second.get("goal")).get("status")).isEqualTo("completed");
-        assertThat(((Number) ((Map<?, ?>) second.get("goal")).get("saved_amount")).longValue())
-                .isEqualTo(5_000_000L);
+    }
 
-        String contributionId =
-                (String) ((Map<?, ?>) second.get("contribution")).get("id");
+    @Test
+    @DisplayName("Hủy đợt đóng góp: trigger tự trừ tiền và mở lại trạng thái in_progress")
+    void cancelContribution_reopensCompletedToInProgress() throws Exception {
+        String token = registerAndGetAccessToken("muc.tieu.rut.lai@example.com");
+        String goalId = createGoal(token, "Mua điện thoại", 5_000_000, null, null);
+
+        // Hai lần nạp 2.500.000 -> vừa đủ target -> trigger tự đặt completed
+        addContribution(token, goalId, 2_500_000, "Lần 1");
+        Map<?, ?> second = addContribution(token, goalId, 2_500_000, "Lần 2");
+
+        assertThat(savedAmountFromDatabase(goalId)).isEqualTo(5_000_000L);
+        assertThat(statusFromDatabase(goalId)).isEqualTo("COMPLETED");
+
+        String contributionId = (String) ((Map<?, ?>) second.get("contribution")).get("id");
 
         mockMvc.perform(delete("/goals/" + goalId + "/contributions/" + contributionId)
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
 
-        // Trigger tự trừ lại VÀ tự mở lại trạng thái.
+        // Trigger tự trừ lại và tự mở lại trạng thái
         assertThat(savedAmountFromDatabase(goalId)).isEqualTo(2_500_000L);
-        assertThat(statusFromDatabase(goalId)).isEqualTo("in_progress");
-
-        // Giao dịch kèm theo được hoàn tác đúng: ví nguồn nhận lại 2.500.000 vừa rút ra
-        // (10.000.000 - 2.500.000 - 2.500.000 + 2.500.000 = 7.500.000).
-        assertThat(walletBalance(sourceWalletId)).isEqualTo(7_500_000L);
-        assertThat(walletBalance(goalWalletId)).isEqualTo(2_500_000L);
-        // Xoá MỀM để giữ audit trail — lần nạp đầu vẫn còn giao dịch sống.
-        assertThat(liveTransactionCount()).isEqualTo(1);
-        assertThat(first.get("transaction")).isNotNull();
+        assertThat(statusFromDatabase(goalId)).isEqualTo("IN_PROGRESS");
     }
 }

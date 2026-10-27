@@ -13,7 +13,7 @@ import java.time.LocalDate;
  * @param contributedDate Ngày thực hiện nạp tiền (mặc định: ngày hiện tại)
  * @param note            Ghi chú nạp tiền
  */
-public record CreateContributionRequest(
+public record ContributionGoalCreateReq(
         @NotNull(message = "Số tiền không được để trống.")
         @Positive(message = "Số tiền nạp phải lớn hơn 0.")
         Long amount,
@@ -22,4 +22,8 @@ public record CreateContributionRequest(
 
         @Size(max = 255, message = "Ghi chú tối đa 255 ký tự.")
         String note) {
+
+    public ContributionGoalCreateReq withdraw() {
+        return new ContributionGoalCreateReq(-amount, contributedDate, note);
+    }
 }

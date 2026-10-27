@@ -122,7 +122,7 @@ class WalletRepositoryTest {
                 .id(UUID.randomUUID())
                 .userId(userId)
                 .name("Vi Tiet Kiem")
-                .type(WalletType.SAVINGS)
+                .type(WalletType.E_WALLET)
                 .balance(0L)
                 .iconCode("default_wallet")
                 .color("#112233")

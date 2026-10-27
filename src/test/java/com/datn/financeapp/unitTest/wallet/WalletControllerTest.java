@@ -1,7 +1,5 @@
 package com.datn.financeapp.unitTest.wallet;
 
-import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.response.ApiResponse;
 import com.datn.financeapp.module.wallet.controller.WalletController;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
@@ -29,25 +27,6 @@ class WalletControllerTest {
 
     @InjectMocks
     private WalletController walletController;
-
-    @Test
-    @DisplayName("Chặn tạo ví loại SAVINGS trực tiếp qua endpoint POST /wallets")
-    void createWallet_withSavingsType_throwsException() {
-        WalletCreateReq req = new WalletCreateReq(
-                "Ví tiết kiệm tự tạo",
-                WalletType.SAVINGS,
-                0L,
-                null,
-                "wallet",
-                "#4CAF50"
-        );
-
-        BusinessException ex = assertThrows(BusinessException.class, () ->
-                walletController.create(req));
-
-        assertEquals(ErrorCode.WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED.getCode(), ex.getCode());
-        verify(walletBehavierService, never()).create(any(), anyBoolean());
-    }
 
     @Test
     @DisplayName("Cho phép tạo ví loại CASH thông thường")

@@ -9,4 +9,8 @@ target/
 .settings/
 src/main/resources/application-dev.yml
 bruno/
+docs/problem
+docs/design
+docs/work_flow
 .agents/.plan
+.gemini

@@ -1,10 +1,8 @@
 package com.datn.financeapp.module.goal.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.datn.financeapp.module.goal.enums.SavingGoalStatus;
+import jakarta.persistence.*;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -48,16 +46,10 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SavingsGoal extends AssignedIdEntity {
+public class SavingGoal extends AssignedIdEntity {
 
     @Id
-    @Builder.Default
-    private UUID id = UUID.randomUUID();
-
-    @Override
-    public UUID getId() {
-        return id;
-    }
+    private UUID id;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
@@ -65,35 +57,24 @@ public class SavingsGoal extends AssignedIdEntity {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private SavingGoalStatus status = SavingGoalStatus.IN_PROGRESS;
+
     @Column(name = "target_amount", nullable = false)
     private Long targetAmount;
 
-    /**
-     * Tổng số tiền đã tích lũy được tính đến thời điểm hiện tại.
-     * <p><b>Lưu ý:</b> Giá trị này do Database Trigger tự động tính toán (tổng hợp từ bảng {@code goal_contributions}).
-     * Backend không cập nhật trực tiếp trường này.
-     */
     @Column(name = "saved_amount", nullable = false)
-    private Long savedAmount;
-
-    @Column(name = "target_date")
-    private LocalDate targetDate;
+    private Long savedAmount = 0L;
 
     @Column(name = "icon_code", length = 50)
     private String iconCode;
 
-    /**
-     * Ghi chú nơi cất giữ tiền (ví dụ: "Nuôi heo đất trong tủ", "Gửi sổ tiết kiệm Agribank", "Gửi mẹ giữ hộ"...).
-     */
     @Column(name = "note")
     private String note;
 
-    /**
-     * Trạng thái mục tiêu: {@code in_progress}, {@code completed}, hoặc {@code cancelled}.
-     * <p><b>Lưu ý:</b> Việc chuyển đổi giữa {@code in_progress} và {@code completed} do Database Trigger đảm nhận.
-     */
-    @Column(name = "status", nullable = false)
-    private String status;
+    @Column(name = "target_date")
+    private LocalDate targetDate;
 
     // createdAt, updatedAt, isDeleted thừa hưởng từ AssignedIdEntity
 }

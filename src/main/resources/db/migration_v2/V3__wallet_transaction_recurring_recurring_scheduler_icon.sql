@@ -16,7 +16,7 @@ CREATE TABLE wallets (
 
     CONSTRAINT fk_wal_user  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT fk_wal_icon  FOREIGN KEY (icon_code) REFERENCES icons (code) ON UPDATE CASCADE ON DELETE SET NULL,
-   -- CONSTRAINT ck_wal_type  CHECK (type IN ('CASH', 'BANK', 'E_WALLET')),
+    CONSTRAINT ck_wal_type  CHECK (type IN ('CASH', 'BANK', 'E_WALLET')),
     CONSTRAINT ck_wal_color CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$')
 );
 -- tên ví không trùng trong cùng một người dùng, phân biệt hoa thường, bỏ qua ví đã xoá

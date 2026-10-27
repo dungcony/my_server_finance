@@ -1,9 +1,6 @@
 package com.datn.financeapp.unitTest.wallet;
 
-import com.datn.financeapp.common.exception.BusinessException;
-import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.wallet.entity.Wallet;
 import com.datn.financeapp.module.wallet.enums.WalletType;
 import com.datn.financeapp.module.wallet.repository.WalletRepository;
@@ -21,7 +18,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,68 +26,12 @@ class WalletBehavierImplTest {
     @Mock
     private WalletRepository walletRepository;
 
-    @Mock
-    private SavingsGoalRepository savingsGoalRepository;
-
     @InjectMocks
     private WalletBehavierImpl walletBehavierService;
 
     @Nested
     @DisplayName("softDelete - Xóa mềm ví")
     class SoftDeleteTests {
-
-        @Test
-        @DisplayName("Chặn xóa ví SAVINGS khi đang liên kết với mục tiêu in_progress")
-        void softDelete_savingsWalletLinkedToActiveGoal_throwsException() {
-            UUID walletId = UUID.randomUUID();
-            UUID userId = UUID.randomUUID();
-
-            Wallet wallet = Wallet.builder()
-                    .id(walletId)
-                    .userId(userId)
-                    .name("Ví tiết kiệm mua xe")
-                    .type(WalletType.SAVINGS)
-                    .build();
-
-            when(walletRepository.findByIdAndIsDeletedFalse(walletId)).thenReturn(Optional.of(wallet));
-            when(savingsGoalRepository.existsByWalletIdAndIsDeletedFalseAndStatus(walletId, "in_progress")).thenReturn(true);
-
-            try (MockedStatic<SecurityContextUtil> mockedSecurity = mockStatic(SecurityContextUtil.class)) {
-                mockedSecurity.when(SecurityContextUtil::currentUserId).thenReturn(userId);
-
-                BusinessException ex = assertThrows(BusinessException.class, () ->
-                        walletBehavierService.softDelete(walletId, false));
-
-                assertEquals(ErrorCode.WALLET_SAVINGS_LINKED_TO_GOAL.getCode(), ex.getCode());
-                verify(walletRepository, never()).save(any(Wallet.class));
-            }
-        }
-
-        @Test
-        @DisplayName("Cho phép xóa ví SAVINGS khi không có mục tiêu nào in_progress")
-        void softDelete_savingsWalletNotLinkedToActiveGoal_success() {
-            UUID walletId = UUID.randomUUID();
-            UUID userId = UUID.randomUUID();
-
-            Wallet wallet = Wallet.builder()
-                    .id(walletId)
-                    .userId(userId)
-                    .name("Ví tiết kiệm cũ")
-                    .type(WalletType.SAVINGS)
-                    .build();
-
-            when(walletRepository.findByIdAndIsDeletedFalse(walletId)).thenReturn(Optional.of(wallet));
-            when(savingsGoalRepository.existsByWalletIdAndIsDeletedFalseAndStatus(walletId, "in_progress")).thenReturn(false);
-
-            try (MockedStatic<SecurityContextUtil> mockedSecurity = mockStatic(SecurityContextUtil.class)) {
-                mockedSecurity.when(SecurityContextUtil::currentUserId).thenReturn(userId);
-
-                assertDoesNotThrow(() -> walletBehavierService.softDelete(walletId, false));
-
-                assertTrue(wallet.getIsDeleted());
-                verify(walletRepository).save(wallet);
-            }
-        }
 
         @Test
         @DisplayName("Cho phép xóa ví CASH thông thường")
@@ -114,7 +54,6 @@ class WalletBehavierImplTest {
                 assertDoesNotThrow(() -> walletBehavierService.softDelete(walletId, false));
 
                 assertTrue(wallet.getIsDeleted());
-                verify(savingsGoalRepository, never()).existsByWalletIdAndIsDeletedFalseAndStatus(any(), any());
                 verify(walletRepository).save(wallet);
             }
         }

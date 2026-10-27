@@ -290,20 +290,14 @@ public enum ErrorCode {
     // Mục tiêu đã huỷ.
     GOAL_CANCELLED(HttpStatus.CONFLICT, "Mục tiêu đã huỷ."),
 
-    // Nạp tiền thật vào mục tiêu chưa gắn ví.
-    GOAL_WALLET_REQUIRED(HttpStatus.BAD_REQUEST, "Mục tiêu chưa gắn ví, không thể tạo giao dịch thật."),
+    // Số tiền rút vượt quá số tiền đã tích lũy.
+    GOAL_WITHDRAW_EXCEEDS_SAVED(HttpStatus.BAD_REQUEST, "Số tiền rút không được vượt quá số tiền đã tích lũy hiện tại."),
 
-    // Không thể sử dụng ví tiết kiệm làm ví nguồn nạp tiền.
-    INVALID_SOURCE_WALLET(HttpStatus.BAD_REQUEST, "Không thể sử dụng ví tiết kiệm làm ví nguồn."),
+    // Cập nhật hoặc xóa khoản đóng góp khiến số dư âm.
+    GOAL_CONTRIBUTION_NEGATIVE_BALANCE(HttpStatus.BAD_REQUEST, "Không thể cập nhật hoặc xóa khoản đóng góp vì số tiền tích lũy còn lại sẽ bị âm."),
 
-    // Không thể chi tiêu trực tiếp từ ví tiết kiệm.
-    WALLET_SAVINGS_CANNOT_SPEND(HttpStatus.BAD_REQUEST, "Không thể sử dụng ví tiết kiệm để chi tiêu trực tiếp."),
-
-    // Không cho phép tự tạo ví tiết kiệm thủ công qua API ví thông thường.
-    WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "Ví tiết kiệm chỉ được tạo tự động thông qua Mục tiêu tiết kiệm."),
-
-    // Ví tiết kiệm đang liên kết với mục tiêu chưa hoàn thành.
-    WALLET_SAVINGS_LINKED_TO_GOAL(HttpStatus.CONFLICT, "Ví tiết kiệm đang liên kết với mục tiêu chưa hoàn tất. Vui lòng quản lý từ mục Tiết kiệm."),
+    // Không tìm thấy khoản đóng góp.
+    GOAL_CONTRIBUTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy lượt đóng góp."),
 
     // ---------------------------------------------------------------------
     // Nhóm chung quỹ — docs/prd/03-NHOM-CHUNG-QUY/thiet-ke/api.md

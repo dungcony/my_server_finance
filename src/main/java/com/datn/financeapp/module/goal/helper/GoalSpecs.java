@@ -1,7 +1,9 @@
 package com.datn.financeapp.module.goal.helper;
 
-import com.datn.financeapp.module.goal.dto.request.GoalFilterRequest;
-import com.datn.financeapp.module.goal.entity.SavingsGoal;
+import com.datn.financeapp.module.goal.dto.request.ContributionGoalFilterReq;
+import com.datn.financeapp.module.goal.dto.request.SavingGoalFilterReq;
+import com.datn.financeapp.module.goal.entity.GoalContribution;
+import com.datn.financeapp.module.goal.entity.SavingGoal;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -15,10 +17,7 @@ import java.util.UUID;
  */
 public final class GoalSpecs {
 
-    private GoalSpecs() {
-    }
-
-    public static Specification<SavingsGoal> filter(GoalFilterRequest filter) {
+    public static Specification<SavingGoal> filter(UUID userId, SavingGoalFilterReq filter) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isFalse(root.get("isDeleted")));
@@ -27,12 +26,12 @@ public final class GoalSpecs {
                 return cb.and(predicates.toArray(new Predicate[0]));
             }
 
-            if (filter.userId() != null) {
-                predicates.add(cb.equal(root.get("userId"), filter.userId()));
+            if (userId != null) {
+                predicates.add(cb.equal(root.get("userId"), userId));
             }
 
-            if (filter.status() != null && !filter.status().isBlank()) {
-                predicates.add(cb.equal(root.get("status"), filter.status().trim()));
+            if (filter.status() != null) {
+                predicates.add(cb.equal(root.get("status"), filter.status()));
             }
 
             if (filter.name() != null && !filter.name().isBlank()) {
@@ -52,7 +51,4 @@ public final class GoalSpecs {
         };
     }
 
-    public static Specification<SavingsGoal> filter(UUID userId, String status, String name) {
-        return filter(new GoalFilterRequest(userId, status, name, null, null));
-    }
 }

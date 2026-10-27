@@ -3,7 +3,6 @@ package com.datn.financeapp.unitTest.wallet.service.impl;
 import com.datn.financeapp.common.exception.BusinessException;
 import com.datn.financeapp.common.exception.ErrorCode;
 import com.datn.financeapp.common.security.SecurityContextUtil;
-import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.icon.dto.response.IconRes;
 import com.datn.financeapp.module.icon.service.IconService;
 import com.datn.financeapp.module.wallet.dto.request.WalletCreateReq;
@@ -39,9 +38,6 @@ class WalletBehavierImplTest {
 
     @Mock
     private WalletRepository walletRepository;
-
-    @Mock
-    private SavingsGoalRepository savingsGoalRepository;
 
     @Mock
     private IconService iconService;
@@ -165,20 +161,6 @@ class WalletBehavierImplTest {
         assertThatThrownBy(() -> walletBehavier.update(walletId, new WalletupdateReq("Duplicated", null, null), false))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", ErrorCode.WALLET_NAME_EXISTS.getCode());
-    }
-
-    @Test
-    @DisplayName("softDelete: Vi SAVINGS dang lien ket voi Goal chua hoan thanh -> nem WALLET_SAVINGS_LINKED_TO_GOAL")
-    void softDelete_SavingsWithActiveGoal_ThrowsException() {
-        UUID walletId = UUID.randomUUID();
-        Wallet wallet = Wallet.builder().id(walletId).userId(currentUserId).type(WalletType.SAVINGS).build();
-
-        when(walletRepository.findByIdAndIsDeletedFalse(walletId)).thenReturn(Optional.of(wallet));
-        when(savingsGoalRepository.existsByWalletIdAndIsDeletedFalseAndStatus(walletId, "in_progress")).thenReturn(true);
-
-        assertThatThrownBy(() -> walletBehavier.softDelete(walletId, false))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("code", ErrorCode.WALLET_SAVINGS_LINKED_TO_GOAL.getCode());
     }
 
     @Test

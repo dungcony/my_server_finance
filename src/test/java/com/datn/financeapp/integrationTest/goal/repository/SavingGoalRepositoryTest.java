@@ -1,7 +1,8 @@
 package com.datn.financeapp.integrationTest.goal.repository;
 
 import com.datn.financeapp.TestRedisConfig;
-import com.datn.financeapp.module.goal.entity.SavingsGoal;
+import com.datn.financeapp.module.goal.entity.SavingGoal;
+import com.datn.financeapp.module.goal.enums.SavingGoalStatus;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.user.entity.User;
 import com.datn.financeapp.module.user.enums.UserPlan;
@@ -35,7 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 @Import(TestRedisConfig.class)
 @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
-class SavingsGoalRepositoryTest {
+class SavingGoalRepositoryTest {
 
     @Container
     @ServiceConnection
@@ -80,8 +81,8 @@ class SavingsGoalRepositoryTest {
         otherUserId = otherUser.getId();
     }
 
-    private SavingsGoal createGoal(UUID ownerId, String name, long target, String status) {
-        SavingsGoal goal = SavingsGoal.builder()
+    private SavingGoal createGoal(UUID ownerId, String name, long target, SavingGoalStatus status) {
+        SavingGoal goal = SavingGoal.builder()
                 .id(UUID.randomUUID())
                 .userId(ownerId)
                 .name(name)
@@ -96,9 +97,9 @@ class SavingsGoalRepositoryTest {
     @Test
     @DisplayName("findByIdAndUserId: Chỉ trả về mục tiêu thuộc quyền sở hữu của user (D-27 isolation)")
     void findByIdAndUserId_EnforcesOwnership() {
-        SavingsGoal goal = createGoal(userId, "New House", 500_000_000L, "in_progress");
+        SavingGoal goal = createGoal(userId, "New House", 500_000_000L, SavingGoalStatus.IN_PROGRESS);
 
-        Optional<SavingsGoal> found = savingsGoalRepository.findByIdAndUserId(goal.getId(), userId);
+        Optional<SavingGoal> found = savingsGoalRepository.findByIdAndUserId(goal.getId(), userId);
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(goal.getId());
 
@@ -109,22 +110,22 @@ class SavingsGoalRepositoryTest {
     @Test
     @DisplayName("findAllForUser: Lọc theo status và sắp xếp theo created_at DESC")
     void findAllForUser_FiltersAndSorts() {
-        SavingsGoal g1 = createGoal(userId, "Car", 200_000_000L, "in_progress");
-        createGoal(userId, "Phone", 20_000_000L, "completed");
+        SavingGoal g1 = createGoal(userId, "Car", 200_000_000L, SavingGoalStatus.IN_PROGRESS);
+        createGoal(userId, "Phone", 20_000_000L, SavingGoalStatus.COMPLETED);
 
-        List<SavingsGoal> activeGoals = savingsGoalRepository.findAllForUser(userId, "in_progress");
-        assertThat(activeGoals).extracting(SavingsGoal::getId).containsExactly(g1.getId());
+        List<SavingGoal> activeGoals = savingsGoalRepository.findAllForUser(userId, SavingGoalStatus.IN_PROGRESS.name());
+        assertThat(activeGoals).extracting(SavingGoal::getId).containsExactly(g1.getId());
     }
 
     @Test
     @DisplayName("findSavedAmountNative & findStatusNative: Đọc scalar trực tiếp từ CSDL")
     void findSavedAmountAndStatusNative_ReadsScalarsDirectly() {
-        SavingsGoal goal = createGoal(userId, "Trip", 30_000_000L, "in_progress");
+        SavingGoal goal = createGoal(userId, "Trip", 30_000_000L, SavingGoalStatus.IN_PROGRESS);
 
         Optional<Long> saved = savingsGoalRepository.findSavedAmountNative(goal.getId());
         Optional<String> status = savingsGoalRepository.findStatusNative(goal.getId());
 
         assertThat(saved).contains(0L);
-        assertThat(status).contains("in_progress");
+        assertThat(status).contains("IN_PROGRESS");
     }
 }

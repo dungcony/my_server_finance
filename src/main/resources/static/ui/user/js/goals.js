@@ -1,20 +1,13 @@
-// Quản lý mục tiêu tiết kiệm: danh sách dạng thẻ, tiến độ, gợi ý AI, nộp tiền/góp tiền, tạo mới và xóa mục tiêu.
-let walletsMap = new Map();
+// Quản lý mục tiêu tiết kiệm: danh sách dạng thẻ, tiến độ, gợi ý AI, nộp tiền/góp tiền, rút tiền, tạo mới và xóa mục tiêu.
 
 const STATUS_MAP = {
     in_progress: '<span class="badge info">Đang tích lũy</span>',
     completed: '<span class="badge success">Đã hoàn thành 🎉</span>',
-    cancelled: '<span class="badge warning">Đã hủy</span>'
+    cancelled: '<span class="badge warning">Đã hủy</span>',
+    IN_PROGRESS: '<span class="badge info">Đang tích lũy</span>',
+    COMPLETED: '<span class="badge success">Đã hoàn thành 🎉</span>',
+    CANCELLED: '<span class="badge warning">Đã hủy</span>'
 };
-
-async function loadWallets() {
-    const res = await api('/wallets', { silent: true });
-    const data = dataOf(res) || {};
-    const list = data.wallets || (Array.isArray(data) ? data : []);
-    walletsMap.clear();
-    list.forEach(w => walletsMap.set(w.id, w.name));
-    return list;
-}
 
 async function loadGoals() {
     const status = $('fStatus').value;
@@ -40,8 +33,9 @@ async function loadGoals() {
         totalTarget += Number(tAmt);
         totalSaved += Number(sAmt);
         totalMissing += Number(mAmt);
-        if (g.status === 'completed') completedCount++;
-        else if (g.status === 'in_progress') inProgressCount++;
+        const stUpper = (g.status || '').toUpperCase();
+        if (stUpper === 'COMPLETED') completedCount++;
+        else if (stUpper === 'IN_PROGRESS') inProgressCount++;
     });
 
     $('sTarget').textContent = fmtMoney(totalTarget);
@@ -63,12 +57,11 @@ async function loadGoals() {
         const pctVal = Number(g.progress || 0);
         const percent = Math.min(100, Math.round(pctVal * 100));
         const stBadge = STATUS_MAP[g.status] || badge(g.status);
-        const wId = g.wallet_id || g.walletId;
-        const wName = (g.wallet && g.wallet.name) || (wId ? walletsMap.get(wId) : null);
         const tAmt = g.target_amount ?? g.targetAmount ?? 0;
         const sAmt = g.saved_amount ?? g.savedAmount ?? 0;
         const tDate = g.target_date || g.targetDate;
         const daysLeft = g.days_remaining ?? g.daysRemaining;
+        const note = g.note || 'Nuôi heo đất / Tự giữ';
 
         let suggHtml = '';
         if (g.suggestion && g.suggestion.content) {
@@ -107,7 +100,7 @@ async function loadGoals() {
                             ${daysLeft != null ? `<small class="badge ${daysLeft < 0 ? 'danger' : 'info'}" style="margin-left:4px">${daysLeft < 0 ? 'Quá hạn' : 'Còn ' + daysLeft + ' ngày'}</small>` : ''}
                         </div>
                         <div>
-                            ${wName ? `👛 ${esc(wName)}` : '<span class="muted">Chưa gắn ví</span>'}
+                            📍 <b>${esc(note)}</b>
                         </div>
                     </div>
 
@@ -115,8 +108,11 @@ async function loadGoals() {
                 </div>
 
                 <div style="margin-top:16px;display:flex;gap:6px;justify-content:flex-end">
-                    ${g.status === 'in_progress' ? `
+                    ${(g.status === 'in_progress' || g.status === 'IN_PROGRESS') ? `
                         <button class="btn btn-sm" onclick="openDepositModal('${g.id}', '${esc(g.name)}')">+ Góp tiền</button>
+                    ` : ''}
+                    ${sAmt > 0 ? `
+                        <button class="btn btn-secondary btn-sm" onclick="openWithdrawModal('${g.id}', '${esc(g.name)}', ${sAmt})">- Rút tiền</button>
                     ` : ''}
                     <button class="btn btn-secondary btn-sm" onclick="showGoalDetail('${g.id}')">Chi tiết</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteGoal('${g.id}')">Xóa</button>
@@ -128,9 +124,6 @@ async function loadGoals() {
 
 // Nạp tiền vào mục tiêu
 function openDepositModal(goalId, goalName) {
-    const walletOpts = Array.from(walletsMap.entries()).map(([wId, name]) =>
-        `<option value="${esc(wId)}">${esc(name)}</option>`).join('');
-
     const today = new Date().toISOString().split('T')[0];
 
     openModal(`Góp tiền vào: ${goalName}`, `
@@ -139,25 +132,12 @@ function openDepositModal(goalId, goalName) {
             <input type="number" id="mDepAmount" placeholder="VD: 500000" min="1" required>
         </div>
         <div class="form-group">
-            <label>Trích từ ví nguồn *</label>
-            <select id="mDepWallet">
-                <option value="">-- Chọn ví trích tiền --</option>
-                ${walletOpts}
-            </select>
-        </div>
-        <div class="form-group">
             <label>Ngày nạp tiền</label>
             <input type="date" id="mDepDate" value="${today}">
         </div>
         <div class="form-group">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="mCreateTxn" checked>
-                <span>Tự động tạo giao dịch chi tiêu trong ví nguồn</span>
-            </label>
-        </div>
-        <div class="form-group">
             <label>Ghi chú</label>
-            <input type="text" id="mDepNote" placeholder="VD: Tiền thưởng tuần, tiết kiệm heo đất...">
+            <input type="text" id="mDepNote" placeholder="VD: Bỏ heo đất, trích thưởng tuần...">
         </div>
     `, [
         { label: 'Hủy', kind: 'btn-secondary' },
@@ -166,9 +146,7 @@ function openDepositModal(goalId, goalName) {
             kind: 'btn-primary',
             onClick: async () => {
                 const amount = Number($('mDepAmount').value);
-                const source_wallet_id = $('mDepWallet').value || null;
                 const contributed_date = $('mDepDate').value || null;
-                const create_transaction = $('mCreateTxn').checked;
                 const note = ($('mDepNote').value || '').trim() || null;
 
                 if (!amount || amount <= 0) {
@@ -180,14 +158,67 @@ function openDepositModal(goalId, goalName) {
                     method: 'POST',
                     body: {
                         amount,
-                        source_wallet_id,
                         contributed_date,
-                        create_transaction,
                         note
                     }
                 });
 
                 if (toastResult(res, 'Đã nạp tiền vào mục tiêu thành công! 🎉')) {
+                    loadGoals();
+                    return true;
+                }
+                return false;
+            }
+        }
+    ]);
+}
+
+// Rút bớt tiền khi có việc gấp
+function openWithdrawModal(goalId, goalName, currentSaved) {
+    const today = new Date().toISOString().split('T')[0];
+
+    openModal(`Rút tiền từ: ${goalName}`, `
+        <div class="form-group">
+            <label>Số tiền rút (VNĐ) * (Tối đa: ${fmtMoney(currentSaved)})</label>
+            <input type="number" id="mWithAmount" placeholder="VD: 200000" min="1" max="${currentSaved}" required>
+        </div>
+        <div class="form-group">
+            <label>Ngày rút</label>
+            <input type="date" id="mWithDate" value="${today}">
+        </div>
+        <div class="form-group">
+            <label>Lý do rút tiền</label>
+            <input type="text" id="mWithNote" placeholder="VD: Cần tiền gấp, sửa xe...">
+        </div>
+    `, [
+        { label: 'Hủy', kind: 'btn-secondary' },
+        {
+            label: 'Xác nhận rút tiền',
+            kind: 'btn-danger',
+            onClick: async () => {
+                const amount = Number($('mWithAmount').value);
+                const withdraw_date = $('mWithDate').value || null;
+                const note = ($('mWithNote').value || '').trim() || null;
+
+                if (!amount || amount <= 0) {
+                    toast('Số tiền rút phải lớn hơn 0', 'error');
+                    return false;
+                }
+                if (amount > currentSaved) {
+                    toast(`Số tiền rút không được vượt quá ${fmtMoney(currentSaved)}`, 'error');
+                    return false;
+                }
+
+                const res = await api(`/goals/${goalId}/withdraw`, {
+                    method: 'POST',
+                    body: {
+                        amount,
+                        withdraw_date,
+                        note
+                    }
+                });
+
+                if (toastResult(res, 'Đã rút tiền khỏi mục tiêu')) {
                     loadGoals();
                     return true;
                 }
@@ -203,50 +234,65 @@ async function showGoalDetail(id) {
     const g = dataOf(res);
     if (!g) return;
 
-    const wId = g.wallet_id || g.walletId;
-    const wName = (g.wallet && g.wallet.name) || (wId ? walletsMap.get(wId) : 'Chưa gắn ví');
+    const goalInfo = g.goal || g;
     const contributions = g.contributions || [];
-    const tAmt = g.target_amount ?? g.targetAmount ?? 0;
-    const sAmt = g.saved_amount ?? g.savedAmount ?? 0;
-    const mAmt = g.missing_amount ?? g.missingAmount ?? (tAmt - sAmt);
-    const tDate = g.target_date || g.targetDate;
+    const tAmt = goalInfo.target_amount ?? goalInfo.targetAmount ?? 0;
+    const sAmt = goalInfo.saved_amount ?? goalInfo.savedAmount ?? 0;
+    const mAmt = goalInfo.missing_amount ?? goalInfo.missingAmount ?? (tAmt - sAmt);
+    const tDate = goalInfo.target_date || goalInfo.targetDate;
 
-    const contribRows = contributions.length > 0 ? contributions.map(c => `
-        <tr>
-            <td>${fmtDate(c.contributed_date || c.contributedDate || c.created_at || c.createdAt)}</td>
-            <td class="pos" style="font-weight:600">+${fmtMoney(c.amount)}</td>
-            <td>${esc(c.source_wallet_name || c.sourceWalletName || getWalletName(c.source_wallet_id || c.sourceWalletId) || '-')}</td>
-            <td class="muted">${esc(c.note || '-')}</td>
-        </tr>
-    `).join('') : '<tr><td colspan="4" class="center muted">Chưa có lượt đóng góp nào.</td></tr>';
+    const contribRows = contributions.length > 0 ? contributions.map(c => {
+        const isWithdraw = c.amount < 0;
+        const amtCls = isWithdraw ? 'neg' : 'pos';
+        const sign = isWithdraw ? '' : '+';
+        return `
+            <tr>
+                <td>${fmtDate(c.contributed_date || c.contributedDate || c.created_at || c.createdAt)}</td>
+                <td class="${amtCls}" style="font-weight:600">${sign}${fmtMoney(c.amount)}</td>
+                <td class="muted">${esc(c.note || '-')}</td>
+            </tr>
+        `;
+    }).join('') : '<tr><td colspan="3" class="muted center">Chưa có lịch sử nạp/rút tiền nào</td></tr>';
 
-    openModal(`Chi tiết mục tiêu: ${esc(g.name)}`, `
-        <div style="font-size:13px">
-            <div class="grid grid-2" style="gap:8px;background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:12px">
-                <div><b>Mục tiêu cần đạt:</b> ${fmtMoney(tAmt)}</div>
-                <div><b>Đã tiết kiệm:</b> <span class="pos" style="font-weight:700">${fmtMoney(sAmt)}</span></div>
-                <div><b>Còn thiếu:</b> <span class="neg">${fmtMoney(mAmt)}</span></div>
-                <div><b>Hạn hoàn thành:</b> ${fmtDate(tDate)}</div>
-                <div><b>Ví liên kết:</b> ${esc(wName)}</div>
-                <div><b>Trạng thái:</b> ${STATUS_MAP[g.status] || badge(g.status)}</div>
+    openModal(`Chi tiết: ${esc(goalInfo.name)}`, `
+        <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">
+            ${STATUS_MAP[goalInfo.status] || badge(goalInfo.status)}
+            <span class="muted">📍 Nơi giữ: <b>${esc(goalInfo.note || 'Nuôi heo đất / Tự giữ')}</b></span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;text-align:center">
+            <div class="card" style="padding:12px;margin:0">
+                <small class="muted">Mục tiêu</small>
+                <div style="font-size:16px;font-weight:700">${fmtMoney(tAmt)}</div>
             </div>
-
-            <div style="font-weight:600;margin-bottom:6px">Lịch sử nạp/rút tiền (${contributions.length} lần):</div>
-            <div class="table-wrap" style="max-height:220px;overflow-y:auto">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Ngày</th>
-                            <th>Số tiền</th>
-                            <th>Ví nguồn</th>
-                            <th>Ghi chú</th>
-                        </tr>
-                    </thead>
-                    <tbody>${contribRows}</tbody>
-                </table>
+            <div class="card" style="padding:12px;margin:0">
+                <small class="muted">Đã tích lũy</small>
+                <div style="font-size:16px;font-weight:700" class="pos">${fmtMoney(sAmt)}</div>
+            </div>
+            <div class="card" style="padding:12px;margin:0">
+                <small class="muted">Còn thiếu</small>
+                <div style="font-size:16px;font-weight:700" class="${mAmt > 0 ? 'neg' : 'pos'}">${fmtMoney(Math.max(0, mAmt))}</div>
             </div>
         </div>
-    `, [{ label: 'Đóng', kind: 'btn-secondary' }]);
+
+        <h4 style="margin-bottom:8px">Lịch sử tích lũy & rút tiền (${contributions.length})</h4>
+        <div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:6px">
+            <table class="table" style="margin:0">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Số tiền</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${contribRows}
+                </tbody>
+            </table>
+        </div>
+    `, [
+        { label: 'Đóng', kind: 'btn-secondary' }
+    ]);
 }
 
 // Xóa mục tiêu
@@ -260,13 +306,10 @@ async function deleteGoal(id) {
 
 // Tạo mới mục tiêu
 function openCreateGoal() {
-    const walletOpts = Array.from(walletsMap.entries()).map(([wId, name]) =>
-        `<option value="${esc(wId)}">${esc(name)}</option>`).join('');
-
     openModal('Tạo mục tiêu tiết kiệm mới', `
         <div class="form-group">
             <label>Tên mục tiêu tích lũy *</label>
-            <input type="text" id="mGoalName" placeholder="VD: Mua Macbook M3, Quỹ dự phòng..." required maxlength="100">
+            <input type="text" id="mGoalName" placeholder="VD: Mua Macbook M4, Quỹ dự phòng..." required maxlength="100">
         </div>
         <div class="form-row">
             <div class="form-group">
@@ -284,18 +327,9 @@ function openCreateGoal() {
                 <input type="number" id="mInitialAmount" placeholder="VD: 1000000" min="0">
             </div>
             <div class="form-group">
-                <label>Gắn vào ví có sẵn</label>
-                <select id="mGoalWallet">
-                    <option value="">-- Không gắn ví --</option>
-                    ${walletOpts}
-                </select>
+                <label>Ghi chú nơi giữ tiền</label>
+                <input type="text" id="mGoalNote" placeholder="VD: Heo đất trong tủ, Sổ tiết kiệm Agribank, Mẹ giữ hộ...">
             </div>
-        </div>
-        <div class="form-group" style="padding-top:4px">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-                <input type="checkbox" id="mManageWithWallet">
-                <span>Tự động tạo một ví Tiết kiệm riêng mang tên mục tiêu này</span>
-            </label>
         </div>
     `, [
         { label: 'Hủy', kind: 'btn-secondary' },
@@ -307,8 +341,7 @@ function openCreateGoal() {
                 const target_amount = Number($('mTargetAmount').value);
                 const target_date = $('mTargetDate').value || null;
                 const initial_amount = $('mInitialAmount').value ? Number($('mInitialAmount').value) : null;
-                const wallet_id = $('mGoalWallet').value || null;
-                const manage_with_wallet = $('mManageWithWallet').checked;
+                const note = ($('mGoalNote').value || '').trim() || null;
 
                 if (!name) {
                     toast('Vui lòng nhập tên mục tiêu', 'error');
@@ -326,13 +359,11 @@ function openCreateGoal() {
                         target_amount,
                         target_date,
                         initial_amount,
-                        wallet_id,
-                        manage_with_wallet
+                        note
                     }
                 });
 
                 if (toastResult(res, 'Tạo mục tiêu tiết kiệm thành công')) {
-                    loadWallets();
                     loadGoals();
                     return true;
                 }
@@ -348,7 +379,6 @@ $('btnReloadGoals').onclick = loadGoals;
 $('fStatus').onchange = loadGoals;
 
 // Khởi chạy
-(async function init() {
-    await loadWallets();
+(function init() {
     loadGoals();
 })();

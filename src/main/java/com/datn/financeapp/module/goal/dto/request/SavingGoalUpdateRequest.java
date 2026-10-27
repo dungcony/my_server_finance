@@ -16,7 +16,7 @@ import java.time.LocalDate;
  * @param note         Ghi chú nơi cất giữ tiền mới (tối đa 255 ký tự)
  * @param status       Trạng thái mục tiêu (chỉ chấp nhận {@link SavingGoalStatus#IN_PROGRESS} hoặc {@link SavingGoalStatus#CANCELLED})
  */
-public record UpdateGoalRequest(
+public record SavingGoalUpdateRequest(
         @Size(min = 1, max = 100, message = "Tên mục tiêu phải từ 1 đến 100 ký tự.")
         String name,
 

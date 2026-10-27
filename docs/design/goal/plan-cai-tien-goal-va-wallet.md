@@ -8,6 +8,7 @@
 ---
 
 ## 📌 MỤC LỤC
+
 1. [Bối cảnh & Mục tiêu Cải tiến](#1-boi-canh--muc-tieu-cai-tien)
 2. [Nguyên tắc Nghiệp vụ Cốt lõi (Business Rules)](#2-nguyen-tac-nghiep-vu-cot-loi)
 3. [Thiết kế Cơ sở dữ liệu (db/migration_v2)](#3-thiet-ke-co-so-du-lieu)
@@ -23,32 +24,46 @@
 ## 1. BỐI CẢNH & MỤC TIÊU CẢI TIẾN
 
 ### 1.1. Hiện trạng
-* Hệ thống đang sử dụng cấu hình Flyway tại **`src/main/resources/db/migration_v2`** (đã có từ `V1` đến `V13__create_debt.sql`).
+
+* Hệ thống đang sử dụng cấu hình Flyway tại **`src/main/resources/db/migration_v2`** (đã có từ `V1` đến
+  `V13__create_debt.sql`).
 * Hai bảng `savings_goals` và `goal_contributions` chưa được đưa vào `migration_v2`.
 * `WalletType` hiện tại có: `CASH`, `BANK`, `E_WALLET` (chưa có loại ví chuyên biệt cho tiết kiệm/tích lũy).
-* Người dùng khi tạo mục tiêu tiết kiệm (`SavingsGoal`) phải tự chọn ví hoặc để trống, chưa có cơ chế tự động tách biệt ví tiền tiết kiệm với ví chi tiêu hàng ngày.
+* Người dùng khi tạo mục tiêu tiết kiệm (`SavingGoal`) phải tự chọn ví hoặc để trống, chưa có cơ chế tự động tách biệt
+  ví tiền tiết kiệm với ví chi tiêu hàng ngày.
 
 ### 1.2. Mục tiêu sau cải tiến
-1. **Đưa toàn bộ module Goal vào `db/migration_v2`:** Tạo script **`V14__create_savings_goals.sql`** hoàn chỉnh gồm bảng, indexes và triggers tự động đồng bộ.
+
+1. **Đưa toàn bộ module Goal vào `db/migration_v2`:** Tạo script **`V14__create_savings_goals.sql`** hoàn chỉnh gồm
+   bảng, indexes và triggers tự động đồng bộ.
 2. **Phân loại rõ ràng ví tiết kiệm:** Bổ sung loại ví `SAVINGS` vào `WalletType`.
-3. **Tự động sinh ví tích lũy:** Khi tạo mục tiêu chọn `manageWithWallet = true`, hệ thống tự khởi tạo một ví loại `SAVINGS` mang tên mục tiêu.
-4. **Bảo vệ dòng tiền tiết kiệm:** 
-   * Cấm tuyệt đối việc chọn ví `SAVINGS` để làm ví thanh toán cho các khoản chi tiêu thông thường (`type = 'EXPENSE'`).
-   * Khi nạp tiền vào mục tiêu, ví nguồn không được là ví loại `SAVINGS` và phải có số dư lớn hơn hoặc bằng số tiền nạp.
+3. **Tự động sinh ví tích lũy:** Khi tạo mục tiêu chọn `manageWithWallet = true`, hệ thống tự khởi tạo một ví loại
+   `SAVINGS` mang tên mục tiêu.
+4. **Bảo vệ dòng tiền tiết kiệm:**
+    * Cấm tuyệt đối việc chọn ví `SAVINGS` để làm ví thanh toán cho các khoản chi tiêu thông thường
+      (`type = 'EXPENSE'`).
+    * Khi nạp tiền vào mục tiêu, ví nguồn không được là ví loại `SAVINGS` và phải có số dư lớn hơn hoặc bằng số tiền
+      nạp.
 
 ---
 
 ## 2. NGUYÊN TẮC NGHIỆP VỤ CỐT LÕI (BUSINESS RULES)
 
-* **BR-GOAL-01 (Tự động sinh ví):** Nếu request tạo mục tiêu có `manageWithWallet = true`, hệ thống tự sinh ví `Wallet` với `type = 'SAVINGS'`, `name = "[Tiết kiệm] " + goal.name`, `balance = 0`. Gán ID ví này vào `SavingsGoal.walletId`.
-* **BR-GOAL-02 (Tiết kiệm ngoài app):** Nếu `manageWithWallet = false`, `SavingsGoal.walletId = null`. Tiến độ tiết kiệm được theo dõi độc lập, nạp tiền không sinh giao dịch ví.
-* **BR-GOAL-03 (Bảo vệ ví tiết kiệm - Chặn chi tiêu):** Tại API tạo giao dịch tài chính (`TransactionService`), nếu giao dịch là `EXPENSE` hoặc `LOAN` mà `wallet.type == SAVINGS` thì từ chối với mã lỗi `WALLET_SAVINGS_CANNOT_SPEND` (HTTP 400).
+* **BR-GOAL-01 (Tự động sinh ví):** Nếu request tạo mục tiêu có `manageWithWallet = true`, hệ thống tự sinh ví `Wallet`
+  với `type = 'SAVINGS'`, `name = "[Tiết kiệm] " + goal.name`, `balance = 0`. Gán ID ví này vào `SavingsGoal.walletId`.
+* **BR-GOAL-02 (Tiết kiệm ngoài app):** Nếu `manageWithWallet = false`, `SavingsGoal.walletId = null`. Tiến độ tiết kiệm
+  được theo dõi độc lập, nạp tiền không sinh giao dịch ví.
+* **BR-GOAL-03 (Bảo vệ ví tiết kiệm - Chặn chi tiêu):** Tại API tạo giao dịch tài chính (`TransactionService`), nếu giao
+  dịch là `EXPENSE` hoặc `LOAN` mà `wallet.type == SAVINGS` thì từ chối với mã lỗi `WALLET_SAVINGS_CANNOT_SPEND` (HTTP
+  400).
 * **BR-GOAL-04 (Hợp lệ ví nguồn khi nạp tiền):** Khi nạp tiền vào mục tiêu (`createTransaction = true`):
-  * Ví nguồn (`sourceWalletId`) phải thuộc về người dùng hiện tại.
-  * Ví nguồn **không được là loại `SAVINGS`** (tránh rút tiền từ quỹ tiết kiệm này nạp quỹ tiết kiệm khác).
-  * Số dư ví nguồn phải: `sourceWallet.balance >= amount` (không cho phép nạp âm số dư).
-* **BR-GOAL-05 (Chuyển tiền nội bộ - Transfer):** Giao dịch nạp tiền luôn mang loại `transfer` từ `sourceWalletId` sang `goal.walletId`. Giao dịch này không tính vào báo cáo chi tiêu hàng tháng.
-* **BR-GOAL-06 (Đồng bộ số tiền và trạng thái qua Trigger):** Mọi thay đổi về `saved_amount` và `status` (`in_progress` <-> `completed`) của `SavingsGoal` vẫn hoàn toàn do DB Trigger `trg_goal_contributions_sync` đảm nhiệm.
+    * Ví nguồn (`sourceWalletId`) phải thuộc về người dùng hiện tại.
+    * Ví nguồn **không được là loại `SAVINGS`** (tránh rút tiền từ quỹ tiết kiệm này nạp quỹ tiết kiệm khác).
+    * Số dư ví nguồn phải: `sourceWallet.balance >= amount` (không cho phép nạp âm số dư).
+* **BR-GOAL-05 (Chuyển tiền nội bộ - Transfer):** Giao dịch nạp tiền luôn mang loại `transfer` từ `sourceWalletId` sang
+  `goal.walletId`. Giao dịch này không tính vào báo cáo chi tiêu hàng tháng.
+* **BR-GOAL-06 (Đồng bộ số tiền và trạng thái qua Trigger):** Mọi thay đổi về `saved_amount` và `status`
+  (`in_progress` <-> `completed`) của `SavingGoal` vẫn hoàn toàn do DB Trigger `trg_goal_contributions_sync` đảm nhiệm.
 
 ---
 
@@ -152,6 +167,7 @@ CREATE TRIGGER trg_goal_contributions_sync
 ## BƯỚC 1: KỊCH BẢN USE CASE & THIẾT KẾ RESTFUL API
 
 ### 1.1. UC01: Tạo mới mục tiêu tiết kiệm
+
 * **Endpoint:** `POST /api/v1/goals`
 * **Headers:** `Authorization: Bearer <JWT>`, `Content-Type: application/json`
 * **Request Body:**
@@ -166,20 +182,21 @@ CREATE TRIGGER trg_goal_contributions_sync
   }
   ```
 * **Kịch bản thành công (201 Created):**
-  1. Client gửi request tạo mục tiêu với `manageWithWallet = true`.
-  2. `GoalController` nhận và validate cú pháp (`@Valid`).
-  3. `GoalService` kiểm tra hạn `targetDate > hiện tại`, `targetAmount > 0`.
-  4. `GoalService` gọi `WalletService` tạo một ví mới:
-     * `name`: `"[Tiết kiệm] Mua Laptop Gaming"`
-     * `type`: `SAVINGS`
-     * `balance`: 0
-  5. `GoalService` lưu bản ghi `SavingsGoal` với `walletId` trỏ tới ví vừa tạo.
-  6. Nếu `initialAmount > 0`: `GoalService` tạo 1 bản ghi `GoalContribution` xuất phát điểm (`transactionId = null`).
-  7. Trả về `201 Created` kèm thông tin chi tiết mục tiêu và ví tiết kiệm đi kèm.
+    1. Client gửi request tạo mục tiêu với `manageWithWallet = true`.
+    2. `SavingGoalController` nhận và validate cú pháp (`@Valid`).
+    3. `GoalService` kiểm tra hạn `targetDate > hiện tại`, `targetAmount > 0`.
+    4. `GoalService` gọi `WalletService` tạo một ví mới:
+        * `name`: `"[Tiết kiệm] Mua Laptop Gaming"`
+        * `type`: `SAVINGS`
+        * `balance`: 0
+    5. `GoalService` lưu bản ghi `SavingGoal` với `walletId` trỏ tới ví vừa tạo.
+    6. Nếu `initialAmount > 0`: `GoalService` tạo 1 bản ghi `GoalContribution` xuất phát điểm (`transactionId = null`).
+    7. Trả về `201 Created` kèm thông tin chi tiết mục tiêu và ví tiết kiệm đi kèm.
 
 ---
 
 ### 1.2. UC02: Nạp tiền vào mục tiêu tiết kiệm
+
 * **Endpoint:** `POST /api/v1/goals/{id}/contributions`
 * **Request Body:**
   ```json
@@ -192,24 +209,26 @@ CREATE TRIGGER trg_goal_contributions_sync
   }
   ```
 * **Kịch bản thành công (200 OK):**
-  1. Client gửi yêu cầu nạp 1.000.000đ từ ví nguồn `sourceWalletId`.
-  2. `GoalService` tải thông tin `SavingsGoal`:
-     * Kiểm tra mục tiêu không ở trạng thái `cancelled` hoặc `completed`.
-     * Kiểm tra `goal.walletId != null`.
-  3. `GoalService` tải thông tin `sourceWallet`:
-     * Kiểm tra `sourceWallet.userId == userId`.
-     * Kiểm tra `sourceWallet.type != SAVINGS` (Ví nguồn không được là ví tiết kiệm).
-     * Kiểm tra `sourceWallet.balance >= 1000000` (Đủ số dư).
-  4. `GoalService` gọi `TransactionWriter` ghi giao dịch `transfer`:
-     * `sourceWalletId` giảm 1.000.000đ.
-     * `goal.walletId` tăng 1.000.000đ.
-  5. `GoalService` chèn bản ghi vào `GoalContribution` và flush xuống DB.
-  6. Trigger `trg_goal_contributions_sync` tự động cộng `saved_amount` và cập nhật `status = 'completed'` nếu đủ mục tiêu.
-  7. Trả về `200 OK` với tiến độ mới và số dư ví nguồn sau giao dịch.
+    1. Client gửi yêu cầu nạp 1.000.000đ từ ví nguồn `sourceWalletId`.
+    2. `GoalService` tải thông tin `SavingGoal`:
+        * Kiểm tra mục tiêu không ở trạng thái `cancelled` hoặc `completed`.
+        * Kiểm tra `goal.walletId != null`.
+    3. `GoalService` tải thông tin `sourceWallet`:
+        * Kiểm tra `sourceWallet.userId == userId`.
+        * Kiểm tra `sourceWallet.type != SAVINGS` (Ví nguồn không được là ví tiết kiệm).
+        * Kiểm tra `sourceWallet.balance >= 1000000` (Đủ số dư).
+    4. `GoalService` gọi `TransactionWriter` ghi giao dịch `transfer`:
+        * `sourceWalletId` giảm 1.000.000đ.
+        * `goal.walletId` tăng 1.000.000đ.
+    5. `GoalService` chèn bản ghi vào `GoalContribution` và flush xuống DB.
+    6. Trigger `trg_goal_contributions_sync` tự động cộng `saved_amount` và cập nhật `status = 'completed'` nếu đủ mục
+       tiêu.
+    7. Trả về `200 OK` với tiến độ mới và số dư ví nguồn sau giao dịch.
 
 ---
 
 ### 1.3. UC03: Chặn chi tiêu thông thường từ ví SAVINGS
+
 * **Endpoint:** `POST /api/v1/transactions`
 * **Request Body:**
   ```json
@@ -221,15 +240,16 @@ CREATE TRIGGER trg_goal_contributions_sync
   }
   ```
 * **Kịch bản ngoại lệ (400 Bad Request):**
-  1. `TransactionService` kiểm tra `wallet.type == SAVINGS`.
-  2. Vì `type == 'EXPENSE'`, hệ thống ném ngoại lệ `BusinessException(ErrorCode.WALLET_SAVINGS_CANNOT_SPEND)`.
-  3. Phản hồi HTTP 400 kèm thông báo: *"Không thể sử dụng ví tiết kiệm làm ví thanh toán chi tiêu"*.
+    1. `TransactionService` kiểm tra `wallet.type == SAVINGS`.
+    2. Vì `type == 'EXPENSE'`, hệ thống ném ngoại lệ `BusinessException(ErrorCode.WALLET_SAVINGS_CANNOT_SPEND)`.
+    3. Phản hồi HTTP 400 kèm thông báo: *"Không thể sử dụng ví tiết kiệm làm ví thanh toán chi tiêu"*.
 
 ---
 
 ## BƯỚC 2: THIẾT KẾ THỰC THỂ JPA (@ENTITY) & DTO
 
 ### 2.1. Enum `WalletType.java`
+
 ```java
 package com.datn.financeapp.module.wallet.enums;
 
@@ -242,6 +262,7 @@ public enum WalletType {
 ```
 
 ### 2.2. DTO `CreateGoalRequest.java`
+
 ```java
 package com.datn.financeapp.module.goal.dto.request;
 
@@ -337,12 +358,12 @@ classDiagram
         +addContribution(UUID, UUID, CreateContributionRequest): CreateContributionResponse
     }
 
-    Wallet --> WalletType : có kiểu
-    SavingsGoal --> Wallet : walletId (Ví SAVINGS tích lũy)
-    GoalContribution --> SavingsGoal : goalId
-    GoalController --> GoalService : gọi
-    GoalServiceImpl ..|> GoalService : implements
-    GoalServiceImpl --> Wallet : Tự tạo ví SAVINGS & kiểm tra
+    Wallet --> WalletType: có kiểu
+    SavingsGoal --> Wallet: walletId (Ví SAVINGS tích lũy)
+    GoalContribution --> SavingsGoal: goalId
+    GoalController --> GoalService: gọi
+    GoalServiceImpl ..|> GoalService: implements
+    GoalServiceImpl --> Wallet: Tự tạo ví SAVINGS & kiểm tra
 ```
 
 ---
@@ -358,36 +379,32 @@ sequenceDiagram
     participant Txn as TransactionWriter
     participant GCRepo as GoalContributionRepository
     participant DB as PostgreSQL
+    Client ->> Ctrl: POST /goals/{goalId}/contributions (amount, sourceWalletId)
+    Ctrl ->> Svc: addContribution(userId, goalId, req)
+    Svc ->> Svc: loadOwnedGoal(userId, goalId)
 
-    Client->>Ctrl: POST /goals/{goalId}/contributions (amount, sourceWalletId)
-    Ctrl->>Svc: addContribution(userId, goalId, req)
-
-    Svc->>Svc: loadOwnedGoal(userId, goalId)
-    
     alt Mục tiêu không gắn ví
-        Svc-->>Ctrl: throw BusinessException(GOAL_WALLET_REQUIRED)
-        Ctrl-->>Client: 400 Bad Request
+        Svc -->> Ctrl: throw BusinessException(GOAL_WALLET_REQUIRED)
+        Ctrl -->> Client: 400 Bad Request
     end
 
-    Svc->>WSvc: findRefForUser(userId, sourceWalletId)
-    WSvc-->>Svc: sourceWallet
+    Svc ->> WSvc: findRefForUser(userId, sourceWalletId)
+    WSvc -->> Svc: sourceWallet
 
     alt sourceWallet.type == SAVINGS
-        Svc-->>Ctrl: throw BusinessException(INVALID_SOURCE_WALLET)
-        Ctrl-->>Client: 400 Bad Request (Không dùng ví tiết kiệm làm nguồn)
+        Svc -->> Ctrl: throw BusinessException(INVALID_SOURCE_WALLET)
+        Ctrl -->> Client: 400 Bad Request (Không dùng ví tiết kiệm làm nguồn)
     else sourceWallet.balance < amount
-        Svc-->>Ctrl: throw BusinessException(INSUFFICIENT_BALANCE)
-        Ctrl-->>Client: 400 Bad Request (Số dư ví không đủ)
+        Svc -->> Ctrl: throw BusinessException(INSUFFICIENT_BALANCE)
+        Ctrl -->> Client: 400 Bad Request (Số dư ví không đủ)
     else Hợp lệ
-        Svc->>Txn: write(Transfer: sourceWalletId -> goal.walletId, amount)
-        Txn-->>Svc: WriteResult(transactionId, newBalance)
-
-        Svc->>GCRepo: saveAndFlush(GoalContribution)
-        GCRepo->>DB: INSERT INTO goal_contributions
-        DB->>DB: Trigger: SUM() -> Cập nhật saved_amount & status
-
-        Svc-->>Ctrl: CreateContributionResponse
-        Ctrl-->>Client: 200 OK (Cập nhật tiến độ thành công)
+        Svc ->> Txn: write(Transfer: sourceWalletId -> goal.walletId, amount)
+        Txn -->> Svc: WriteResult(transactionId, newBalance)
+        Svc ->> GCRepo: saveAndFlush(GoalContribution)
+        GCRepo ->> DB: INSERT INTO goal_contributions
+        DB ->> DB: Trigger: SUM() -> Cập nhật saved_amount & status
+        Svc -->> Ctrl: CreateContributionResponse
+        Ctrl -->> Client: 200 OK (Cập nhật tiến độ thành công)
     end
 ```
 
@@ -395,14 +412,14 @@ sequenceDiagram
 
 ## BƯỚC 5: KỊCH BẢN KIỂM THỬ REST API (TEST CASES)
 
-| Mã Test Case | Loại kiểm thử | Mục đích kiểm thử | Đầu vào (Input) | Điều kiện ban đầu | Kết quả kỳ vọng (Expected Output) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **TC_GOAL_01** | Tạo Goal có ví | Tạo mục tiêu kèm tự động tạo ví tiết kiệm | `manageWithWallet = true`, `name = "Mua iPad"`, `targetAmount = 15000000` | User đã xác thực | - HTTP `201 Created`<br>- Bản ghi `savings_goals` có `wallet_id != null`<br>- Bảng `wallets` có 1 ví mới `type = SAVINGS`, tên `[Tiết kiệm] Mua iPad`. |
-| **TC_GOAL_02** | Tạo Goal không ví | Tạo mục tiêu ghi nhận ngoài đời thực | `manageWithWallet = false`, `name = "Nuôi heo"` | User đã xác thực | - HTTP `201 Created`<br>- `wallet_id = null`. |
-| **TC_CONTRIB_01** | Luồng chuẩn nạp tiền | Nạp 1.000.000đ từ ví CASH sang ví SAVINGS | `amount = 1000000`, `sourceWalletId = CASH_ID`, `createTransaction = true` | Ví CASH có số dư 3.000.000đ | - HTTP `200 OK`<br>- Ví CASH giảm còn 2.000.000đ<br>- Ví SAVINGS tăng thêm 1.000.000đ<br>- `saved_amount` tăng 1.000.000đ. |
-| **TC_CONTRIB_02** | Lỗi số dư | Nạp vượt quá số dư ví nguồn | `amount = 5000000`, `sourceWalletId = CASH_ID` | Ví CASH chỉ có 2.000.000đ | - HTTP `400 Bad Request`<br>- Message: "Số dư ví nguồn không đủ để trích tiền." |
-| **TC_CONTRIB_03** | Ràng buộc loại ví | Nạp tiền lấy nguồn từ một ví SAVINGS khác | `sourceWalletId = OTHER_SAVINGS_ID` | `OTHER_SAVINGS_ID` có type = `SAVINGS` | - HTTP `400 Bad Request`<br>- Message: "Không thể sử dụng ví tiết kiệm làm ví nguồn." |
-| **TC_TXN_01** | Ràng buộc chi tiêu | Dùng ví SAVINGS để thanh toán hóa đơn | `POST /transactions`<br>`walletId = SAVINGS_ID`, `type = EXPENSE` | Ví SAVINGS tồn tại | - HTTP `400 Bad Request`<br>- Message: "Ví tiết kiệm không thể sử dụng để chi tiêu trực tiếp." |
+| Mã Test Case      | Loại kiểm thử        | Mục đích kiểm thử                         | Đầu vào (Input)                                                            | Điều kiện ban đầu                      | Kết quả kỳ vọng (Expected Output)                                                                                                                      |
+|:------------------|:---------------------|:------------------------------------------|:---------------------------------------------------------------------------|:---------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **TC_GOAL_01**    | Tạo Goal có ví       | Tạo mục tiêu kèm tự động tạo ví tiết kiệm | `manageWithWallet = true`, `name = "Mua iPad"`, `targetAmount = 15000000`  | User đã xác thực                       | - HTTP `201 Created`<br>- Bản ghi `savings_goals` có `wallet_id != null`<br>- Bảng `wallets` có 1 ví mới `type = SAVINGS`, tên `[Tiết kiệm] Mua iPad`. |
+| **TC_GOAL_02**    | Tạo Goal không ví    | Tạo mục tiêu ghi nhận ngoài đời thực      | `manageWithWallet = false`, `name = "Nuôi heo"`                            | User đã xác thực                       | - HTTP `201 Created`<br>- `wallet_id = null`.                                                                                                          |
+| **TC_CONTRIB_01** | Luồng chuẩn nạp tiền | Nạp 1.000.000đ từ ví CASH sang ví SAVINGS | `amount = 1000000`, `sourceWalletId = CASH_ID`, `createTransaction = true` | Ví CASH có số dư 3.000.000đ            | - HTTP `200 OK`<br>- Ví CASH giảm còn 2.000.000đ<br>- Ví SAVINGS tăng thêm 1.000.000đ<br>- `saved_amount` tăng 1.000.000đ.                             |
+| **TC_CONTRIB_02** | Lỗi số dư            | Nạp vượt quá số dư ví nguồn               | `amount = 5000000`, `sourceWalletId = CASH_ID`                             | Ví CASH chỉ có 2.000.000đ              | - HTTP `400 Bad Request`<br>- Message: "Số dư ví nguồn không đủ để trích tiền."                                                                        |
+| **TC_CONTRIB_03** | Ràng buộc loại ví    | Nạp tiền lấy nguồn từ một ví SAVINGS khác | `sourceWalletId = OTHER_SAVINGS_ID`                                        | `OTHER_SAVINGS_ID` có type = `SAVINGS` | - HTTP `400 Bad Request`<br>- Message: "Không thể sử dụng ví tiết kiệm làm ví nguồn."                                                                  |
+| **TC_TXN_01**     | Ràng buộc chi tiêu   | Dùng ví SAVINGS để thanh toán hóa đơn     | `POST /transactions`<br>`walletId = SAVINGS_ID`, `type = EXPENSE`          | Ví SAVINGS tồn tại                     | - HTTP `400 Bad Request`<br>- Message: "Ví tiết kiệm không thể sử dụng để chi tiêu trực tiếp."                                                         |
 
 ---
 

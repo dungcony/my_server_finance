@@ -53,27 +53,6 @@ class WalletControllerTest {
     }
 
     @Test
-    @DisplayName("POST /wallets: Chặn tạo thủ công ví loại SAVINGS -> trả về lỗi nghiệp vụ 400")
-    void create_SavingsType_ThrowsForbiddenManualCreate() throws Exception {
-        WalletCreateReq req = new WalletCreateReq(
-                "Ví Tiết kiệm",
-                WalletType.SAVINGS,
-                1_000_000L,
-                null,
-                "icon_savings",
-                "#2f8272"
-        );
-
-        mockMvc.perform(post("/wallets")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("WALLET_SAVINGS_MANUAL_CREATE_NOT_ALLOWED"));
-
-        verify(walletBehavierService, never()).create(any(), anyBoolean());
-    }
-
-    @Test
     @DisplayName("POST /wallets: Tên ví rỗng -> trả về lỗi validation 400")
     void create_BlankName_ReturnsValidationError() throws Exception {
         WalletCreateReq req = new WalletCreateReq(

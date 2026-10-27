@@ -1,4 +1,13 @@
 package com.datn.financeapp.module.goal.dto.response;
 
-public record ContributionGoalRes() {
+import java.time.LocalDate;
+import java.util.UUID;
+
+public record ContributionGoalRes(
+        UUID id,
+        UUID goalId,
+        Long amount,
+        LocalDate contributedDate,
+        String note
+) {
 }

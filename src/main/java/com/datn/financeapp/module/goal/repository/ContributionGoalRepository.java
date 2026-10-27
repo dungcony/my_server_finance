@@ -7,17 +7,23 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Repository JPA cho {@link GoalContribution}.
  */
-public interface GoalContributionRepository extends JpaRepository<GoalContribution, UUID> {
-
-    List<GoalContribution> findByGoalIdAndIsDeletedFalseOrderByContributedDateDesc(UUID goalId);
+public interface ContributionGoalRepository extends JpaRepository<GoalContribution, UUID>, JpaSpecificationExecutor<GoalContribution> {
 
     Optional<GoalContribution> findByIdAndGoalIdAndIsDeletedFalse(UUID id, UUID goalId);
 
-    List<GoalContribution> findByGoalIdAndIsDeletedFalse(UUID goalId);
+    @Modifying
+    @Query("""
+            update from GoalContribution gc
+            set gc.isDeleted = true 
+            where gc.goalId = :goalId
+            """)
+    void removeForSavingGoal(UUID goalId);
 
-    int countByGoalIdAndIsDeletedFalse(UUID goalId);
 }
