@@ -25,7 +25,14 @@ public interface SavingGoalMapper {
         return new SavingGoalListRes(items, meta);
     }
 
+    @Mapping(target = "status", constant = "IN_PROGRESS")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     @Mapping(target = "savedAmount", source = "initialAmount")
+    @Mapping(target = "new", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "isDeleted", ignore = true)
     SavingGoal toSavingGoal(SavingGoalCreateReq req);
 
 }
