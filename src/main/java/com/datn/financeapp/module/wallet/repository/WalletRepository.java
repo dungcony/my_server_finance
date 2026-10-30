@@ -45,11 +45,21 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID>, JpaSpecif
             value = """
                     WITH totals AS (
                         SELECT w.id,
-                               w.balance AS old_balance,
-                               COALESCE(SUM(CASE
-                                   WHEN t.type = 'INCOME' THEN t.amount
-                                   WHEN t.type = 'EXPENSE' THEN -t.amount
-                                   ELSE 0 END), 0) AS total
+                                w.balance AS old_balance,
+                                -- 1. Tổng tiền từ giao dịch cá nhân (transactions)
+                                COALESCE(SUM(CASE
+                                    WHEN t.type = 'INCOME' THEN t.amount
+                                    WHEN t.type = 'EXPENSE' THEN -t.amount
+                                    ELSE 0 END), 0)
+                                -- 2. CỘNG THÊM ẢNH HƯỞNG RÒNG TỪ SỔ NỢ (debts)
+                                + COALESCE((
+                                    SELECT SUM(CASE 
+                                        WHEN d.type = 'LENDING' THEN -d.total_amount + d.paid_amount
+                                        WHEN d.type = 'BORROWING' THEN d.total_amount - d.paid_amount
+                                        ELSE 0 END)
+                                    FROM debts d
+                                    WHERE d.wallet_id = w.id AND NOT d.is_deleted
+                                ), 0) AS total
                         FROM wallets w
                         LEFT JOIN transactions t ON t.wallet_id = w.id AND NOT t.is_deleted
                         WHERE NOT w.is_deleted

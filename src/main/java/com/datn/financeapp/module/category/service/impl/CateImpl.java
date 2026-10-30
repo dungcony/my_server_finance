@@ -20,7 +20,7 @@ public class CateImpl implements CategoryService {
 
 
     @Override
-    public Optional<CateSumaryRes> findByCodeAndIsDeletedAndIsLeaf(String code, boolean includeDeleted) {
+    public Optional<CateSumaryRes> findByCodeAndIsDeleted(String code, boolean includeDeleted) {
 
         if (code == null || code.isEmpty())
             return Optional.empty();

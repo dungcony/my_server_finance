@@ -29,27 +29,33 @@ import lombok.Setter;
 @AllArgsConstructor
 public class DebtPayment extends AssignedIdEntity {
 
-    /** Khóa chính của đợt thanh toán */
+    /**
+     * Khóa chính của đợt thanh toán
+     */
     @Id
     private UUID id;
 
-    /** ID khoản nợ cha */
+    /**
+     * ID khoản nợ cha
+     */
     @Column(name = "debt_id", nullable = false)
     private UUID debtId;
 
-    /** ID giao dịch phát sinh tương ứng với lần trả nợ */
-    @Column(name = "transaction_id", nullable = false)
-    private UUID transactionId;
-
-    /** Số tiền thanh toán đợt này (VND) */
+    /**
+     * Số tiền thanh toán đợt này (VND)
+     */
     @Column(name = "amount", nullable = false)
     private Long amount;
 
-    /** Ngày thanh toán */
+    /**
+     * Ngày thanh toán
+     */
     @Column(name = "paid_date", nullable = false)
     private LocalDate paidDate;
 
-    /** Ghi chú cho đợt thanh toán */
+    /**
+     * Ghi chú cho đợt thanh toán
+     */
     @Column(name = "note")
     private String note;
 

@@ -17,7 +17,7 @@
 | **Người dùng & Phân quyền RBAC** | [`user.md`](user.md) | `/users`, `/admin/user`, `/admin/role` | Hồ sơ cá nhân, đổi mật khẩu, quản trị khóa/mở khóa tài khoản, gán/thu hồi Role & Permission. |
 | **Nhóm chung quỹ** | [`group.md`](group.md) | `/v1/groups` | Mô hình hai sổ ghi tách biệt (Two Separate Ledgers), quỹ nhóm, duyệt thành viên, giao dịch quỹ & cá nhân. |
 | **Ngân sách chi tiêu** | [`budget.md`](budget.md) | `/budgets`, `/budgets/admin` | Thiết lập hạn mức ngân sách theo kỳ, theo dõi tiến độ chi tiêu %, cảnh báo sắp chạm ngưỡng / vượt ngân sách. |
-| **Quản lý sổ nợ** | [`debt.md`](debt.md) | `/debts` | Quản lý nợ cho vay / đi vay, ghi nhận đợt trả nợ, xóa nợ khó đòi (`write-off`), theo dõi nợ quá hạn. |
+| **Quản lý sổ nợ** | [`debt.md`](debt.md) | `/debts`, `/admin/debts` | Quản lý sổ nợ cho vay (`LENDING`) / đi vay (`BORROWING`), quản lý các đợt trả nợ độc lập, theo dõi nợ quá hạn. |
 | **Mục tiêu tiết kiệm** | [`goal.md`](goal.md) | `/goals` | Tạo mục tiêu tiết kiệm kèm ví phụ `SAVINGS`, đóng góp tích lũy, tự động hoàn tất mục tiêu. |
 | **Báo cáo & Xuất dữ liệu** | [`report.md`](report.md) | `/reports` | Báo cáo cơ cấu danh mục, xu hướng dòng tiền ngày/tháng, khởi tạo tiến trình xuất báo cáo CSV bất đồng bộ. |
 | **Biểu tượng hệ thống** | [`icon.md`](icon.md) | `/icons` | Kho biểu tượng SVG hệ thống dùng chung cho danh mục và ví. |
@@ -30,5 +30,5 @@
 
 1. **Header Xác thực:** `Authorization: Bearer <accessToken>` (trừ các endpoint public `/auth/login`, `/auth/register`, `/auth/verify-email`...).
 2. **Idempotency Header:** Các endpoint tạo mới dữ liệu quan trọng hỗ trợ `Idempotency-Key: <UUID>` để chống duplicate submit.
-3. **Format Date / Time:** Chuẩn ISO-8601 UTC Instant (`YYYY-MM-DDTHH:mm:ssZ`).
+3. **Format Date / Time:** Chuẩn ISO-8601 UTC Instant (`YYYY-MM-DDTHH:mm:ssZ`) hoặc `YYYY-MM-DD` đối với LocalDate.
 4. **Phân trang chuẩn:** Tham số `page` (0-indexed), `size` (mặc định 20), `sort` (thuộc tính,hướng).

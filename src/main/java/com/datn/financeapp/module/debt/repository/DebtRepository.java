@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,13 +15,13 @@ import org.springframework.data.repository.query.Param;
  * Repository JPA cho {@link Debt}. Điều kiện quyền nằm NGAY TRONG SQL.
  * Lọc các bản ghi chưa bị xóa mềm (NOT is_deleted).
  */
-public interface DebtRepository extends JpaRepository<Debt, UUID> {
+public interface DebtRepository extends JpaRepository<Debt, UUID>, JpaSpecificationExecutor<Debt> {
 
-    @Query(value = "SELECT * FROM debts WHERE id = :id AND user_id = :currentUser AND NOT is_deleted", nativeQuery = true)
     Optional<Debt> findByIdAndUserId(@Param("id") UUID id, @Param("currentUser") UUID currentUser);
 
-    @Query(value = "SELECT * FROM debts WHERE id = :id AND NOT is_deleted", nativeQuery = true)
-    Optional<Debt> findByIdAndIsDeletedFalse(@Param("id") UUID id);
+    Optional<Debt> findByIdAndIsDeletedFalseAndUserId(UUID id, UUID userId);
+
+    Optional<Debt> findByIdAndIsDeletedFalse(UUID id);
 
     @Query(
             value = """

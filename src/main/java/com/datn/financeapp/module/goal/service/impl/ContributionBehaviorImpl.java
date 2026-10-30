@@ -78,7 +78,6 @@ public class ContributionBehaviorImpl implements ContributionBehaviorService {
 
         SavingGoal goal = savingGoalHelper.findSavingGoal(goalId, isAdmin);
 
-
         Page<GoalContribution> page = contributionGoalRepository.findAll(ContributionGoalSpecs.filter(goalId, filter), pageable);
 
         return contributionGoalMapper.toContributionListRes(

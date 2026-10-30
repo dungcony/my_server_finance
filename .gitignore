@@ -14,3 +14,9 @@ docs/design
 docs/work_flow
 .agents/.plan
 .gemini
+.postman
+http
+logs
+target_test-classes
+postman
+src/test

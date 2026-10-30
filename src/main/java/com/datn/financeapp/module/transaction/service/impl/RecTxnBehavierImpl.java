@@ -89,7 +89,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
 
         CateSumaryRes cate = null;
         if (req.categoryCode() != null && !req.categoryCode().isBlank()) {
-            cate = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false)
+            cate = categoryService.findByCodeAndIsDeleted(req.categoryCode(), false)
                     .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
         }
 
@@ -124,7 +124,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
             if (req.categoryCode().isBlank()) {
                 rec.setCategoryCode(null);
             } else {
-                categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false)
+                categoryService.findByCodeAndIsDeleted(req.categoryCode(), false)
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
                 rec.setCategoryCode(req.categoryCode());
             }
@@ -215,7 +215,7 @@ public class RecTxnBehavierImpl implements RecTxnBehavierService {
         WalletSumaryRes wallet = walletService.findSumaryByIdAndUser(rec.getWalletId(), rec.getUserId(), false)
                 .orElse(null);
         CateSumaryRes cate = (rec.getCategoryCode() == null || rec.getCategoryCode().isBlank()) ? null
-                : categoryService.findByCodeAndIsDeletedAndIsLeaf(rec.getCategoryCode(), false).orElse(null);
+                : categoryService.findByCodeAndIsDeleted(rec.getCategoryCode(), false).orElse(null);
 
         return recMapper.toDetalRes(rec, cate, wallet);
     }

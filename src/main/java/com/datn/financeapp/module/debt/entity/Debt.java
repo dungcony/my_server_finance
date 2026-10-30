@@ -1,10 +1,10 @@
 package com.datn.financeapp.module.debt.entity;
 
 import com.datn.financeapp.common.abstracts.AssignedIdEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.datn.financeapp.module.debt.enums.DebtStatus;
+import com.datn.financeapp.module.debt.enums.DebtType;
+
+import jakarta.persistence.*;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -18,15 +18,21 @@ import lombok.Setter;
 /**
  * Thực thể quản lý các khoản nợ cá nhân (Sổ nợ - Cho vay & Đi vay).
  *
- * <p><b>Cơ chế hoạt động và luồng dữ liệu:</b>
+ * <p>
+ * <b>Cơ chế hoạt động và luồng dữ liệu:</b>
  * <ul>
- *   <li><b>Tính độc lập:</b> Người vay/cho vay (counterparty) không cần có tài khoản trong app,
- *       chỉ cần lưu tên để người dùng theo dõi như một cuốn sổ tay cá nhân.</li>
- *   <li><b>Liên kết giao dịch:</b> Mỗi khi tạo khoản nợ, hệ thống tự động sinh một giao dịch
- *       (Thu hoặc Chi) và lưu ID vào {@code origin_transaction_id} để tiền trong ví luôn khớp.</li>
- *   <li><b>Trả nợ:</b> Các lần thanh toán nợ được lưu ở bảng {@code debt_payments},
- *       trigger DB sẽ tự động cộng dồn vào {@code paid_amount} và tự động chuyển trạng thái
- *       khi trả hết nợ.</li>
+ * <li><b>Tính độc lập:</b> Người vay/cho vay (counterparty) không cần có tài
+ * khoản trong app,
+ * chỉ cần lưu tên để người dùng theo dõi như một cuốn sổ tay cá nhân.</li>
+ * <li><b>Liên kết giao dịch:</b> Mỗi khi tạo khoản nợ, hệ thống tự động sinh
+ * một giao dịch
+ * (Thu hoặc Chi) và lưu ID vào {@code origin_transaction_id} để tiền trong ví
+ * luôn khớp.</li>
+ * <li><b>Trả nợ:</b> Các lần thanh toán nợ được lưu ở bảng
+ * {@code debt_payments},
+ * trigger DB sẽ tự động cộng dồn vào {@code paid_amount} và tự động chuyển
+ * trạng thái
+ * khi trả hết nợ.</li>
  * </ul>
  */
 @Entity
@@ -50,40 +56,38 @@ public class Debt extends AssignedIdEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "name")
+    private String name;
+
     /**
-     * Ví tiền liên kết lúc phát sinh khoản nợ (Ví nhận tiền vay hoặc ví rút tiền cho vay)
+     * Ví tiền liên kết lúc phát sinh khoản nợ (Ví nhận tiền vay hoặc ví rút tiền
+     * cho vay)
      */
     @Column(name = "wallet_id", nullable = false)
     private UUID walletId;
 
-    /**
-     * Loại nợ:
-     * <ul>
-     *   <li>{@code lending}: Cho vay (Người khác nợ tôi - Khoản phải thu)</li>
-     *   <li>{@code borrowing}: Đi vay (Tôi nợ người khác - Khoản phải trả)</li>
-     * </ul>
-     */
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
-    private String type;
+    private DebtType type;
 
-    /**
-     * Tên của đối tác vay/cho vay (VD: Anh Nam, Bạn Linh, Ngân hàng ACB...)
-     */
-    @Column(name = "counterparty_name", nullable = false)
-    private String counterpartyName;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private DebtStatus status;
 
     /**
      * Số tiền gốc ban đầu vay hoặc cho vay (VND)
      */
-    @Column(name = "principal_amount", nullable = false)
-    private Long principalAmount;
+    @Column(name = "total_amount", nullable = false)
+    private Long totalAmount;
 
     /**
      * Số tiền đã thanh toán (VND).
-     * Do Trigger DB tự động cộng dồn từ bảng debt_payments, backend không ghi đè trực tiếp trường này.
+     * Do Trigger DB tự động cộng dồn từ bảng debt_payments, backend không ghi đè
+     * trực tiếp trường này.
      */
+    @Builder.Default
     @Column(name = "paid_amount", nullable = false)
-    private Long paidAmount;
+    private Long paidAmount = 0L;
 
     /**
      * Ngày phát sinh khoản nợ
@@ -103,23 +107,6 @@ public class Debt extends AssignedIdEntity {
     @Column(name = "note")
     private String note;
 
-    /**
-     * Trạng thái khoản nợ:
-     * <ul>
-     *   <li>{@code outstanding}: Đang nợ (chưa thanh toán hoặc mới trả một phần)</li>
-     *   <li>{@code settled}: Đã trả hết toàn bộ số nợ</li>
-     *   <li>{@code written_off}: Xóa nợ / Không đòi được nữa</li>
-     * </ul>
-     */
-    @Column(name = "status", nullable = false)
-    private String status;
-
-    /**
-     * ID của giao dịch (Transaction) gốc được tạo ra đồng thời lúc lập khoản nợ này.
-     * Dùng để kiểm toán và chặn việc xóa nhầm giao dịch làm lệch số sách.
-     */
-    @Column(name = "origin_transaction_id", nullable = false)
-    private UUID originTransactionId;
-
-    // Các trường createdAt, updatedAt, isDeleted đã được thừa hưởng sẵn từ AssignedIdEntity
+    // Các trường createdAt, updatedAt, isDeleted đã được thừa hưởng sẵn từ
+    // AssignedIdEntity
 }

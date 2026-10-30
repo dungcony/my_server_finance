@@ -1,15 +1,14 @@
 package com.datn.financeapp.module.goal.repository;
 
 import com.datn.financeapp.module.goal.entity.GoalContribution;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Repository JPA cho {@link GoalContribution}.
@@ -20,10 +19,10 @@ public interface ContributionGoalRepository extends JpaRepository<GoalContributi
 
     @Modifying
     @Query("""
-            update from GoalContribution gc
-            set gc.isDeleted = true 
+            update GoalContribution gc
+            set gc.isDeleted = true
             where gc.goalId = :goalId
             """)
-    void removeForSavingGoal(UUID goalId);
+    void removeForSavingGoal(@Param("goalId") UUID goalId);
 
 }

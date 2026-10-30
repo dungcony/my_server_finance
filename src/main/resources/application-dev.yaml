@@ -22,9 +22,9 @@ app:
 
 spring:
   datasource:
-    url: jdbc:postgresql://db.rhciyittetkairjgjhye.supabase.co:5432/postgres?reWriteBatchedInserts=true
+    url: jdbc:postgresql://localhost:5432/finance?reWriteBatchedInserts=true
     username: postgres
-    password: Motnhipdap04
+    password: 123456
     hikari:
       maximum-pool-size: 60
       idle-timeout: 300000

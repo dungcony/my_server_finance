@@ -174,7 +174,7 @@ public class GroupTxnCreateImpl implements GroupTxnCreateService {
         if (req.categoryCode() == null || req.categoryCode().isBlank())
             throw new BusinessException(ErrorCode.GROUP_TXN_CATEGORY_REQUIRED);
 
-        categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false)
+        categoryService.findByCodeAndIsDeleted(req.categoryCode(), false)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
 
         txn.setParticipants(GroupTxnHelper.getParticipants(req.participants()));
