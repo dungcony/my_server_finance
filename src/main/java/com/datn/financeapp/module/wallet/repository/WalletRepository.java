@@ -43,27 +43,34 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID>, JpaSpecif
     @Modifying
     @Query(
             value = """
-                    WITH totals AS (
+                    WITH txn_totals AS (
+                        SELECT t.wallet_id,
+                               SUM(CASE
+                                   WHEN t.type = 'INCOME' THEN t.amount
+                                   WHEN t.type = 'EXPENSE' THEN -t.amount
+                                   ELSE 0 END) AS txn_total
+                        FROM transactions t
+                        WHERE NOT t.is_deleted
+                        GROUP BY t.wallet_id
+                    ),
+                    debt_totals AS (
+                        SELECT d.wallet_id,
+                               SUM(CASE
+                                   WHEN d.type = 'LENDING' THEN -d.total_amount + d.paid_amount
+                                   WHEN d.type = 'BORROWING' THEN d.total_amount - d.paid_amount
+                                   ELSE 0 END) AS debt_total
+                        FROM debts d
+                        WHERE NOT d.is_deleted
+                        GROUP BY d.wallet_id
+                    ),
+                    totals AS (
                         SELECT w.id,
-                                w.balance AS old_balance,
-                                -- 1. Tổng tiền từ giao dịch cá nhân (transactions)
-                                COALESCE(SUM(CASE
-                                    WHEN t.type = 'INCOME' THEN t.amount
-                                    WHEN t.type = 'EXPENSE' THEN -t.amount
-                                    ELSE 0 END), 0)
-                                -- 2. CỘNG THÊM ẢNH HƯỞNG RÒNG TỪ SỔ NỢ (debts)
-                                + COALESCE((
-                                    SELECT SUM(CASE 
-                                        WHEN d.type = 'LENDING' THEN -d.total_amount + d.paid_amount
-                                        WHEN d.type = 'BORROWING' THEN d.total_amount - d.paid_amount
-                                        ELSE 0 END)
-                                    FROM debts d
-                                    WHERE d.wallet_id = w.id AND NOT d.is_deleted
-                                ), 0) AS total
+                               w.balance AS old_balance,
+                               COALESCE(tt.txn_total, 0) + COALESCE(dt.debt_total, 0) AS total
                         FROM wallets w
-                        LEFT JOIN transactions t ON t.wallet_id = w.id AND NOT t.is_deleted
+                        LEFT JOIN txn_totals tt ON tt.wallet_id = w.id
+                        LEFT JOIN debt_totals dt ON dt.wallet_id = w.id
                         WHERE NOT w.is_deleted
-                        GROUP BY w.id, w.balance
                     ),
                     fixed AS (
                         UPDATE wallets w

@@ -31,6 +31,8 @@ public class WalletServiceImpl implements WalletService {
                 .map(wallet -> walletMapper.toSumary(wallet, iconService.findIconByCode(wallet.getIconCode())));
     }
 
+
+
     @Override
     public Map<UUID, WalletSumaryRes> findSummaryMapByIds(Set<UUID> walletIds) {
         if (walletIds == null || walletIds.isEmpty()) {

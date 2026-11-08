@@ -30,7 +30,7 @@ public class DebtAdminController {
             "hasAuthority(T(com.datn.financeapp.module.user.enums.PermissionName).DEBT_DELETE.name())";
 
     @PreAuthorize(MANAGE_DEBT_READ)
-    @GetMapping("/{user_id}")
+    @GetMapping("/user/{user_id}")
     public ApiResponse<?> list(
             @PathVariable("user_id") UUID userId,
             DebtFilterReq filter,

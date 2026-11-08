@@ -31,6 +31,7 @@ CREATE TABLE debts (
 
 CREATE INDEX idx_debts_user_status ON debts (user_id, status) WHERE NOT is_deleted;
 CREATE INDEX idx_debts_due_date ON debts (due_date) WHERE status = 'INPROCESS' AND NOT is_deleted;
+CREATE INDEX idx_debts_wallet_id ON debts (wallet_id) WHERE NOT is_deleted;
 
 -- 2. Bảng debt_payments: Lịch sử từng lần trả nợ (Giao dịch độc lập)
 CREATE TABLE debt_payments (
@@ -104,19 +105,40 @@ $$ LANGUAGE sql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION fn_debts_wallet_balance()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_old_effect BIGINT;
+    v_new_effect BIGINT;
+    v_diff       BIGINT;
 BEGIN
-    -- Hoàn tác ảnh hưởng cũ nếu UPDATE hoặc DELETE
-    IF TG_OP IN ('UPDATE', 'DELETE') AND NOT OLD.is_deleted THEN
-        UPDATE wallets
-           SET balance = balance - fn_debt_wallet_net_effect(OLD.type, OLD.total_amount, OLD.paid_amount)
-         WHERE id = OLD.wallet_id;
-    END IF;
+    -- Tính net effect của trạng thái cũ (0 nếu đã xóa mềm)
+    v_old_effect := CASE
+        WHEN TG_OP IN ('UPDATE', 'DELETE') AND NOT OLD.is_deleted
+            THEN fn_debt_wallet_net_effect(OLD.type, OLD.total_amount, OLD.paid_amount)
+        ELSE 0
+    END;
 
-    -- Cộng ảnh hưởng mới nếu INSERT hoặc UPDATE
-    IF TG_OP IN ('INSERT', 'UPDATE') AND NOT NEW.is_deleted THEN
-        UPDATE wallets
-           SET balance = balance + fn_debt_wallet_net_effect(NEW.type, NEW.total_amount, NEW.paid_amount)
-         WHERE id = NEW.wallet_id;
+    -- Tính net effect của trạng thái mới (0 nếu đã xóa mềm)
+    v_new_effect := CASE
+        WHEN TG_OP IN ('INSERT', 'UPDATE') AND NOT NEW.is_deleted
+            THEN fn_debt_wallet_net_effect(NEW.type, NEW.total_amount, NEW.paid_amount)
+        ELSE 0
+    END;
+
+    -- Trường hợp UPDATE cùng ví: chỉ cần 1 câu UPDATE với delta
+    IF TG_OP = 'UPDATE' AND OLD.wallet_id = NEW.wallet_id THEN
+        v_diff := v_new_effect - v_old_effect;
+        IF v_diff <> 0 THEN
+            UPDATE wallets SET balance = balance + v_diff WHERE id = NEW.wallet_id;
+        END IF;
+
+    -- Trường hợp đổi ví hoặc INSERT/DELETE: hoàn tác ví cũ rồi áp vào ví mới
+    ELSE
+        IF v_old_effect <> 0 THEN
+            UPDATE wallets SET balance = balance - v_old_effect WHERE id = OLD.wallet_id;
+        END IF;
+        IF v_new_effect <> 0 THEN
+            UPDATE wallets SET balance = balance + v_new_effect WHERE id = NEW.wallet_id;
+        END IF;
     END IF;
 
     RETURN NULL;

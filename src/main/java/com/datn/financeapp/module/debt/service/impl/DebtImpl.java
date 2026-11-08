@@ -7,6 +7,7 @@ import com.datn.financeapp.module.debt.dto.request.DebtCreateReq;
 import com.datn.financeapp.module.debt.dto.request.DebtFilterReq;
 import com.datn.financeapp.module.debt.dto.request.DebtUpdateReq;
 import com.datn.financeapp.module.debt.dto.response.DebtListRes;
+import com.datn.financeapp.module.debt.dto.response.DebtReminderView;
 import com.datn.financeapp.module.debt.dto.response.DebtRes;
 import com.datn.financeapp.module.debt.entity.Debt;
 import com.datn.financeapp.module.debt.enums.DebtStatus;
@@ -141,43 +142,50 @@ public class DebtImpl implements DebtService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public void sendDueReminders() {
-        List<Debt> debts = debtRepository.findAllOutstandingWithDueDate();
-        for (Debt debt : debts) {
+        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+
+        // DB tự lọc đúng các mốc nhắc (7 ngày, 1 ngày, quá hạn chia hết 7).
+        // Chỉ projection tối giản được trả về — không hydrate full entity.
+        List<DebtReminderView> reminders = debtRepository.findAllDueRemindersForToday(today);
+
+        for (DebtReminderView reminder : reminders) {
             try {
-                if (debt == null || debt.getDueDate() == null) {
-                    continue;
-                }
-
-                long daysUntilDue = ChronoUnit.DAYS.between(LocalDate.now(VIETNAM_ZONE), debt.getDueDate());
-                String debtName = debt.getName() != null && !debt.getName().isBlank() ? debt.getName() : "đối tác";
-                String content;
-
-                if (daysUntilDue == 7) {
-                    content = "Còn 7 ngày đến hạn khoản nợ với " + debtName + ".";
-                } else if (daysUntilDue == 1) {
-                    content = "Ngày mai đến hạn khoản nợ với " + debtName + ".";
-                } else if (daysUntilDue <= 0 && (-daysUntilDue) % 7 == 0) {
-                    content = daysUntilDue == 0
-                            ? "Hôm nay đến hạn khoản nợ với " + debtName + "."
-                            : "Đã quá hạn " + (-daysUntilDue) + " ngày khoản nợ với "
-                            + debtName + ".";
-                } else {
-                    continue; // không rơi vào mốc nhắc nào trong ba mốc trên
-                }
+                long daysUntilDue = ChronoUnit.DAYS.between(today, reminder.getDueDate());
+                String debtName = reminder.getName() != null && !reminder.getName().isBlank()
+                        ? reminder.getName() : "đối tác";
 
                 applicationEventPublisher.publishEvent(new DebtDueReminderEvent(
-                        debt.getId(),
-                        debt.getUserId(),
+                        reminder.getId(),
+                        reminder.getUserId(),
                         debtName,
                         daysUntilDue,
-                        content));
+                        buildReminderContent(debtName, daysUntilDue)));
             } catch (Exception e) {
-                log.error("Lỗi khi gửi nhắc nợ cho khoản {}", debt.getId(), e);
+                log.error("Lỗi khi gửi nhắc nợ cho khoản {}", reminder.getId(), e);
             }
         }
     }
 
     // -------------------------PRIVATE------------------------//
 
+    /**
+     * Tạo nội dung thông báo nhắc nợ dựa trên số ngày còn lại đến hạn.
+     *
+     * @param debtName     tên khoản nợ / đối tác
+     * @param daysUntilDue số ngày đến hạn (âm = quá hạn, 0 = hôm nay)
+     * @return chuỗi nội dung thông báo
+     */
+    private String buildReminderContent(String debtName, long daysUntilDue) {
+        if (daysUntilDue == 7) {
+            return "Còn 7 ngày đến hạn khoản nợ với " + debtName + ".";
+        } else if (daysUntilDue == 1) {
+            return "Ngày mai đến hạn khoản nợ với " + debtName + ".";
+        } else if (daysUntilDue == 0) {
+            return "Hôm nay đến hạn khoản nợ với " + debtName + ".";
+        } else {
+            return "Đã quá hạn " + (-daysUntilDue) + " ngày khoản nợ với " + debtName + ".";
+        }
+    }
 }

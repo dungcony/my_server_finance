@@ -94,8 +94,9 @@ public class DebtPaymentImpl implements DebtPaymentService {
         // Lấy khoản nợ cha để kiểm tra quyền và tổng tiền nợ
         Debt debt = debtHelper.findDebt(dp.getDebtId(), isAdmin);
 
+        long oldAmount = dp.getAmount();
         if (req.amount() != null) {
-            long remainingWithoutThis = debt.getTotalAmount() - (debt.getPaidAmount() - dp.getAmount());
+            long remainingWithoutThis = debt.getTotalAmount() - (debt.getPaidAmount() - oldAmount);
             if (req.amount() > remainingWithoutThis) {
                 throw new BusinessException(ErrorCode.CONFLICT, "Số tiền thanh toán mới vượt quá số nợ còn lại.");
             }
@@ -111,7 +112,8 @@ public class DebtPaymentImpl implements DebtPaymentService {
         debtPaymentRepository.save(dp);
         // Trigger DB sẽ tự động: cập nhật debts.paid_amount, debts.status và cộng/trừ chênh lệch ví
 
-        if (debt.getTotalAmount() <= debt.getPaidAmount() + dp.getAmount()) {
+        long newPaidAmount = debt.getPaidAmount() - oldAmount + dp.getAmount();
+        if (debt.getStatus() != DebtStatus.COMPLETED && debt.getTotalAmount() <= newPaidAmount) {
             applicationEventPublisher.publishEvent(new DebtCompletedEvent(
                     debt.getId(),
                     debt.getUserId(),
