@@ -32,27 +32,19 @@ public enum ErrorCode {
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "Dữ liệu vừa được người khác thay đổi, vui lòng tải lại và thử lại."),
     // Thiếu thẻ truy cập. Do {@code GlobalExceptionHandler} phát, không ném từ service.
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Bạn cần đăng nhập để tiếp tục."),
-
     // Thẻ truy cập đã hết hạn. Do {@code GlobalExceptionHandler} phát.
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Phiên đăng nhập đã hết hạn."),
-
     // Thẻ sai hoặc đã bị thu hồi. Do {@code GlobalExceptionHandler} phát.
     TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Thẻ truy cập không hợp lệ."),
-
     // Không được phép truy cập tài nguyên này. Do {@code GlobalExceptionHandler} phát.
     FORBIDDEN(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện thao tác này."),
-
     NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy bản ghi."),
-
     // Vi phạm ràng buộc duy nhất.
     CONFLICT(HttpStatus.CONFLICT, "Bản ghi đã tồn tại."),
-
     // Gọi quá nhiều lần.
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Bạn thao tác quá nhanh, vui lòng thử lại sau."),
-
     // Phương thức HTTP không được hỗ trợ ở điểm cuối này. Do {@code GlobalExceptionHandler} phát.
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức không được hỗ trợ."),
-
     // Lỗi ngoài dự kiến. Không bao giờ đưa message gốc ra response (T-02-02).
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi không xác định."),
 
@@ -250,15 +242,9 @@ public enum ErrorCode {
     // Sổ nợ — api/08-SO-NO.md
     // ---------------------------------------------------------------------
 
+    DEBT_NOT_FOUND(HttpStatus.NOT_FOUND, "không tìm thấy khoản nợ"),
     // Trả thêm cho khoản nợ đã tất toán.
-    DEBT_ALREADY_SETTLED(HttpStatus.CONFLICT, "Khoản nợ đã trả xong."),
-
-    // Thao tác trên khoản nợ đã đánh dấu không đòi nữa.
-    DEBT_WRITTEN_OFF(HttpStatus.CONFLICT, "Khoản nợ đã đánh dấu không đòi nữa."),
-
-    // Số tiền trả vượt quá phần còn lại của khoản nợ.
-    DEBT_PAYMENT_EXCEEDS_REMAINING(HttpStatus.BAD_REQUEST, "Số tiền trả vượt quá phần còn lại."),
-
+    DEBT_IS_COMPLETED(HttpStatus.CONFLICT, "Khoản nợ đã trả xong."),
     // Hạn trả không được trước ngày phát sinh khoản nợ.
     DEBT_DUE_DATE_INVALID(HttpStatus.BAD_REQUEST, "Hạn trả không được trước ngày phát sinh."),
 

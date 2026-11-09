@@ -81,7 +81,7 @@ public class GroupTxnUpdateImpl implements GroupTxnUpdateService {
         if (txn.getType() == GroupTxnType.CONTRIBUTION || txn.getType() == GroupTxnType.REFUND) {
             txn.setCategoryCode(null);
         } else if (req.categoryCode() != null) {
-            categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false)
+            categoryService.findByCodeAndIsDeleted(req.categoryCode(), false)
                     .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Danh mục không tồn tại hoặc không phải danh mục con."));
             txn.setCategoryCode(req.categoryCode());
         }

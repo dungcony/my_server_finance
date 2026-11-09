@@ -57,7 +57,7 @@ public class TxnBehavierImpl implements TxnBehavierService {
 
         // kiểm tra danh mục là lá
         if (req.categoryCode() != null) {
-            cate = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false)
+            cate = categoryService.findByCodeAndIsDeleted(req.categoryCode(), false)
                     .orElseThrow(() -> new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh mục gửi lên không hợp lệ"));
         }
         // kiểm tra ví là của user
@@ -115,7 +115,7 @@ public class TxnBehavierImpl implements TxnBehavierService {
 
         // xem nên k cần cate là lá
         var cate = txn.getCategoryCode() == null ? null
-                : categoryService.findByCodeAndIsDeletedAndIsLeaf(txn.getCategoryCode(), true).orElse(null);
+                : categoryService.findByCodeAndIsDeleted(txn.getCategoryCode(), true).orElse(null);
 
         var wallet = walletService.findSumaryByIdAndUser(txn.getWalletId(), txn.getUserId(), true)
                 .orElse(null);
@@ -156,7 +156,7 @@ public class TxnBehavierImpl implements TxnBehavierService {
         if (req.note() != null) txn.setNote(req.note());
 
         if (req.categoryCode() != null) {
-            var tmp = categoryService.findByCodeAndIsDeletedAndIsLeaf(req.categoryCode(), false);
+            var tmp = categoryService.findByCodeAndIsDeleted(req.categoryCode(), false);
             if (tmp.isEmpty())
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "danh mục truyền lên cần phải tồn tại và không được phép tồn tại danh mục con");
             txn.setCategoryCode(req.categoryCode());

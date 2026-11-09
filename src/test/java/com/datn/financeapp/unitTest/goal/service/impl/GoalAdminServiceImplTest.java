@@ -5,9 +5,10 @@ import com.datn.financeapp.module.goal.dto.request.SavingGoalFilterReq;
 import com.datn.financeapp.module.goal.dto.response.SavingGoalListRes;
 import com.datn.financeapp.module.goal.entity.SavingGoal;
 import com.datn.financeapp.module.goal.enums.SavingGoalStatus;
+import com.datn.financeapp.module.goal.helper.ContributionHelper;
 import com.datn.financeapp.module.goal.helper.GoalSpecs;
+import com.datn.financeapp.module.goal.helper.SavingGoalHelper;
 import com.datn.financeapp.module.goal.mapper.SavingGoalMapper;
-import com.datn.financeapp.module.goal.repository.ContributionGoalRepository;
 import com.datn.financeapp.module.goal.repository.SavingsGoalRepository;
 import com.datn.financeapp.module.goal.service.impl.SavingBehavierImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,9 +43,9 @@ class GoalAdminServiceImplTest {
     @Mock
     private SavingsGoalRepository savingsGoalRepository;
     @Mock
-    private ContributionGoalRepository contributionGoalRepository;
+    private ContributionHelper contributionHelper;
     @Mock
-    private ContributionGoalHelper contributionGoalHelper;
+    private SavingGoalHelper savingGoalHelper;
     @Mock
     private SavingGoalMapper savingGoalMapper;
 
@@ -54,8 +55,8 @@ class GoalAdminServiceImplTest {
     void setUp() {
         goalBehavierService = new SavingBehavierImpl(
                 savingsGoalRepository,
-                contributionGoalRepository,
-                contributionGoalHelper,
+                contributionHelper,
+                savingGoalHelper,
                 savingGoalMapper
         );
     }

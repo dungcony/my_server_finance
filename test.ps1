@@ -129,7 +129,7 @@ function Check-DockerStatus
             }
         }
         $res = & $dockerCmd info 2>&1 | Out-String
-        if ($res -and $res -notmatch "failed to connect|cannot find the file|error during connect")
+        if ($res -and $res -notmatch "failed to connect|cannot findDebt the file|error during connect")
         {
             $winDocker = $true
         }
@@ -242,8 +242,14 @@ function Select-TestClassInteractive
     $candidateDirs = @()
     $unitModDir = Join-Path $UnitTestBaseDir $selectedModule
     $intModDir = Join-Path $IntegrationTestBaseDir $selectedModule
-    if (Test-Path $unitModDir) { $candidateDirs += $unitModDir }
-    if (Test-Path $intModDir) { $candidateDirs += $intModDir }
+    if (Test-Path $unitModDir)
+    {
+        $candidateDirs += $unitModDir
+    }
+    if (Test-Path $intModDir)
+    {
+        $candidateDirs += $intModDir
+    }
 
     # Quet danh sach class test trong ca unitTest va integrationTest cua module
     $testFiles = @()
@@ -265,7 +271,14 @@ function Select-TestClassInteractive
         $idxStr = ($i + 1).ToString().PadLeft(2, ' ')
         $className = [System.IO.Path]::GetFileNameWithoutExtension($testFiles[$i].Name)
         $isUnit = $testFiles[$i].FullName.Contains("unitTest")
-        $typeTag = if ($isUnit) { "[Unit]" } else { "[Integration]" }
+        $typeTag = if ($isUnit)
+        {
+            "[Unit]"
+        }
+        else
+        {
+            "[Integration]"
+        }
         Write-Host "  $idxStr. $typeTag $className" -ForegroundColor White
     }
     Write-Host ""
@@ -351,7 +364,7 @@ else
     Write-Host ""
     $choice = Read-Host "Nhap lua chon (1/2/3/4/5) [Mac dinh: 1]"
 
-    switch ($choice.Trim())
+    switch ( $choice.Trim())
     {
         "2" {
             $testMode = "ALL"
@@ -362,7 +375,7 @@ else
         "4" {
             $testMode = "CUSTOM"
             $targetTestPattern = Select-TestClassInteractive
-            if ([string]::IsNullOrWhiteSpace($targetTestPattern))
+            if ( [string]::IsNullOrWhiteSpace($targetTestPattern))
             {
                 Write-Host "[ERROR] Chua chon class test!" -ForegroundColor Red
                 exit 1
@@ -371,7 +384,7 @@ else
         "5" {
             $testMode = "MODULE"
             $targetModule = Select-ModuleInteractive -PromptTitle "Chon module muon chay test"
-            if ([string]::IsNullOrWhiteSpace($targetModule))
+            if ( [string]::IsNullOrWhiteSpace($targetModule))
             {
                 Write-Host "[ERROR] Chua chon module!" -ForegroundColor Red
                 exit 1

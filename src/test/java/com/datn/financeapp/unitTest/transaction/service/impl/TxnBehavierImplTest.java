@@ -87,7 +87,7 @@ class TxnBehavierImplTest {
         TxnCreateReq req = new TxnCreateReq(
                 TxnType.EXPENSE, 50_000L, walletId, "parent_cat", Instant.now(), "Ăn trưa", null);
 
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("parent_cat", false))
+        when(categoryService.findByCodeAndIsDeleted("parent_cat", false))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> txnBehavierService.create(currentUserId, req))
@@ -105,7 +105,7 @@ class TxnBehavierImplTest {
                 TxnType.EXPENSE, 50_000L, walletId, "ca_phe", Instant.now(), "Cà phê", null);
 
         CateSumaryRes cateSummary = new CateSumaryRes(UUID.randomUUID(), "Cà phê", "ca_phe", "M1 1", "#112233");
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false))
+        when(categoryService.findByCodeAndIsDeleted("ca_phe", false))
                 .thenReturn(Optional.of(cateSummary));
         when(walletService.findSumaryByIdAndUser(walletId, currentUserId, false))
                 .thenReturn(Optional.empty());
@@ -128,7 +128,7 @@ class TxnBehavierImplTest {
         CateSumaryRes cateSummary = new CateSumaryRes(UUID.randomUUID(), "Cà phê", "ca_phe", "M1 1", "#112233");
         WalletSumaryRes walletSummary = new WalletSumaryRes(walletId, "Ví chính", "icon", "#color");
 
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false))
+        when(categoryService.findByCodeAndIsDeleted("ca_phe", false))
                 .thenReturn(Optional.of(cateSummary));
         when(walletService.findSumaryByIdAndUser(walletId, currentUserId, false))
                 .thenReturn(Optional.of(walletSummary));
@@ -220,7 +220,7 @@ class TxnBehavierImplTest {
         when(txnRepository.findByIdAndIsDeletedFalse(txnId)).thenReturn(Optional.of(existing));
 
         CateSumaryRes newCate = new CateSumaryRes(UUID.randomUUID(), "Cà phê", "ca_phe", "M1 1", "#112233");
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false))
+        when(categoryService.findByCodeAndIsDeleted("ca_phe", false))
                 .thenReturn(Optional.of(newCate));
 
         TxnUpdateReq req = new TxnUpdateReq(null, 70_000L, null, "ca_phe", null, null, null);

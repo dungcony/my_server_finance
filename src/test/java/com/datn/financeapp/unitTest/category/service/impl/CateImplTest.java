@@ -42,23 +42,23 @@ class CateImplTest {
     }
 
     @Test
-    @DisplayName("findByCodeAndIsDeletedAndIsLeaf: code null hoặc rỗng trả về Optional.empty()")
+    @DisplayName("findByCodeAndIsDeleted: code null hoặc rỗng trả về Optional.empty()")
     void findByCode_nullOrEmpty_returnsEmpty() {
-        assertThat(cateService.findByCodeAndIsDeletedAndIsLeaf(null, false)).isEmpty();
-        assertThat(cateService.findByCodeAndIsDeletedAndIsLeaf("", false)).isEmpty();
+        assertThat(cateService.findByCodeAndIsDeleted(null, false)).isEmpty();
+        assertThat(cateService.findByCodeAndIsDeleted("", false)).isEmpty();
     }
 
     @Test
-    @DisplayName("findByCodeAndIsDeletedAndIsLeaf: không tìm thấy category trong DB trả về Optional.empty()")
+    @DisplayName("findByCodeAndIsDeleted: không tìm thấy category trong DB trả về Optional.empty()")
     void findByCode_notFound_returnsEmpty() {
         when(categoryRepository.findByCode("not_found")).thenReturn(Optional.empty());
 
-        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeletedAndIsLeaf("not_found", false);
+        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeleted("not_found", false);
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("findByCodeAndIsDeletedAndIsLeaf: includeDeleted = false nhưng category bị xoá trả về Optional.empty()")
+    @DisplayName("findByCodeAndIsDeleted: includeDeleted = false nhưng category bị xoá trả về Optional.empty()")
     void findByCode_deletedAndIncludeDeletedFalse_returnsEmpty() {
         Category cate = Category.builder()
                 .id(UUID.randomUUID())
@@ -69,12 +69,12 @@ class CateImplTest {
 
         when(categoryRepository.findByCode("an_uong")).thenReturn(Optional.of(cate));
 
-        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeletedAndIsLeaf("an_uong", false);
+        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeleted("an_uong", false);
         assertThat(result).isEmpty();
     }
 
     @Test
-    @DisplayName("findByCodeAndIsDeletedAndIsLeaf: category không phải lá vẫn trả về CateSumaryRes thành công")
+    @DisplayName("findByCodeAndIsDeleted: category không phải lá vẫn trả về CateSumaryRes thành công")
     void findByCode_notLeaf_returnsSummary() {
         Category cate = Category.builder()
                 .id(UUID.randomUUID())
@@ -89,12 +89,12 @@ class CateImplTest {
         when(iconService.findIconByCode(any())).thenReturn("M1 1");
         when(cateMapper.toSumary(eq(cate), any())).thenReturn(summary);
 
-        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeletedAndIsLeaf("an_uong", false);
+        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeleted("an_uong", false);
         assertThat(result).isPresent();
     }
 
     @Test
-    @DisplayName("findByCodeAndIsDeletedAndIsLeaf: category thoả mãn điều kiện trả về CateSumaryRes thành công")
+    @DisplayName("findByCodeAndIsDeleted: category thoả mãn điều kiện trả về CateSumaryRes thành công")
     void findByCode_valid_returnsSummary() {
         Category cate = Category.builder()
                 .id(UUID.randomUUID())
@@ -112,7 +112,7 @@ class CateImplTest {
         when(iconService.findIconByCode("ca_phe")).thenReturn("M1 1");
         when(cateMapper.toSumary(eq(cate), eq("M1 1"))).thenReturn(summary);
 
-        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeletedAndIsLeaf("ca_phe", false);
+        Optional<CateSumaryRes> result = cateService.findByCodeAndIsDeleted("ca_phe", false);
 
         assertThat(result).isPresent();
         assertThat(result.get().code()).isEqualTo("ca_phe");

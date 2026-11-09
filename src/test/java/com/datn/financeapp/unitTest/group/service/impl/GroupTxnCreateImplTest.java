@@ -9,7 +9,6 @@ import com.datn.financeapp.module.category.dto.response.CateSumaryRes;
 import com.datn.financeapp.module.category.service.CategoryService;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnCreateReq;
 import com.datn.financeapp.module.group.dto.request.transaction.GroupTxnParticipantReq;
-import com.datn.financeapp.module.group.dto.response.transaction.GroupTxnDetailRes;
 import com.datn.financeapp.module.group.entity.GroupTxn;
 import com.datn.financeapp.module.group.enums.*;
 import com.datn.financeapp.module.group.events.GroupTxnConfirmedEvent;
@@ -94,7 +93,7 @@ class GroupTxnCreateImplTest {
     @DisplayName("EXPENSE từ quỹ nhóm tạo bởi Owner -> CONFIRMED, lưu và publish event")
     void createExpense_fromFundByOwner_confirmed() {
         when(memberAuthCache.get(groupId, ownerId)).thenReturn(Optional.of(ownerAuth()));
-        when(categoryService.findByCodeAndIsDeletedAndIsLeaf("an_uong", false))
+        when(categoryService.findByCodeAndIsDeleted("an_uong", false))
                 .thenReturn(Optional.of(new CateSumaryRes(UUID.randomUUID(), "Ăn uống", "an_uong", "icon", "#color")));
         when(groupTxnRepository.save(any(GroupTxn.class))).thenAnswer(inv -> inv.getArgument(0));
 
