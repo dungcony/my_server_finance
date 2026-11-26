@@ -1,112 +1,222 @@
-# Backend — Quản lý tài chính cá nhân có AI
+# Finance App — Backend Server
 
-Backend REST API (Spring Boot 3.4.x, Java 17) cho ứng dụng Flutter Quản lý tài chính cá nhân có AI. Xem `.planning/PROJECT.md` để biết bối cảnh đầy đủ.
+Backend REST API (Java 17, Spring Boot 3.4) cho hệ thống **Quản lý Tài chính Cá nhân & Chi tiêu Nhóm**, xây dựng theo kiến trúc **package-by-feature** với 13 module nghiệp vụ, bảo mật Stateless JWT + Google OAuth2, phân quyền RBAC, cổng thanh toán PayOS, tối ưu truy vấn/trigger PostgreSQL qua Flyway và kiểm thử tích hợp bằng Testcontainers.
+
+---
+
+## Mục lục
+
+- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
+- [Kiến trúc & Module chính](#kiến-trúc--module-chính)
+- [Yêu cầu môi trường](#yêu-cầu-môi-trường)
+- [Hướng dẫn cài đặt & chạy từ đầu](#hướng-dẫn-cài-đặt--chạy-từ-đầu)
+- [Tài liệu API, UI & Công cụ test](#tài-liệu-api-ui--công-cụ-test)
+- [Nạp dữ liệu mẫu (Seed Data)](#nạp-dữ-liệu-mẫu-seed-data)
+- [Kiểm thử & Đo hiệu năng](#kiểm-thử--đo-hiệu-năng)
+- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
+
+---
+
+## Công nghệ sử dụng
+
+- **Core:** Java 17, Spring Boot 3.4.13, Spring Web, Spring Data JPA (Hibernate), Spring Validation, Spring AOP
+- **Bảo mật:** Spring Security (Stateless), JWT (`jjwt` 0.13.0 - HS256), Google OAuth2 (`google-api-client`), Redis user blacklist, RBAC (Role & Permission)
+- **Database & Migration:** PostgreSQL 17, Flyway (`classpath:db/migration_v2`)
+- **Cache & Rate Limit:** Redis 7, Caffeine, Bucket4j (giới hạn tần suất 3 tầng)
+- **Tích hợp bên thứ 3:** PayOS (`payos-java` — thanh toán & webhook nâng cấp Premium), Cloudinary (lưu trữ ảnh), Gmail SMTP (gửi email OTP/thông báo)
+- **Tài liệu & Hạ tầng:** SpringDoc OpenAPI / Swagger UI, Docker Compose, Bruno API Collection
+- **Kiểm thử & Hiệu năng:** JUnit 5, Mockito, Spring Security Test, Testcontainers (PostgreSQL), k6
+
+---
+
+## Kiến trúc & Module chính
+
+### Hạ tầng dùng chung (`common/`)
+
+- **`security/`**: Xác thực Stateless qua Bearer JWT, giải mã Google `id_token`, kiểm tra blacklist user trên Redis và phân quyền method-level (`@PreAuthorize`).
+- **`ratelimit/`**: Rate limit 3 tầng qua Bucket4j + Caffeine, đính kèm header `X-RateLimit-*`:
+  - `/v1/auth/**`: 5 request/phút theo IP
+  - `/v1/ai/**`: 30 request/phút theo `user_id`
+  - Các endpoint còn lại: 120 request/phút theo `user_id`
+- **`idempotency/`**: Annotation `@Idempotent` + AOP lưu key tại bảng `idempotency_keys`, tự động dọn dẹp theo lịch `@Scheduled`.
+- **`logging/`**: Request tracing log, đo thời gian xử lý service/SQL (`ServicePerformanceAspect`, `SqlStatementInspector`), che thông tin nhạy cảm (`LogMasker`) và luồng stream log cho Admin.
+- **`response/` & `exception/`**: Chuẩn hóa response `{success, data}` / `{success, error}` qua `ApiResponse` và `GlobalExceptionHandler`.
+- **`mail/` & `upload/`**: Gửi email OTP/thông báo bất đồng bộ qua SMTP và upload file lên Cloudinary.
+
+### 13 Module nghiệp vụ (`module/`)
+
+| Nhóm | Module | Chức năng chính |
+| :--- | :--- | :--- |
+| **Xác thực & Tài khoản** | `auth`, `user` | Đăng ký, đăng nhập (Email/Google), xác thực email OTP, refresh token, quên/đổi mật khẩu, quản lý user/role/permission, nâng cấp gói Premium |
+| **Ví & Danh mục** | `wallet`, `category`, `icon` | Quản lý ví tiền (trigger DB tự tạo ví mặc định khi tạo user), lịch sử đối soát số dư, cây danh mục thu/chi & icon |
+| **Giao dịch** | `transaction` | Giao dịch cá nhân (trigger DB tự đồng bộ số dư ví) và giao dịch định kỳ kèm scheduler |
+| **Chi tiêu nhóm** | `group` | Nhóm chi tiêu, quản lý thành viên, quỹ nhóm, chia tiền/giao dịch nhóm, cân bằng công nợ thành viên và báo cáo nhóm |
+| **Kế hoạch tài chính** | `budget`, `debt`, `goal` | Ngân sách & cảnh báo vượt mức, quản lý khoản vay/nợ & trả nợ, mục tiêu tiết kiệm & đóng góp |
+| **Thanh toán & Báo cáo** | `pay`, `report`, `notification` | Tạo link thanh toán PayOS & xử lý webhook nâng cấp Premium, báo cáo thống kê + xuất CSV (`ExportJob`), thông báo theo sự kiện |
+
+---
 
 ## Yêu cầu môi trường
 
-- Java 17
-- Maven 3.9+
-- Docker Desktop (dùng cho Postgres dev qua Docker Compose và cho Testcontainers khi chạy `mvn test`)
+- **Java JDK 17**
+- **Maven 3.9+** (chạy bằng lệnh `mvn` trên hệ thống)
+- **Docker & Docker Compose** (chạy PostgreSQL 17, Redis 7 và cần thiết khi chạy Integration Test với Testcontainers)
+- *(Tùy chọn)* **Bruno** (để mở bộ collection test API trong `bruno/`), **k6** (để chạy load test)
 
-## Khởi động lần đầu
+---
 
-1. Clone repo, đứng ở thư mục `source/server/` (thư mục chứa file này).
-2. Copy file mẫu biến môi trường và điền `JWT_SECRET`:
+## Hướng dẫn cài đặt & chạy từ đầu
 
-   ```bash
-   cp .env.example .env
-   ```
+### Bước 1: Clone mã nguồn
 
-   Sinh giá trị `JWT_SECRET` (base64, tối thiểu 256 bit cho HS256):
+```bash
+git clone <url-repository>
+cd my_server_finance
+```
 
+### Bước 2: Khởi động PostgreSQL & Redis bằng Docker Compose
+
+```bash
+docker compose up -d
+```
+
+Mặc định Docker Compose khởi chạy:
+- **PostgreSQL 17** (`postgres_dev`): cổng `5432`, database `finance`, user `postgres`, password `123456`
+- **Redis 7 Alpine** (`redis_dev`): cổng `6379`
+
+*(Có thể thay đổi tên DB, port, user/password qua biến môi trường trong `.env`.)*
+
+### Bước 3: Tạo và cấu hình file `.env`
+
+```bash
+cp .env.example .env
+```
+
+Lớp khởi chạy (`App.java`) sẽ tự động đọc file `.env` ở thư mục gốc khi start ứng dụng.
+
+1. **Sinh `JWT_SECRET`** (chuỗi Base64 tối thiểu 256-bit cho thuật toán `HS256`):
    ```bash
    openssl rand -base64 32
    ```
-
-   Windows PowerShell (nếu không có `openssl`):
-
+   *(Trên Windows PowerShell nếu không có `openssl`:)*
    ```powershell
    [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
    ```
 
-   Dán giá trị sinh được vào biến `JWT_SECRET` trong `.env`. File `.env` đã bị `.gitignore` chặn — không commit.
+2. **Chọn Spring Profile** trong `.env` (chú ý dùng dấu `=` đúng chuẩn file `.env`, ví dụ `PROFILES_ACTIVE=dev`):
+   - **Chạy local nhanh (`PROFILES_ACTIVE=dev`)**: Đọc cấu hình từ `src/main/resources/application-dev.yaml` (cổng `8080`, context-path `/v1`, PostgreSQL `localhost:5432/finance`, Flyway `classpath:db/migration_v2`).
+   - **Chạy cấu hình tùy biến / triển khai (`PROFILES_ACTIVE=prod`)**: Đọc toàn bộ tham số từ biến môi trường trong `.env` (`PORT`, `API_PATH`, `DB_*`, `REDIS_*`, `MAIL_*`, `FLYWAY_LOCATIONS`, `JWT_SECRET`, `CLOUDINARY_*`, `PAYOS_*`, `PREMIUM_PRICE_*`, `PAYMENT_TOPUP_*`, `GOOGLE_WEB_CLIENT_ID`).
 
-3. Khởi động PostgreSQL dev bằng Docker Compose:
+### Bước 4: Khởi chạy server
 
-   ```bash
-   docker compose up -d
-   ```
+- **Linux / macOS:**
+  ```bash
+  mvn spring-boot:run
+  ```
+- **Windows PowerShell** *(bọc dấu nháy quanh `-D...` để PowerShell không tách chuỗi tại dấu chấm)*:
+  ```powershell
+  mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
+  ```
+- Hoặc dùng script khởi chạy kèm tối ưu JVM/GC log trên Windows:
+  ```powershell
+  .\run.ps1
+  ```
 
-4. Chạy ứng dụng:
+Khi ứng dụng khởi động lần đầu, **Flyway** tự động chạy các script migration trong `src/main/resources/db/migration_v2/` (`V1` đến `V19`) để khởi tạo bảng, trigger, view, danh mục/icon mẫu và tài khoản quản trị mặc định:
+- **Email / tài khoản:** `admin`
+- **Mật khẩu:** `admin` *(đã gán sẵn `ROLE_ADMIN` và `ROLE_USER` — hãy đổi mật khẩu trước khi đưa lên môi trường thật)*
 
-   ```bash
-   mvn spring-boot:run
-   ```
+---
 
-   Hoặc chỉ định rõ profile `dev`:
+## Tài liệu API, UI & Công cụ test
 
-   ```bash
-   mvn spring-boot:run -Dspring-boot.run.profiles=dev
-   ```
+Khi server chạy với profile `dev` (`http://localhost:8080/v1`):
 
-   > **Dùng PowerShell trên Windows thì phải bọc dấu nháy:**
-   >
-   > ```powershell
-   > mvn spring-boot:run "-Dspring-boot.run.profiles=dev"
-   > ```
-   >
-   > Không bọc thì PowerShell cắt tham số tại dấu chấm đầu tiên, thành hai mảnh
-   > `-Dspring-boot` và `.run.profiles=dev`; Maven hiểu mảnh thứ hai là một
-   > lifecycle phase và báo `Unknown lifecycle phase ".run.profiles=dev"`.
-   > Quy tắc này áp dụng cho **mọi** tham số `-D...` có dấu chấm.
+- **Swagger UI:** [http://localhost:8080/v1/swagger-ui/index.html](http://localhost:8080/v1/swagger-ui/index.html)
+- **OpenAPI JSON:** [http://localhost:8080/v1/v3/api-docs](http://localhost:8080/v1/v3/api-docs) (bản snapshot có sẵn tại `api-docs.json`)
+- **Web UI tích hợp (Static UI):** [http://localhost:8080/v1/](http://localhost:8080/v1/)
+- **Bruno API Collection:** Mở thư mục `bruno/` trong ứng dụng Bruno và chọn environment **`Local`** (`baseUrl: http://localhost:8080/v1`) để test 14 nhóm endpoint (`01-Auth` đến `14-Admin-Logs`).
+- **Tài liệu thiết kế & API:** Tham khảo thêm trong thư mục `docs/` (`docs/api/`, `docs/role_per.md`, `docs/work_flow/`).
 
-   Flyway sẽ tự động chạy toàn bộ migration ở `../../db/migration/` (V1 đến V7) lên database `finance_app` lúc khởi động.
+---
 
-## Chạy test
+## Nạp dữ liệu mẫu (Seed Data)
+
+Thư mục `src/main/resources/db/seed/` cung cấp bộ SQL tạo dữ liệu mô phỏng quy mô lớn (100.000 người dùng, ví, giao dịch cá nhân/nhóm, gói định kỳ) tương thích với schema `migration_v2`.
+
+Xem hướng dẫn chi tiết và thứ tự chạy (`reset_db.sql` và `01` → `06`) tại [`src/main/resources/db/seed/README.md`](src/main/resources/db/seed/README.md).
+
+---
+
+## Kiểm thử & Đo hiệu năng
+
+### Chạy Unit Test & Integration Test
+
+> Integration Test sử dụng **Testcontainers (PostgreSQL)** nên cần **Docker đang chạy** trước khi thực thi. Unit Test chạy độc lập, không cần Docker.
 
 ```bash
+# Chỉ chạy Unit Test (nhanh, không cần Docker)
+mvn test -Dtest="com/datn/financeapp/unitTest/**"
+
+# Chỉ chạy Integration Test (cần Docker)
+mvn test -Dtest="com/datn/financeapp/integrationTest/**"
+
+# Chạy toàn bộ Test Suite (Unit + Integration)
 mvn test
 ```
 
-Test tích hợp dùng **Testcontainers** (tự khởi động container PostgreSQL riêng biệt cho test, không dùng H2) — **cần Docker Desktop đang chạy sẵn** trên máy trước khi chạy `mvn test`.
+Trên Windows PowerShell, có thể dùng script `test.ps1` (hỗ trợ menu tương tác và tự nhận diện Docker trên Windows/WSL):
 
-## Cấu hình môi trường (biến bắt buộc)
+```powershell
+.\test.ps1               # Menu chọn chế độ (mặc định: Unit Test)
+.\test.ps1 -Unit         # Chỉ chạy Unit Test
+.\test.ps1 -Integration  # Chỉ chạy Integration Test
+.\test.ps1 -All          # Chạy toàn bộ Unit + Integration Test
+.\test.ps1 -Module wallet
+```
 
-Toàn bộ biến trong `.env.example` là **bắt buộc, không có giá trị mặc định** — ứng dụng sẽ fail-fast lúc khởi động nếu thiếu bất kỳ biến nào (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`). Đây là quyết định chủ động (xem D-01 trong `.planning/phases/01-nen-tang-xac-thuc/01-CONTEXT.md`) để tránh dùng nhầm giá trị mặc định yếu ở môi trường thật.
+### Đo hiệu năng & Load Test
 
-## Cấu trúc dự án
+- **Kiểm tra N+1 query, thời gian xử lý & scale bộ nhớ (Windows PowerShell):**
+  ```powershell
+  .\performan-test.ps1
+  ```
+- **Load test hành trình người dùng với k6:**
+  ```bash
+  k6 run scripts/user-journey-load-test.js
+  ```
+  *(Có thể tùy chỉnh qua biến `-e RPS=1500 -e DURATION=1m`; kịch bản mặc định nhắm vào dữ liệu seed quy mô lớn.)*
 
-Package-by-feature — xem chi tiết ở `CLAUDE.md` tại thư mục này.
+---
+
+## Cấu trúc thư mục
 
 ```text
-src/main/java/com/datn/financeapp/
-├── common/     # response wrapper, exception handler, security, idempotency, rate limit
-├── auth/       # đăng ký/đăng nhập/refresh/quên-đổi mật khẩu
-└── FinanceAppApplication.java
+my_server_finance/
+├── bruno/                          # Bộ API collection & environment cho Bruno
+├── docs/                           # Tài liệu phân tích, luồng nghiệp vụ & mô tả API
+├── scripts/                        # Kịch bản k6 load test
+├── src/
+│   ├── main/
+│   │   ├── java/com/datn/financeapp/
+│   │   │   ├── common/             # Security, Rate Limit, Idempotency, Logging, Mail, Upload, Exception
+│   │   │   ├── module/             # 13 module nghiệp vụ (auth, user, wallet, transaction, group, pay, report, ...)
+│   │   │   └── App.java            # Điểm khởi chạy ứng dụng & tự nạp .env
+│   │   └── resources/
+│   │       ├── db/migration_v2/    # Flyway SQL migrations (V1 -> V19)
+│   │       ├── db/seed/            # Dữ liệu mẫu quy mô lớn
+│   │       ├── static/             # Giao diện Web tĩnh (admin/user)
+│   │       └── application*.yaml   # Cấu hình ứng dụng theo profile (dev/prod)
+│   └── test/
+│       ├── java/com/datn/financeapp/
+│       │   ├── unitTest/           # Unit test theo từng module
+│       │   └── integrationTest/    # Integration test với Testcontainers PostgreSQL
+│       └── resources/
+│           └── application-test.yml
+├── .env.example                    # Mẫu biến môi trường
+├── docker-compose.yml              # PostgreSQL 17 & Redis 7
+├── pom.xml                         # Cấu hình Maven & dependencies
+├── run.ps1                         # Script chạy server trên Windows
+├── test.ps1                        # Script chạy Unit/Integration test trên Windows
+└── performan-test.ps1              # Script chạy kiểm thử hiệu năng & N+1
 ```
-
-Migration Flyway dùng chung với toàn dự án tại `../../db/migration/` (thư mục gốc DATN) — **không copy** vào đây.
-
-## Trạng thái Phase 1 (Nền tảng & Xác thực)
-
-**Hoàn thành.** 9/9 endpoint auth theo `api/01-XAC-THUC.md` hoạt động qua HTTP thật:
-
-- `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` — vòng đời phiên đăng nhập, JWT access token 1h + refresh token rotation/reuse detection
-- `GET /auth/me`, `PATCH /auth/me` — xem/sửa hồ sơ kèm thống kê ví/giao dịch/nhóm
-- `POST /auth/change-password`, `/auth/forgot-password`, `/auth/reset-password` — đổi/quên/đặt lại mật khẩu
-
-Hạ tầng dùng chung cho mọi phase sau đã sẵn sàng, không cần dựng lại:
-
-- **Idempotency** (`common/idempotency/`): annotation `@Idempotent` + AOP, bảng `idempotency_keys`, dọn bản ghi quá 24h bằng job `@Scheduled`
-- **Rate limit** (`common/ratelimit/`): Bucket4j + Caffeine 3 tầng (`auth` 5/phút/IP, `ai` 30/phút/user, còn lại 120/phút/user), header `X-RateLimit-*` trên mọi response
-- **Response wrapper** (`common/response/`, `common/exception/`): khung `{success, data}`/`{success, error}` thống nhất, `GlobalExceptionHandler` gom mọi lỗi
-
-Chạy toàn bộ test suite (cần Docker Desktop đang chạy, dùng Testcontainers):
-
-```bash
-mvn test
-```
-
-32 test hiện tại (unit + integration Testcontainers + 1 test end-to-end HTTP thật xác nhận Auth + Idempotency + Rate limit phối hợp đúng cùng nhau) đều xanh khi chạy liên tục 1 lần, không filter.
-
-Xem `.planning/ROADMAP.md` Phase 2 cho bước tiếp theo (Ví & Danh mục).
